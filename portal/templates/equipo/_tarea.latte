@@ -1,0 +1,25 @@
+{* Fila de tarea en listas del panel. Parámetros: $t, $fmt, $contexto (bool: mostrar cliente · proyecto). *}
+{var $v = $fmt->vence($t['fecha_vencimiento'], $t['estado'])}
+{var $e = $fmt->estado($t['estado'])}
+<li>
+    <a href="/equipo/proyectos/{$t['proyecto_id']}#t-{$t['id']}" class="group flex items-center gap-3 rounded-2xl p-3 transition hover:bg-surface2 sm:p-3.5">
+        <span class="flex size-11 flex-none items-center justify-center rounded-xl {in_array($t['estado'], ['entregada', 'cambios'], true) ? 'bg-warn/15 text-warn' : 'bg-brand-soft text-brand-ink'}">
+            <svg class="size-5"><use href="#{$t['estado'] === 'cambios' ? 'i-chat' : ($t['tipo'] === 'archivo' ? 'i-upload' : ($t['tipo'] === 'revision' ? 'i-eye' : 'i-tasks'))}"/></svg>
+        </span>
+        <span class="min-w-0 flex-1">
+            <span class="block truncate font-semibold">{$t['titulo']}</span>
+            <span class="mt-0.5 block truncate text-xs text-muted">
+                {if $contexto ?? true}{$t['cliente_nombre']} · {$t['proyecto_nombre']} · {/if}{if $t['estado'] === 'entregada'}{$t['contacto_nombre'] ?? 'El cliente'} entregó{elseif $t['estado'] === 'cambios'}{$t['contacto_nombre'] ?? 'El cliente'} pidió cambios{else}{$fmt->tipo($t['tipo'])}{/if}{if !(int) $t['visible_cliente'] && $t['responsable_tipo'] !== 'cliente'} · interna{/if}
+            </span>
+        </span>
+        <span class="hidden flex-col items-end gap-1 sm:flex">
+            <span class="chip chip-{$e[1]}">{$e[0]}</span>
+            {if $t['fecha_vencimiento']}<span class="chip chip-{$v['tono']}">{$v['texto']}</span>{/if}
+        </span>
+        <svg class="size-4 flex-none text-muted transition group-hover:translate-x-0.5"><use href="#i-chevron"/></svg>
+    </a>
+    <span class="-mt-1 mb-2 ml-[4.5rem] flex flex-wrap gap-1.5 sm:hidden">
+        <span class="chip chip-{$e[1]}">{$e[0]}</span>
+        {if $t['fecha_vencimiento']}<span class="chip chip-{$v['tono']}">{$v['texto']}</span>{/if}
+    </span>
+</li>

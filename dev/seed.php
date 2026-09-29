@@ -62,5 +62,28 @@ foreach ($clientes as [$nombre, $empresa, $color, $pais, $proyectos]) {
     }
 }
 
+// Usuarios de agencia: Ana ve Café Altura completo y un proyecto de Luma; Richard coordina todo.
+$eq  = new P\EquipoService($pdo);
+$ana = $eq->create(['nombre' => 'Ana Pérez', 'email' => 'ana@richgt.com', 'cargo' => 'Diseñadora', 'rol' => 'equipo', 'activo' => 1]);
+$eq->create(['nombre' => 'Richard González', 'email' => 'richard@richgt.com', 'cargo' => 'Director', 'rol' => 'coordinador', 'activo' => 1]);
+$cafe = (string) $pdo->query("SELECT id FROM portal_clientes WHERE nombre = 'Café Altura'")->fetchColumn();
+$eq->guardarAsignaciones($ana, [$cafe], [$ids['Luma Studio']['Lanzamiento app']]);
+$pdo->prepare("UPDATE portal_tareas SET responsable_usuario_id = ? WHERE titulo = 'Diseñar grilla de noviembre'")->execute([$ana]);
+$aj->set('global', 'portal', 'color_agencia', '#e4572e');
+$aj->set('global', 'portal', 'nombre_equipo', 'RichGT');
+
+// Respuestas del cliente para la bandeja.
+$t = $pdo->query("SELECT t.id, t.proyecto_id FROM portal_tareas t WHERE t.titulo = 'Enviar logos en alta' LIMIT 1")->fetch();
+(new P\TareaService($pdo))->cambiarEstado($t['id'], 'entregada');
+$ent = $pdo->query("SELECT id FROM portal_entregas ORDER BY created_at LIMIT 1")->fetchColumn();
+$con = $pdo->prepare("SELECT id FROM portal_contenidos WHERE entrega_id = ? ORDER BY orden");
+$con->execute([$ent]);
+$cs = $con->fetchAll(PDO::FETCH_COLUMN);
+$pdo->prepare("UPDATE portal_contenidos SET estado = 'aprobado' WHERE id = ?")->execute([$cs[0]]);
+$pdo->prepare("UPDATE portal_contenidos SET estado = 'cambios' WHERE id = ?")->execute([$cs[1]]);
+(new P\EntregaService($pdo))->responder($ent, 'María Café Altura');
+$act = new P\ActividadService($pdo);
+$act->registrar($cafe, $t['proyecto_id'], 'contacto', 'María Café Altura', 'entrego', 'tarea', $t['id'], 'Enviar logos en alta', '2 archivo(s)');
+
 $n = static fn(string $t): int => (int) $pdo->query("SELECT COUNT(*) FROM {$t}")->fetchColumn();
 echo "Listo: {$n('portal_clientes')} clientes, {$n('portal_proyectos')} proyectos, {$n('portal_tareas')} tareas, {$n('portal_entregas')} entregas.\n";

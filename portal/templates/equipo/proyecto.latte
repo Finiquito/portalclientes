@@ -1,0 +1,156 @@
+{layout '_layout.latte'}
+
+{block title}{$proyecto['nombre']}{/block}
+
+{block content}
+{var $prog = $proyecto['progreso']}
+{var $grupos = [
+    ['Turno del equipo', array_filter($tareas, fn($t) => ($t['responsable_tipo'] !== 'cliente' && in_array($t['estado'], ['pendiente', 'en_progreso'], true)) || in_array($t['estado'], ['entregada', 'cambios'], true))],
+    ['Turno del cliente', array_filter($tareas, fn($t) => $t['responsable_tipo'] === 'cliente' && in_array($t['estado'], ['pendiente', 'en_progreso'], true))],
+    ['Listas', array_filter($tareas, fn($t) => $t['estado'] === 'hecha')],
+]}
+{var $estEnt = [
+    'borrador'   => ['Borrador', 'muted'],
+    'publicada'  => ['Esperando al cliente', 'info'],
+    'respondida' => ['Respondida', 'warn'],
+    'aprobada'   => ['Aprobada', 'ok'],
+]}
+
+<a href="/equipo/clientes/{$proyecto['cliente_id']}" class="mb-4 inline-flex items-center gap-1 text-sm font-semibold text-muted hover:text-ink"><svg class="size-4"><use href="#i-back"/></svg> {$proyecto['cliente_nombre']}</a>
+
+<section class="card card-pad reveal">
+    <div class="flex flex-wrap items-start justify-between gap-4">
+        <div class="flex min-w-0 items-center gap-3">
+            <span class="size-3 flex-none rounded-full" style="background: {$marcaCli['color']|noescape}" aria-hidden="true"></span>
+            <div class="min-w-0">
+                <h1 class="truncate text-2xl font-extrabold tracking-tight sm:text-3xl">{$proyecto['nombre']}</h1>
+                {if $proyecto['descripcion']}<p class="mt-1 text-sm text-muted">{$proyecto['descripcion']}</p>{/if}
+            </div>
+        </div>
+        <span class="text-3xl font-extrabold tracking-tight text-brand-ink">{$prog['pct']}<span class="text-lg">%</span></span>
+    </div>
+
+    <div class="progress mt-5" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{$prog['pct']}" aria-label="Avance">
+        <span style="width: {$prog['pct']}%"></span>
+    </div>
+    <p class="mt-2 text-xs text-muted">{$prog['hechas']} de {$prog['total']} {$prog['total'] === 1 ? 'tarea lista' : 'tareas listas'}</p>
+
+    {if $prog['fases']}
+        <div class="scroll-x -mx-2 mt-6 px-2 pb-1">
+            <ol class="flex min-w-max sm:min-w-0">
+                {foreach $prog['fases'] as $i => $f}
+                    <li class="relative min-w-[7.5rem] flex-1 px-1 text-center">
+                        {if $i > 0}
+                            <span class="absolute right-1/2 top-[1.05rem] h-0.5 w-full {$prog['fases'][$i - 1]['estado'] === 'hecha' ? 'bg-brand' : 'bg-line'}" aria-hidden="true"></span>
+                        {/if}
+                        <span class="relative z-10 mx-auto flex size-[2.2rem] items-center justify-center rounded-full text-sm font-bold
+                            {$f['estado'] === 'hecha' ? 'bg-brand text-brand-fg' : ($f['estado'] === 'actual' ? 'border-2 border-brand bg-surface text-brand-ink shadow-[0_0_0_5px_var(--brand-soft)]' : 'border border-line bg-surface2 text-muted')}">
+                            {if $f['estado'] === 'hecha'}<svg class="size-4"><use href="#i-check"/></svg>{else}{$i + 1}{/if}
+                        </span>
+                        <span class="mt-2.5 block text-[0.8125rem] font-bold leading-tight {$f['estado'] === 'pendiente' ? 'text-muted' : ''}">{$f['nombre']}</span>
+                        <span class="mt-0.5 block text-[0.6875rem] text-muted">{if $f['estado'] === 'actual'}En curso{elseif $f['estado'] === 'hecha'}Lista{else}Próxima{/if}</span>
+                    </li>
+                {/foreach}
+            </ol>
+        </div>
+    {/if}
+
+    {if $personas}
+        <div class="mt-5 flex flex-wrap items-center gap-2 border-t border-line pt-4">
+            <span class="text-xs font-semibold text-muted">Equipo:</span>
+            {foreach $personas as $pe}
+                <span class="inline-flex items-center gap-1.5 rounded-full bg-surface2 py-1 pl-1 pr-3 text-xs font-semibold" title="{$pe['email']}">
+                    <span class="avatar size-6! text-[0.625rem]!">{$fmt->iniciales($pe['nombre'])}</span>{$pe['nombre']}
+                </span>
+            {/foreach}
+        </div>
+    {/if}
+</section>
+
+<div class="mt-5 xl:grid xl:grid-cols-[minmax(0,1fr)_20rem] xl:gap-6">
+<div class="min-w-0 space-y-5">
+    {foreach $grupos as $g}
+        {continueIf empty($g[1]) && $g[0] === 'Listas'}
+        <section class="card reveal overflow-hidden">
+            <div class="flex items-center justify-between gap-3 px-5 pb-2 pt-5 sm:px-6">
+                <h2 class="text-lg font-extrabold tracking-tight">{$g[0]}</h2>
+                <span class="chip chip-muted">{count($g[1])}</span>
+            </div>
+            {if empty($g[1])}
+                <p class="px-5 pb-6 pt-1 text-sm text-muted sm:px-6">Nada por aquí.</p>
+            {else}
+                <ul class="px-2 pb-2 sm:px-3 sm:pb-3">
+                    {foreach $g[1] as $t}
+                        {var $v = $fmt->vence($t['fecha_vencimiento'], $t['estado'])}
+                        {var $e = $fmt->estado($t['estado'])}
+                        <li id="t-{$t['id']}" class="scroll-mt-24 rounded-2xl p-3 target:bg-brand-soft sm:p-3.5">
+                            <div class="flex items-center gap-3">
+                                <span class="min-w-0 flex-1">
+                                    <span class="block font-semibold {$t['estado'] === 'hecha' ? 'text-muted line-through decoration-1' : ''}">{$t['titulo']}</span>
+                                    <span class="mt-0.5 block truncate text-xs text-muted">
+                                        {$fmt->tipo($t['tipo'])}{if $t['fase_nombre']} · {$t['fase_nombre']}{/if}
+                                        · {if $t['responsable_tipo'] === 'cliente'}{$t['contacto_nombre'] ?? 'Cliente'}{else}{$t['equipo_nombre'] ?? $t['usuario_nombre'] ?? 'Sin responsable'}{/if}
+                                        {if !(int) $t['visible_cliente'] && $t['responsable_tipo'] !== 'cliente'} · interna{/if}
+                                    </span>
+                                </span>
+                                <span class="flex flex-none flex-wrap justify-end gap-1.5">
+                                    <span class="chip chip-{$e[1]}">{$e[0]}</span>
+                                    {if $t['fecha_vencimiento'] && $t['estado'] !== 'hecha'}<span class="chip chip-{$v['tono']}">{$v['texto']}</span>{/if}
+                                </span>
+                            </div>
+                        </li>
+                    {/foreach}
+                </ul>
+            {/if}
+        </section>
+    {/foreach}
+</div>
+
+<aside class="mt-5 min-w-0 space-y-5 xl:mt-0">
+    <section class="card card-pad" id="entregas">
+        <h2 class="text-base font-extrabold tracking-tight">Contenidos</h2>
+        {if empty($entregas)}
+            <p class="mt-3 text-sm text-muted">Sin entregas de contenido en este proyecto.</p>
+        {else}
+            <ul class="mt-4 space-y-4">
+                {foreach $entregas as $en}
+                    {var $st = $estEnt[$en['estado']] ?? [$en['estado'], 'muted']}
+                    <li>
+                        <span class="flex items-start justify-between gap-2">
+                            <span class="min-w-0 text-sm font-semibold">{$en['titulo']}</span>
+                            <span class="chip chip-{$st[1]} flex-none">{$st[0]}</span>
+                        </span>
+                        <span class="mt-1 block text-xs text-muted">{$en['n_total']} contenidos · {$en['n_aprobados']} aprobados{if $en['n_cambios'] > 0} · {$en['n_cambios']} con cambios{/if}</span>
+                    </li>
+                {/foreach}
+            </ul>
+        {/if}
+    </section>
+
+    <section class="card card-pad" id="reuniones">
+        <h2 class="text-base font-extrabold tracking-tight">Reuniones</h2>
+        {if empty($reuniones)}
+            <p class="mt-3 text-sm text-muted">Sin reuniones registradas.</p>
+        {else}
+            <ul class="mt-4 space-y-3">
+                {foreach $reuniones as $r}
+                    <li class="flex items-center gap-3">
+                        <span class="flex size-12 flex-none flex-col items-center justify-center rounded-xl leading-none {substr((string) $r['fecha'], 0, 10) >= $hoy ? 'bg-brand-soft text-brand-ink' : 'bg-surface2 text-muted'}">
+                            <span class="text-lg font-extrabold">{$fmt->dia($r['fecha'])}</span>
+                            <span class="mt-0.5 text-[0.625rem] font-bold uppercase tracking-wide">{$fmt->mesCorto($r['fecha'])}</span>
+                        </span>
+                        <span class="min-w-0">
+                            <span class="block truncate text-sm font-semibold">{$r['titulo']}</span>
+                            <span class="block truncate text-xs text-muted">{$fmt->hora($r['fecha'])}{if !(int) $r['publicada']} · oculta al cliente{elseif $r['resumen'] && (int) $r['resumen_publicado']} · resumen publicado{/if}</span>
+                        </span>
+                        {if $r['enlace_meet'] && substr((string) $r['fecha'], 0, 10) >= $hoy}
+                            <a href="{$r['enlace_meet']}" target="_blank" rel="noopener" class="btn btn-soft btn-sm ml-auto">Meet</a>
+                        {/if}
+                    </li>
+                {/foreach}
+            </ul>
+        {/if}
+    </section>
+</aside>
+</div>
+{/block}

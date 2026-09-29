@@ -1,0 +1,41 @@
+{layout $plugin_ui_layout}
+
+{block page_title}Equipo{/block}
+
+{block content}
+<div class="page-header">
+    <h1>Equipo de agencia</h1>
+    <a href="{$admin_url('equipo/nuevo')}" class="btn btn-primary">Nuevo usuario</a>
+</div>
+
+{if $flash_success}<div class="alert alert-success">{$flash_success}</div>{/if}
+{if $flash_error}<div class="alert alert-error">{$flash_error}</div>{/if}
+
+<p class="form-hint" style="margin:0 0 1rem">Personas de la agencia que entran al panel <a href="/equipo" target="_blank" rel="noopener"><code>/equipo</code></a> con su correo y un código (sin contraseña). Cada una ve sólo los clientes o proyectos que le asignes, salvo «Coordinación», que ve todo.</p>
+
+{if empty($usuarios)}
+    <div class="card"><p class="text-slate-500">Todavía no hay usuarios de agencia. Crea el primero y asígnale clientes.</p></div>
+{else}
+<div class="card">
+    <table class="table">
+        <thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Asignaciones</th><th>Último acceso</th><th></th></tr></thead>
+        <tbody>
+        {foreach $usuarios as $u}
+            <tr{if !(int) $u['activo']} style="opacity:.55"{/if}>
+                <td><a href="{$admin_url('equipo/' . $u['id'])}">{$u['nombre']}</a>{if $u['cargo']}<br><small class="text-slate-500">{$u['cargo']}</small>{/if}</td>
+                <td>{$u['email']}</td>
+                <td>{$u['rol'] === 'coordinador' ? 'Coordinación' : 'Equipo'}{if !(int) $u['activo']} · <em>inactivo</em>{/if}</td>
+                <td>{if $u['rol'] === 'coordinador'}Todos los clientes{else}{$u['asignaciones']}{/if}</td>
+                <td>{$u['ultimo_acceso'] ? substr($u['ultimo_acceso'], 0, 16) : '—'}</td>
+                <td>
+                    <form method="post" action="{$admin_url('equipo/' . $u['id'] . '/borrar')}" onsubmit="return confirm('¿Eliminar a esta persona? Ya no podrá entrar al panel. Sus comentarios y tareas se conservan.');">
+                        <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+                        <button type="submit" class="btn btn-sm btn-danger">Eliminar</button>
+                    </form>
+                </td>
+            </tr>
+        {/foreach}
+        </tbody>
+    </table>
+</div>
+{/if}

@@ -1,0 +1,44 @@
+{layout '_layout.latte'}
+
+{block title}Clientes{/block}
+
+{block content}
+<section class="reveal pb-6 pt-1">
+    <h1 class="text-[2rem] font-extrabold leading-tight tracking-tight sm:text-4xl">Clientes</h1>
+    <p class="mt-2 text-muted">{$usuario['rol'] === 'coordinador' ? 'Todos los clientes de la agencia.' : 'Los clientes y proyectos que tienes asignados.'}</p>
+</section>
+
+{if empty($clientes)}
+    <div class="card card-pad reveal text-center">
+        <p class="font-bold">Todavía no tienes clientes asignados</p>
+        <p class="mt-1 text-sm text-muted">Pídele a quien administra el portal que te asigne clientes o proyectos.</p>
+    </div>
+{else}
+<div class="grid gap-5 lg:grid-cols-2">
+    {foreach $clientes as $i => $c}
+        {var $m = $marcas[$c['id']]}
+        <section class="card card-pad reveal" style="--i:{$i + 1}">
+            <a href="/equipo/clientes/{$c['id']}" class="flex items-center gap-3">
+                {if $m['logo']}
+                    <img src="{$m['logo']}" alt="" class="size-11 flex-none rounded-xl border border-line bg-white object-contain p-1">
+                {else}
+                    <span class="avatar size-11! flex-none rounded-xl!" style="background: {$m['color']|noescape}; color: {$m['texto']|noescape}">{$fmt->iniciales($c['nombre'])}</span>
+                {/if}
+                <span class="min-w-0 flex-1">
+                    <span class="block truncate text-lg font-extrabold tracking-tight">{$c['nombre']}</span>
+                    <span class="block truncate text-xs text-muted">{$c['empresa'] ?: $c['email']}</span>
+                </span>
+                <svg class="size-4 flex-none text-muted"><use href="#i-chevron"/></svg>
+            </a>
+            {if empty($c['proyectos'])}
+                <p class="mt-4 text-sm text-muted">Sin proyectos.</p>
+            {else}
+                <div class="mt-4 grid gap-3">
+                    {foreach $c['proyectos'] as $p}{include '_proyecto_card.latte', p: $p, fmt: $fmt}{/foreach}
+                </div>
+            {/if}
+        </section>
+    {/foreach}
+</div>
+{/if}
+{/block}

@@ -224,6 +224,36 @@ class Notifier
         $this->enviarCorreo((string) $contacto['email'], 'Tu código de acceso: ' . $codigo, $html, $texto, true);
     }
 
+    /** Invitación a un usuario de agencia: cómo entrar al panel de equipo. */
+    public function invitacionEquipo(array $usuario): bool
+    {
+        $url = $this->absoluta('/equipo/entrar');
+        [$html, $texto] = $this->componer(
+            'Te dimos acceso al panel de equipo',
+            'Desde el panel verás los clientes y proyectos que tienes asignados: tareas, contenidos para revisión y reuniones.' . "\n\n"
+                . 'Para entrar no necesitas contraseña: escribe tu correo y te enviaremos un código.',
+            ['etiqueta' => 'Equipo', 'titulo' => 'Bienvenido al panel de equipo', 'resaltado' => 'equipo', 'boton' => 'Entrar al panel'],
+            'Hola ' . $this->primerNombre((string) $usuario['nombre']) . ',', $url, null,
+            ['Entras siempre con este correo: ' . $usuario['email']]
+        );
+        return $this->enviarCorreo((string) $usuario['email'], 'Te dimos acceso al panel de equipo', $html, $texto, false);
+    }
+
+    /** Código de acceso de un usuario de agencia (front /equipo). Sale al tiro, con la marca de la agencia. */
+    public function codigoAccesoEquipo(array $usuario, string $codigo): void
+    {
+        [$html, $texto] = $this->componer(
+            'Tu código para el panel de equipo: ' . $codigo,
+            '',
+            ['etiqueta' => 'Equipo', 'titulo' => 'Tu código de acceso', 'resaltado' => 'código', 'compacto' => true,
+             'preheader' => 'Tu código es ' . $codigo . '. Vence en 10 minutos.',
+             'bloques' => [['p' => 'Usa este código para entrar al panel de equipo. Vence en 10 minutos.'], ['codigo' => $codigo]]],
+            'Hola ' . $this->primerNombre((string) $usuario['nombre']) . ',', '', null,
+            ['Si no pediste este código, puedes ignorar este correo.']
+        );
+        $this->enviarCorreo((string) $usuario['email'], 'Tu código para el panel de equipo: ' . $codigo, $html, $texto, true);
+    }
+
     private function primerNombre(string $n): string
     {
         $p = preg_split('/\s+/u', trim($n)) ?: [];

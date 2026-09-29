@@ -1,7 +1,7 @@
 {
     "slug": "portal",
     "name": "Portal de Clientes",
-    "version": "0.6.1",
+    "version": "0.7.0",
     "description": "Portal de clientes: proyectos, fases, tareas para el cliente (archivos y aprobaciones), comentarios, reuniones y personalización.",
     "main_class": "TypeDock\\Plugin\\Portal\\PortalPlugin",
     "min_core_version": "0.1",

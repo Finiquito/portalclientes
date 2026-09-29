@@ -24,6 +24,10 @@
         <input type="text" name="nombre_equipo" class="form-input" value="{$cfg['nombre_equipo']}" maxlength="60" placeholder="Equipo">
         <p class="form-hint mt-1">Aparece en tus comentarios y archivos dentro del portal del cliente. Ej.: «Richard · TypeDock».</p>
 
+        <label class="form-label mt-3">Color del panel de equipo</label>
+        <input type="color" name="color_agencia" value="{($cfg['color_agencia'] ?? '') ?: '#6d5df6'}" style="width:4rem;height:2.4rem;padding:2px;border:1px solid #e2e8f0;border-radius:8px">
+        <p class="form-hint mt-1">Color de marca del front de agencia (<code>/equipo</code>). El de cada cliente se define en su ficha.</p>
+
         <label class="form-label mt-3">Tamaño máximo por archivo (MB)</label>
         <input type="number" name="max_mb" class="form-input" value="{$cfg['max_mb']}" min="1" max="500" style="max-width:8rem">
         <p class="form-hint mt-1">Tu hosting hoy permite como máximo <strong>{$iniMax} MB</strong> por subida (upload_max_filesize / post_max_size); el menor de los dos valores es el que manda.</p>

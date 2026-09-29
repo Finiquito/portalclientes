@@ -4,9 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="csrf" content="{$csrf}">
+    <meta name="tema-url" content="/equipo/tema">
     <meta name="robots" content="noindex, nofollow">
     <meta name="theme-color" content="{$marca['color']}">
-    <title>{block title}Portal{/block} · {$marca['titulo']}</title>
+    <title>{block title}Panel{/block} · {$marca['titulo']}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
@@ -16,16 +17,10 @@
 <body class="min-h-dvh bg-bg font-sans text-ink antialiased">
 {include '../_iconos.latte'}
 
-
 {var $items = [
-    ['inicio',    '/portal',           'i-home',     'Inicio'],
-    ['tareas',    '/portal/tareas',    'i-tasks',    'Tareas'],
-    ['archivos',  '/portal/archivos',  'i-folder',   'Archivos'],
-    ['reuniones', '/portal/reuniones', 'i-calendar', 'Reuniones'],
+    ['inicio',   '/equipo',          'i-inbox', 'Inicio'],
+    ['clientes', '/equipo/clientes', 'i-users', 'Clientes'],
 ]}
-{if $hayRevisiones}
-    {var $items = [$items[0], $items[1], ['revisiones', '/portal/entregas', 'i-eye', 'Revisiones'], $items[2], $items[3]]}
-{/if}
 
 <a href="#contenido" class="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:rounded-xl focus:bg-surface focus:px-4 focus:py-2 focus:shadow-pop">Saltar al contenido</a>
 
@@ -33,20 +28,23 @@
 
     {* Encabezado móvil *}
     <header class="flex items-center justify-between gap-3 py-4 lg:hidden">
-        <a href="/portal" class="flex min-w-0 items-center gap-2.5">
+        <a href="/equipo" class="flex min-w-0 items-center gap-2.5">
             {if $marca['logo']}
                 <img src="{$marca['logo']}" alt="{$marca['titulo']}" class="h-9 w-auto max-w-[9rem] object-contain">
             {else}
                 <span class="avatar size-9! rounded-xl! bg-brand! text-brand-fg!">{$fmt->iniciales($marca['titulo'])}</span>
                 <span class="truncate text-[0.9375rem] font-extrabold tracking-tight">{$marca['titulo']}</span>
             {/if}
+            <span class="chip chip-brand">Equipo</span>
         </a>
         <div class="flex items-center gap-1.5">
             <button type="button" data-tema-toggle class="btn btn-ghost min-h-10! w-10! px-0!" aria-label="Cambiar entre tema claro y oscuro">
                 <svg class="size-5 dark:hidden"><use href="#i-moon"/></svg>
                 <svg class="hidden size-5 dark:block"><use href="#i-sun"/></svg>
             </button>
-            <a href="/portal/ajustes" class="avatar size-10!" aria-label="Mis ajustes">{$fmt->iniciales($contacto['nombre'])}</a>
+            <a href="/equipo/salir" class="btn btn-ghost min-h-10! w-10! px-0!" aria-label="Salir">
+                <svg class="size-5"><use href="#i-logout"/></svg>
+            </a>
         </div>
     </header>
 
@@ -55,12 +53,15 @@
         {* Sidebar escritorio *}
         <aside class="hidden lg:block" aria-label="Navegación">
             <div class="card sticky top-8 flex max-h-[calc(100dvh-4rem)] flex-col p-3.5">
-                <a href="/portal" class="mb-3 flex items-center gap-3 rounded-2xl p-2">
+                <a href="/equipo" class="mb-3 flex items-center gap-3 rounded-2xl p-2">
                     {if $marca['logo']}
                         <img src="{$marca['logo']}" alt="{$marca['titulo']}" class="h-10 w-auto max-w-[10rem] object-contain">
                     {else}
                         <span class="avatar size-10! rounded-xl! bg-brand! text-brand-fg!">{$fmt->iniciales($marca['titulo'])}</span>
-                        <span class="min-w-0 truncate text-[0.9375rem] font-extrabold leading-tight tracking-tight">{$marca['titulo']}</span>
+                        <span class="min-w-0 leading-tight">
+                            <span class="block truncate text-[0.9375rem] font-extrabold tracking-tight">{$marca['titulo']}</span>
+                            <span class="block text-xs font-semibold text-muted">Panel de equipo</span>
+                        </span>
                     {/if}
                 </a>
 
@@ -69,23 +70,18 @@
                         <a href="{$it[1]}" class="nav-item" {if $nav === $it[0]}aria-current="page"{/if}>
                             <svg class="size-5 flex-none"><use href="#{$it[2]}"/></svg>
                             <span class="flex-1">{$it[3]}</span>
-                            {var $n = $it[0] === 'tareas' ? $pendientes : ($it[0] === 'revisiones' ? $porRevisar : ($it[0] === 'reuniones' ? $proximasReuniones : 0))}
-                            {if $n > 0}<span class="chip chip-brand">{$n}</span>{/if}
+                            {if $it[0] === 'inicio' && $nTurno > 0}<span class="chip chip-brand">{$nTurno}</span>{/if}
                         </a>
                     {/foreach}
                 </nav>
 
                 <div class="mt-auto border-t border-line pt-3">
-                    <a href="/portal/ajustes" class="nav-item" {if $nav === 'ajustes'}aria-current="page"{/if}>
-                        <svg class="size-5 flex-none"><use href="#i-sliders"/></svg>
-                        <span class="flex-1">Ajustes</span>
-                    </a>
                     <div class="mt-2 rounded-2xl bg-surface2 p-3">
                         <div class="flex items-center gap-3">
-                            <span class="avatar flex-none">{$fmt->iniciales($contacto['nombre'])}</span>
+                            <span class="avatar flex-none">{$fmt->iniciales($usuario['nombre'])}</span>
                             <span class="min-w-0 flex-1 leading-snug">
-                                <span class="block break-words text-sm font-bold">{$contacto['nombre']}</span>
-                                <span class="block text-xs text-muted">{$puedeColaborar ? 'Colaborador' : 'Sólo lectura'}</span>
+                                <span class="block break-words text-sm font-bold">{$usuario['nombre']}</span>
+                                <span class="block text-xs text-muted">{$usuario['cargo'] ?: ($usuario['rol'] === 'coordinador' ? 'Coordinación' : 'Equipo')}</span>
                             </span>
                         </div>
                         <div class="mt-3 grid grid-cols-2 gap-2">
@@ -93,7 +89,7 @@
                                 <svg class="size-4 dark:hidden"><use href="#i-moon"/></svg><span class="dark:hidden">Oscuro</span>
                                 <svg class="hidden size-4 dark:block"><use href="#i-sun"/></svg><span class="hidden dark:inline">Claro</span>
                             </button>
-                            <a href="/logout" class="btn btn-ghost btn-sm w-full justify-center gap-1.5 rounded-xl!">
+                            <a href="/equipo/salir" class="btn btn-ghost btn-sm w-full justify-center gap-1.5 rounded-xl!">
                                 <svg class="size-4"><use href="#i-logout"/></svg> Salir
                             </a>
                         </div>
@@ -122,18 +118,13 @@
             <a href="{$it[1]}" class="tab-item" {if $nav === $it[0]}aria-current="page"{/if}>
                 <span class="relative">
                     <svg class="size-[1.4rem]"><use href="#{$it[2]}"/></svg>
-                    {var $n = $it[0] === 'tareas' ? $pendientes : ($it[0] === 'revisiones' ? $porRevisar : ($it[0] === 'reuniones' ? $proximasReuniones : 0))}
-                    {if $n > 0}
-                        <span class="absolute -right-2.5 -top-1.5 flex min-w-4 items-center justify-center rounded-full bg-brand px-1 text-[0.625rem] font-bold leading-4 text-brand-fg">{$n}</span>
+                    {if $it[0] === 'inicio' && $nTurno > 0}
+                        <span class="absolute -right-2.5 -top-1.5 flex min-w-4 items-center justify-center rounded-full bg-brand px-1 text-[0.625rem] font-bold leading-4 text-brand-fg">{$nTurno}</span>
                     {/if}
                 </span>
                 {$it[3]}
             </a>
         {/foreach}
-        <a href="/portal/ajustes" class="tab-item" {if $nav === 'ajustes'}aria-current="page"{/if}>
-            <svg class="size-[1.4rem]"><use href="#i-sliders"/></svg>
-            Ajustes
-        </a>
     </div>
 </nav>
 

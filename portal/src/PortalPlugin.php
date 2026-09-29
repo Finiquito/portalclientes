@@ -96,6 +96,15 @@ class PortalPlugin implements PluginInterface
         $ctx->registerAdminRoute('POST', 'ajustes/cola/@id/cancelar', fn(string $id) => $extras->colaCancelar($id));
         $ctx->registerAdminRoute('POST', 'ajustes/cron-clave',     [$extras, 'cronRegenerar']);
 
+        $equipo = new EquipoAdminController($ctx);
+        $ctx->registerAdminRoute('GET',  'equipo',                [$equipo, 'index']);
+        $ctx->registerAdminRoute('GET',  'equipo/nuevo',           [$equipo, 'create']);
+        $ctx->registerAdminRoute('POST', 'equipo',                 [$equipo, 'store']);
+        $ctx->registerAdminRoute('GET',  'equipo/@id',             fn(string $id) => $equipo->edit($id));
+        $ctx->registerAdminRoute('POST', 'equipo/@id',             fn(string $id) => $equipo->update($id));
+        $ctx->registerAdminRoute('POST', 'equipo/@id/borrar',      fn(string $id) => $equipo->destroy($id));
+        $ctx->registerAdminRoute('POST', 'equipo/@id/invitar',     fn(string $id) => $equipo->invitarPost($id));
+
         $entregas = new EntregaAdminController($ctx);
         $ctx->registerAdminRoute('GET',  'entregas',                       [$entregas, 'index']);
         $ctx->registerAdminRoute('GET',  'entregas/nuevo',                  [$entregas, 'create']);
@@ -156,6 +165,19 @@ class PortalPlugin implements PluginInterface
         \Flight::route('POST /portal/ajustes',                [$publico, 'ajustesGuardar']);
         \Flight::route('POST /portal/ajustes/tema',           [$publico, 'temaRapido']);
 
+        // Front de agencia (/equipo): usuarios de portal_equipo, con código por correo.
+        $eq = new EquipoController($ctx);
+        \Flight::route('GET /equipo/entrar',          [$eq, 'entrarForm']);
+        \Flight::route('POST /equipo/entrar',         [$eq, 'pedirCodigo']);
+        \Flight::route('GET /equipo/verificar',       [$eq, 'verificarForm']);
+        \Flight::route('POST /equipo/verificar',      [$eq, 'verificarCodigo']);
+        \Flight::route('GET /equipo/salir',           [$eq, 'salir']);
+        \Flight::route('POST /equipo/tema',           [$eq, 'tema']);
+        \Flight::route('GET /equipo',                 [$eq, 'inicio']);
+        \Flight::route('GET /equipo/clientes',        [$eq, 'clientes']);
+        \Flight::route('GET /equipo/clientes/@id',    fn(string $id) => $eq->cliente($id));
+        \Flight::route('GET /equipo/proyectos/@id',   fn(string $id) => $eq->proyecto($id));
+
         $ctx->addAdminMenuItem('Portal · Clientes', '');
         $ctx->addAdminMenuItem('Portal · Contactos', 'contactos');
         $ctx->addAdminMenuItem('Portal · Proyectos', 'proyectos');
@@ -165,6 +187,7 @@ class PortalPlugin implements PluginInterface
         $ctx->addAdminMenuItem('Portal · Actividad', 'actividad');
         $ctx->addAdminMenuItem('Portal · Ajustes', 'ajustes');
         $ctx->addAdminMenuItem('Portal · Contenidos', 'entregas');
+        $ctx->addAdminMenuItem('Portal · Equipo', 'equipo');
     }
 
     public function getName(): string
@@ -174,7 +197,7 @@ class PortalPlugin implements PluginInterface
 
     public function getVersion(): string
     {
-        return '0.6.1';
+        return '0.7.0';
     }
 
     public function provides(): array

@@ -23,7 +23,8 @@
       var fd = new FormData();
       fd.append('_csrf', csrf());
       fd.append('tema', nuevo);
-      fetch('/portal/ajustes/tema', { method: 'POST', body: fd, credentials: 'same-origin' }).catch(function () {});
+      var mt = $('meta[name="tema-url"]');
+      fetch(mt ? mt.getAttribute('content') : '/portal/ajustes/tema', { method: 'POST', body: fd, credentials: 'same-origin' }).catch(function () {});
     });
   });
 

@@ -85,6 +85,7 @@ class ActividadAdminController
             'email_avisos'  => $email,
             'nombre_equipo' => mb_substr(trim((string) ($_POST['nombre_equipo'] ?? '')), 0, 60),
             'max_mb'        => (string) max(1, min(500, (int) ($_POST['max_mb'] ?? 20))),
+            'color_agencia' => preg_match('/^#[0-9a-f]{6}$/i', (string) ($_POST['color_agencia'] ?? '')) === 1 ? strtolower((string) $_POST['color_agencia']) : '',
         ]);
         // IA (opcional): las claves sólo se cambian si se escribe una nueva; nunca se muestran de vuelta.
         $ia = new IaService($this->pdo());

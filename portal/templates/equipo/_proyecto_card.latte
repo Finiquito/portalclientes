@@ -1,0 +1,17 @@
+{* Tarjeta de proyecto con avance. Parámetros: $p (con progreso, n_equipo, n_cliente, n_vencidas), $fmt. *}
+<a href="/equipo/proyectos/{$p['id']}" class="group block rounded-2xl border border-line bg-surface p-4 transition hover:-translate-y-0.5 hover:shadow-pop">
+    <span class="flex items-start justify-between gap-3">
+        <span class="min-w-0">
+            <span class="block truncate font-bold">{$p['nombre']}</span>
+            <span class="mt-0.5 block text-xs text-muted">{$p['progreso']['hechas']} de {$p['progreso']['total']} tareas listas{if $p['estado'] !== 'activo'} · {$p['estado']}{/if}</span>
+        </span>
+        <span class="flex-none text-xl font-extrabold tracking-tight text-brand-ink">{$p['progreso']['pct']}<span class="text-sm">%</span></span>
+    </span>
+    <span class="progress mt-3 block" aria-hidden="true"><span style="width: {$p['progreso']['pct']}%"></span></span>
+    <span class="mt-3 flex flex-wrap gap-1.5">
+        {if $p['n_equipo'] > 0}<span class="chip chip-brand">{$p['n_equipo']} del equipo</span>{/if}
+        {if $p['n_cliente'] > 0}<span class="chip chip-info">{$p['n_cliente']} del cliente</span>{/if}
+        {if $p['n_vencidas'] > 0}<span class="chip chip-danger">{$p['n_vencidas']} vencidas</span>{/if}
+        {if $p['n_equipo'] + $p['n_cliente'] + $p['n_vencidas'] === 0}<span class="chip chip-ok">Al día</span>{/if}
+    </span>
+</a>

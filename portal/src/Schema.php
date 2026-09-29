@@ -71,6 +71,42 @@ final class Schema
 
         self::tablaPropuestas($pdo);
         self::tablaCola($pdo);
+        self::tablasEquipo($pdo);
+        self::ampliarTextos($pdo);
+    }
+
+    /**
+     * En MySQL/MariaDB un TEXT guarda como máximo 65.535 bytes: una transcripción de
+     * reunión de ~1 hora (o un análisis largo, o un correo HTML grande) no cabe y el
+     * guardado falla en modo estricto. Se pasan a MEDIUMTEXT (16 MB) una sola vez.
+     * SQLite y Postgres no tienen ese límite: no se toca nada.
+     */
+    private const TEXTOS_LARGOS = [
+        'portal_reuniones'    => ['transcripcion', 'resumen', 'analisis'],
+        'portal_correos_cola' => ['texto', 'html'],
+        'portal_tareas'       => ['descripcion'],
+    ];
+
+    private static function ampliarTextos(\PDO $pdo): void
+    {
+        if ($pdo->getAttribute(\PDO::ATTR_DRIVER_NAME) !== 'mysql') {
+            return;
+        }
+        try {
+            $stmt = $pdo->query(
+                "SELECT TABLE_NAME, COLUMN_NAME FROM information_schema.COLUMNS
+                 WHERE TABLE_SCHEMA = DATABASE() AND DATA_TYPE IN ('text', 'tinytext')
+                   AND TABLE_NAME IN ('" . implode("','", array_keys(self::TEXTOS_LARGOS)) . "')"
+            );
+            $cortas = $stmt !== false ? $stmt->fetchAll(\PDO::FETCH_NUM) : [];
+        } catch (\Throwable) {
+            return;
+        }
+        foreach ($cortas as [$tabla, $col]) {
+            if (in_array($col, self::TEXTOS_LARGOS[$tabla] ?? [], true)) {
+                $pdo->exec("ALTER TABLE {$tabla} MODIFY {$col} MEDIUMTEXT");
+            }
+        }
     }
 
     /**
@@ -106,6 +142,22 @@ final class Schema
             intentos INTEGER NOT NULL DEFAULT 0, error VARCHAR(500),
             created_at VARCHAR(32), enviado_en VARCHAR(32)
         )");
+    }
+
+    /** Usuarios de agencia (migración 0007): se ejecuta el mismo archivo si falta alguna tabla. */
+    private static function tablasEquipo(\PDO $pdo): void
+    {
+        if (self::existe($pdo, 'portal_equipo', 'id, email, rol, activo')
+            && self::existe($pdo, 'portal_equipo_asignaciones', 'usuario_id, cliente_id, proyecto_id')
+            && self::existe($pdo, 'portal_equipo_codigos', 'usuario_id, codigo')
+            && self::existe($pdo, 'portal_equipo_intentos', 'usuario_id')) {
+            return;
+        }
+        $sql = (string) @file_get_contents(dirname(__DIR__) . '/migrations/0007_equipo_agencia.sql');
+        $sql = preg_replace('/^\s*--.*$/m', '', $sql) ?? '';
+        foreach (array_filter(array_map('trim', explode(';', $sql))) as $stmt) {
+            $pdo->exec($stmt);
+        }
     }
 
     /** Sólo para pruebas. */

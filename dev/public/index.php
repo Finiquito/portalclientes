@@ -26,6 +26,12 @@ Flight::route('GET /dev/cliente', function () use ($ctx) {
     $_SESSION['portal_contacto_id'] = $c['id'] ?? null;
     Flight::redirect('/portal');
 });
+Flight::route('GET /dev/equipo', function () use ($ctx) {
+    typedock_session_start();
+    $u = (new TypeDock\Plugin\Portal\EquipoService($ctx->db()->pdo()))->findByEmail((string) ($_GET['email'] ?? ''));
+    $_SESSION['portal_equipo_id'] = $u['id'] ?? null;
+    Flight::redirect('/equipo');
+});
 Flight::route('GET /admin', fn() => Flight::redirect('/admin/portal'));
 try {
     Flight::start();
