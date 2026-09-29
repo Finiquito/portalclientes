@@ -3,3 +3,4 @@ dev/storage/
 node_modules/
 dist/
 .DS_Store
+/portal-plugin-*.zip
