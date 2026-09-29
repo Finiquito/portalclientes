@@ -1,0 +1,46 @@
+{layout $plugin_ui_layout}
+
+{block page_title}Clientes{/block}
+
+{block content}
+<div class="page-header">
+    <h1>Clientes</h1>
+    <a href="{$admin_url('clientes/nuevo')}" class="btn btn-primary">Nuevo cliente</a>
+</div>
+
+{if $flash_success}<div class="alert alert-success">{$flash_success}</div>{/if}
+{if $flash_error}<div class="alert alert-error">{$flash_error}</div>{/if}
+
+{if empty($clientes)}
+    <div class="card">
+        <p class="text-slate-500">Todavía no hay clientes. Crea el primero.</p>
+    </div>
+{else}
+<div class="card">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Nombre</th>
+                <th>Empresa</th>
+                <th>Email</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+        {foreach $clientes as $c}
+            <tr>
+                <td><a href="{$admin_url('clientes/' . $c['id'])}">{$c['nombre']}</a></td>
+                <td>{$c['empresa']}</td>
+                <td>{$c['email']}</td>
+                <td>
+                    <form method="post" action="{$admin_url('clientes/' . $c['id'] . '/borrar')}" onsubmit="return confirm('¿Eliminar este cliente? Se borran también sus proyectos.');">
+                        <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+                        <button type="submit" class="btn btn-sm btn-danger">Eliminar</button>
+                    </form>
+                </td>
+            </tr>
+        {/foreach}
+        </tbody>
+    </table>
+</div>
+{/if}

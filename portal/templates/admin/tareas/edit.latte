@@ -1,0 +1,233 @@
+{layout $plugin_ui_layout}
+
+{block page_title}{if $tarea}Editar tarea{else}Nueva tarea{/if}{/block}
+
+{block content}
+<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css">
+
+<div class="page-header">
+    <h1>{if $tarea}Editar tarea{else}Nueva tarea{/if}</h1>
+    <a href="{$admin_url('tareas')}" class="btn">Volver</a>
+</div>
+
+{if $flash_success}<div class="alert alert-success">{$flash_success}</div>{/if}
+{if $flash_error}<div class="alert alert-error">{$flash_error}</div>{/if}
+
+{var $asignado = $tarea['responsable_tipo'] ?? 'equipo'}
+
+<div class="card">
+    <form id="tarea-form" method="post" action="{if $tarea}{$admin_url('tareas/' . $tarea['id'])}{else}{$admin_url('tareas')}{/if}">
+        <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+
+        <label class="form-label">Proyecto</label>
+        <select name="proyecto_id" class="form-input" required>
+            {foreach $proyectos as $p}
+                <option value="{$p['id']}" data-cliente="{$p['cliente_id']}" {if isset($tarea['proyecto_id']) && $tarea['proyecto_id'] === $p['id']}selected{/if}>{$p['cliente_nombre']} · {$p['nombre']}</option>
+            {/foreach}
+        </select>
+
+        <label class="form-label mt-3">Título</label>
+        <input type="text" name="titulo" class="form-input" value="{$tarea['titulo'] ?? ''}" required maxlength="255">
+
+        <label class="form-label mt-3">Descripción / instrucciones</label>
+        <textarea name="descripcion" class="form-input" rows="4" placeholder="Lo que el cliente ve en el portal. Ej.: Sube tu logo en PNG o vector.">{$tarea['descripcion'] ?? ''}</textarea>
+
+        <div class="pa-grid-2">
+            <div>
+                <label class="form-label mt-3">Tipo</label>
+                <select name="tipo" class="form-input">
+                    {foreach $tipos as $k => $label}
+                        <option value="{$k}" {if ($tarea['tipo'] ?? 'tarea') === $k}selected{/if}>{$label}</option>
+                    {/foreach}
+                </select>
+                <p class="form-hint mt-1"><strong>Tarea</strong>: el cliente la marca lista. <strong>Pedir archivos</strong>: sube y entrega. <strong>Revisar y aprobar</strong>: adjunta la pieza abajo y el cliente aprueba o pide cambios.</p>
+            </div>
+            <div>
+                <label class="form-label mt-3">Estado</label>
+                <select name="estado" class="form-input">
+                    {foreach $estados as $k => $e}
+                        <option value="{$k}" {if ($tarea['estado'] ?? 'pendiente') === $k}selected{/if}>{$e[0]}</option>
+                    {/foreach}
+                </select>
+                <p class="form-hint mt-1">Si el cliente pidió cambios, vuelve a «Pendiente» cuando subas la nueva versión.</p>
+            </div>
+        </div>
+
+        <label class="form-label mt-3">¿A quién le toca?</label>
+        <div class="pa-radios">
+            <label><input type="radio" name="asignado" value="equipo" {if $asignado !== 'cliente'}checked{/if}> Al equipo</label>
+            <label><input type="radio" name="asignado" value="cliente" {if $asignado === 'cliente'}checked{/if}> Al cliente</label>
+        </div>
+
+        <div id="box-equipo" {if $asignado === 'cliente'}hidden{/if}>
+            <label class="form-label mt-3">Responsable (equipo)</label>
+            <select name="responsable_usuario_id" class="form-input">
+                <option value="">— Sin asignar —</option>
+                {foreach $usuarios as $u}
+                    <option value="{$u['id']}" {if isset($tarea['responsable_usuario_id']) && $tarea['responsable_usuario_id'] === $u['id']}selected{/if}>{$u['name']}</option>
+                {/foreach}
+            </select>
+            <label class="pa-check"><input type="checkbox" name="visible_cliente" value="1" {if !$tarea || (int) ($tarea['visible_cliente'] ?? 1) === 1}checked{/if}> <span>Visible para el cliente (desmárcalo para tareas internas)</span></label>
+        </div>
+
+        <div id="box-cliente" {if $asignado !== 'cliente'}hidden{/if}>
+            <label class="form-label mt-3">Contacto del cliente</label>
+            <select name="responsable_contacto_id" class="form-input">
+                <option value="">— Cualquiera del cliente —</option>
+                {foreach $contactos as $c}
+                    <option value="{$c['id']}" data-cliente="{$c['cliente_id']}" {if isset($tarea['responsable_contacto_id']) && $tarea['responsable_contacto_id'] === $c['id']}selected{/if}>{$c['cliente_nombre']} · {$c['nombre']}</option>
+                {/foreach}
+            </select>
+            <p class="form-hint mt-1">Las tareas del cliente siempre son visibles para él.</p>
+        </div>
+
+        <div class="pa-grid-2">
+            <div>
+                <label class="form-label mt-3">Etapa del proyecto (opcional)</label>
+                <select name="fase_id" class="form-input">
+                    <option value="">— Ninguna —</option>
+                    {foreach $fases as $f}
+                        <option value="{$f['id']}" data-proyecto="{$f['proyecto_id']}" {if isset($tarea['fase_id']) && $tarea['fase_id'] === $f['id']}selected{/if}>{$f['nombre']}</option>
+                    {/foreach}
+                </select>
+                <p class="form-hint mt-1">Sirve para calcular el avance por etapas en el portal.</p>
+            </div>
+            <div>
+                <label class="form-label mt-3">Reunión de origen (opcional)</label>
+                <select name="reunion_origen_id" class="form-input">
+                    <option value="">— Ninguna —</option>
+                    {foreach $reuniones as $r}
+                        <option value="{$r['id']}" {if isset($tarea['reunion_origen_id']) && $tarea['reunion_origen_id'] === $r['id']}selected{/if}>{$r['titulo']} ({$r['proyecto_nombre']})</option>
+                    {/foreach}
+                </select>
+            </div>
+        </div>
+
+        <div class="pa-grid-2">
+            <div>
+                <label class="form-label mt-3">Fecha inicio</label>
+                <input type="date" name="fecha_inicio" class="form-input" value="{$tarea['fecha_inicio'] ?? ''}">
+            </div>
+            <div>
+                <label class="form-label mt-3">Fecha límite</label>
+                <input type="date" name="fecha_vencimiento" class="form-input" value="{$tarea['fecha_vencimiento'] ?? ''}">
+            </div>
+        </div>
+
+        <label class="pa-check"><input type="checkbox" name="avisar" value="1"> <span>Avisar al cliente por correo (si es del cliente y es nueva o cambia de estado)</span></label>
+
+        <p class="mt-4">
+            <button type="submit" class="btn btn-primary">Guardar</button>
+        </p>
+    </form>
+</div>
+
+{if $tarea}
+<div class="card mt-4" id="archivos">
+    <h2 class="pa-h2">Archivos <span class="pa-chip">{count($archivos)}</span></h2>
+
+    {if $archivos}
+    <ul class="pa-files">
+        {foreach $archivos as $a}
+        <li class="pa-file">
+            {if $fmt->esImagen($a['mime'])}
+                <a href="{$admin_url('archivos/' . $a['id'])}" target="_blank" rel="noopener"><img src="{$admin_url('archivos/' . $a['id'])}?t=1" alt="" loading="lazy"></a>
+            {else}
+                <span class="pa-ico">{$fmt->extension($a['nombre_original'])}</span>
+            {/if}
+            <div class="pa-meta">
+                <a class="pa-name" href="{$admin_url('archivos/' . $a['id'])}" target="_blank" rel="noopener">{$a['nombre_original']}</a>
+                <span class="pa-muted">{if $a['subido_por_tipo'] === 'equipo'}Equipo{else}<strong>{$a['subido_por_nombre']}</strong> (cliente){/if} · {$fmt->tamano($a['tamano'])} · {$fmt->rel($a['created_at'])}</span>
+            </div>
+            <form method="post" action="{$admin_url('archivos/' . $a['id'] . '/borrar')}" onsubmit="return confirm('¿Eliminar este archivo?');">
+                <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+                <button type="submit" class="btn btn-sm btn-danger">Eliminar</button>
+            </form>
+        </li>
+        {/foreach}
+    </ul>
+    {else}
+        <p class="pa-muted">Sin archivos todavía. Para «Revisar y aprobar», sube aquí la pieza que el cliente debe ver.</p>
+    {/if}
+
+    <form method="post" action="{$admin_url('tareas/' . $tarea['id'] . '/archivos')}" enctype="multipart/form-data">
+        <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+        <label class="form-label">Subir archivos (hasta 10, {$maxMb} MB cada uno)</label>
+        <input type="file" name="archivos[]" multiple class="form-input" required>
+        <label class="pa-check"><input type="checkbox" name="avisar" value="1"> <span>Avisar al cliente por correo</span></label>
+        <p class="mt-3"><button type="submit" class="btn btn-primary">Subir</button></p>
+    </form>
+</div>
+
+<div class="card mt-4" id="conversacion">
+    <h2 class="pa-h2">Conversación <span class="pa-chip">{count($comentarios)}</span></h2>
+
+    {if $comentarios}
+    <ul class="pa-thread">
+        {foreach $comentarios as $c}
+        <li class="pa-msg {$c['autor_tipo'] === 'equipo' ? 'equipo' : 'cliente'}">
+            <header>
+                <span><strong>{$c['autor_nombre']}</strong>{if $c['autor_tipo'] !== 'equipo'} (cliente){/if} · {$fmt->rel($c['created_at'])}</span>
+                <form method="post" action="{$admin_url('tareas/' . $tarea['id'] . '/comentarios/' . $c['id'] . '/borrar')}" onsubmit="return confirm('¿Eliminar este comentario?');">
+                    <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+                    <button type="submit" class="btn btn-sm btn-danger">Eliminar</button>
+                </form>
+            </header>
+            <p>{$c['cuerpo']}</p>
+        </li>
+        {/foreach}
+    </ul>
+    {else}
+        <p class="pa-muted">Todavía no hay comentarios.</p>
+    {/if}
+
+    <form method="post" action="{$admin_url('tareas/' . $tarea['id'] . '/comentarios')}">
+        <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+        <label class="form-label">Responder como «{$firma}»</label>
+        <textarea name="cuerpo" class="form-input" rows="3" required maxlength="4000"></textarea>
+        <label class="pa-check"><input type="checkbox" name="avisar" value="1" checked> <span>Avisar al cliente por correo</span></label>
+        <p class="mt-3"><button type="submit" class="btn btn-primary">Publicar</button></p>
+    </form>
+</div>
+{/if}
+
+<script n:syntax="off">
+(function () {
+  var f = document.getElementById('tarea-form');
+  if (!f) return;
+  var proy = f.querySelector('[name=proyecto_id]');
+  var fase = f.querySelector('[name=fase_id]');
+  var cont = f.querySelector('[name=responsable_contacto_id]');
+  var boxEq = document.getElementById('box-equipo');
+  var boxCl = document.getElementById('box-cliente');
+  var vis = f.querySelector('[name=visible_cliente]');
+
+  function clienteActual() {
+    var o = proy.options[proy.selectedIndex];
+    return o ? o.getAttribute('data-cliente') : '';
+  }
+  function filtrar(select, attr, valor) {
+    Array.prototype.forEach.call(select.options, function (o) {
+      var a = o.getAttribute(attr);
+      var ok = !a || a === valor;
+      o.hidden = !ok;
+      o.disabled = !ok;
+    });
+    var s = select.options[select.selectedIndex];
+    if (s && s.disabled) select.value = '';
+  }
+  function actualizar() {
+    filtrar(fase, 'data-proyecto', proy.value);
+    filtrar(cont, 'data-cliente', clienteActual());
+    var cli = f.querySelector('[name=asignado]:checked').value === 'cliente';
+    boxEq.hidden = cli;
+    boxCl.hidden = !cli;
+  }
+  proy.addEventListener('change', actualizar);
+  Array.prototype.forEach.call(f.querySelectorAll('[name=asignado]'), function (r) {
+    r.addEventListener('change', actualizar);
+  });
+  actualizar();
+})();
+</script>
+{/block}

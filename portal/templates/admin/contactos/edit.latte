@@ -1,0 +1,37 @@
+{layout $plugin_ui_layout}
+
+{block page_title}{if $contacto}Editar contacto{else}Nuevo contacto{/if}{/block}
+
+{block content}
+<div class="page-header">
+    <h1>{if $contacto}Editar contacto{else}Nuevo contacto{/if}</h1>
+    <a href="{$admin_url('contactos')}" class="btn">Volver</a>
+</div>
+
+<div class="card">
+    <form method="post" action="{if $contacto}{$admin_url('contactos/' . $contacto['id'])}{else}{$admin_url('contactos')}{/if}">
+        <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+
+        <label class="form-label">Cliente</label>
+        <select name="cliente_id" class="form-input" required>
+            {foreach $clientes as $c}
+                <option value="{$c['id']}" {if isset($contacto['cliente_id']) && $contacto['cliente_id'] === $c['id']}selected{/if}>{$c['nombre']}</option>
+            {/foreach}
+        </select>
+
+        <label class="form-label mt-3">Nombre</label>
+        <input type="text" name="nombre" class="form-input" value="{$contacto['nombre'] ?? ''}" required>
+
+        <label class="form-label mt-3">Email (con esto entra al portal)</label>
+        <input type="email" name="email" class="form-input" value="{$contacto['email'] ?? ''}" required>
+
+        <label class="form-label mt-3">Rol</label>
+        <select name="rol" class="form-input">
+            {var $rolActual = $contacto['rol'] ?? 'aprobador'}
+            <option value="aprobador" {if $rolActual === 'aprobador'}selected{/if}>Colaborador: sube archivos, completa tareas y aprueba</option>
+            <option value="viewer" {if $rolActual === 'viewer'}selected{/if}>Sólo lectura: ve el avance y comenta</option>
+        </select>
+
+        <p class="mt-4"><button type="submit" class="btn btn-primary">Guardar</button></p>
+    </form>
+</div>

@@ -1,0 +1,67 @@
+{layout '_layout.latte'}
+
+{block title}Ajustes{/block}
+
+{block content}
+<header class="reveal pb-5 pt-1">
+    <h1 class="text-3xl font-extrabold tracking-tight sm:text-4xl">Ajustes</h1>
+    <p class="mt-1.5 text-muted">Personaliza cómo ves tu portal. Se guarda en tu cuenta, en todos tus dispositivos.</p>
+</header>
+
+<form method="post" action="/portal/ajustes" data-once class="max-w-2xl space-y-5">
+    <input type="hidden" name="_csrf" value="{$csrf}">
+
+    <section class="card card-pad reveal" style="--i:1">
+        <h2 class="text-lg font-extrabold tracking-tight">Tu bienvenida</h2>
+        <div class="mt-4 space-y-4">
+            <div>
+                <label for="apodo" class="label">¿Cómo quieres que te llamemos?</label>
+                <input id="apodo" type="text" name="apodo" maxlength="40" value="{$pref['apodo']}" placeholder="{$fmt->primerNombre($contacto['nombre'])}" class="field">
+            </div>
+            <div>
+                <label for="frase" class="label">Tu frase de bienvenida</label>
+                <input id="frase" type="text" name="frase_propia" maxlength="140" value="{$pref['frase_propia']}" placeholder="Ej.: Hoy vamos a cerrar la etapa de diseño" class="field">
+                <p class="hint">Aparece bajo el saludo en tu inicio. Si la dejas vacía, te mostramos una frase distinta cada día.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="card card-pad reveal" style="--i:2">
+        <h2 class="text-lg font-extrabold tracking-tight">Apariencia</h2>
+        <fieldset class="mt-4 grid grid-cols-3 gap-3">
+            <legend class="sr-only">Tema</legend>
+            {foreach [['auto', 'Automático', 'i-sliders'], ['claro', 'Claro', 'i-sun'], ['oscuro', 'Oscuro', 'i-moon']] as $o}
+                <label class="cursor-pointer">
+                    <input type="radio" name="tema" value="{$o[0]}" class="peer sr-only" {if $pref['tema'] === $o[0]}checked{/if}>
+                    <span class="flex flex-col items-center gap-2 rounded-2xl border border-line bg-surface px-3 py-4 text-sm font-semibold text-muted transition peer-checked:border-brand peer-checked:bg-brand-soft peer-checked:text-brand-ink peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-brand">
+                        <svg class="size-6"><use href="#{$o[2]}"/></svg>{$o[1]}
+                    </span>
+                </label>
+            {/foreach}
+        </fieldset>
+    </section>
+
+    <section class="card card-pad reveal" style="--i:3">
+        <h2 class="text-lg font-extrabold tracking-tight">Avisos por correo</h2>
+        <label class="mt-4 flex cursor-pointer items-start gap-3">
+            <input type="checkbox" name="avisos_email" value="1" class="mt-1 size-5 accent-[var(--brand)]" {if $pref['avisos_email']}checked{/if}>
+            <span>
+                <span class="block text-sm font-semibold">Avisarme cuando el equipo me pida algo o comente</span>
+                <span class="hint mt-0.5 block">Sólo te escribimos cuando hay algo que requiere tu atención, nunca por cada archivo.</span>
+            </span>
+        </label>
+    </section>
+
+    <section class="card card-pad reveal flex flex-wrap items-center justify-between gap-3" style="--i:4">
+        <div class="min-w-0">
+            <p class="truncate text-sm font-semibold">{$contacto['nombre']}</p>
+            <p class="truncate text-xs text-muted">{$contacto['email']}</p>
+        </div>
+        <a href="/logout" class="btn btn-ghost btn-sm"><svg class="size-4"><use href="#i-logout"/></svg> Cerrar sesión</a>
+    </section>
+
+    <div class="sticky bottom-24 z-10 flex justify-end lg:static">
+        <button type="submit" data-sending="Guardando…" class="btn btn-primary w-full shadow-pop sm:w-auto">Guardar cambios</button>
+    </div>
+</form>
+{/block}

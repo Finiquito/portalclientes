@@ -1,0 +1,126 @@
+<?php
+declare(strict_types=1);
+
+namespace TypeDock\Plugin\Portal;
+
+/**
+ * Agrega, de forma idempotente, las columnas nuevas de portal_tareas.
+ *
+ * Por qué no en una migración: ALTER TABLE ... ADD COLUMN falla si se
+ * ejecuta dos veces, y no sabemos si el migrador de Core recuerda qué
+ * archivos ya corrió. Acá primero se comprueba con un SELECT barato
+ * (una vez por request) y sólo se altera si falta algo. La sintaxis
+ * "ADD COLUMN x TIPO NOT NULL DEFAULT v" es la misma en MySQL, Postgres
+ * y SQLite.
+ */
+final class Schema
+{
+    private static bool $listo = false;
+
+    /** tabla => [columna => definición]. */
+    private const COLUMNAS = [
+        'portal_tareas' => [
+            'tipo'            => "VARCHAR(16) NOT NULL DEFAULT 'tarea'",
+            'completada_en'   => 'VARCHAR(32)',
+            'visible_cliente' => 'SMALLINT NOT NULL DEFAULT 1',
+        ],
+        'portal_archivos' => [
+            'orden' => 'INTEGER NOT NULL DEFAULT 0',
+        ],
+        'portal_reuniones' => [
+            'enlace_meet'      => 'VARCHAR(500)',
+            'enlace_grabacion' => 'VARCHAR(500)',
+            'duracion_min'     => 'INTEGER NOT NULL DEFAULT 60',
+            'transcripcion'    => 'TEXT',
+            'acuerdos'         => 'TEXT',
+            'analisis'         => 'TEXT',
+            'publicada'        => 'SMALLINT NOT NULL DEFAULT 1',
+            'resumen_publicado' => 'SMALLINT NOT NULL DEFAULT 1',
+            'prox_fecha'       => 'VARCHAR(32)',
+            'prox_titulo'      => 'VARCHAR(255)',
+            'prox_reunion_id'  => 'VARCHAR(36)',
+            'ia_generado_en'   => 'VARCHAR(32)',
+            'ia_modelo'        => 'VARCHAR(64)',
+        ],
+        'portal_clientes' => [
+            'pais' => "VARCHAR(2) NOT NULL DEFAULT 'CL'",
+        ],
+        'portal_comentarios' => [
+            'version_id' => 'VARCHAR(36)',
+            'ubicacion'  => 'VARCHAR(64)',
+        ],
+    ];
+
+    public static function asegurar(\PDO $pdo): void
+    {
+        if (self::$listo) {
+            return;
+        }
+        self::$listo = true;
+
+        foreach (self::COLUMNAS as $tabla => $columnas) {
+            if (self::existe($pdo, $tabla, implode(', ', array_keys($columnas)))) {
+                continue;
+            }
+            foreach ($columnas as $col => $def) {
+                if (!self::existe($pdo, $tabla, $col)) {
+                    $pdo->exec("ALTER TABLE {$tabla} ADD COLUMN {$col} {$def}");
+                }
+            }
+        }
+
+        self::tablaPropuestas($pdo);
+        self::tablaCola($pdo);
+    }
+
+    /**
+     * Tabla de propuestas de tareas de una reunión. También está en la migración 0005,
+     * pero acá se garantiza por si el migrador no volvió a correr tras actualizar el plugin.
+     */
+    private static function tablaPropuestas(\PDO $pdo): void
+    {
+        if (self::existe($pdo, 'portal_reunion_propuestas', 'id, reunion_id, origen')) {
+            return;
+        }
+        $cols = "id VARCHAR(36) PRIMARY KEY, reunion_id VARCHAR(36) NOT NULL, titulo VARCHAR(255) NOT NULL, descripcion TEXT,
+                 asignado VARCHAR(16) NOT NULL DEFAULT 'equipo', fecha_vencimiento VARCHAR(32), visible_cliente SMALLINT NOT NULL DEFAULT 0,
+                 estado VARCHAR(16) NOT NULL DEFAULT 'propuesta', tarea_id VARCHAR(36), orden INTEGER NOT NULL DEFAULT 0,
+                 origen VARCHAR(8) NOT NULL DEFAULT 'manual', created_at VARCHAR(32)";
+        try {
+            $pdo->exec("CREATE TABLE IF NOT EXISTS portal_reunion_propuestas ({$cols}, FOREIGN KEY (reunion_id) REFERENCES portal_reuniones(id) ON DELETE CASCADE)");
+        } catch (\Throwable) {
+            $pdo->exec("CREATE TABLE IF NOT EXISTS portal_reunion_propuestas ({$cols})");
+        }
+    }
+
+    /** Cola de correos pendientes de salir (horario hábil del cliente). También en la migración 0006. */
+    private static function tablaCola(\PDO $pdo): void
+    {
+        if (self::existe($pdo, 'portal_correos_cola', 'id, destino, estado, enviar_desde')) {
+            return;
+        }
+        $pdo->exec("CREATE TABLE IF NOT EXISTS portal_correos_cola (
+            id VARCHAR(36) PRIMARY KEY, cliente_id VARCHAR(36), contacto_id VARCHAR(36),
+            destino VARCHAR(255) NOT NULL, asunto VARCHAR(500) NOT NULL, texto TEXT, html TEXT,
+            enviar_desde VARCHAR(19) NOT NULL, estado VARCHAR(12) NOT NULL DEFAULT 'pendiente',
+            intentos INTEGER NOT NULL DEFAULT 0, error VARCHAR(500),
+            created_at VARCHAR(32), enviado_en VARCHAR(32)
+        )");
+    }
+
+    /** Sólo para pruebas. */
+    public static function reiniciar(): void
+    {
+        self::$listo = false;
+    }
+
+    private static function existe(\PDO $pdo, string $tabla, string $columnas): bool
+    {
+        try {
+            $r = $pdo->query("SELECT {$columnas} FROM {$tabla} WHERE 1 = 0");
+            return $r !== false;
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+}

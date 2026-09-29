@@ -1,0 +1,39 @@
+{layout '_layout.latte'}
+
+{block title}Revisiones{/block}
+
+{block content}
+<header class="reveal mb-6">
+    <h1 class="text-2xl font-extrabold tracking-tight sm:text-3xl">Revisiones</h1>
+    <p class="mt-1 text-sm text-muted">Contenido que dejamos para que lo revises: aprueba, comenta o pide cambios.</p>
+</header>
+
+{if empty($entregas)}
+    <div class="card card-pad reveal text-sm text-muted">Por ahora no hay nada para revisar.</div>
+{else}
+<ul class="grid gap-4 sm:grid-cols-2">
+    {foreach $entregas as $e}
+        {var $st = $estados[$e['estado']] ?? ['—', 'muted']}
+        {var $tot = (int) $e['n_total']}
+        {var $dec = (int) $e['n_aprobados'] + (int) $e['n_cambios']}
+        <li class="reveal" style="--i: {$iterator->counter}">
+            <a href="/portal/entregas/{$e['id']}" class="card card-pad group block h-full transition hover:border-brand/50 hover:shadow-pop">
+                <div class="flex items-center justify-between gap-2">
+                    <span class="chip chip-{$st[1]}">{$st[0]}</span>
+                    {if $e['estado'] === 'publicada' && $e['fecha_limite']}
+                        {var $v = $fmt->vence($e['fecha_limite'])}
+                        <span class="chip chip-{$v['tono']}"><svg class="size-3.5"><use href="#i-clock"/></svg>{$v['texto']}</span>
+                    {/if}
+                </div>
+                <h2 class="mt-3 text-lg font-extrabold leading-snug tracking-tight">{$e['titulo']}</h2>
+                <p class="mt-1 flex items-center gap-1.5 text-sm text-muted"><span aria-hidden="true" style="display:inline-block;width:.6rem;height:.6rem;border-radius:9999px;flex:none;background:{($colorProy[$e['proyecto_id']] ?? '#94a3b8')|noescape}"></span>{$e['proyecto_nombre']}</p>
+                <div class="progress mt-4" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{$tot > 0 ? (int) round($dec * 100 / $tot) : 0}" aria-label="Revisados">
+                    <span style="width: {$tot > 0 ? (int) round($dec * 100 / $tot) : 0}%"></span>
+                </div>
+                <p class="mt-2 text-xs text-muted">{$dec} de {$tot} revisados{if $e['n_pendientes'] > 0 && $e['estado'] === 'publicada'} · <strong class="text-ink">{$e['n_pendientes']} por revisar</strong>{/if}</p>
+            </a>
+        </li>
+    {/foreach}
+</ul>
+{/if}
+{/block}

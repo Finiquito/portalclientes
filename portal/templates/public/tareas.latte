@@ -1,0 +1,78 @@
+{layout '_layout.latte'}
+
+{block title}Tareas{/block}
+
+{block content}
+<header class="reveal pb-5 pt-1">
+    <h1 class="text-3xl font-extrabold tracking-tight sm:text-4xl">Tareas</h1>
+    <p class="mt-1.5 text-muted">Lo que necesitamos de ti y el avance de lo que estamos haciendo.</p>
+</header>
+
+{var $tabs = [
+    ['mias',   'Te tocan'],
+    ['equipo', 'Con el equipo'],
+    ['hechas', 'Listas'],
+    ['todas',  'Todas'],
+]}
+
+<nav class="scroll-x reveal -mx-1 flex gap-2 px-1 pb-4" style="--i:1" aria-label="Filtrar tareas">
+    {foreach $tabs as $tab}
+        <a href="/portal/tareas?f={$tab[0]}" class="btn btn-sm {$filtro === $tab[0] ? 'btn-primary' : 'btn-ghost'}" {if $filtro === $tab[0]}aria-current="true"{/if}>
+            {$tab[1]}
+            <span class="rounded-full px-1.5 text-xs {$filtro === $tab[0] ? 'bg-white/25' : 'bg-surface2 text-muted'}">{count($grupos[$tab[0]])}</span>
+        </a>
+    {/foreach}
+</nav>
+
+<section class="card reveal overflow-hidden" style="--i:2">
+    {if empty($lista)}
+        <div class="flex flex-col items-center px-6 py-14 text-center">
+            <span class="flex size-14 items-center justify-center rounded-2xl bg-brand-soft text-brand-ink"><svg class="size-7"><use href="#i-tasks"/></svg></span>
+            <p class="mt-4 font-bold">
+                {if $filtro === 'mias'}Nada pendiente de tu parte{elseif $filtro === 'hechas'}Todavía no hay tareas listas{elseif $filtro === 'equipo'}No hay nada en manos del equipo{else}Aún no hay tareas{/if}
+            </p>
+            <p class="mt-1 max-w-xs text-sm text-muted">Cuando haya novedades las verás aquí.</p>
+        </div>
+    {else}
+        <ul class="divide-y divide-line/70 p-1.5 sm:p-2">
+            {foreach $lista as $t}
+                {var $v = $fmt->vence($t['fecha_vencimiento'], $t['estado'])}
+                {var $e = $fmt->estado($t['estado'])}
+                <li>
+                    <a href="/portal/tareas/{$t['id']}" class="group flex items-center gap-3 rounded-2xl p-3 transition hover:bg-surface2 sm:p-3.5">
+                        <span class="flex size-11 flex-none items-center justify-center rounded-xl {$t['estado'] === 'hecha' ? 'bg-ok/10 text-ok' : 'bg-brand-soft text-brand-ink'}">
+                            {if $t['estado'] === 'hecha'}
+                                <svg class="size-5"><use href="#i-check"/></svg>
+                            {else}
+                                <svg class="size-5"><use href="#{$t['tipo'] === 'archivo' ? 'i-upload' : ($t['tipo'] === 'revision' ? 'i-eye' : 'i-tasks')}"/></svg>
+                            {/if}
+                        </span>
+                        <span class="min-w-0 flex-1">
+                            <span class="block truncate font-semibold {$t['estado'] === 'hecha' ? 'text-muted line-through decoration-1' : ''}">{$t['titulo']}</span>
+                            <span class="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-muted">
+                                <span>{$fmt->tipo($t['tipo'])}</span>
+                                {if $multiples}<span class="inline-flex items-center gap-1.5 font-semibold"><span aria-hidden="true" style="display:inline-block;width:.6rem;height:.6rem;border-radius:9999px;flex:none;background:{($colorProy[$t['proyecto_id']] ?? '#94a3b8')|noescape}"></span>{$t['proyecto_nombre']}</span>{/if}
+                                {if $t['responsable_tipo'] === 'equipo'}<span class="chip chip-muted py-0!">Del equipo</span>
+                                {elseif $t['contacto_nombre']}<span>· Para {$t['contacto_nombre']}</span>{/if}
+                                {if $t['n_comentarios'] > 0}<span class="inline-flex items-center gap-1"><svg class="size-3.5"><use href="#i-chat"/></svg>{$t['n_comentarios']}</span>{/if}
+                                {if $t['n_archivos'] > 0}<span class="inline-flex items-center gap-1"><svg class="size-3.5"><use href="#i-clip"/></svg>{$t['n_archivos']}</span>{/if}
+                            </span>
+                        </span>
+                        {if in_array($t['estado'], ['hecha', 'entregada', 'cambios'], true)}
+                            <span class="chip chip-{$e[1]} hidden sm:inline-flex">{$e[0]}</span>
+                        {else}
+                            <span class="chip chip-{$v['tono']} hidden sm:inline-flex">{$v['texto']}</span>
+                        {/if}
+                        <svg class="size-4 flex-none text-muted transition group-hover:translate-x-0.5"><use href="#i-chevron"/></svg>
+                    </a>
+                    {if in_array($t['estado'], ['hecha', 'entregada', 'cambios'], true)}
+                        <span class="chip chip-{$e[1]} -mt-1 mb-2.5 ml-[4.5rem] sm:hidden">{$e[0]}</span>
+                    {else}
+                        <span class="chip chip-{$v['tono']} -mt-1 mb-2.5 ml-[4.5rem] sm:hidden">{$v['texto']}</span>
+                    {/if}
+                </li>
+            {/foreach}
+        </ul>
+    {/if}
+</section>
+{/block}

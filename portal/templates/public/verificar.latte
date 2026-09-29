@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="es" data-tema="auto">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="csrf" content="{$csrf}">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Verificar código · Portal de clientes</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
+    <link rel="stylesheet" href="/plugins/portal/assets/portal.css?v=7">
+    <script>{$portalBoot|noescape}</script>
+</head>
+<body class="min-h-dvh bg-bg font-sans text-ink antialiased">
+<main class="relative flex min-h-dvh items-center justify-center overflow-hidden px-4 py-10">
+    <div class="hero-arcs" aria-hidden="true"></div>
+
+    <div class="reveal relative w-full max-w-md">
+        <div class="mb-7 text-center">
+            <span class="mx-auto flex size-14 items-center justify-center rounded-2xl bg-brand text-brand-fg shadow-pop">
+                <svg class="size-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/></svg>
+            </span>
+            <h1 class="mt-5 text-3xl font-extrabold tracking-tight sm:text-4xl">Revisa tu correo</h1>
+            <p class="mt-2 text-muted">Enviamos un código de 6 dígitos a <strong class="break-all text-ink">{$email}</strong>. Vence en 10 minutos.</p>
+        </div>
+
+        <div class="card card-pad">
+            {if $error}
+                <div role="alert" class="mb-4 rounded-xl border border-danger/30 bg-danger/10 px-4 py-3 text-sm font-medium text-danger">
+                    {if $error === 'bloqueado'}Demasiados intentos. Espera unos minutos y pide un código nuevo.
+                    {elseif $error === 'sesion'}Tu sesión expiró. Vuelve a pedir el código.
+                    {else}El código es incorrecto o ya venció. Revísalo o pide uno nuevo.{/if}
+                </div>
+            {/if}
+
+            <form method="post" action="/verificar" data-once>
+                <input type="hidden" name="_csrf" value="{$csrf}">
+                <label for="codigo" class="label">Código de acceso</label>
+                <input id="codigo" type="text" name="codigo" required autofocus data-otp
+                    inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]*" maxlength="6" placeholder="······"
+                    class="field text-center text-3xl! font-extrabold tracking-[0.5em]">
+                <button type="submit" data-sending="Verificando…" class="btn btn-primary mt-4 w-full">Entrar</button>
+            </form>
+
+            <p class="mt-4 text-center text-sm text-muted">¿No llegó? <a href="/login" class="font-semibold text-brand-ink hover:underline">Pedir otro código</a></p>
+        </div>
+    </div>
+</main>
+<script>{$portalJs|noescape}</script>
+</body>
+</html>

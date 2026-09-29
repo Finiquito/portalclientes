@@ -1,0 +1,41 @@
+{layout $plugin_ui_layout}
+
+{block page_title}{if $fase}Editar fase{else}Nueva fase{/if}{/block}
+
+{block content}
+<div class="page-header">
+    <h1>{if $fase}Editar fase{else}Nueva fase{/if}</h1>
+    <a href="{$admin_url('fases')}" class="btn">Volver</a>
+</div>
+
+<div class="card">
+    <form method="post" action="{if $fase}{$admin_url('fases/' . $fase['id'])}{else}{$admin_url('fases')}{/if}">
+        <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+
+        <label class="form-label">Proyecto</label>
+        <select name="proyecto_id" class="form-input" required>
+            {foreach $proyectos as $p}
+                <option value="{$p['id']}" {if isset($fase['proyecto_id']) && $fase['proyecto_id'] === $p['id']}selected{/if}>{$p['nombre']}</option>
+            {/foreach}
+        </select>
+
+        <label class="form-label mt-3">Nombre de la fase</label>
+        <input type="text" name="nombre" class="form-input" value="{$fase['nombre'] ?? ''}" required>
+
+        <label class="form-label mt-3">Orden</label>
+        <input type="number" name="orden" class="form-input" value="{$fase['orden'] ?? 0}">
+
+        <div style="display:flex; gap:1rem;">
+            <div style="flex:1">
+                <label class="form-label mt-3">Fecha inicio</label>
+                <input type="date" name="fecha_inicio" class="form-input" value="{$fase['fecha_inicio'] ?? ''}">
+            </div>
+            <div style="flex:1">
+                <label class="form-label mt-3">Fecha fin</label>
+                <input type="date" name="fecha_fin" class="form-input" value="{$fase['fecha_fin'] ?? ''}">
+            </div>
+        </div>
+
+        <p class="mt-4"><button type="submit" class="btn btn-primary">Guardar</button></p>
+    </form>
+</div>

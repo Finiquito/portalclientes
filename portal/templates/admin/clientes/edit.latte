@@ -1,0 +1,82 @@
+{layout $plugin_ui_layout}
+
+{block page_title}{if $cliente}Editar cliente{else}Nuevo cliente{/if}{/block}
+
+{block content}
+<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css">
+
+<div class="page-header">
+    <h1>{if $cliente}Editar cliente{else}Nuevo cliente{/if}</h1>
+    <a href="{$admin_url()}" class="btn">Volver</a>
+</div>
+
+{if isset($flash_success) && $flash_success}<div class="alert alert-success">{$flash_success}</div>{/if}
+{if isset($flash_error) && $flash_error}<div class="alert alert-error">{$flash_error}</div>{/if}
+
+<div class="card">
+    <form method="post" action="{if $cliente}{$admin_url('clientes/' . $cliente['id'])}{else}{$admin_url('clientes')}{/if}">
+        <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+
+        <label class="form-label">Nombre</label>
+        <input type="text" name="nombre" class="form-input" value="{$cliente['nombre'] ?? ''}" required>
+
+        <label class="form-label mt-3">Empresa</label>
+        <input type="text" name="empresa" class="form-input" value="{$cliente['empresa'] ?? ''}">
+
+        <label class="form-label mt-3">Email de contacto</label>
+        <input type="email" name="email" class="form-input" value="{$cliente['email'] ?? ''}">
+
+        <label class="form-label mt-3">País del cliente</label>
+        <select name="pais" class="form-input" style="max-width:26rem">
+            {foreach \TypeDock\Plugin\Portal\HorarioHabil::PAISES as $codigo => $pp}
+                <option value="{$codigo}" {if ($cliente['pais'] ?? 'CL') === $codigo}selected{/if}>{$pp[0]}</option>
+            {/foreach}
+        </select>
+        <p class="form-hint mt-1">Define su huso horario: los correos del sistema sólo le llegan de lunes a viernes en horario hábil de su país (por defecto 07:00–19:00). Lo que se genere fuera de ese horario queda en cola y sale en la próxima apertura.</p>
+
+        <p class="mt-4">
+            <button type="submit" class="btn btn-primary">Guardar</button>
+        </p>
+    </form>
+</div>
+
+{if $cliente}
+<div class="card mt-4">
+    <h2 class="pa-h2">Personalización del portal</h2>
+    <p class="pa-muted" style="margin-bottom:1rem">Lo que este cliente ve al entrar: su marca, su color y las frases con que lo saludamos. Cada contacto puede además elegir su tema, su apodo y su propia frase desde «Ajustes» en el portal.</p>
+
+    <form method="post" action="{$admin_url('clientes/' . $cliente['id'] . '/personalizar')}" enctype="multipart/form-data">
+        <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+
+        <label class="form-label">Título del portal</label>
+        <input type="text" name="titulo" class="form-input" value="{$cfg['titulo']}" maxlength="60" placeholder="{$cliente['empresa'] ?: $cliente['nombre']}">
+        <p class="form-hint mt-1">Si lo dejas vacío se usa el nombre de la empresa.</p>
+
+        <label class="form-label mt-3" for="color">Color de marca</label>
+        <div class="pa-row">
+            <input type="color" id="color" name="color" value="{$cfg['color']}" style="width:3.5rem;height:2.5rem;padding:0;border:0;background:none">
+            <div class="pa-swatches">
+                {foreach ['#6d5df6', '#2563eb', '#0891b2', '#059669', '#d97706', '#e11d48', '#c026d3', '#0f172a'] as $c}
+                    <button type="button" style="background:{$c|noescape}" data-color="{$c}" aria-label="Usar color {$c}" onclick="document.getElementById('color').value=this.dataset.color"></button>
+                {/foreach}
+            </div>
+        </div>
+        <p class="form-hint mt-1">Tiñe botones, avances y acentos. El texto sobre el color se ajusta solo para que se lea.</p>
+
+        <label class="form-label mt-3">Logo</label>
+        {if $cfg['logo_id']}
+            <p><img class="pa-logo" src="{$admin_url('archivos/' . $cfg['logo_id'])}" alt="Logo actual"></p>
+            <label class="pa-check"><input type="checkbox" name="quitar_logo" value="1"> <span>Quitar el logo actual</span></label>
+        {/if}
+        <input type="file" name="logo" class="form-input mt-1" accept=".png,.jpg,.jpeg,.webp">
+        <p class="form-hint mt-1">PNG, JPG o WEBP, hasta 2 MB. Mejor con fondo transparente y horizontal.</p>
+
+        <label class="form-label mt-3">Frases de bienvenida</label>
+        <textarea name="frases" class="form-input" rows="5" placeholder="Una por línea. Usa &#123;nombre&#125; para el nombre del contacto.">{$cfg['frases']}</textarea>
+        <p class="form-hint mt-1">Se muestra una distinta cada día bajo el saludo. Máximo 20 frases de 140 caracteres. Si no pones ninguna, se usan frases por defecto.</p>
+
+        <p class="mt-4"><button type="submit" class="btn btn-primary">Guardar personalización</button></p>
+    </form>
+</div>
+{/if}
+{/block}

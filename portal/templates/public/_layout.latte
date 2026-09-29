@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="es" class="{if $tema === 'oscuro'}dark{/if}" data-tema="{$tema}" style="--brand: {$marca['color']|noescape}; --brand-fg: {$marca['texto']|noescape}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="csrf" content="{$csrf}">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="{$marca['color']}">
+    <title>{block title}Portal{/block} · {$marca['titulo']}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
+    <link rel="stylesheet" href="/plugins/portal/assets/portal.css?v=7">
+    <script>{$portalBoot|noescape}</script>
+</head>
+<body class="min-h-dvh bg-bg font-sans text-ink antialiased">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="i-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.25 12l8.954-8.955a1.126 1.126 0 011.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25"/></symbol>
+    <symbol id="i-tasks" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 6H20M9.5 12H20M9.5 18H20M3.5 6l1.5 1.5L7.5 5M3.5 12l1.5 1.5L7.5 11M3.5 18l1.5 1.5L7.5 17"/></symbol>
+    <symbol id="i-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.5A2.25 2.25 0 015.25 5.25h3.19c.6 0 1.17.24 1.59.66l1.06 1.09h7.21A2.25 2.25 0 0120.5 9.25v8.5a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 17.75V7.5z"/></symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"/></symbol>
+    <symbol id="i-sliders" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75"/></symbol>
+    <symbol id="i-logout" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M18 12H9m9 0l-3-3m3 3l-3 3"/></symbol>
+    <symbol id="i-chat" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.076-4.076a1.526 1.526 0 011.037-.443 48.282 48.282 0 005.68-.494c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z"/></symbol>
+    <symbol id="i-clip" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.372L8.552 18.32m.009-.01l-.01.01m5.699-9.941l-7.81 7.81a1.5 1.5 0 002.112 2.13"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12.75l6 6 9-13.5"/></symbol>
+    <symbol id="i-edit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"/></symbol>
+    <symbol id="i-dot" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="3.5"/></symbol>
+    <symbol id="i-upload" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></symbol>
+    <symbol id="i-back" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 18L18 6M6 6l12 12"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/></symbol>
+    <symbol id="i-sparkles" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"/><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/></symbol>
+    <symbol id="i-heart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"/></symbol>
+    <symbol id="i-zoom" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607zM10.5 7.5v6m3-3h-6"/></symbol>
+    <symbol id="i-image" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5z"/></symbol>
+  </defs>
+</svg>
+
+
+{var $items = [
+    ['inicio',    '/portal',           'i-home',     'Inicio'],
+    ['tareas',    '/portal/tareas',    'i-tasks',    'Tareas'],
+    ['archivos',  '/portal/archivos',  'i-folder',   'Archivos'],
+    ['reuniones', '/portal/reuniones', 'i-calendar', 'Reuniones'],
+]}
+{if $hayRevisiones}
+    {var $items = [$items[0], $items[1], ['revisiones', '/portal/entregas', 'i-eye', 'Revisiones'], $items[2], $items[3]]}
+{/if}
+
+<a href="#contenido" class="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:rounded-xl focus:bg-surface focus:px-4 focus:py-2 focus:shadow-pop">Saltar al contenido</a>
+
+<div class="mx-auto w-full max-w-[1320px] px-4 sm:px-6 lg:px-8">
+
+    {* Encabezado móvil *}
+    <header class="flex items-center justify-between gap-3 py-4 lg:hidden">
+        <a href="/portal" class="flex min-w-0 items-center gap-2.5">
+            {if $marca['logo']}
+                <img src="{$marca['logo']}" alt="{$marca['titulo']}" class="h-9 w-auto max-w-[9rem] object-contain">
+            {else}
+                <span class="avatar size-9! rounded-xl! bg-brand! text-brand-fg!">{$fmt->iniciales($marca['titulo'])}</span>
+                <span class="truncate text-[0.9375rem] font-extrabold tracking-tight">{$marca['titulo']}</span>
+            {/if}
+        </a>
+        <div class="flex items-center gap-1.5">
+            <button type="button" data-tema-toggle class="btn btn-ghost min-h-10! w-10! px-0!" aria-label="Cambiar entre tema claro y oscuro">
+                <svg class="size-5 dark:hidden"><use href="#i-moon"/></svg>
+                <svg class="hidden size-5 dark:block"><use href="#i-sun"/></svg>
+            </button>
+            <a href="/portal/ajustes" class="avatar size-10!" aria-label="Mis ajustes">{$fmt->iniciales($contacto['nombre'])}</a>
+        </div>
+    </header>
+
+    <div class="lg:grid lg:grid-cols-[15.5rem_minmax(0,1fr)] lg:gap-8 lg:py-8">
+
+        {* Sidebar escritorio *}
+        <aside class="hidden lg:block" aria-label="Navegación">
+            <div class="card sticky top-8 flex max-h-[calc(100dvh-4rem)] flex-col p-3.5">
+                <a href="/portal" class="mb-3 flex items-center gap-3 rounded-2xl p-2">
+                    {if $marca['logo']}
+                        <img src="{$marca['logo']}" alt="{$marca['titulo']}" class="h-10 w-auto max-w-[10rem] object-contain">
+                    {else}
+                        <span class="avatar size-10! rounded-xl! bg-brand! text-brand-fg!">{$fmt->iniciales($marca['titulo'])}</span>
+                        <span class="min-w-0 truncate text-[0.9375rem] font-extrabold leading-tight tracking-tight">{$marca['titulo']}</span>
+                    {/if}
+                </a>
+
+                <nav class="flex flex-col gap-1">
+                    {foreach $items as $it}
+                        <a href="{$it[1]}" class="nav-item" {if $nav === $it[0]}aria-current="page"{/if}>
+                            <svg class="size-5 flex-none"><use href="#{$it[2]}"/></svg>
+                            <span class="flex-1">{$it[3]}</span>
+                            {var $n = $it[0] === 'tareas' ? $pendientes : ($it[0] === 'revisiones' ? $porRevisar : ($it[0] === 'reuniones' ? $proximasReuniones : 0))}
+                            {if $n > 0}<span class="chip chip-brand">{$n}</span>{/if}
+                        </a>
+                    {/foreach}
+                </nav>
+
+                <div class="mt-auto border-t border-line pt-3">
+                    <a href="/portal/ajustes" class="nav-item" {if $nav === 'ajustes'}aria-current="page"{/if}>
+                        <svg class="size-5 flex-none"><use href="#i-sliders"/></svg>
+                        <span class="flex-1">Ajustes</span>
+                    </a>
+                    <div class="mt-2 rounded-2xl bg-surface2 p-3">
+                        <div class="flex items-center gap-3">
+                            <span class="avatar flex-none">{$fmt->iniciales($contacto['nombre'])}</span>
+                            <span class="min-w-0 flex-1 leading-snug">
+                                <span class="block break-words text-sm font-bold">{$contacto['nombre']}</span>
+                                <span class="block text-xs text-muted">{$puedeColaborar ? 'Colaborador' : 'Sólo lectura'}</span>
+                            </span>
+                        </div>
+                        <div class="mt-3 grid grid-cols-2 gap-2">
+                            <button type="button" data-tema-toggle class="btn btn-ghost btn-sm w-full justify-center gap-1.5 rounded-xl!" aria-label="Cambiar entre tema claro y oscuro">
+                                <svg class="size-4 dark:hidden"><use href="#i-moon"/></svg><span class="dark:hidden">Oscuro</span>
+                                <svg class="hidden size-4 dark:block"><use href="#i-sun"/></svg><span class="hidden dark:inline">Claro</span>
+                            </button>
+                            <a href="/logout" class="btn btn-ghost btn-sm w-full justify-center gap-1.5 rounded-xl!">
+                                <svg class="size-4"><use href="#i-logout"/></svg> Salir
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <main id="contenido" class="min-w-0 pb-32 lg:pb-8">
+            {if $flash}
+                <div role="status" class="reveal mb-5 flex items-start gap-3 rounded-2xl border px-4 py-3 text-sm font-medium {$flash['tipo'] === 'error' ? 'border-danger/30 bg-danger/10 text-danger' : 'border-ok/30 bg-ok/10 text-ok'}">
+                    <svg class="mt-0.5 size-5 flex-none"><use href="#{$flash['tipo'] === 'error' ? 'i-alert' : 'i-check'}"/></svg>
+                    <span class="min-w-0 flex-1">{$flash['mensaje']}</span>
+                </div>
+            {/if}
+
+            {block content}{/block}
+        </main>
+    </div>
+</div>
+
+{* Barra inferior móvil *}
+<nav class="pb-safe fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface/90 backdrop-blur-xl lg:hidden" aria-label="Navegación">
+    <div class="mx-auto flex max-w-xl">
+        {foreach $items as $it}
+            <a href="{$it[1]}" class="tab-item" {if $nav === $it[0]}aria-current="page"{/if}>
+                <span class="relative">
+                    <svg class="size-[1.4rem]"><use href="#{$it[2]}"/></svg>
+                    {var $n = $it[0] === 'tareas' ? $pendientes : ($it[0] === 'revisiones' ? $porRevisar : ($it[0] === 'reuniones' ? $proximasReuniones : 0))}
+                    {if $n > 0}
+                        <span class="absolute -right-2.5 -top-1.5 flex min-w-4 items-center justify-center rounded-full bg-brand px-1 text-[0.625rem] font-bold leading-4 text-brand-fg">{$n}</span>
+                    {/if}
+                </span>
+                {$it[3]}
+            </a>
+        {/foreach}
+        <a href="/portal/ajustes" class="tab-item" {if $nav === 'ajustes'}aria-current="page"{/if}>
+            <svg class="size-[1.4rem]"><use href="#i-sliders"/></svg>
+            Ajustes
+        </a>
+    </div>
+</nav>
+
+<script>{$portalJs|noescape}</script>
+</body>
+</html>

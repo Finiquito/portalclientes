@@ -1,0 +1,42 @@
+{layout $plugin_ui_layout}
+
+{block page_title}Nueva reunión{/block}
+
+{block content}
+<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css">
+<div class="page-header">
+    <h1>Nueva reunión</h1>
+    <a href="{$admin_url('reuniones')}" class="btn">Volver</a>
+</div>
+
+<div class="card">
+    <form method="post" action="{$admin_url('reuniones')}">
+        <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+
+        <label class="form-label">Proyecto</label>
+        <select name="proyecto_id" class="form-input" required>
+            {foreach $proyectos as $p}
+                <option value="{$p['id']}" {if $proyectoId === $p['id']}selected{/if}>{$p['cliente_nombre']} · {$p['nombre']}</option>
+            {/foreach}
+        </select>
+
+        <label class="form-label mt-3">Título</label>
+        <input type="text" name="titulo" class="form-input" required maxlength="255" placeholder="Ej.: Revisión de avance">
+
+        <div class="pa-inline mt-3">
+            <div><label class="form-label">Fecha</label><input type="date" name="fecha_d" class="form-input"></div>
+            <div><label class="form-label">Hora (Chile)</label><input type="time" name="fecha_t" class="form-input"></div>
+            <div><label class="form-label">Duración (min)</label><input type="number" name="duracion_min" class="form-input" value="60" min="5" max="600" style="max-width:7rem"></div>
+        </div>
+
+        <label class="form-label mt-3">Link de Google Meet</label>
+        <input type="url" name="enlace_meet" class="form-input" maxlength="500" placeholder="https://meet.google.com/…">
+        <p class="form-hint mt-1">¿Aún no lo tienes? Crea la reunión en <a href="https://meet.google.com/new" target="_blank" rel="noopener noreferrer">meet.google.com/new</a> y pega el link aquí. Después podrás abrir Google Calendar con el evento ya rellenado.</p>
+
+        <label class="pa-check"><input type="checkbox" name="publicada" value="1" checked> Mostrarla al cliente en «Reuniones» (con link de Meet y opción de agregarla a su calendario)</label>
+
+        <p class="mt-4"><button type="submit" class="btn btn-primary">Crear reunión</button></p>
+        <p class="form-hint">Después de la reunión, vuelve aquí para pegar la transcripción y preparar el resumen y las tareas.</p>
+    </form>
+</div>
+{/block}

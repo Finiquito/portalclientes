@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{block page_title}Admin{/block} · TypeDock (dev)</title>
+<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css">
+<style>body{ font-family: system-ui, sans-serif; margin:0; display:flex } nav{ width:220px; background:#111827; min-height:100vh; padding:16px } nav a{ display:block; color:#d1d5db; padding:6px 8px; text-decoration:none; font-size:14px } main{ flex:1; padding:24px }</style>
+</head>
+<body>
+<nav>{foreach $admin_menu as $m}<a href="{$admin_url($m[1])}">{$m[0]}</a>{/foreach}</nav>
+<main>{block content}{/block}</main>
+</body>
+</html>

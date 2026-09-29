@@ -1,0 +1,184 @@
+{layout '_layout.latte'}
+
+{block title}Inicio{/block}
+
+{block content}
+{var $hoyLargo = $fmt->fechaLarga()}
+
+<div class="xl:grid xl:grid-cols-[minmax(0,1fr)_20rem] xl:gap-6">
+<div class="min-w-0">
+
+    {* Bienvenida *}
+    <section class="relative reveal pb-6 pt-1 sm:pb-8">
+        <div class="hero-arcs" aria-hidden="true"></div>
+        <p class="relative text-sm font-semibold text-brand-ink">{$hoyLargo|firstUpper}</p>
+        <h1 class="relative mt-1 text-[2rem] font-extrabold leading-[1.08] tracking-tight sm:text-5xl">{$fmt->saludo()}, {$nombre}</h1>
+        <p class="relative mt-3 max-w-2xl text-base text-muted sm:text-lg">{$frase}</p>
+    </section>
+
+    {* Accesos rápidos *}
+    <section class="grid grid-cols-3 gap-3 sm:gap-4" aria-label="Resumen">
+        <a href="/portal/tareas?f=mias" class="card reveal group p-3.5 transition hover:-translate-y-0.5 hover:shadow-pop sm:p-5" style="--i:1">
+            <span class="flex size-10 items-center justify-center rounded-xl bg-brand-soft text-brand-ink sm:size-11"><svg class="size-5"><use href="#i-tasks"/></svg></span>
+            <span class="mt-3 block text-3xl font-extrabold tracking-tight">{count($meTocan)}</span>
+            <span class="block text-xs font-semibold text-muted sm:text-sm">Te toca a ti</span>
+        </a>
+        <a href="/portal/tareas?f=equipo" class="card reveal group p-3.5 transition hover:-translate-y-0.5 hover:shadow-pop sm:p-5" style="--i:2">
+            <span class="flex size-10 items-center justify-center rounded-xl bg-brand-soft text-brand-ink sm:size-11"><svg class="size-5"><use href="#i-eye"/></svg></span>
+            <span class="mt-3 block text-3xl font-extrabold tracking-tight">{count($enRevision)}</span>
+            <span class="block text-xs font-semibold text-muted sm:text-sm">En revisión</span>
+        </a>
+        <a href="/portal/archivos" class="card reveal group p-3.5 transition hover:-translate-y-0.5 hover:shadow-pop sm:p-5" style="--i:3">
+            <span class="flex size-10 items-center justify-center rounded-xl bg-brand-soft text-brand-ink sm:size-11"><svg class="size-5"><use href="#i-folder"/></svg></span>
+            <span class="mt-3 block text-3xl font-extrabold tracking-tight">{$nArchivos}</span>
+            <span class="block text-xs font-semibold text-muted sm:text-sm">Archivos</span>
+        </a>
+    </section>
+
+    {* Te toca a ti *}
+    <section class="card reveal mt-5 overflow-hidden" style="--i:4" aria-labelledby="h-toca">
+        <div class="flex items-center justify-between gap-3 px-5 pb-2 pt-5 sm:px-6 sm:pt-6">
+            <h2 id="h-toca" class="text-lg font-extrabold tracking-tight">Te toca a ti</h2>
+            {if count($meTocan) > 0}<span class="chip chip-brand">{count($meTocan)} {count($meTocan) === 1 ? 'pendiente' : 'pendientes'}</span>{/if}
+        </div>
+
+        {if empty($meTocan)}
+            <div class="flex flex-col items-center px-6 pb-9 pt-5 text-center">
+                <span class="flex size-14 items-center justify-center rounded-2xl bg-ok/10 text-ok"><svg class="size-7"><use href="#i-check"/></svg></span>
+                <p class="mt-4 font-bold">Estás al día</p>
+                <p class="mt-1 max-w-xs text-sm text-muted">Cuando necesitemos algo de ti, un archivo, una respuesta o una aprobación, aparecerá aquí.</p>
+            </div>
+        {else}
+            <ul class="px-2 pb-2 sm:px-3 sm:pb-3">
+                {foreach $meTocan as $t}
+                    {var $v = $fmt->vence($t['fecha_vencimiento'], $t['estado'])}
+                    <li>
+                        <a href="/portal/tareas/{$t['id']}" class="group flex items-center gap-3 rounded-2xl p-3 transition hover:bg-surface2 sm:p-3.5">
+                            <span class="flex size-11 flex-none items-center justify-center rounded-xl bg-brand-soft text-brand-ink">
+                                <svg class="size-5"><use href="#{$t['tipo'] === 'archivo' ? 'i-upload' : ($t['tipo'] === 'revision' ? 'i-eye' : 'i-tasks')}"/></svg>
+                            </span>
+                            <span class="min-w-0 flex-1">
+                                <span class="block truncate font-semibold">{$t['titulo']}</span>
+                                <span class="mt-0.5 block truncate text-xs text-muted">{$fmt->tipo($t['tipo'])}{if $multiples} · <span class="inline-flex items-center gap-1.5 align-middle"><span aria-hidden="true" style="display:inline-block;width:.6rem;height:.6rem;border-radius:9999px;flex:none;background:{($colorProy[$t['proyecto_id']] ?? '#94a3b8')|noescape}"></span>{$t['proyecto_nombre']}</span>{/if}</span>
+                            </span>
+                            <span class="chip chip-{$v['tono']} hidden sm:inline-flex">{$v['texto']}</span>
+                            <svg class="size-4 flex-none text-muted transition group-hover:translate-x-0.5"><use href="#i-chevron"/></svg>
+                        </a>
+                        <span class="chip chip-{$v['tono']} -mt-1 mb-2 ml-[4.5rem] sm:hidden">{$v['texto']}</span>
+                    </li>
+                {/foreach}
+            </ul>
+        {/if}
+    </section>
+
+    {* Avance del proyecto *}
+    {if $seleccion && $progreso}
+    <section class="card card-pad reveal mt-5" style="--i:5" aria-labelledby="h-avance">
+        <div class="flex flex-wrap items-start justify-between gap-3">
+            <div class="min-w-0">
+                <h2 id="h-avance" class="text-lg font-extrabold tracking-tight">Avance del proyecto</h2>
+                <p class="mt-0.5 truncate text-sm text-muted">{$seleccion['nombre']}</p>
+            </div>
+            <span class="text-3xl font-extrabold tracking-tight text-brand-ink">{$progreso['pct']}<span class="text-lg">%</span></span>
+        </div>
+
+        {if $multiples}
+            <div class="scroll-x -mx-1 mt-4 flex gap-2 px-1" role="tablist" aria-label="Proyectos">
+                {foreach $proyectos as $p}
+                    <a href="/portal?p={$p['id']}" class="btn btn-sm {$p['id'] === $seleccion['id'] ? 'btn-primary' : 'btn-ghost'}" {if $p['id'] === $seleccion['id']}aria-current="true"{/if}>{$p['nombre']}</a>
+                {/foreach}
+            </div>
+        {/if}
+
+        <div class="progress mt-5" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{$progreso['pct']}" aria-label="Avance">
+            <span style="width: {$progreso['pct']}%"></span>
+        </div>
+        <p class="mt-2 text-xs text-muted">{$progreso['hechas']} de {$progreso['total']} {$progreso['total'] === 1 ? 'tarea lista' : 'tareas listas'}</p>
+
+        {if $progreso['fases']}
+            <div class="scroll-x -mx-2 mt-6 px-2 pb-1">
+                <ol class="flex min-w-max sm:min-w-0">
+                    {foreach $progreso['fases'] as $i => $f}
+                        <li class="relative min-w-[7.5rem] flex-1 px-1 text-center">
+                            {if $i > 0}
+                                <span class="absolute right-1/2 top-[1.05rem] h-0.5 w-full {$progreso['fases'][$i - 1]['estado'] === 'hecha' ? 'bg-brand' : 'bg-line'}" aria-hidden="true"></span>
+                            {/if}
+                            <span class="relative z-10 mx-auto flex size-[2.2rem] items-center justify-center rounded-full text-sm font-bold
+                                {$f['estado'] === 'hecha' ? 'bg-brand text-brand-fg' : ($f['estado'] === 'actual' ? 'border-2 border-brand bg-surface text-brand-ink shadow-[0_0_0_5px_var(--brand-soft)]' : 'border border-line bg-surface2 text-muted')}">
+                                {if $f['estado'] === 'hecha'}<svg class="size-4"><use href="#i-check"/></svg>{else}{$i + 1}{/if}
+                            </span>
+                            <span class="mt-2.5 block text-[0.8125rem] font-bold leading-tight {$f['estado'] === 'pendiente' ? 'text-muted' : ''}">{$f['nombre']}</span>
+                            <span class="mt-0.5 block text-[0.6875rem] text-muted">
+                                {if $f['estado'] === 'actual'}En curso{elseif $f['estado'] === 'hecha'}Lista{else}Próxima{/if}
+                            </span>
+                        </li>
+                    {/foreach}
+                </ol>
+            </div>
+        {/if}
+    </section>
+    {/if}
+
+</div>
+
+{* Columna lateral *}
+<aside class="mt-5 min-w-0 space-y-5 xl:mt-0" aria-label="Novedades">
+
+    <section class="card card-pad reveal" style="--i:4">
+        <h2 class="text-base font-extrabold tracking-tight">Novedades</h2>
+        {if empty($actividad)}
+            <p class="mt-3 text-sm text-muted">Aquí verás lo que vaya pasando en tu proyecto: comentarios, archivos y aprobaciones.</p>
+        {else}
+            <ul class="mt-4 space-y-4">
+                {foreach $actividad as $a}
+                    <li class="flex gap-3">
+                        <span class="mt-0.5 flex size-8 flex-none items-center justify-center rounded-full {$a['actor_tipo'] === 'equipo' ? 'bg-ink text-bg' : 'bg-brand-soft text-brand-ink'}">
+                            <svg class="size-4"><use href="#{$fmt->iconoActividad($a['accion'])}"/></svg>
+                        </span>
+                        <p class="min-w-0 flex-1 text-sm leading-snug">
+                            <span class="font-semibold">{$fmt->actividad($a)}</span>
+                            {if $a['titulo']}
+                                {if $a['entidad_tipo'] === 'tarea'}
+                                    <a href="/portal/tareas/{$a['entidad_id']}" class="text-brand-ink underline-offset-2 hover:underline">«{$a['titulo']}»</a>
+                                {elseif $a['entidad_tipo'] === 'contenido'}
+                                    <a href="/portal/contenidos/{$a['entidad_id']}" class="text-brand-ink underline-offset-2 hover:underline">«{$a['titulo']}»</a>
+                                {elseif $a['entidad_tipo'] === 'entrega'}
+                                    <a href="/portal/entregas/{$a['entidad_id']}" class="text-brand-ink underline-offset-2 hover:underline">«{$a['titulo']}»</a>
+                                {else}«{$a['titulo']}»{/if}
+                            {/if}
+                            <span class="mt-0.5 block text-xs text-muted">{$fmt->rel($a['created_at'])}</span>
+                        </p>
+                    </li>
+                {/foreach}
+            </ul>
+        {/if}
+    </section>
+
+    <section class="card card-pad reveal" style="--i:5">
+        <div class="flex items-center justify-between">
+            <h2 class="text-base font-extrabold tracking-tight">Próximas reuniones</h2>
+            <a href="/portal/reuniones" class="text-xs font-semibold text-brand-ink hover:underline">Ver todas</a>
+        </div>
+        {if empty($reuniones)}
+            <p class="mt-3 text-sm text-muted">No hay reuniones agendadas por ahora.</p>
+        {else}
+            <ul class="mt-4 space-y-3">
+                {foreach $reuniones as $r}
+                    <li><a href="/portal/reuniones/{$r['id']}" class="flex items-center gap-3 rounded-xl transition hover:opacity-80">
+                        <span class="flex size-12 flex-none flex-col items-center justify-center rounded-xl bg-brand-soft leading-none text-brand-ink">
+                            <span class="text-lg font-extrabold">{$fmt->dia($r['fecha'])}</span>
+                            <span class="mt-0.5 text-[0.625rem] font-bold uppercase tracking-wide">{$fmt->mesCorto($r['fecha'])}</span>
+                        </span>
+                        <span class="min-w-0">
+                            <span class="block truncate text-sm font-semibold">{$r['titulo']}</span>
+                            <span class="block truncate text-xs text-muted">{$fmt->hora($r['fecha'])}{if $fmt->hora($r['fecha']) !== ''} · {/if}{$r['proyecto_nombre']}</span>
+                            {if $r['enlace_meet']}<span class="mt-0.5 block text-xs font-bold text-brand-ink">Con link de Meet</span>{/if}
+                        </span>
+                    </a></li>
+                {/foreach}
+            </ul>
+        {/if}
+    </section>
+</aside>
+</div>
+{/block}

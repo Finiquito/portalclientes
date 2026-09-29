@@ -1,0 +1,196 @@
+{layout '_layout.latte'}
+
+{block title}{$t['titulo']}{/block}
+
+{block content}
+{var $v = $fmt->vence($t['fecha_vencimiento'], $t['estado'])}
+{var $e = $fmt->estado($t['estado'])}
+
+<a href="/portal/tareas" class="reveal mb-3 inline-flex items-center gap-1.5 text-sm font-semibold text-muted transition hover:text-ink">
+    <svg class="size-4"><use href="#i-back"/></svg> Tareas
+</a>
+
+<div class="lg:grid lg:grid-cols-[minmax(0,1fr)_17rem] lg:gap-6">
+<div class="flex min-w-0 flex-col gap-5">
+
+    {* Encabezado *}
+    <section class="card card-pad reveal order-1">
+        <div class="flex flex-wrap items-center gap-2">
+            <span class="chip chip-brand"><svg class="size-3.5"><use href="#{$t['tipo'] === 'archivo' ? 'i-upload' : ($t['tipo'] === 'revision' ? 'i-eye' : 'i-tasks')}"/></svg>{$fmt->tipo($t['tipo'])}</span>
+            <span class="chip chip-{$e[1]}">{$e[0]}</span>
+            {if $t['estado'] !== 'hecha' && $t['fecha_vencimiento']}<span class="chip chip-{$v['tono']}"><svg class="size-3.5"><use href="#i-clock"/></svg>{$v['texto']}</span>{/if}
+        </div>
+        <h1 class="mt-3 text-2xl font-extrabold leading-tight tracking-tight sm:text-3xl">{$t['titulo']}</h1>
+        {if $t['descripcion']}
+            <div class="mt-3 max-w-prose text-[0.9375rem] leading-relaxed text-ink/85">{$t['descripcion']|breakLines}</div>
+        {/if}
+
+        <div class="mt-5 flex items-start gap-3 rounded-2xl px-4 py-3 text-sm
+            {$turno === 'cliente' ? 'bg-brand-soft text-brand-ink' : ($turno === 'listo' ? 'bg-ok/10 text-ok' : 'bg-surface2 text-muted')}">
+            <svg class="mt-0.5 size-5 flex-none"><use href="#{$turno === 'listo' ? 'i-check' : ($turno === 'cliente' ? 'i-sparkles' : 'i-clock')}"/></svg>
+            <p class="font-semibold leading-snug">
+                {if $turno === 'listo'}Completada{if $t['completada_en']} el {$fmt->fecha($t['completada_en'])}{/if}.
+                {elseif $t['estado'] === 'entregada'}Recibimos tu entrega y la estamos revisando.
+                {elseif $t['estado'] === 'cambios'}Recibimos tus cambios y los estamos aplicando.
+                {elseif $turno === 'cliente'}Esto está esperando tu respuesta.
+                {else}El equipo está trabajando en esto.{/if}
+            </p>
+        </div>
+    </section>
+
+    {* Acción principal *}
+    {if $puede['completar'] || $puede['aprobar'] || $puede['entregar'] || ($esArchivo && $turno === 'cliente')}
+    <section class="card card-pad reveal border-brand/30 {$esArchivo ? 'order-3' : 'order-2'}" style="--i:1" aria-labelledby="h-accion">
+        {if $puede['completar']}
+            <h2 id="h-accion" class="text-base font-extrabold">¿Ya lo hiciste?</h2>
+            <p class="mt-1 text-sm text-muted">Márcalo como listo y avisamos al equipo.</p>
+            <form method="post" action="/portal/tareas/{$t['id']}/accion" data-once class="mt-4">
+                <input type="hidden" name="_csrf" value="{$csrf}">
+                <button type="submit" name="accion" value="completar" data-sending="Guardando…" class="btn btn-primary w-full sm:w-auto"><svg class="size-5"><use href="#i-check"/></svg> Marcar como lista</button>
+            </form>
+        {elseif $puede['aprobar']}
+            <h2 id="h-accion" class="text-base font-extrabold">¿Qué te parece?</h2>
+            <p class="mt-1 text-sm text-muted">Revisa lo que dejamos arriba. Si todo está bien, apruébalo; si no, cuéntanos qué cambiar.</p>
+            <form method="post" action="/portal/tareas/{$t['id']}/accion" data-once data-revision class="mt-4">
+                <input type="hidden" name="_csrf" value="{$csrf}">
+                <label for="rev-cuerpo" class="label">Comentario <span class="font-normal text-muted">(obligatorio si pides cambios)</span></label>
+                <textarea id="rev-cuerpo" name="cuerpo" rows="3" data-autogrow class="field" placeholder="Ej.: el logo se ve muy pequeño en móvil…"></textarea>
+                <p data-cambios-aviso hidden class="mt-2 text-sm font-semibold text-danger">Cuéntanos qué cambiarías antes de pedir cambios.</p>
+                <div class="mt-4 flex flex-col gap-2.5 sm:flex-row">
+                    <button type="submit" name="accion" value="aprobar" data-sending="Guardando…" class="btn btn-ok flex-1 sm:flex-none"><svg class="size-5"><use href="#i-check"/></svg> Aprobar</button>
+                    <button type="submit" name="accion" value="cambios" data-sending="Enviando…" class="btn btn-ghost flex-1 sm:flex-none"><svg class="size-5"><use href="#i-edit"/></svg> Pedir cambios</button>
+                </div>
+            </form>
+        {elseif $puede['entregar']}
+            <h2 id="h-accion" class="text-base font-extrabold">¿Ya subiste todo?</h2>
+            <p class="mt-1 text-sm text-muted">Cuando termines, presiona Entregar para avisarnos. Mientras tanto puedes seguir agregando archivos.</p>
+            <form method="post" action="/portal/tareas/{$t['id']}/accion" data-once class="mt-4">
+                <input type="hidden" name="_csrf" value="{$csrf}">
+                <button type="submit" name="accion" value="entregar" data-sending="Enviando…" class="btn btn-primary w-full sm:w-auto"><svg class="size-5"><use href="#i-send"/></svg> Entregar al equipo</button>
+            </form>
+        {else}
+            <h2 id="h-accion" class="text-base font-extrabold">Sube lo que te pedimos</h2>
+            <p class="mt-1 text-sm text-muted">Agrega los archivos en el recuadro de abajo; cuando estén, te aparecerá el botón para entregar.</p>
+        {/if}
+    </section>
+    {elseif !$puedeColaborar && $t['responsable_tipo'] === 'cliente' && $abierta}
+    <section class="reveal order-2 flex items-start gap-3 rounded-2xl bg-surface2 px-4 py-3 text-sm text-muted">
+        <svg class="mt-0.5 size-5 flex-none"><use href="#i-lock"/></svg>
+        <p>Tu acceso es de <strong class="text-ink">sólo lectura y comentarios</strong>. Para subir archivos, completar o aprobar, pídele a alguien con acceso de colaborador de tu equipo, o escríbenos aquí abajo.</p>
+    </section>
+    {/if}
+
+    {* Archivos *}
+    <section id="archivos" class="card card-pad reveal {$esArchivo ? 'order-2' : 'order-3'}" style="--i:2" aria-labelledby="h-arch">
+        <h2 id="h-arch" class="text-lg font-extrabold tracking-tight">Archivos</h2>
+
+        {var $grupos = [
+            [$t['tipo'] === 'revision' ? 'Para revisar' : 'Del equipo', $delEquipo, false],
+            ['Tus archivos', $tuyos, true],
+        ]}
+        {foreach $grupos as $g}
+        {if $g[1]}
+            <p class="mb-2.5 mt-5 text-xs font-bold uppercase tracking-wide text-muted first:mt-4">{$g[0]}</p>
+            <ul class="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {foreach $g[1] as $a}
+                    <li class="min-w-0">
+                        {if $fmt->esImagen($a['mime'])}
+                            <a href="/portal/archivo/{$a['id']}?i=1" target="_blank" rel="noopener" class="group block overflow-hidden rounded-xl border border-line bg-surface2">
+                                <img src="/portal/archivo/{$a['id']}?t=1&i=1" loading="lazy" alt="{$a['nombre_original']}" class="aspect-[4/3] w-full object-cover transition duration-300 group-hover:scale-[1.03]">
+                                <span class="flex items-center justify-between gap-2 bg-surface px-3 py-2 text-xs"><span class="truncate font-semibold">{$a['nombre_original']}</span><span class="flex-none text-muted">{$fmt->tamano($a['tamano'])}</span></span>
+                            </a>
+                        {else}
+                            <a href="/portal/archivo/{$a['id']}{if $a['mime'] === 'application/pdf'}?i=1{/if}" {if $a['mime'] === 'application/pdf'}target="_blank" rel="noopener"{/if} class="flex h-full flex-col justify-between gap-3 rounded-xl border border-line bg-surface2 p-3 transition hover:border-brand/50">
+                                <span class="flex size-10 items-center justify-center rounded-lg bg-surface text-brand-ink"><svg class="size-5"><use href="#i-file"/></svg></span>
+                                <span class="min-w-0">
+                                    <span class="block truncate text-xs font-semibold">{$a['nombre_original']}</span>
+                                    <span class="mt-0.5 block text-[0.6875rem] text-muted">{$fmt->extension($a['nombre_original'])|upper} · {$fmt->tamano($a['tamano'])}</span>
+                                </span>
+                            </a>
+                        {/if}
+                        {if $g[2] && in_array($t['estado'], ['pendiente', 'en_progreso', 'cambios'], true)}
+                            <form method="post" action="/portal/archivos/{$a['id']}/borrar" data-confirm="¿Quitar este archivo?" class="mt-1.5">
+                                <input type="hidden" name="_csrf" value="{$csrf}">
+                                <button type="submit" class="btn btn-danger-ghost btn-sm w-full"><svg class="size-4"><use href="#i-trash"/></svg> Quitar</button>
+                            </form>
+                        {/if}
+                    </li>
+                {/foreach}
+            </ul>
+        {/if}
+        {/foreach}
+
+        {if empty($delEquipo) && empty($tuyos)}
+            <p class="mt-2 text-sm text-muted">Todavía no hay archivos en esta tarea.</p>
+        {/if}
+
+        {if $puede['subir']}
+            <form method="post" action="/portal/tareas/{$t['id']}/archivos" enctype="multipart/form-data" data-upload data-max="{$maxMb}" class="mt-5">
+                <input type="hidden" name="_csrf" value="{$csrf}">
+                <label data-dropzone class="dropzone flex cursor-pointer flex-col items-center px-4 py-7 text-center">
+                    <span class="flex size-11 items-center justify-center rounded-xl bg-surface text-brand-ink shadow-soft"><svg class="size-5"><use href="#i-upload"/></svg></span>
+                    <span class="mt-3 text-sm font-bold">Toca para elegir archivos <span class="hidden font-medium text-muted sm:inline">o arrástralos aquí</span></span>
+                    <span class="mt-1 text-xs text-muted">Hasta 10 archivos · máximo {$maxMb} MB cada uno · imágenes, PDF, Office, ZIP, PSD/AI/Figma</span>
+                    <input type="file" name="archivos[]" multiple class="sr-only">
+                </label>
+                <ul data-filelist class="mt-3 space-y-2"></ul>
+                <p data-upload-msg hidden role="alert" class="mt-2 text-sm font-semibold text-danger"></p>
+                <div data-progress hidden role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Subiendo" class="progress mt-3"><span style="width: 0%"></span></div>
+                <button type="submit" data-upload-btn disabled class="btn btn-soft mt-3 w-full sm:w-auto"><svg class="size-5"><use href="#i-upload"/></svg> Subir archivos</button>
+            </form>
+        {/if}
+    </section>
+
+    {* Conversación *}
+    <section id="conversacion" class="card card-pad reveal order-4" style="--i:3" aria-labelledby="h-conv">
+        <div class="flex items-center justify-between">
+            <h2 id="h-conv" class="text-lg font-extrabold tracking-tight">Conversación</h2>
+            {if $comentarios}<span class="chip chip-muted">{count($comentarios)}</span>{/if}
+        </div>
+
+        {if empty($comentarios)}
+            <p class="mt-3 text-sm text-muted">Aún no hay comentarios. Si tienes una duda o algo que agregar, escríbelo aquí.</p>
+        {else}
+            <ol class="mt-5 space-y-4">
+                {foreach $comentarios as $c}
+                    {var $mio = $c['autor_tipo'] === 'contacto' && $c['autor_id'] === $contacto['id']}
+                    {var $delCliente = $c['autor_tipo'] === 'contacto'}
+                    <li class="flex gap-2.5 {$delCliente ? 'flex-row-reverse' : ''}">
+                        <span class="avatar size-8! {$delCliente ? '' : 'avatar-team'}">{$fmt->iniciales($c['autor_nombre'])}</span>
+                        <div class="max-w-[85%] min-w-0 {$delCliente ? 'text-right' : ''}">
+                            <p class="mb-1 text-xs text-muted"><span class="font-semibold text-ink">{$mio ? 'Tú' : $c['autor_nombre']}</span>{if !$delCliente} · Equipo{/if} · {$fmt->rel($c['created_at'])}</p>
+                            <div class="bubble inline-block text-left {$delCliente ? 'rounded-tr-md bg-brand-soft text-ink' : 'rounded-tl-md bg-surface2'}">{$c['cuerpo']|breakLines}</div>
+                        </div>
+                    </li>
+                {/foreach}
+            </ol>
+        {/if}
+
+        <form method="post" action="/portal/tareas/{$t['id']}/comentarios" data-once class="mt-5 border-t border-line pt-5">
+            <input type="hidden" name="_csrf" value="{$csrf}">
+            <label for="nuevo-comentario" class="label">Escribe un comentario</label>
+            <textarea id="nuevo-comentario" name="cuerpo" rows="2" maxlength="4000" required data-autogrow class="field" placeholder="Tu mensaje…"></textarea>
+            <div class="mt-3 flex items-center justify-between gap-3">
+                <span class="hidden text-xs text-muted sm:block">Ctrl + Enter para enviar</span>
+                <button type="submit" data-sending="Enviando…" class="btn btn-primary ml-auto w-full sm:w-auto"><svg class="size-5"><use href="#i-send"/></svg> Enviar</button>
+            </div>
+        </form>
+    </section>
+</div>
+
+{* Detalles *}
+<aside class="mt-5 lg:mt-0" aria-label="Detalles de la tarea">
+    <div class="card card-pad reveal lg:sticky lg:top-8" style="--i:2">
+        <h2 class="text-sm font-extrabold uppercase tracking-wide text-muted">Detalles</h2>
+        <dl class="mt-4 space-y-4 text-sm">
+            <div><dt class="text-xs text-muted">Proyecto</dt><dd class="mt-0.5 font-semibold">{$t['proyecto_nombre']}</dd></div>
+            {if $t['fase_nombre']}<div><dt class="text-xs text-muted">Etapa</dt><dd class="mt-0.5 font-semibold">{$t['fase_nombre']}</dd></div>{/if}
+            <div><dt class="text-xs text-muted">Responsable</dt><dd class="mt-0.5 font-semibold">{if $t['responsable_tipo'] === 'cliente'}{$t['contacto_nombre'] ?: 'Tu equipo'}{else}Nuestro equipo{/if}</dd></div>
+            <div><dt class="text-xs text-muted">Fecha límite</dt><dd class="mt-0.5 font-semibold">{$fmt->fecha($t['fecha_vencimiento'])}</dd></div>
+            {if $t['completada_en']}<div><dt class="text-xs text-muted">Completada</dt><dd class="mt-0.5 font-semibold">{$fmt->fecha($t['completada_en'])}</dd></div>{/if}
+        </dl>
+    </div>
+</aside>
+</div>
+
+{/block}

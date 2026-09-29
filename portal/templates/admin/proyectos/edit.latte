@@ -1,0 +1,40 @@
+{layout $plugin_ui_layout}
+
+{block page_title}{if $proyecto}Editar proyecto{else}Nuevo proyecto{/if}{/block}
+
+{block content}
+<div class="page-header">
+    <h1>{if $proyecto}Editar proyecto{else}Nuevo proyecto{/if}</h1>
+    <a href="{$admin_url('proyectos')}" class="btn">Volver</a>
+</div>
+
+<div class="card">
+    <form method="post" action="{if $proyecto}{$admin_url('proyectos/' . $proyecto['id'])}{else}{$admin_url('proyectos')}{/if}">
+        <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+
+        <label class="form-label">Cliente</label>
+        <select name="cliente_id" class="form-input" required>
+            {foreach $clientes as $c}
+                <option value="{$c['id']}" {if isset($proyecto['cliente_id']) && $proyecto['cliente_id'] === $c['id']}selected{/if}>{$c['nombre']}</option>
+            {/foreach}
+        </select>
+
+        <label class="form-label mt-3">Nombre del proyecto</label>
+        <input type="text" name="nombre" class="form-input" value="{$proyecto['nombre'] ?? ''}" required>
+
+        <label class="form-label mt-3">Descripción</label>
+        <textarea name="descripcion" class="form-input" rows="4">{$proyecto['descripcion'] ?? ''}</textarea>
+
+        <label class="form-label mt-3">Estado</label>
+        <select name="estado" class="form-input">
+            {var $estadoActual = $proyecto['estado'] ?? 'activo'}
+            <option value="activo" {if $estadoActual === 'activo'}selected{/if}>Activo</option>
+            <option value="pausado" {if $estadoActual === 'pausado'}selected{/if}>Pausado</option>
+            <option value="cerrado" {if $estadoActual === 'cerrado'}selected{/if}>Cerrado</option>
+        </select>
+
+        <p class="mt-4">
+            <button type="submit" class="btn btn-primary">Guardar</button>
+        </p>
+    </form>
+</div>

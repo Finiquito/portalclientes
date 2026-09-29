@@ -1,0 +1,82 @@
+{layout '_layout.latte'}
+
+{block title}{$e['titulo']}{/block}
+
+{block content}
+{var $st = $estadosE[$e['estado']] ?? ['—', 'muted']}
+
+<a href="/portal/entregas" class="reveal mb-3 inline-flex items-center gap-1.5 text-sm font-semibold text-muted transition hover:text-ink">
+    <svg class="size-4"><use href="#i-back"/></svg> Revisiones
+</a>
+
+<section class="card card-pad reveal">
+    <div class="flex flex-wrap items-center gap-2">
+        <span class="chip chip-{$st[1]}">{$st[0]}</span>
+        {if $abierta && $e['fecha_limite']}
+            {var $v = $fmt->vence($e['fecha_limite'])}
+            <span class="chip chip-{$v['tono']}"><svg class="size-3.5"><use href="#i-clock"/></svg>{$v['texto']}</span>
+        {/if}
+        <span class="chip chip-muted">{$e['proyecto_nombre']}</span>
+    </div>
+    <h1 class="mt-3 text-2xl font-extrabold leading-tight tracking-tight sm:text-3xl">{$e['titulo']}</h1>
+    {if $e['mensaje']}<div class="mt-3 max-w-prose text-[0.9375rem] leading-relaxed text-ink/85">{$e['mensaje']|breakLines}</div>{/if}
+
+    <div class="mt-5">
+        <div class="flex items-center justify-between text-xs font-semibold text-muted"><span>{$decididos} de {$e['n_total']} revisados</span><span>{$pct}%</span></div>
+        <div class="progress mt-2" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{$pct}" aria-label="Revisados"><span style="width: {$pct}%"></span></div>
+    </div>
+
+    {if $e['estado'] === 'respondida'}
+        <p class="mt-4 flex items-start gap-3 rounded-2xl bg-surface2 px-4 py-3 text-sm text-muted"><svg class="mt-0.5 size-5 flex-none"><use href="#i-clock"/></svg><span>{$e['respondida_por']} envió la revisión {$fmt->rel($e['respondida_en'])}. Estamos aplicando los cambios y te avisaremos cuando estén listos.</span></p>
+    {elseif $e['estado'] === 'aprobada'}
+        <p class="mt-4 flex items-start gap-3 rounded-2xl bg-ok/10 px-4 py-3 text-sm font-semibold text-ok"><svg class="mt-0.5 size-5 flex-none"><use href="#i-check"/></svg><span>Todo aprobado. ¡Gracias!</span></p>
+    {/if}
+</section>
+
+<section class="mt-5" aria-label="Contenidos">
+    <ul class="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-4">
+        {foreach $contenidos as $c}
+            {var $cs = $estadosC[$c['estado']] ?? ['—', 'muted']}
+            {var $rc = $reacc[$c['id']] ?? null}
+            <li class="reveal" style="--i: {$iterator->counter}">
+                <a href="/portal/contenidos/{$c['id']}" class="group relative block aspect-[4/5] overflow-hidden rounded-2xl border border-line bg-surface2 shadow-soft">
+                    {if isset($portadas[$c['id']])}
+                        <img src="/portal/archivo/{$portadas[$c['id']]}?t=1&i=1" alt="" loading="lazy" class="size-full object-cover transition duration-500 group-hover:scale-[1.04]">
+                    {else}
+                        <span class="flex size-full flex-col items-center justify-center gap-2 bg-gradient-to-br from-brand-soft to-surface2 p-4 text-center text-brand-ink">
+                            <svg class="size-8 opacity-70"><use href="#{$tipos[$c['tipo']][3] ?? 'i-image'}"/></svg>
+                            <span class="text-xs font-semibold opacity-80">Vista previa pendiente</span>
+                        </span>
+                    {/if}
+                    <span class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/35 to-transparent px-3 pb-3 pt-10 text-white">
+                        <span class="block text-[0.6875rem] font-semibold uppercase tracking-wide opacity-80">{$tipos[$c['tipo']][0] ?? ''}{if $c['version_actual'] > 1} · v{$c['version_actual']}{/if}</span>
+                        <span class="block truncate text-sm font-bold">{$c['titulo']}</span>
+                    </span>
+                    <span class="absolute left-2 top-2 chip chip-{$cs[1]} bg-surface! shadow-soft">
+                        {if $c['estado'] === 'aprobado'}<svg class="size-3.5"><use href="#i-check"/></svg>{elseif $c['estado'] === 'cambios'}<svg class="size-3.5"><use href="#i-edit"/></svg>{/if}{$cs[0]}
+                    </span>
+                    {if $rc && $rc['mia'] !== ''}<span class="absolute right-2 top-2 flex size-8 items-center justify-center rounded-full bg-surface text-base shadow-soft">{$reaccionesDef[$rc['mia']][0]}</span>{/if}
+                </a>
+            </li>
+        {/foreach}
+    </ul>
+</section>
+
+{if $abierta}
+<section class="card card-pad reveal mt-6 border-brand/30" aria-labelledby="h-enviar">
+    {if $puedeEnviar}
+        <h2 id="h-enviar" class="text-base font-extrabold">¡Listo! Terminaste de revisar</h2>
+        <p class="mt-1 text-sm text-muted">Al enviar, le avisamos al equipo de una sola vez con tus aprobaciones y cambios.</p>
+        <form method="post" action="/portal/entregas/{$e['id']}/enviar" data-once class="mt-4">
+            <input type="hidden" name="_csrf" value="{$csrf}">
+            <button type="submit" data-sending="Enviando…" class="btn btn-primary w-full sm:w-auto"><svg class="size-5"><use href="#i-send"/></svg> Enviar revisión</button>
+        </form>
+    {elseif !$puedeColaborar}
+        <p class="flex items-start gap-3 text-sm text-muted"><svg class="mt-0.5 size-5 flex-none"><use href="#i-lock"/></svg><span>Tu acceso es de <strong class="text-ink">sólo lectura y comentarios</strong>. Puedes reaccionar y comentar; la aprobación y el envío los hace alguien con acceso de colaborador.</span></p>
+    {else}
+        <h2 id="h-enviar" class="text-base font-extrabold">Te faltan {$e['n_pendientes']} por revisar</h2>
+        <p class="mt-1 text-sm text-muted">Abre cada contenido, apruébalo o pide cambios. Cuando termines aparecerá aquí el botón para enviar la revisión.</p>
+    {/if}
+</section>
+{/if}
+{/block}

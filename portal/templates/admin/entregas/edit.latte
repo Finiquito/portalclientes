@@ -1,0 +1,172 @@
+{layout $plugin_ui_layout}
+
+{block page_title}{if $entrega}{$entrega['titulo']}{else}Nueva entrega{/if}{/block}
+
+{block content}
+<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css">
+
+<div class="page-header">
+    <h1>{if $entrega}Entrega: {$entrega['titulo']}{else}Nueva entrega{/if}</h1>
+    <a href="{$admin_url('entregas')}" class="btn">Volver</a>
+</div>
+
+{if $flash_success}<div class="alert alert-success">{$flash_success}</div>{/if}
+{if $flash_error}<div class="alert alert-error">{$flash_error}</div>{/if}
+
+<div class="card">
+    <form method="post" action="{if $entrega}{$admin_url('entregas/' . $entrega['id'])}{else}{$admin_url('entregas')}{/if}"{if !$entrega} enctype="multipart/form-data"{/if}>
+        <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+
+        {if !$entrega}
+        <label class="form-label">Proyecto</label>
+        <select name="proyecto_id" class="form-input" required>
+            {foreach $proyectos as $p}
+                <option value="{$p['id']}">{$p['cliente_nombre']} · {$p['nombre']}</option>
+            {/foreach}
+        </select>
+        {else}
+        <p class="pa-muted">{$entrega['cliente_nombre']} · {$entrega['proyecto_nombre']}</p>
+        {/if}
+
+        <label class="form-label mt-3">Título</label>
+        <input type="text" name="titulo" class="form-input" value="{$entrega['titulo'] ?? ''}" {if $entrega}required{/if} maxlength="255" placeholder="Ej.: Grilla de octubre · Instagram">
+        {if !$entrega}<p class="form-hint mt-1">Si subes una planilla abajo, puedes dejarlo vacío: usa el nombre del archivo.</p>{/if}
+
+        <label class="form-label mt-3">Mensaje para el cliente (opcional)</label>
+        <textarea name="mensaje" class="form-input" rows="3" placeholder="Contexto de lo que va a revisar, qué necesitas de él, etc.">{$entrega['mensaje'] ?? ''}</textarea>
+
+        <label class="form-label mt-3">Fecha límite de respuesta</label>
+        <input type="date" name="fecha_limite" class="form-input" value="{if $entrega && $entrega['fecha_limite']}{substr($entrega['fecha_limite'], 0, 10)}{/if}">
+
+        {if !$entrega}
+        <label class="form-label mt-3">Planilla o archivos (opcional)</label>
+        <input type="file" name="archivos[]" multiple class="form-input">
+        <p class="form-hint mt-1">Sube un <strong>.csv</strong> y se crea un contenido por cada fila; o varias imágenes y se crea uno por imagen. El cliente y el proyecto son los que elegiste arriba: la planilla no los pide. <a href="{$admin_url('entregas/plantilla')}">Descargar plantilla</a></p>
+        {/if}
+
+        <p class="mt-4"><button type="submit" class="btn btn-primary">{if $entrega}Guardar{else}Crear{/if}</button></p>
+    </form>
+</div>
+
+{if $entrega}
+{var $st = $estados[$entrega['estado']] ?? ['—', 'muted']}
+{var $tono = ['muted' => '', 'ok' => 'ok', 'warn' => 'warn', 'danger' => 'danger', 'info' => 'info'][$st[1]] ?? ''}
+<div class="card mt-4">
+    <div class="pa-row">
+        <h2 class="pa-h2" style="margin:0">Estado</h2>
+        <span class="pa-chip {$tono}">{$st[0]}</span>
+        <span class="pa-muted">{$entrega['n_aprobados']} aprobados · {$entrega['n_cambios']} con cambios · {$entrega['n_pendientes']} por revisar</span>
+    </div>
+    {if $entrega['estado'] === 'respondida' || $entrega['estado'] === 'aprobada'}
+        <p class="pa-muted mt-2">{$entrega['respondida_por']} envió su revisión {$fmt->rel($entrega['respondida_en'])}. {if $entrega['estado'] === 'respondida'}Abre cada contenido con cambios, responde y sube una versión nueva: la entrega se reabre sola.{/if}</p>
+    {/if}
+    <div class="pa-row mt-3">
+        {if $entrega['estado'] === 'borrador'}
+            <form method="post" action="{$admin_url('entregas/' . $entrega['id'] . '/publicar')}">
+                <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+                <label class="pa-check" style="margin:0 .75rem 0 0"><input type="checkbox" name="avisar" value="1" checked> <span>Avisar al cliente por correo</span></label>
+                <button type="submit" class="btn btn-primary" style="margin-top:.5rem">Publicar para el cliente</button>
+            </form>
+        {else}
+            <form method="post" action="{$admin_url('entregas/' . $entrega['id'] . '/borrador')}" onsubmit="return confirm('El cliente dejará de ver esta entrega. ¿Continuar?');">
+                <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+                <button type="submit" class="btn">Volver a borrador</button>
+            </form>
+        {/if}
+        <form method="post" action="{$admin_url('entregas/' . $entrega['id'] . '/borrar')}" onsubmit="return confirm('¿Eliminar esta entrega con todos sus contenidos, archivos y comentarios?');">
+            <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+            <button type="submit" class="btn btn-danger">Eliminar entrega</button>
+        </form>
+    </div>
+</div>
+
+<div class="card mt-4" id="contenidos">
+    <h2 class="pa-h2">Contenidos <span class="pa-chip">{count($contenidos)}</span></h2>
+
+    {if empty($contenidos)}
+        <p class="pa-muted">Aún no hay contenidos. Agrégalos abajo: uno por uno, o sube muchas imágenes de una vez.</p>
+    {else}
+    <ul class="pa-files">
+        {foreach $contenidos as $c}
+        {var $cs = $estadosContenido[$c['estado']] ?? ['—', 'muted']}
+        {var $ct = ['muted' => '', 'ok' => 'ok', 'warn' => 'warn', 'danger' => 'danger', 'info' => 'info'][$cs[1]] ?? ''}
+        {var $rc = $resumenReacc[$c['id']] ?? null}
+        <li class="pa-file">
+            {if isset($portadas[$c['id']])}
+                <img src="{$admin_url('archivos/' . $portadas[$c['id']])}?t=1" alt="" loading="lazy">
+            {else}
+                <span class="pa-ico">{$c['tipo']}</span>
+            {/if}
+            <div class="pa-meta">
+                <a class="pa-name" href="{$admin_url('contenidos/' . $c['id'])}">{$c['titulo']}</a>
+                <span class="pa-muted">
+                    {$tipos[$c['tipo']][0] ?? $c['tipo']} · v{$c['version_actual']}{if $c['fecha_publicacion']} · publica {$fmt->fecha($c['fecha_publicacion'])}{/if}
+                    · <span class="pa-chip {$ct}">{$cs[0]}</span>
+                    {if $rc && $rc['total'] > 0}
+                        {foreach $reacciones as $k => $r}{if $rc['conteo'][$k] > 0} {$r[0]}{$rc['conteo'][$k]}{/if}{/foreach}
+                    {/if}
+                </span>
+            </div>
+            <form method="post" action="{$admin_url('contenidos/' . $c['id'] . '/mover')}"><input type="hidden" name="_csrf_token" value="{$csrf_token}"><input type="hidden" name="dir" value="arriba"><button type="submit" class="btn btn-sm" aria-label="Subir">↑</button></form>
+            <form method="post" action="{$admin_url('contenidos/' . $c['id'] . '/mover')}"><input type="hidden" name="_csrf_token" value="{$csrf_token}"><input type="hidden" name="dir" value="abajo"><button type="submit" class="btn btn-sm" aria-label="Bajar">↓</button></form>
+            <a href="{$admin_url('contenidos/' . $c['id'])}" class="btn btn-sm">Abrir</a>
+        </li>
+        {/foreach}
+    </ul>
+    {/if}
+</div>
+
+<div class="pa-grid-2 mt-4">
+    <div class="card">
+        <h2 class="pa-h2">Agregar un contenido</h2>
+        <form method="post" action="{$admin_url('entregas/' . $entrega['id'] . '/contenidos')}" enctype="multipart/form-data">
+            <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+            <label class="form-label">Tipo</label>
+            <select name="tipo" class="form-input">
+                {foreach $tipos as $k => $t}<option value="{$k}">{$t[0]}</option>{/foreach}
+            </select>
+            <p class="form-hint mt-1">El tipo decide cómo lo ve el cliente (post de Instagram, video vertical, logo sobre fondos, documento…).</p>
+            <label class="form-label mt-3">Título</label>
+            <input type="text" name="titulo" class="form-input" maxlength="255" placeholder="Ej.: Post lanzamiento">
+            <div class="pa-grid-2">
+                <div><label class="form-label mt-3">Cuenta (redes)</label><input type="text" name="cuenta" class="form-input" maxlength="120" placeholder="@tumarca"></div>
+                <div><label class="form-label mt-3">Fecha de publicación</label><input type="date" name="fecha_publicacion" class="form-input"></div>
+            </div>
+            <label class="form-label mt-3">Copy / texto</label>
+            <textarea name="copy" class="form-input" rows="4" placeholder="El texto del post, con hashtags."></textarea>
+            <label class="form-label mt-3">Link (video, prototipo, sitio)</label>
+            <input type="url" name="enlace" class="form-input" maxlength="500" placeholder="https://…">
+            <label class="form-label mt-3">Archivos (hasta 10, {$maxMb} MB c/u)</label>
+            <input type="file" name="archivos[]" multiple class="form-input">
+            <p class="form-hint mt-1">Para un carrusel, sube todas las láminas juntas: se muestran en el orden en que las elijas. Una planilla .csv no va aquí: usa «Subir archivos o planilla».</p>
+            <p class="mt-3"><button type="submit" class="btn btn-primary">Agregar</button></p>
+        </form>
+    </div>
+    <div class="card">
+        <h2 class="pa-h2">Subir archivos o planilla</h2>
+        <p class="pa-muted">Todo lo masivo va aquí. Una <strong>planilla .csv</strong> se despliega en un contenido por fila (los datos de esta entrega ya están, la planilla no pide cliente ni proyecto). Cada <strong>imagen, video o PDF</strong> se convierte en su propio contenido. <a href="{$admin_url('entregas/plantilla')}">Descargar plantilla</a></p>
+        <form method="post" action="{$admin_url('entregas/' . $entrega['id'] . '/masivo')}" enctype="multipart/form-data">
+            <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+            <label class="form-label mt-3">Archivos (hasta 30, {$maxMb} MB c/u)</label>
+            <input type="file" name="archivos[]" multiple class="form-input" required>
+            <div class="pa-grid-2">
+                <div>
+                    <label class="form-label mt-3">Tipo para los archivos</label>
+                    <select name="tipo" class="form-input">
+                        <option value="">Automático según el archivo</option>
+                        {foreach $tipos as $k => $t}<option value="{$k}">{$t[0]}</option>{/foreach}
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label mt-3">Cuenta (redes)</label>
+                    <input type="text" name="cuenta" class="form-input" maxlength="120" placeholder="@tumarca">
+                </div>
+            </div>
+            <p class="form-hint mt-1">En una planilla, el tipo y la cuenta que vengan en cada fila mandan sobre estos.</p>
+            <p class="mt-3"><button type="submit" class="btn btn-primary">Subir y crear contenidos</button></p>
+        </form>
+    </div>
+</div>
+
+{/if}
+{/block}

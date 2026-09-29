@@ -1,0 +1,151 @@
+{layout $plugin_ui_layout}
+
+{block page_title}{$c['titulo']}{/block}
+
+{block content}
+<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css">
+
+<div class="page-header">
+    <h1>{$c['titulo']}</h1>
+    <a href="{$admin_url('entregas/' . $c['entrega_id'])}#contenidos" class="btn">Volver a la entrega</a>
+</div>
+
+{if $flash_success}<div class="alert alert-success">{$flash_success}</div>{/if}
+{if $flash_error}<div class="alert alert-error">{$flash_error}</div>{/if}
+
+{var $cs = $estadosContenido[$c['estado']] ?? ['—', 'muted']}
+{var $ct = ['muted' => '', 'ok' => 'ok', 'warn' => 'warn', 'danger' => 'danger', 'info' => 'info'][$cs[1]] ?? ''}
+
+<div class="card">
+    <p class="pa-row"><span class="pa-chip brand">{$tipos[$c['tipo']][0] ?? $c['tipo']}</span> <span class="pa-chip {$ct}">{$cs[0]}</span> <span class="pa-muted">Entrega: {$c['entrega_titulo']} · versión vigente v{$c['version_actual']}</span></p>
+    <form method="post" action="{$admin_url('contenidos/' . $c['id'])}">
+        <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+        <div class="pa-grid-2">
+            <div>
+                <label class="form-label mt-3">Tipo</label>
+                <select name="tipo" class="form-input">
+                    {foreach $tipos as $k => $t}<option value="{$k}" {if $c['tipo'] === $k}selected{/if}>{$t[0]}</option>{/foreach}
+                </select>
+            </div>
+            <div>
+                <label class="form-label mt-3">Título</label>
+                <input type="text" name="titulo" class="form-input" value="{$c['titulo']}" required maxlength="255">
+            </div>
+            <div>
+                <label class="form-label mt-3">Cuenta (redes)</label>
+                <input type="text" name="cuenta" class="form-input" value="{$c['cuenta']}" maxlength="120">
+            </div>
+            <div>
+                <label class="form-label mt-3">Fecha de publicación</label>
+                <input type="date" name="fecha_publicacion" class="form-input" value="{if $c['fecha_publicacion']}{substr($c['fecha_publicacion'], 0, 10)}{/if}">
+            </div>
+        </div>
+        <label class="form-label mt-3">Copy / texto (versión vigente)</label>
+        <textarea name="copy" class="form-input" rows="4">{$c['copy']}</textarea>
+        <label class="form-label mt-3">Link (versión vigente)</label>
+        <p class="pa-muted" style="margin:0 0 .4rem">Se ve dentro del portal: YouTube, Vimeo, Loom, Google Drive (video), Google Slides, Canva y Figma. Para video, lo más limpio es subir el mp4. Presentaciones: sube el PDF exportado o pega el link.</p>
+        <input type="url" name="enlace" class="form-input" value="{$c['enlace']}" maxlength="500" placeholder="https://…">
+        <p class="mt-4"><button type="submit" class="btn btn-primary">Guardar</button></p>
+    </form>
+</div>
+
+<div class="card mt-4" id="versiones">
+    <h2 class="pa-h2">Versiones <span class="pa-chip">{count($versiones)}</span></h2>
+    {foreach $versiones as $v}
+    <div style="border:1px solid #e2e8f0;border-radius:.75rem;padding:.8rem;margin-bottom:.8rem">
+        <p class="pa-row" style="margin:0 0 .5rem"><strong>v{$v['numero']}</strong>
+            {if $v['numero'] === (int) $c['version_actual']}<span class="pa-chip brand">vigente</span>{/if}
+            {if $v['decision'] === 'aprobado'}<span class="pa-chip ok">Aprobada por {$v['decidido_por_nombre']}</span>{elseif $v['decision'] === 'cambios'}<span class="pa-chip danger">Cambios pedidos por {$v['decidido_por_nombre']}</span>{/if}
+            {if $v['reacciones']['total'] > 0}<span>{foreach $reacciones as $k => $r}{if $v['reacciones']['conteo'][$k] > 0}{$r[0]}{$v['reacciones']['conteo'][$k]} {/if}{/foreach}</span>{/if}
+            <span class="pa-muted">{$fmt->rel($v['created_at'])}</span>
+        </p>
+        {if $v['nota']}<p class="pa-muted">Nota: {$v['nota']}</p>{/if}
+        {if $v['enlace']}<p class="pa-muted">Link: <a href="{$v['enlace']}" target="_blank" rel="noopener noreferrer">{$v['enlace']}</a></p>{/if}
+        {if $v['archivos']}
+        <ul class="pa-files">
+            {foreach $v['archivos'] as $a}
+            <li class="pa-file">
+                {if $fmt->esImagen($a['mime'])}
+                    <a href="{$admin_url('archivos/' . $a['id'])}?i=1" target="_blank" rel="noopener"><img src="{$admin_url('archivos/' . $a['id'])}?t=1" alt="" loading="lazy"></a>
+                {else}
+                    <span class="pa-ico">{$fmt->extension($a['nombre_original'])}</span>
+                {/if}
+                <div class="pa-meta">
+                    <a class="pa-name" href="{$admin_url('archivos/' . $a['id'])}" target="_blank" rel="noopener">{$a['nombre_original']}</a>
+                    <span class="pa-muted">{$fmt->tamano($a['tamano'])}</span>
+                    {if in_array(strtolower($fmt->extension($a['nombre_original'])), ['ppt', 'pptx', 'odp', 'key', 'doc', 'docx', 'xls', 'xlsx'], true)}<span class="pa-muted" style="color:#b45309">El cliente no puede verlo en el portal, sólo descargarlo. Sube el PDF exportado, o pega un link de Google Slides / Canva.</span>{/if}
+                </div>
+                <form method="post" action="{$admin_url('archivos/' . $a['id'] . '/borrar')}" onsubmit="return confirm('¿Eliminar este archivo?');">
+                    <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+                    <button type="submit" class="btn btn-sm btn-danger">Eliminar</button>
+                </form>
+            </li>
+            {/foreach}
+        </ul>
+        {/if}
+        {if $v['numero'] === (int) $c['version_actual']}
+        <form method="post" action="{$admin_url('contenidos/' . $c['id'] . '/archivos')}" enctype="multipart/form-data">
+            <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+            <label class="form-label">Agregar archivos a esta versión ({$maxMb} MB c/u)</label>
+            <input type="file" name="archivos[]" multiple class="form-input" required>
+            <p class="mt-2"><button type="submit" class="btn btn-sm">Subir</button></p>
+        </form>
+        {/if}
+    </div>
+    {/foreach}
+</div>
+
+<div class="card mt-4">
+    <h2 class="pa-h2">Subir una versión nueva</h2>
+    <p class="pa-muted">Úsalo cuando el cliente pidió cambios: el contenido vuelve a «Por revisar», se conserva todo el historial y la entrega se reabre.</p>
+    <form method="post" action="{$admin_url('contenidos/' . $c['id'] . '/versiones')}" enctype="multipart/form-data">
+        <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+        <label class="form-label mt-3">Qué cambió (nota para el cliente, opcional)</label>
+        <input type="text" name="nota" class="form-input" maxlength="500" placeholder="Ej.: Ajustamos el color y el título.">
+        <label class="form-label mt-3">Copy / texto</label>
+        <textarea name="copy" class="form-input" rows="3">{$c['copy']}</textarea>
+        <label class="form-label mt-3">Link</label>
+        <input type="url" name="enlace" class="form-input" value="{$c['enlace']}" maxlength="500" placeholder="https://…">
+        <label class="form-label mt-3">Archivos (hasta 10, {$maxMb} MB c/u)</label>
+        <input type="file" name="archivos[]" multiple class="form-input">
+        <label class="pa-check"><input type="checkbox" name="avisar" value="1" checked> <span>Avisar al cliente por correo</span></label>
+        <p class="mt-3"><button type="submit" class="btn btn-primary">Publicar versión nueva</button></p>
+    </form>
+</div>
+
+<div class="card mt-4" id="conversacion">
+    <h2 class="pa-h2">Conversación <span class="pa-chip">{count($comentarios)}</span></h2>
+    {if $comentarios}
+    <ul class="pa-thread">
+        {foreach $comentarios as $m}
+        <li class="pa-msg {$m['autor_tipo'] === 'equipo' ? 'equipo' : 'cliente'}">
+            <header>
+                <span><strong>{$m['autor_nombre']}</strong>{if $m['autor_tipo'] !== 'equipo'} (cliente){/if} · {$fmt->rel($m['created_at'])}{if $m['ubicacion']} · página {substr((string) $m['ubicacion'], 1)}{/if}</span>
+                <form method="post" action="{$admin_url('contenidos/' . $c['id'] . '/comentarios/' . $m['id'] . '/borrar')}" onsubmit="return confirm('¿Eliminar este comentario?');">
+                    <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+                    <button type="submit" class="btn btn-sm btn-danger">Eliminar</button>
+                </form>
+            </header>
+            <p>{$m['cuerpo']}</p>
+        </li>
+        {/foreach}
+    </ul>
+    {else}
+        <p class="pa-muted">Todavía no hay comentarios.</p>
+    {/if}
+    <form method="post" action="{$admin_url('contenidos/' . $c['id'] . '/comentarios')}">
+        <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+        <label class="form-label">Responder como «{$firma}»</label>
+        <textarea name="cuerpo" class="form-input" rows="3" required maxlength="4000"></textarea>
+        <label class="pa-check"><input type="checkbox" name="avisar" value="1"> <span>Avisar al cliente por correo</span></label>
+        <p class="mt-3"><button type="submit" class="btn btn-primary">Publicar</button></p>
+    </form>
+</div>
+
+<div class="card mt-4">
+    <form method="post" action="{$admin_url('contenidos/' . $c['id'] . '/borrar')}" onsubmit="return confirm('¿Eliminar este contenido con sus versiones, archivos y comentarios?');">
+        <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+        <button type="submit" class="btn btn-danger">Eliminar contenido</button>
+    </form>
+</div>
+{/block}

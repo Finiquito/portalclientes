@@ -1,0 +1,204 @@
+{layout $plugin_ui_layout}
+
+{block page_title}{$reunion['titulo']}{/block}
+
+{block content}
+<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css">
+{var $fecha10 = substr((string) $reunion['fecha'], 0, 10)}
+{var $hora = strlen((string) $reunion['fecha']) > 10 ? substr((string) $reunion['fecha'], 11, 5) : ''}
+{var $pf10 = substr((string) $reunion['prox_fecha'], 0, 10)}
+{var $ph = strlen((string) $reunion['prox_fecha']) > 10 ? substr((string) $reunion['prox_fecha'], 11, 5) : ''}
+
+<div class="page-header">
+    <h1>{$reunion['titulo']}</h1>
+    <a href="{$admin_url('reuniones')}" class="btn">Volver</a>
+</div>
+<p class="pa-muted" style="margin:-.5rem 0 1rem">{$reunion['cliente_nombre']} · {$reunion['proyecto_nombre']}</p>
+
+{if $flash_success}<div class="alert alert-success">{$flash_success}</div>{/if}
+{if $flash_error}<div class="alert alert-error">{$flash_error}</div>{/if}
+
+<form method="post" action="{$admin_url('reuniones/' . $reunion['id'])}" class="pa-stack">
+    <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+    {* Botón por defecto (Enter en un campo): guarda, nunca dispara la IA. *}
+    <button type="submit" name="accion" value="guardar" class="pa-hidden-submit" tabindex="-1" aria-hidden="true">Guardar</button>
+
+    {* 1. Datos y Meet *}
+    <div class="card">
+        <h2 class="pa-h2">1 · Datos de la reunión</h2>
+        <label class="form-label">Proyecto</label>
+        <select name="proyecto_id" class="form-input" required>
+            {foreach $proyectos as $p}
+                <option value="{$p['id']}" {if $reunion['proyecto_id'] === $p['id']}selected{/if}>{$p['cliente_nombre']} · {$p['nombre']}</option>
+            {/foreach}
+        </select>
+        <label class="form-label mt-3">Título</label>
+        <input type="text" name="titulo" class="form-input" value="{$reunion['titulo']}" required maxlength="255">
+        <div class="pa-inline mt-3">
+            <div><label class="form-label">Fecha</label><input type="date" name="fecha_d" class="form-input" value="{$fecha10}"></div>
+            <div><label class="form-label">Hora (Chile)</label><input type="time" name="fecha_t" class="form-input" value="{$hora}"></div>
+            <div><label class="form-label">Duración (min)</label><input type="number" name="duracion_min" class="form-input" value="{$reunion['duracion_min']}" min="5" max="600" style="max-width:7rem"></div>
+        </div>
+        <label class="form-label mt-3">Link de Google Meet</label>
+        <input type="url" name="enlace_meet" class="form-input" value="{$reunion['enlace_meet']}" maxlength="500" placeholder="https://meet.google.com/…">
+        <p class="form-hint mt-1">
+            <a href="https://meet.google.com/new" target="_blank" rel="noopener noreferrer">Crear una reunión de Meet</a>
+            {if $gcal} · <a href="{$gcal}" target="_blank" rel="noopener noreferrer">Crear evento en Google Calendar</a> (rellenado; ahí puedes añadir Meet e invitar al cliente){/if}
+        </p>
+        <label class="form-label mt-3">Grabación (opcional)</label>
+        <input type="url" name="enlace_grabacion" class="form-input" value="{$reunion['enlace_grabacion']}" maxlength="500" placeholder="https://drive.google.com/…">
+        <label class="pa-check"><input type="checkbox" name="publicada" value="1" {if $reunion['publicada']}checked{/if}> Visible para el cliente en «Reuniones»</label>
+    </div>
+
+    {* 2. Transcripción *}
+    <div class="card">
+        <h2 class="pa-h2">2 · Transcripción o notas <span class="pa-lock">🔒 sólo el equipo la ve</span></h2>
+        <textarea name="transcripcion" class="form-input" rows="8" placeholder="Pega aquí la transcripción de la reunión (Meet, Gemini, Fireflies, Otter…) o tus notas.">{$reunion['transcripcion']}</textarea>
+        {if $iaActiva}
+            <div class="pa-ia mt-3">
+                <p style="margin:0 0 .5rem"><strong>Analizar con IA</strong> — propone resumen, acuerdos, tareas y próxima reunión. Es sólo una propuesta: tú la revisas abajo y decides qué se crea y qué ve el cliente.</p>
+                <button type="submit" name="accion" value="analizar" class="btn btn-primary"
+                        onclick="return !document.querySelector('[name=resumen]').value.trim() || confirm('Esto reemplaza el resumen, los acuerdos, el análisis y las tareas propuestas que aún no hayas creado. ¿Continuar?');">✨ Analizar con IA</button>
+                <span class="pa-muted">Tarda entre 10 y 60 segundos; verás el avance en pantalla. El texto se envía al proveedor de IA que elegiste en Ajustes.</span>
+                {if $reunion['ia_generado_en']}<p class="pa-muted" style="margin:.5rem 0 0">Última propuesta: {$fmt->rel($reunion['ia_generado_en'])} · {$reunion['ia_modelo']}</p>{/if}
+            </div>
+        {else}
+            <p class="form-hint mt-2">La IA es opcional y hoy no está conectada. Puedes escribir el resumen y las tareas a mano, o activarla con una clave en <a href="{$admin_url('ajustes')}">Ajustes</a>.</p>
+        {/if}
+    </div>
+
+    {* 3. Resumen *}
+    <div class="card">
+        <h2 class="pa-h2">3 · Resumen para el cliente</h2>
+        <label class="form-label">Resumen</label>
+        <textarea name="resumen" class="form-input" rows="6" placeholder="Qué se conversó y qué se decidió.">{$reunion['resumen']}</textarea>
+        <label class="form-label mt-3">Acuerdos <span class="pa-muted">(uno por línea)</span></label>
+        <textarea name="acuerdos" class="form-input" rows="4">{$reunion['acuerdos']}</textarea>
+        <label class="pa-check"><input type="checkbox" name="resumen_publicado" value="1" {if $reunion['resumen_publicado']}checked{/if}> Publicar resumen, acuerdos y grabación al cliente <span class="pa-muted">(requiere que la reunión esté visible)</span></label>
+        <label class="form-label mt-3">Análisis interno <span class="pa-lock">🔒 el cliente nunca lo ve</span></label>
+        <textarea name="analisis" class="form-input" rows="4" placeholder="Riesgos, dudas del cliente, temas pendientes…">{$reunion['analisis']}</textarea>
+    </div>
+
+    {* 4. Tareas *}
+    <div class="card">
+        <h2 class="pa-h2">4 · Tareas propuestas</h2>
+        <p class="form-hint" style="margin-bottom:.75rem">Marca las que quieres crear. «Visible» decide si el cliente la ve (lo asignado al cliente siempre se ve). Marca «Quitar» en las que no sirven: se descartan al guardar o al crear (puedes marcar varias). Nada se crea hasta que apretes «Crear lo marcado».</p>
+        <div style="overflow-x:auto">
+        <table class="pa-prop">
+            <thead><tr><th style="width:2.2rem">Crear</th><th>Tarea</th><th style="width:8rem">Responsable</th><th style="width:9.5rem">Vence</th><th style="width:5.5rem">Visible</th><th style="width:3.5rem">Quitar</th></tr></thead>
+            <tbody>
+            {foreach $propuestas as $q}
+                {if $q['estado'] === 'propuesta'}
+                <tr>
+                    <td><input type="checkbox" name="aprobar[]" value="{$q['id']}" aria-label="Crear esta tarea" {if $q['origen'] !== 'ia'}checked{/if}></td>
+                    <td>
+                        <input type="text" name="prop[{$q['id']}][titulo]" class="form-input" value="{$q['titulo']}" maxlength="255">
+                        <input type="text" name="prop[{$q['id']}][descripcion]" class="form-input" value="{$q['descripcion']}" placeholder="Detalle (opcional)" style="margin-top:.3rem;font-size:.85rem">
+                        {if $q['origen'] === 'ia'}<span class="pa-chip brand" style="margin-top:.3rem">✨ sugerida por IA</span>{/if}
+                    </td>
+                    <td><select name="prop[{$q['id']}][asignado]" class="form-input"><option value="equipo" {if $q['asignado'] === 'equipo'}selected{/if}>Equipo</option><option value="cliente" {if $q['asignado'] === 'cliente'}selected{/if}>Cliente</option></select></td>
+                    <td><input type="date" name="prop[{$q['id']}][fecha_vencimiento]" class="form-input" value="{$q['fecha_vencimiento']}"></td>
+                    <td><label><input type="checkbox" name="prop[{$q['id']}][visible_cliente]" value="1" {if $q['visible_cliente']}checked{/if}> sí</label></td>
+                    <td style="text-align:center"><input type="checkbox" name="quitar[]" value="{$q['id']}" aria-label="Quitar esta propuesta al guardar" title="Se descarta al guardar"></td>
+                </tr>
+                {else}
+                <tr class="pa-done">
+                    <td>✓</td>
+                    <td>{$q['titulo']} <span class="pa-chip ok">Creada</span>{if $q['tarea_id']} <a href="{$admin_url('tareas/' . $q['tarea_id'])}">ver tarea</a>{/if}</td>
+                    <td>{$q['asignado'] === 'cliente' ? 'Cliente' : 'Equipo'}</td>
+                    <td>{$q['fecha_vencimiento']}</td>
+                    <td>{$q['visible_cliente'] || $q['asignado'] === 'cliente' ? 'sí' : 'no'}</td>
+                    <td></td>
+                </tr>
+                {/if}
+            {/foreach}
+                <tr>
+                    <td>＋</td>
+                    <td><input type="text" name="nueva[titulo]" class="form-input" placeholder="Agregar una tarea a mano…" maxlength="255"></td>
+                    <td><select name="nueva[asignado]" class="form-input"><option value="equipo">Equipo</option><option value="cliente">Cliente</option></select></td>
+                    <td><input type="date" name="nueva[fecha_vencimiento]" class="form-input"></td>
+                    <td><label><input type="checkbox" name="nueva[visible_cliente]" value="1"> sí</label></td>
+                    <td></td>
+                </tr>
+            </tbody>
+        </table>
+        </div>
+    </div>
+
+    {* 5. Próxima reunión *}
+    <div class="card">
+        <h2 class="pa-h2">5 · Próxima reunión</h2>
+        {if $proxima}
+            <p>Ya agendada: <a href="{$admin_url('reuniones/' . $proxima['id'])}">{$proxima['titulo']}</a> · {$fmt->fechaLarga($proxima['fecha'])} {$fmt->hora($proxima['fecha'])}</p>
+            <input type="hidden" name="prox_fecha_d" value="{$pf10}"><input type="hidden" name="prox_fecha_t" value="{$ph}"><input type="hidden" name="prox_titulo" value="{$reunion['prox_titulo']}">
+        {else}
+            <div class="pa-inline">
+                <div><label class="form-label">Fecha</label><input type="date" name="prox_fecha_d" class="form-input" value="{$pf10}"></div>
+                <div><label class="form-label">Hora (Chile)</label><input type="time" name="prox_fecha_t" class="form-input" value="{$ph}"></div>
+                <div style="flex:1;min-width:14rem"><label class="form-label">Tema</label><input type="text" name="prox_titulo" class="form-input" value="{$reunion['prox_titulo']}" maxlength="255"></div>
+            </div>
+            <label class="pa-check"><input type="checkbox" name="agendar_prox" value="1"> Agendarla ahora como reunión de este proyecto (después le pones el link de Meet)</label>
+            <label class="pa-check" style="margin-top:.35rem"><input type="checkbox" name="prox_publicar" value="1"> Mostrársela al cliente</label>
+        {/if}
+    </div>
+
+    {* Acciones *}
+    <div class="card">
+        <label class="pa-check" style="margin-top:0"><input type="checkbox" name="avisar" value="1"> Avisar por correo al cliente de lo que quede visible (resumen, tareas, próxima reunión)</label>
+        <div class="pa-inline mt-3">
+            <button type="submit" name="accion" value="aplicar" class="btn btn-primary">Crear lo marcado y aplicar</button>
+            <button type="submit" name="accion" value="guardar" class="btn">Guardar sin aplicar</button>
+        </div>
+    </div>
+</form>
+
+{if $iaActiva}
+<div id="pa-ia-espera" hidden role="status" aria-live="polite">
+    <div class="pa-ia-caja">
+        <div class="pa-ia-spin" aria-hidden="true"></div>
+        <p class="pa-ia-titulo">La IA está trabajando…</p>
+        <p class="pa-ia-paso" id="pa-ia-paso">Leyendo la transcripción</p>
+        <div class="pa-ia-barra" aria-hidden="true"><span></span></div>
+        <p class="pa-ia-nota"><span id="pa-ia-seg">0</span> s · No cierres ni recargues esta página; al terminar te lleva de vuelta con la propuesta lista para revisar.</p>
+    </div>
+</div>
+<style n:syntax="off">
+    #pa-ia-espera { position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center; background: rgba(15, 23, 42, .55); backdrop-filter: blur(2px); padding: 1rem; }
+    #pa-ia-espera[hidden] { display: none; }
+    .pa-ia-caja { background: #fff; color: #0f172a; border-radius: 1rem; padding: 1.75rem 2rem; max-width: 26rem; width: 100%; text-align: center; box-shadow: 0 20px 50px rgba(0, 0, 0, .3); }
+    .pa-ia-spin { width: 2.6rem; height: 2.6rem; margin: 0 auto 1rem; border: 4px solid #e2e8f0; border-top-color: #6366f1; border-radius: 50%; animation: pa-ia-gira 0.9s linear infinite; }
+    .pa-ia-titulo { font-weight: 800; font-size: 1.1rem; margin: 0 0 .25rem; }
+    .pa-ia-paso { margin: 0 0 1rem; color: #475569; min-height: 1.4em; }
+    .pa-ia-barra { height: .4rem; background: #e2e8f0; border-radius: 99px; overflow: hidden; }
+    .pa-ia-barra span { display: block; height: 100%; width: 35%; background: #6366f1; border-radius: 99px; animation: pa-ia-barra 1.4s ease-in-out infinite; }
+    .pa-ia-nota { margin: .9rem 0 0; font-size: .8rem; color: #64748b; }
+    @keyframes pa-ia-gira { to { transform: rotate(360deg); } }
+    @keyframes pa-ia-barra { 0% { margin-left: -35%; } 100% { margin-left: 100%; } }
+    @media (prefers-reduced-motion: reduce) { .pa-ia-spin, .pa-ia-barra span { animation-duration: 3s; } }
+</style>
+<script n:syntax="off">
+    (function () {
+        var form = document.querySelector('form.pa-stack'), caja = document.getElementById('pa-ia-espera');
+        if (!form || !caja) return;
+        var pasos = [[0, 'Leyendo la transcripción'], [8, 'Identificando acuerdos y decisiones'], [18, 'Armando las tareas propuestas'], [30, 'Revisando fechas y la próxima reunión'], [45, 'Sigue trabajando; las transcripciones largas tardan más']];
+        form.addEventListener('submit', function (e) {
+            var b = e.submitter;
+            if (!b || b.value !== 'analizar' || e.defaultPrevented) return;
+            caja.hidden = false;
+            var t0 = Date.now(), seg = document.getElementById('pa-ia-seg'), paso = document.getElementById('pa-ia-paso');
+            setInterval(function () {
+                var s = Math.floor((Date.now() - t0) / 1000);
+                seg.textContent = s;
+                for (var i = pasos.length - 1; i >= 0; i--) { if (s >= pasos[i][0]) { paso.textContent = pasos[i][1]; break; } }
+            }, 500);
+        });
+        window.addEventListener('pageshow', function () { caja.hidden = true; });
+    })();
+</script>
+{/if}
+
+<form method="post" action="{$admin_url('reuniones/' . $reunion['id'] . '/borrar')}" onsubmit="return confirm('¿Eliminar esta reunión? Las tareas ya creadas se conservan.');" class="mt-4">
+    <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+    <button type="submit" class="btn btn-sm btn-danger">Eliminar reunión</button>
+</form>
+{/block}
