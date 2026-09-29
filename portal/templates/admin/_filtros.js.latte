@@ -1,0 +1,22 @@
+{* Filtros que se aplican solos al cambiar un selector, y selección para acciones en lote. *}
+<script n:syntax="off">
+(function () {
+  document.querySelectorAll('form[data-auto] select').forEach(function (s) {
+    s.addEventListener('change', function () { s.form.submit(); });
+  });
+  var barra = document.querySelector('[data-lote]');
+  if (!barra) return;
+  var n = barra.querySelector('[data-lote-n]');
+  var cajas = Array.prototype.slice.call(document.querySelectorAll('input[name="ids[]"]'));
+  var todas = document.querySelector('[data-lote-todas]');
+  function contar() {
+    var k = cajas.filter(function (c) { return c.checked; }).length;
+    n.textContent = k;
+    barra.hidden = k === 0;
+    if (todas) { todas.checked = k > 0 && k === cajas.length; todas.indeterminate = k > 0 && k < cajas.length; }
+  }
+  cajas.forEach(function (c) { c.addEventListener('change', contar); });
+  if (todas) todas.addEventListener('change', function () { cajas.forEach(function (c) { c.checked = todas.checked; }); contar(); });
+  contar();
+})();
+</script>

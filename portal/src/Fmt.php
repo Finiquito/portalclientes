@@ -210,6 +210,27 @@ final class Fmt
         return $mapa;
     }
 
+    /**
+     * Color de todos los proyectos, calculado igual que en el portal de cada cliente
+     * (por cliente, en orden de creación y lejos de su color de marca): el punto que ve
+     * el equipo es el mismo que ve el cliente.
+     *
+     * @return array<string, string> proyecto_id => #rrggbb
+     */
+    public static function coloresTodos(\PDO $pdo): array
+    {
+        $porCliente = [];
+        foreach ($pdo->query('SELECT id, cliente_id FROM portal_proyectos ORDER BY created_at, id')->fetchAll() as $p) {
+            $porCliente[(string) $p['cliente_id']][] = $p;
+        }
+        $aj = new AjustesService($pdo);
+        $mapa = [];
+        foreach ($porCliente as $cid => $lista) {
+            $mapa += self::coloresProyectos($lista, AjustesService::colorValido($aj->get('cliente', (string) $cid, 'color')));
+        }
+        return $mapa;
+    }
+
     public function iniciales(string $nombre): string
     {
         $partes = preg_split('/\s+/u', trim($nombre)) ?: [];

@@ -3,51 +3,78 @@
 {block page_title}Reuniones{/block}
 
 {block content}
-<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css">
+<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=2">
 <div class="page-header">
     <h1>Reuniones</h1>
-    <a href="{$admin_url('reuniones/nuevo')}" class="btn btn-primary">Nueva reunión</a>
+    <a href="{$admin_url('reuniones/nuevo')}{if $filtros->get('proyecto')}?proyecto_id={$filtros->get('proyecto')}{/if}" class="btn btn-primary">Nueva reunión</a>
 </div>
 
 {if $flash_success}<div class="alert alert-success">{$flash_success}</div>{/if}
 {if $flash_error}<div class="alert alert-error">{$flash_error}</div>{/if}
 
+<div class="pa-filtros">
+    <div class="pa-pills" role="navigation" aria-label="Cuándo">
+        {foreach $cuandos as $k => $txt}
+            <a href="{$filtros->url(['cuando' => $k])}" class="pa-pill" {if $filtros->es('cuando', $k)}aria-current="true"{/if}>{$txt} <span class="pa-n">{$conteos[$k]}</span></a>
+        {/foreach}
+    </div>
+    <form method="get" action="{$filtros->url(['estado' => '', 'proyecto' => ''])}" class="pa-selects" data-auto>
+        <input type="hidden" name="cuando" value="{$filtros->get('cuando')}">
+        <label for="f-proy">Proyecto</label>
+        <select id="f-proy" name="proyecto" class="form-input" style="width:auto">
+            <option value="">Todos los proyectos</option>
+            {foreach $proyectosF as $p}
+                <option value="{$p['id']}" {if $filtros->es('proyecto', $p['id'])}selected{/if}>{$p['cliente_nombre']} · {$p['nombre']}</option>
+            {/foreach}
+        </select>
+        <label for="f-estado">Estado</label>
+        <select id="f-estado" name="estado" class="form-input" style="width:auto">
+            <option value="">Cualquiera</option>
+            {foreach $estadosF as $k => $txt}
+                <option value="{$k}" {if $filtros->es('estado', $k)}selected{/if}>{$txt}</option>
+            {/foreach}
+        </select>
+        <noscript><button type="submit" class="btn btn-sm">Filtrar</button></noscript>
+        {if $filtros->get('proyecto') || $filtros->get('estado')}<a href="{$filtros->url(['proyecto' => '', 'estado' => ''])}" class="pa-muted">Quitar filtros</a>{/if}
+    </form>
+</div>
+
 {if empty($reuniones)}
     <div class="card">
-        <p class="text-slate-500">Todavía no hay reuniones.</p>
+        <p class="pa-muted" style="margin:0">{if $conteos['todas'] === 0 && !$filtros->get('proyecto') && !$filtros->get('estado')}Todavía no hay reuniones.{elseif $filtros->es('cuando', 'proximas')}No hay reuniones próximas con estos filtros.{else}No hay reuniones con estos filtros.{/if}</p>
     </div>
 {else}
-<div class="card">
+<div class="card" style="overflow-x:auto">
     <table class="table">
         <thead>
-            <tr>
-                <th>Título</th>
-                <th>Proyecto</th>
-                <th>Fecha</th>
-                <th>Estado</th>
-                <th></th>
-            </tr>
+            <tr><th>Título</th><th>Proyecto</th><th>Fecha</th><th>Estado</th><th></th></tr>
         </thead>
         <tbody>
         {foreach $reuniones as $r}
-            <tr>
+            <tr {if $r['n_propuestas'] > 0}class="pa-new"{/if}>
                 <td><a href="{$admin_url('reuniones/' . $r['id'])}">{$r['titulo']}</a></td>
-                <td>{$r['proyecto_nombre']}</td>
-                <td>{$fmt->fechaLarga($r['fecha'])} {$fmt->hora($r['fecha'])}</td>
                 <td>
-                    {if !$r['publicada']}<span class="pa-chip">Oculta</span>{elseif $r['resumen_publicado'] && $r['resumen']}<span class="pa-chip ok">Resumen publicado</span>{elseif $r['resumen']}<span class="pa-chip warn">Resumen sin publicar</span>{else}<span class="pa-chip info">Visible</span>{/if}
+                    <span class="pa-proy"><span class="pa-dot" style="background: {($colorProy[$r['proyecto_id']] ?? '#94a3b8')|noescape}" aria-hidden="true"></span>{$r['proyecto_nombre']}</span>
+                    <div class="pa-muted">{$r['cliente_nombre']}</div>
+                </td>
+                <td>{$fmt->fechaLarga($r['fecha'])}<div class="pa-muted">{$fmt->hora($r['fecha'])}</div></td>
+                <td>
+                    {if !$r['publicada']}<span class="pa-chip gris">Oculta</span>{elseif $r['resumen_publicado'] && $r['resumen']}<span class="pa-chip ok">Resumen publicado</span>{elseif $r['resumen']}<span class="pa-chip warn">Resumen sin publicar</span>{else}<span class="pa-chip info">Visible</span>{/if}
                     {if $r['n_propuestas'] > 0}<span class="pa-chip brand">{$r['n_propuestas']} tareas por revisar</span>{/if}
                     {if $r['enlace_meet']}<span class="pa-chip">Meet</span>{/if}
                 </td>
-                <td>
-                    <form method="post" action="{$admin_url('reuniones/' . $r['id'] . '/borrar')}" onsubmit="return confirm('¿Eliminar esta reunión?');">
-                        <input type="hidden" name="_csrf_token" value="{$csrf_token}">
-                        <button type="submit" class="btn btn-sm btn-danger">Eliminar</button>
-                    </form>
-                </td>
+                <td><button type="submit" form="borrar-{$r['id']}" class="btn btn-sm btn-danger">Eliminar</button></td>
             </tr>
         {/foreach}
         </tbody>
     </table>
 </div>
+{foreach $reuniones as $r}
+    <form method="post" action="{$admin_url('reuniones/' . $r['id'] . '/borrar')}" id="borrar-{$r['id']}" onsubmit="return confirm('¿Eliminar esta reunión?');" hidden>
+        <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+    </form>
+{/foreach}
 {/if}
+
+{include '../_filtros.js.latte'}
+{/block}

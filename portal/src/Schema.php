@@ -23,6 +23,7 @@ final class Schema
             'tipo'            => "VARCHAR(16) NOT NULL DEFAULT 'tarea'",
             'completada_en'   => 'VARCHAR(32)',
             'visible_cliente' => 'SMALLINT NOT NULL DEFAULT 1',
+            'archivada'       => 'SMALLINT NOT NULL DEFAULT 0',
         ],
         'portal_archivos' => [
             'orden' => 'INTEGER NOT NULL DEFAULT 0',

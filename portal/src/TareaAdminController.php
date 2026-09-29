@@ -117,14 +117,143 @@ class TareaAdminController
         ] + $extra;
     }
 
+    /** Grupos de estado de la lista (pastillas). «archivadas» va al final, en gris. */
+    public const FILTRO_ESTADOS = [
+        'abiertas'    => 'Abiertas',
+        'pendiente'   => 'Pendientes',
+        'en_progreso' => 'En progreso',
+        'entregada'   => 'En revisión',
+        'cambios'     => 'Cambios pedidos',
+        'hecha'       => 'Listas',
+        'todas'       => 'Todas',
+        'archivadas'  => 'Archivadas',
+    ];
+
+    public const FILTRO_ORDEN = [
+        'vence'    => 'Fecha límite',
+        'turno'    => 'Le toca a',
+        'proyecto' => 'Cliente y proyecto',
+        'estado'   => 'Estado',
+        'reciente' => 'Más recientes',
+    ];
+
+    /** ¿La tarea entra en el grupo de estado $g? */
+    private static function enGrupo(array $t, string $g): bool
+    {
+        $arch = (int) ($t['archivada'] ?? 0) === 1;
+        return match ($g) {
+            'archivadas' => $arch,
+            'todas'      => !$arch,
+            'abiertas'   => !$arch && $t['estado'] !== 'hecha',
+            default      => !$arch && $t['estado'] === $g,
+        };
+    }
+
     public function index(): void
     {
+        $f = FiltrosLista::desdeGet($this->ui->url('tareas'), ['estado' => 'abiertas', 'proyecto' => '', 'turno' => '', 'orden' => 'vence'], [
+            'estado'   => array_keys(self::FILTRO_ESTADOS),
+            'proyecto' => 'uuid',
+            'turno'    => ['equipo', 'cliente', 'mias'],
+            'orden'    => array_keys(self::FILTRO_ORDEN),
+        ]);
+        $yo = $this->ui->autorId();
+
+        $todas = $this->ui->filtrar($this->service()->listAll(), 'proyecto_id');
+        $base = array_values(array_filter($todas, function (array $t) use ($f, $yo): bool {
+            if ($f->get('proyecto') !== '' && $t['proyecto_id'] !== $f->get('proyecto')) {
+                return false;
+            }
+            return match ($f->get('turno')) {
+                'equipo'  => $t['responsable_tipo'] !== 'cliente',
+                'cliente' => $t['responsable_tipo'] === 'cliente',
+                'mias'    => $yo !== null && $t['responsable_tipo'] !== 'cliente' && $t['responsable_usuario_id'] === $yo,
+                default   => true,
+            };
+        }));
+        $conteos = [];
+        foreach (array_keys(self::FILTRO_ESTADOS) as $g) {
+            $conteos[$g] = count(array_filter($base, fn(array $t): bool => self::enGrupo($t, $g)));
+        }
+        $lista = array_values(array_filter($base, fn(array $t): bool => self::enGrupo($t, $f->get('estado'))));
+
+        $vence = static fn(array $t): string => $t['fecha_vencimiento'] ? substr((string) $t['fecha_vencimiento'], 0, 10) : '9999-12-31';
+        $ordenEstado = array_flip(TareaService::ESTADOS);
+        usort($lista, match ($f->get('orden')) {
+            'turno'    => fn($a, $b) => [$a['responsable_tipo'] === 'cliente', $a['responsable_nombre'] ?? $a['contacto_nombre'] ?? '', $vence($a)] <=> [$b['responsable_tipo'] === 'cliente', $b['responsable_nombre'] ?? $b['contacto_nombre'] ?? '', $vence($b)],
+            'proyecto' => fn($a, $b) => [$a['cliente_nombre'], $a['proyecto_nombre'], $vence($a)] <=> [$b['cliente_nombre'], $b['proyecto_nombre'], $vence($b)],
+            'estado'   => fn($a, $b) => [$ordenEstado[$a['estado']] ?? 9, $vence($a)] <=> [$ordenEstado[$b['estado']] ?? 9, $vence($b)],
+            'reciente' => fn($a, $b) => strcmp((string) $b['created_at'], (string) $a['created_at']),
+            default    => fn($a, $b) => [$vence($a), (string) $a['created_at']] <=> [$vence($b), (string) $b['created_at']],
+        });
+
+        $proyectos = $this->proyectos();
+        usort($proyectos, fn($a, $b) => [$a['cliente_nombre'], $a['nombre']] <=> [$b['cliente_nombre'], $b['nombre']]);
+
         $this->ui->view('tareas/index.latte', [
-            'tareas'        => $this->ui->filtrar($this->service()->listAll(), 'proyecto_id'),
+            'tareas'        => $lista,
+            'filtros'       => $f,
+            'conteos'       => $conteos,
+            'grupos'        => self::FILTRO_ESTADOS,
+            'ordenes'       => self::FILTRO_ORDEN,
+            'proyectosF'    => $proyectos,
+            'colorProy'     => Fmt::coloresTodos($this->pdo()),
+            'puedeMias'     => $yo !== null,
             'fmt'           => new Fmt(),
             'flash_success' => $this->ui->flash('success'),
             'flash_error'   => $this->ui->flash('error'),
         ]);
+    }
+
+    /**
+     * Acciones en lote desde la lista: archivar, desarchivar o marcar como listas.
+     * Sólo se tocan tareas que este usuario puede ver.
+     */
+    public function lote(): void
+    {
+        $volver = (string) ($_POST['volver'] ?? '');
+        $base = $this->ui->url('tareas');
+        if (!str_starts_with($volver, $base)) {
+            $volver = $base;
+        }
+        $accion = (string) ($_POST['accion'] ?? '');
+        $ids = array_values(array_filter(array_map('strval', (array) ($_POST['ids'] ?? []))));
+
+        if ($accion === 'archivar_listas') {
+            $ids = array_column(array_filter($this->service()->listAll(), fn($t) => $t['estado'] === 'hecha' && (int) ($t['archivada'] ?? 0) === 0
+                && (($_POST['proyecto'] ?? '') === '' || $t['proyecto_id'] === $_POST['proyecto'])), 'id');
+            $accion = 'archivar';
+        }
+        $visibles = $this->ui->filtrar(array_values(array_filter($this->service()->listAll(), fn($t) => in_array($t['id'], $ids, true))), 'proyecto_id');
+        $ids = array_column($visibles, 'id');
+        if ($ids === []) {
+            $this->ui->redirect($volver, 'Marca al menos una tarea.', 'error');
+            return;
+        }
+
+        switch ($accion) {
+            case 'archivar':
+                $n = $this->service()->archivar($ids, true);
+                $this->ui->redirect($volver, $n === 1 ? 'Tarea archivada.' : "{$n} tareas archivadas.");
+                return;
+            case 'desarchivar':
+                $n = $this->service()->archivar($ids, false);
+                $this->ui->redirect($volver, $n === 1 ? 'Tarea de vuelta en la lista.' : "{$n} tareas de vuelta en la lista.");
+                return;
+            case 'lista':
+                foreach ($visibles as $t) {
+                    if ($t['estado'] === 'hecha') {
+                        continue;
+                    }
+                    $this->service()->cambiarEstado((string) $t['id'], 'hecha');
+                    if ($this->visibleParaCliente($t)) {
+                        $this->actividad()->registrar((string) $t['cliente_id'], (string) $t['proyecto_id'], 'equipo', $this->ui->firma(), 'estado', 'tarea', (string) $t['id'], (string) $t['titulo'], Fmt::ESTADOS['hecha'][0]);
+                    }
+                }
+                $this->ui->redirect($volver, count($visibles) === 1 ? 'Tarea marcada como lista.' : count($visibles) . ' tareas marcadas como listas.');
+                return;
+        }
+        $this->ui->redirect($volver, 'Acción no válida.', 'error');
     }
 
     public function create(): void

@@ -61,10 +61,64 @@ class ReunionAdminController
         return $d === '' ? '' : ($t !== '' ? $d . ' ' . $t : $d);
     }
 
+    public const FILTRO_CUANDO = ['proximas' => 'Próximas', 'pasadas' => 'Pasadas', 'todas' => 'Todas'];
+    public const FILTRO_ESTADO = [
+        'por_revisar'  => 'Con tareas por revisar',
+        'sin_resumen'  => 'Sin resumen',
+        'sin_publicar' => 'Resumen sin publicar',
+        'publicado'    => 'Resumen publicado',
+        'ocultas'      => 'Ocultas al cliente',
+    ];
+
+    /** ¿La reunión cumple el filtro de estado? */
+    private static function enEstado(array $r, string $e): bool
+    {
+        return match ($e) {
+            'por_revisar'  => (int) $r['n_propuestas'] > 0,
+            'sin_resumen'  => trim((string) $r['resumen']) === '',
+            'sin_publicar' => trim((string) $r['resumen']) !== '' && !(int) $r['resumen_publicado'],
+            'publicado'    => trim((string) $r['resumen']) !== '' && (int) $r['resumen_publicado'] && (int) $r['publicada'],
+            'ocultas'      => !(int) $r['publicada'],
+            default        => true,
+        };
+    }
+
     public function index(): void
     {
+        $f = FiltrosLista::desdeGet($this->ui->url('reuniones'), ['cuando' => 'proximas', 'estado' => '', 'proyecto' => ''], [
+            'cuando'   => array_keys(self::FILTRO_CUANDO),
+            'estado'   => array_keys(self::FILTRO_ESTADO),
+            'proyecto' => 'uuid',
+        ]);
+        $hoy = (new \DateTimeImmutable('now', new \DateTimeZone(ReunionService::ZONA)))->format('Y-m-d');
+        $todas = $this->ui->filtrar($this->service()->listAll(), 'proyecto_id');
+        $base = array_values(array_filter($todas, fn(array $r): bool => ($f->get('proyecto') === '' || $r['proyecto_id'] === $f->get('proyecto'))
+            && self::enEstado($r, $f->get('estado'))));
+        $esProx = static fn(array $r): bool => substr((string) $r['fecha'], 0, 10) >= $hoy;
+        $conteos = [
+            'proximas' => count(array_filter($base, $esProx)),
+            'pasadas'  => count(array_filter($base, fn($r) => !$esProx($r))),
+            'todas'    => count($base),
+        ];
+        $lista = array_values(array_filter($base, fn(array $r): bool => match ($f->get('cuando')) {
+            'proximas' => $esProx($r),
+            'pasadas'  => !$esProx($r),
+            default    => true,
+        }));
+        if ($f->es('cuando', 'proximas')) {
+            $lista = array_reverse($lista);   // la más cercana primero
+        }
+        $proyectos = $this->proyectos();
+        usort($proyectos, fn($a, $b) => [$a['cliente_nombre'], $a['nombre']] <=> [$b['cliente_nombre'], $b['nombre']]);
+
         $this->ui->view('reuniones/index.latte', [
-            'reuniones'     => $this->ui->filtrar($this->service()->listAll(), 'proyecto_id'),
+            'reuniones'     => $lista,
+            'filtros'       => $f,
+            'conteos'       => $conteos,
+            'cuandos'       => self::FILTRO_CUANDO,
+            'estadosF'      => self::FILTRO_ESTADO,
+            'proyectosF'    => $proyectos,
+            'colorProy'     => Fmt::coloresTodos($this->pdo()),
             'fmt'           => new Fmt(),
             'flash_success' => $this->ui->flash('success'),
             'flash_error'   => $this->ui->flash('error'),

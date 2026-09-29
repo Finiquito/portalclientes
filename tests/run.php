@@ -504,6 +504,82 @@ $html = (string) ob_get_clean();
 check(str_contains($html, 'Tarea ajena') && str_contains($html, 'Tarea de Ana'), 'el admin sigue viendo todas las tareas');
 
 // ---------------------------------------------------------------------------
+seccion('Listas: filtros, orden, archivar en lote y colores por proyecto');
+$_SESSION[P\EquipoController::SESION] = $ana;
+$tok = P\PortalSession::csrf();
+$ts->cambiarEstado($tMia, 'hecha');
+
+$_GET = ['estado' => 'hecha'];
+[$html] = $g->hacer('GET', $T, 'index');
+check(str_contains($html, 'Tarea de Ana') && !str_contains($html, 'Logos del cliente'), 'filtro «Listas» muestra sólo las terminadas');
+check(preg_match('/Listas <span class="pa-n">(\d+)/', $html, $m) === 1 && (int) $m[1] >= 1, 'las pastillas muestran conteos');
+$_GET = ['estado' => 'abiertas', 'proyecto' => $p1b];
+[$html] = $g->hacer('GET', $T, 'index');
+check(str_contains($html, 'Logos del cliente') && !str_contains($html, 'Tarea de Ana'), 'filtro por proyecto');
+$_GET = ['estado' => 'todas', 'turno' => 'cliente'];
+[$html] = $g->hacer('GET', $T, 'index');
+check(str_contains($html, 'Logos del cliente') && !str_contains($html, 'Nueva desde el panel'), 'filtro «le toca a: cliente»');
+$_GET = ['estado' => 'todas', 'turno' => 'mias'];
+[$html] = $g->hacer('GET', $T, 'index');
+check(str_contains($html, 'Nueva desde el panel') && !str_contains($html, 'Logos del cliente'), 'filtro «asignadas a mí»');
+$_GET = ['estado' => 'inventado', 'proyecto' => "x' OR 1=1", 'orden' => 'turno'];
+[$html, $r] = $g->hacer('GET', $T, 'index');
+check($r === null && str_contains($html, 'aria-current="true">') , 'valores de filtro desconocidos se ignoran');
+$_GET = [];
+
+$mapa = P\Fmt::coloresTodos($pdo);
+check(isset($mapa[$p1a], $mapa[$p1b]) && $mapa[$p1a] !== $mapa[$p1b], 'cada proyecto de un cliente tiene su color');
+[$html] = $g->hacer('GET', $T, 'index');
+check(str_contains($html, 'pa-dot" style="background: ' . $mapa[$p1b]), 'el punto de color aparece en la lista');
+
+// Archivar
+$L = fn(array $post) => $g->hacer('POST', $T, 'lote', [], null, false, $post + ['_csrf_token' => $tok, 'volver' => '/equipo/tareas?estado=hecha']);
+[, $r] = $L(['accion' => 'archivar', 'ids' => [$tMia, $tOtra]]);
+check((int) $ts->find($tMia)['archivada'] === 1, 'archivar en lote');
+check((int) $ts->find($tOtra)['archivada'] === 0, 'en lote no se tocan tareas de proyectos ajenos');
+check($r === '/equipo/tareas?estado=hecha', 'vuelve a la lista con los mismos filtros');
+[, $r] = $L(['accion' => 'archivar', 'ids' => [], 'volver' => 'https://otro.sitio/']);
+check($r === '/equipo/tareas', 'no redirige a sitios externos');
+$_GET = ['estado' => 'hecha'];
+[$html] = $g->hacer('GET', $T, 'index');
+check(!str_contains($html, 'Tarea de Ana'), 'las archivadas salen de «Listas»');
+$_GET = ['estado' => 'archivadas'];
+[$html] = $g->hacer('GET', $T, 'index');
+check(str_contains($html, 'Tarea de Ana') && str_contains($html, 'Devolver a la lista'), 'aparecen en «Archivadas»');
+$_GET = [];
+$ts->cambiarEstado($tMia, 'en_progreso');
+[$html] = $ctl->correr(fn() => $ctl->inicio());
+check(!str_contains($html, 'Tarea de Ana'), 'una tarea archivada no aparece en la bandeja');
+$L(['accion' => 'desarchivar', 'ids' => [$tMia]]);
+[$html] = $ctl->correr(fn() => $ctl->inicio());
+check((int) $ts->find($tMia)['archivada'] === 0 && str_contains($html, 'Tarea de Ana'), 'desarchivar la devuelve');
+$L(['accion' => 'lista', 'ids' => [$tMia]]);
+check($ts->find($tMia)['estado'] === 'hecha', 'marcar como listas en lote');
+$L(['accion' => 'archivar_listas']);
+check((int) $ts->find($tMia)['archivada'] === 1, '«Archivar todas las listas»');
+$L(['accion' => 'desarchivar', 'ids' => [$tMia]]);
+
+// Contenidos y reuniones
+$E = P\EntregaAdminController::class;
+$_GET = ['estado' => 'publicada'];
+[$html] = $g->hacer('GET', $E, 'index');
+check(str_contains($html, 'Grilla panel') && !str_contains($html, '>Ajena<'), 'contenidos: filtro por estado');
+$_GET = ['estado' => 'todas', 'proyecto' => $p1b];
+[$html] = $g->hacer('GET', $E, 'index');
+check(!str_contains($html, 'Grilla panel'), 'contenidos: filtro por proyecto');
+$R = P\ReunionAdminController::class;
+$_GET = ['cuando' => 'todas'];
+[$html] = $g->hacer('GET', $R, 'index');
+check(str_contains($html, 'Reunión panel') && str_contains($html, 'Larga'), 'reuniones: «Todas»');
+$_GET = ['cuando' => 'pasadas'];
+[$html] = $g->hacer('GET', $R, 'index');
+check(!str_contains($html, 'Reunión panel'), 'reuniones: «Pasadas» no muestra las próximas');
+$_GET = ['cuando' => 'todas', 'estado' => 'ocultas'];
+[$html] = $g->hacer('GET', $R, 'index');
+check(!str_contains($html, 'Reunión panel'), 'reuniones: filtro de estado');
+$_GET = [];
+
+// ---------------------------------------------------------------------------
 seccion('Portal del cliente sigue funcionando');
 final class PublicoPrueba extends P\PortalPublicController
 {

@@ -4,9 +4,9 @@
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{block page_title}Admin{/block} · TypeDock (dev)</title>
 <link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css">
-<style>body{ font-family: system-ui, sans-serif; margin:0; display:flex } nav{ width:220px; background:#111827; min-height:100vh; padding:16px } nav a{ display:block; color:#d1d5db; padding:6px 8px; text-decoration:none; font-size:14px } main{ flex:1; padding:24px }</style>
+<style>body{ font-family: system-ui, sans-serif; margin:0; display:flex } nav{ width:220px; background:#111827; min-height:100vh; padding:16px } nav a{ display:block; color:#d1d5db; padding:6px 8px; text-decoration:none; font-size:14px } main{ flex:1; padding:24px } body.oscuro{ background:#0f172a; color:#e2e8f0 } body.oscuro .card{ background:#1e293b; border-color:#334155 } body.oscuro .form-input{ background:#0f172a; color:#e2e8f0; border:1px solid #334155 } .card{ border:1px solid #e2e8f0; border-radius:10px; padding:16px; margin-bottom:16px } .form-input{ padding:6px 8px; border-radius:6px; border:1px solid #cbd5e1 } .btn{ padding:6px 12px; border-radius:6px; border:1px solid #94a3b8; background:transparent; color:inherit } .btn-primary{ background:#4f46e5; color:#fff; border-color:#4f46e5 } .table{ width:100%; border-collapse:collapse } .table td,.table th{ padding:8px; border-bottom:1px solid rgba(148,163,184,.3); text-align:left } a{ color:#818cf8 }</style>
 </head>
-<body>
+<body{if ($_COOKIE['td_oscuro'] ?? '') === '1'} class="oscuro"{/if}>
 <nav>{foreach $admin_menu as $m}<a href="{$admin_url($m[1])}">{$m[0]}</a>{/foreach}</nav>
 <main>{block content}{/block}</main>
 </body>

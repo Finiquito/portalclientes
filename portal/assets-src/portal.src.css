@@ -52,20 +52,22 @@
   color-scheme: light;
 }
 .dark {
-  --brand-soft: color-mix(in oklab, var(--brand) 24%, #0e0f18);
-  --brand-ink: color-mix(in oklab, var(--brand) 62%, white);
+  /* Más contraste que antes: superficies un poco más separadas del fondo y textos
+     secundarios más claros (el gris anterior se leía poco sobre fondo oscuro). */
+  --brand-soft: color-mix(in oklab, var(--brand) 26%, #10111b);
+  --brand-ink: color-mix(in oklab, var(--brand) 52%, white);
 
-  --bg: #0c0d15;
-  --surface: #151622;
-  --surface-2: #1c1d2c;
-  --line: #272939;
-  --ink: #f0f0f8;
-  --muted: #9c9db7;
+  --bg: #0d0e16;
+  --surface: #181a28;
+  --surface-2: #222438;
+  --line: #34374e;
+  --ink: #f4f4fb;
+  --muted: #b7b9d0;
 
-  --ok: #4ad3a0;
-  --warn: #f2b45a;
-  --danger: #ff7d9c;
-  --info: #7ea3ff;
+  --ok: #5ee0ae;
+  --warn: #f6c06e;
+  --danger: #ff8fab;
+  --info: #93b4ff;
   color-scheme: dark;
 }
 
@@ -210,8 +212,10 @@
    Las plantillas de templates/admin/ usan las clases del núcleo (page-header,
    card, btn, form-input, table, alert) y las .pa-* de portal-admin.css; dentro
    de <main class="adm"> se dibujan con la gráfica del portal.
+   Va FUERA de @layer a propósito: portal-admin.css no está en capas y, si esto
+   estuviera en una, le ganaría siempre sin importar la especificidad.
    ========================================================================= */
-@layer components {
+
   .adm .page-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem 1rem; margin: .25rem 0 1.25rem; }
   .adm .page-header h1 { font-size: 1.75rem; line-height: 1.15; font-weight: 800; letter-spacing: -.02em; }
   @media (min-width: 640px) { .adm .page-header h1 { font-size: 2.25rem; } }
@@ -271,8 +275,23 @@
   .adm .pa-prop th { color: var(--muted); }
   .adm .pa-prop td { border-top-color: var(--line); }
   .adm .pa-prop .pa-done td { background: var(--surface-2); color: var(--muted); }
-  .adm .pa-ia, .adm .pa-new { background: var(--brand-soft); border-color: color-mix(in oklab, var(--brand) 25%, transparent); }
+  .adm .pa-ia { background: var(--brand-soft); border-color: color-mix(in oklab, var(--brand) 25%, transparent); }
   .adm .pa-lock { color: var(--warn); }
   .adm .pa-logo { background: #fff; border-color: var(--line); }
   .adm .pa-swatches button { border-color: var(--surface); box-shadow: 0 0 0 1px var(--line); }
-}
+  .adm .pa-chip.gris { background: var(--surface-2); color: var(--muted); }
+  .adm .pa-new td { background: color-mix(in oklab, var(--warn) 7%, transparent); }
+  .adm .pa-archivada td { opacity: .6; }
+  .adm .pa-pill { border-color: var(--line); background: var(--surface); color: var(--ink) !important; border-radius: .8rem; padding: .5rem .85rem; }
+  .adm .pa-pill:hover { background: var(--surface-2); }
+  .adm .pa-pill .pa-n { background: var(--surface-2); color: var(--muted); }
+  .adm .pa-pill[aria-current="true"] { background: var(--brand); border-color: var(--brand); color: var(--brand-fg) !important; box-shadow: 0 8px 20px -12px var(--brand); }
+  .adm .pa-pill[aria-current="true"] .pa-n { background: color-mix(in oklab, var(--brand-fg) 22%, transparent); color: var(--brand-fg); }
+  .adm .pa-pill.gris { background: transparent; color: var(--muted) !important; opacity: 1; }
+  .adm .pa-pill.gris[aria-current="true"] { background: var(--surface-2); color: var(--ink) !important; border-color: var(--line); box-shadow: none; }
+  .adm .pa-sep { background: var(--line); }
+  .adm .pa-selects label { color: var(--muted); }
+  .adm .pa-selects .form-input { min-height: 2.4rem; padding: .35rem .7rem; border-radius: .75rem; font-size: .875rem; }
+  .adm .pa-lote { background: var(--brand-soft); color: var(--brand-ink); }
+  .adm .pa-ia-meta { border-top-color: color-mix(in oklab, var(--brand) 25%, transparent); color: var(--muted); }
+  .adm .pa-ia-txt p { color: var(--muted); }

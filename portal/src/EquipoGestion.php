@@ -62,6 +62,7 @@ class EquipoGestion extends EquipoController
         $r('GET',  'tareas',                        TareaAdminController::class, 'index');
         $r('GET',  'tareas/nuevo',                  TareaAdminController::class, 'create');
         $r('POST', 'tareas',                        TareaAdminController::class, 'store');
+        $r('POST', 'tareas/lote',                   TareaAdminController::class, 'lote');
         $r('GET',  'tareas/@id',                    TareaAdminController::class, 'edit', 'tarea');
         $r('POST', 'tareas/@id',                    TareaAdminController::class, 'update', 'tarea');
         $r('POST', 'tareas/@id/borrar',             TareaAdminController::class, 'destroy', 'tarea');

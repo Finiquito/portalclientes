@@ -62,6 +62,27 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### v0.9.0: filtros, archivado, color por proyecto y modo oscuro
+
+- **Tareas** (admin y panel):
+  - **Filtros por estado:** Abiertas, Pendientes, En progreso, En revisión, Cambios pedidos, Listas, Todas y, al final y en gris, **Archivadas**. Cada una muestra cuántas tareas tiene.
+  - **Filtros por proyecto y por «le toca a»:** equipo, cliente o *asignadas a mí*.
+  - **Orden** por fecha límite, le toca a, cliente y proyecto, estado o más recientes.
+  - **Acciones en lote:** se marcan varias tareas y se pueden marcar como listas, archivar o devolver a la lista. Con el filtro «Listas» aparece el botón **«Archivar todas las listas»**.
+  - Las archivadas salen de la bandeja, de los contadores y de la vista de proyecto. El cliente las sigue viendo como terminadas.
+  - Nueva columna `portal_tareas.archivada`, agregada por `Schema::asegurar`.
+- **Contenidos y reuniones:** la misma barra de filtros.
+  - Contenidos por estado: activas, borradores, esperando al cliente, respondidas, aprobadas y todas.
+  - Reuniones por próximas, pasadas o todas, más un filtro de estado: tareas por revisar, sin resumen, resumen sin publicar, publicado u oculta.
+  - Ambas se pueden filtrar por proyecto.
+- **Color por proyecto:** el mismo punto de color que ve el cliente en su portal (`Fmt::coloresTodos`) ahora aparece en las listas del admin y del panel, en la bandeja, en la agenda, en «Esperando al cliente», en las novedades y en las tarjetas de proyecto.
+- **Bloque «Analizar con IA» reordenado:** título y explicación a la izquierda, botón a la derecha, y los datos (tiempo, proveedor, última propuesta) en una línea aparte.
+- **Modo oscuro:**
+  - `portal-admin.css` ya no tiene colores fijos de modo claro: usa tintes transparentes y colores mezclados con el del texto. Sirve igual en el admin claro y en el oscuro, sin bloques blancos ni textos lavados.
+  - En el portal y el panel, el modo oscuro tiene más contraste: textos secundarios más claros, superficies más separadas del fondo y colores de estado más legibles.
+- **Arreglo CSS:** los estilos del panel para las pantallas compartidas estaban dentro de una capa (`@layer`) y `portal-admin.css` les ganaba. Ahora van fuera de la capa.
+- **Pruebas:** 138 comprobaciones que pasan en SQLite y MariaDB. Cubren los filtros, el archivado en lote (sin tocar tareas ajenas ni redirigir a otros sitios), las archivadas fuera de la bandeja y los colores.
+
 ### v0.8.0: gestión completa desde el panel de equipo
 
 - **Todo lo del admin, ahora en `/equipo`.** El panel tiene las mismas pantallas y acciones que el admin de TypeDock, con la gráfica del panel:
@@ -128,7 +149,8 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Ideas siguientes para el panel
 
-- Tareas en tablero (kanban) y filtros por cliente, responsable y estado.
+- Tareas en tablero (kanban).
+- Archivar también entregas y reuniones antiguas.
 - Vista previa del contenido con los mismos visores que ve el cliente (mockup de Instagram, reel, PDF por páginas).
 - «Ver como cliente»: abrir el portal de un cliente tal como él lo ve.
 - Actividad filtrada por lo asignado.

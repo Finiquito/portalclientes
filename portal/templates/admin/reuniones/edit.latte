@@ -3,7 +3,7 @@
 {block page_title}{$reunion['titulo']}{/block}
 
 {block content}
-<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css">
+<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=2">
 {var $fecha10 = substr((string) $reunion['fecha'], 0, 10)}
 {var $hora = strlen((string) $reunion['fecha']) > 10 ? substr((string) $reunion['fecha'], 11, 5) : ''}
 {var $pf10 = substr((string) $reunion['prox_fecha'], 0, 10)}
@@ -56,11 +56,19 @@
         <textarea name="transcripcion" class="form-input" rows="8" placeholder="Pega aquí la transcripción de la reunión (Meet, Gemini, Fireflies, Otter…) o tus notas.">{$reunion['transcripcion']}</textarea>
         {if $iaActiva}
             <div class="pa-ia mt-3">
-                <p style="margin:0 0 .5rem"><strong>Analizar con IA</strong> — propone resumen, acuerdos, tareas y próxima reunión. Es sólo una propuesta: tú la revisas abajo y decides qué se crea y qué ve el cliente.</p>
-                <button type="submit" name="accion" value="analizar" class="btn btn-primary"
-                        onclick="return !document.querySelector('[name=resumen]').value.trim() || confirm('Esto reemplaza el resumen, los acuerdos, el análisis y las tareas propuestas que aún no hayas creado. ¿Continuar?');">✨ Analizar con IA</button>
-                <span class="pa-muted">Tarda entre 10 y 60 segundos; verás el avance en pantalla. El texto se envía al proveedor de IA que elegiste en Ajustes.</span>
-                {if $reunion['ia_generado_en']}<p class="pa-muted" style="margin:.5rem 0 0">Última propuesta: {$fmt->rel($reunion['ia_generado_en'])} · {$reunion['ia_modelo']}</p>{/if}
+                <div class="pa-ia-fila">
+                    <div class="pa-ia-txt">
+                        <strong>✨ Analizar con IA</strong>
+                        <p>Propone resumen, acuerdos, tareas y próxima reunión a partir de la transcripción. Es sólo una propuesta: la revisas abajo y decides qué se crea y qué ve el cliente.</p>
+                    </div>
+                    <button type="submit" name="accion" value="analizar" class="btn btn-primary"
+                            onclick="return !document.querySelector('[name=resumen]').value.trim() || confirm('Esto reemplaza el resumen, los acuerdos, el análisis y las tareas propuestas que aún no hayas creado. ¿Continuar?');">Analizar con IA</button>
+                </div>
+                <p class="pa-ia-meta">
+                    <span>⏱ Tarda entre 10 y 60 segundos</span>
+                    <span>El texto se envía al proveedor de IA elegido en Ajustes</span>
+                    {if $reunion['ia_generado_en']}<span>Última propuesta: {$fmt->rel($reunion['ia_generado_en'])} · {$reunion['ia_modelo']}</span>{/if}
+                </p>
             </div>
         {else}
             <p class="form-hint mt-2">La IA es opcional y hoy no está conectada. Puedes escribir el resumen y las tareas a mano, o activarla con una clave en <a href="{$admin_url('ajustes')}">Ajustes</a>.</p>
@@ -165,7 +173,7 @@
 <style n:syntax="off">
     #pa-ia-espera { position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center; background: rgba(15, 23, 42, .55); backdrop-filter: blur(2px); padding: 1rem; }
     #pa-ia-espera[hidden] { display: none; }
-    .pa-ia-caja { background: #fff; color: #0f172a; border-radius: 1rem; padding: 1.75rem 2rem; max-width: 26rem; width: 100%; text-align: center; box-shadow: 0 20px 50px rgba(0, 0, 0, .3); }
+    .pa-ia-caja { background: #fff; color: #0f172a; color-scheme: light; border-radius: 1rem; padding: 1.75rem 2rem; max-width: 26rem; width: 100%; text-align: center; box-shadow: 0 20px 50px rgba(0, 0, 0, .3); }
     .pa-ia-spin { width: 2.6rem; height: 2.6rem; margin: 0 auto 1rem; border: 4px solid #e2e8f0; border-top-color: #6366f1; border-radius: 50%; animation: pa-ia-gira 0.9s linear infinite; }
     .pa-ia-titulo { font-weight: 800; font-size: 1.1rem; margin: 0 0 .25rem; }
     .pa-ia-paso { margin: 0 0 1rem; color: #475569; min-height: 1.4em; }

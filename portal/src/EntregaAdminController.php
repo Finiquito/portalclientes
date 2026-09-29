@@ -62,10 +62,45 @@ class EntregaAdminController
 
     // ---- Entregas ---------------------------------------------------------
 
+    public const FILTRO_ESTADOS = [
+        'activas'    => 'Activas',
+        'borrador'   => 'Borradores',
+        'publicada'  => 'Esperando al cliente',
+        'respondida' => 'Respondidas',
+        'aprobada'   => 'Aprobadas',
+        'todas'      => 'Todas',
+    ];
+
     public function index(): void
     {
+        $f = FiltrosLista::desdeGet($this->url('entregas'), ['estado' => 'activas', 'proyecto' => ''], [
+            'estado'   => array_keys(self::FILTRO_ESTADOS),
+            'proyecto' => 'uuid',
+        ]);
+        $todas = $this->ui->filtrar($this->entregas()->listAll(), 'proyecto_id');
+        $base = array_values(array_filter($todas, fn(array $e): bool => $f->get('proyecto') === '' || $e['proyecto_id'] === $f->get('proyecto')));
+        $en = static fn(array $e, string $g): bool => match ($g) {
+            'todas'   => true,
+            'activas' => $e['estado'] !== 'aprobada',
+            default   => $e['estado'] === $g,
+        };
+        $conteos = [];
+        foreach (array_keys(self::FILTRO_ESTADOS) as $g) {
+            $conteos[$g] = count(array_filter($base, fn($e) => $en($e, $g)));
+        }
+        // Lo que espera al equipo (respondidas) arriba; luego lo más reciente.
+        $lista = array_values(array_filter($base, fn($e) => $en($e, $f->get('estado'))));
+        usort($lista, fn($a, $b) => [$a['estado'] !== 'respondida', $b['updated_at']] <=> [$b['estado'] !== 'respondida', $a['updated_at']]);
+        $proyectos = $this->ui->filtrar((new ProyectoService($this->pdo()))->listAll(), 'id');
+        usort($proyectos, fn($a, $b) => [$a['cliente_nombre'], $a['nombre']] <=> [$b['cliente_nombre'], $b['nombre']]);
+
         $this->ui->view('entregas/index.latte', [
-            'entregas' => $this->ui->filtrar($this->entregas()->listAll(), 'proyecto_id'),
+            'entregas'   => $lista,
+            'filtros'    => $f,
+            'conteos'    => $conteos,
+            'grupos'     => self::FILTRO_ESTADOS,
+            'proyectosF' => $proyectos,
+            'colorProy'  => Fmt::coloresTodos($this->pdo()),
             'estados'  => TiposContenido::ESTADOS_ENTREGA,
             'fmt'      => new Fmt(),
         ] + $this->flashes());

@@ -9,7 +9,7 @@
         <span class="min-w-0 flex-1">
             <span class="block truncate font-semibold">{$t['titulo']}</span>
             <span class="mt-0.5 block truncate text-xs text-muted">
-                {if $contexto ?? true}{$t['cliente_nombre']} · {$t['proyecto_nombre']} · {/if}{if $t['estado'] === 'entregada'}{$t['contacto_nombre'] ?? 'El cliente'} entregó{elseif $t['estado'] === 'cambios'}{$t['contacto_nombre'] ?? 'El cliente'} pidió cambios{else}{$fmt->tipo($t['tipo'])}{/if}{if !(int) $t['visible_cliente'] && $t['responsable_tipo'] !== 'cliente'} · interna{/if}
+                {if $contexto ?? true}<span class="inline-block size-2 flex-none rounded-full align-middle" style="background: {($colorProy[$t['proyecto_id']] ?? '#94a3b8')|noescape}" aria-hidden="true"></span> {$t['proyecto_nombre']} · {$t['cliente_nombre']} · {/if}{if $t['estado'] === 'entregada'}{$t['contacto_nombre'] ?? 'El cliente'} entregó{elseif $t['estado'] === 'cambios'}{$t['contacto_nombre'] ?? 'El cliente'} pidió cambios{else}{$fmt->tipo($t['tipo'])}{/if}{if !(int) $t['visible_cliente'] && $t['responsable_tipo'] !== 'cliente'} · interna{/if}
             </span>
         </span>
         <span class="hidden flex-col items-end gap-1 sm:flex">

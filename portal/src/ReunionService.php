@@ -30,10 +30,11 @@ class ReunionService
     public function listAll(): array
     {
         $stmt = $this->pdo->query(
-            'SELECT r.*, p.nombre AS proyecto_nombre,
+            'SELECT r.*, p.nombre AS proyecto_nombre, p.cliente_id AS cliente_id, c.nombre AS cliente_nombre,
                     (SELECT COUNT(*) FROM ' . self::PROP . ' q WHERE q.reunion_id = r.id AND q.estado = \'propuesta\') AS n_propuestas
              FROM ' . self::TABLE . ' r
              JOIN portal_proyectos p ON p.id = r.proyecto_id
+             JOIN portal_clientes c ON c.id = p.cliente_id
              ORDER BY r.fecha DESC'
         );
         return $stmt ? $stmt->fetchAll() : [];

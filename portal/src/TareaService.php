@@ -31,6 +31,23 @@ class TareaService
         return $stmt ? $stmt->fetchAll() : [];
     }
 
+    /**
+     * Archiva o desarchiva tareas. Archivar sólo las saca de las listas del equipo
+     * (bandeja, tareas, proyecto); el cliente las sigue viendo en «Listas».
+     *
+     * @param array<int, string> $ids
+     */
+    public function archivar(array $ids, bool $archivar = true): int
+    {
+        $st = $this->pdo->prepare('UPDATE ' . self::TABLE . ' SET archivada = ?, updated_at = ? WHERE id = ?');
+        $n = 0;
+        foreach (array_unique($ids) as $id) {
+            $st->execute([$archivar ? 1 : 0, (new \DateTimeImmutable())->format('Y-m-d H:i:s'), (string) $id]);
+            $n += $st->rowCount();
+        }
+        return $n;
+    }
+
     /** @return array<string, mixed>|null */
     public function find(string $id): ?array
     {

@@ -19,7 +19,7 @@ class EquipoController
     public const SESION = 'portal_equipo_id';
 
     /** Estados en los que la tarea espera al equipo. */
-    private const TURNO_EQUIPO = "((t.responsable_tipo = 'equipo' AND t.estado IN ('pendiente', 'en_progreso')) OR t.estado IN ('entregada', 'cambios'))";
+    private const TURNO_EQUIPO = "((t.responsable_tipo = 'equipo' AND t.estado IN ('pendiente', 'en_progreso')) OR t.estado IN ('entregada', 'cambios')) AND COALESCE(t.archivada, 0) = 0";
 
     /** @var array<string, string> */
     private static array $assets = [];
@@ -172,6 +172,7 @@ class EquipoController
             'flash'      => PortalSession::tomarFlash(),
             'nav'        => $nav,
             'nTurno'     => $miTurno,
+            'colorProy'  => Fmt::coloresTodos($this->pdo()),
             'portalBoot' => $this->asset('theme.js'),
             'portalJs'   => $this->asset('portal.js'),
         ] + $extra;
@@ -378,7 +379,8 @@ class EquipoController
         [$wA, $pA] = $acc->filtroCliente('a.cliente_id');
         [$wAp, $pAp] = $acc->filtroProyecto('a.proyecto_id');
         $actividad = $this->fetchAll(
-            "SELECT a.*, c.nombre AS cliente_nombre FROM portal_actividad a JOIN portal_clientes c ON c.id = a.cliente_id
+            "SELECT a.*, c.nombre AS cliente_nombre, p.nombre AS proyecto_nombre FROM portal_actividad a JOIN portal_clientes c ON c.id = a.cliente_id
+             LEFT JOIN portal_proyectos p ON p.id = a.proyecto_id
              WHERE a.actor_tipo <> 'equipo' AND {$wA} AND (a.proyecto_id IS NULL OR {$wAp})
              ORDER BY a.created_at DESC, a.id DESC LIMIT 10",
             [...$pA, ...$pAp]
@@ -427,15 +429,16 @@ class EquipoController
         $ids = array_column($proyectos, 'id');
         $ph  = implode(',', array_fill(0, count($ids), '?'));
         $fases  = $this->fetchAll("SELECT * FROM portal_fases WHERE proyecto_id IN ({$ph}) ORDER BY orden, nombre", $ids);
-        $tareas = $this->fetchAll("SELECT id, proyecto_id, fase_id, estado, responsable_tipo, fecha_vencimiento FROM portal_tareas WHERE proyecto_id IN ({$ph})", $ids);
+        $tareas = $this->fetchAll("SELECT id, proyecto_id, fase_id, estado, responsable_tipo, fecha_vencimiento, COALESCE(archivada, 0) AS archivada FROM portal_tareas WHERE proyecto_id IN ({$ph})", $ids);
         $hoy = (new \DateTimeImmutable())->format('Y-m-d');
 
         foreach ($proyectos as &$pr) {
             $tt = array_values(array_filter($tareas, fn($t) => $t['proyecto_id'] === $pr['id']));
             $pr['progreso'] = ProgresoService::calcular(array_values(array_filter($fases, fn($f) => $f['proyecto_id'] === $pr['id'])), $tt);
-            $pr['n_equipo'] = count(array_filter($tt, fn($t) => ($t['responsable_tipo'] === 'equipo' && in_array($t['estado'], ['pendiente', 'en_progreso'], true)) || in_array($t['estado'], ['entregada', 'cambios'], true)));
-            $pr['n_cliente'] = count(array_filter($tt, fn($t) => $t['responsable_tipo'] === 'cliente' && in_array($t['estado'], ['pendiente', 'en_progreso'], true)));
-            $pr['n_vencidas'] = count(array_filter($tt, fn($t) => $t['estado'] !== 'hecha' && $t['fecha_vencimiento'] !== null && substr((string) $t['fecha_vencimiento'], 0, 10) < $hoy));
+            $abiertas = array_filter($tt, fn($t) => (int) $t['archivada'] === 0);
+            $pr['n_equipo'] = count(array_filter($abiertas, fn($t) => ($t['responsable_tipo'] === 'equipo' && in_array($t['estado'], ['pendiente', 'en_progreso'], true)) || in_array($t['estado'], ['entregada', 'cambios'], true)));
+            $pr['n_cliente'] = count(array_filter($abiertas, fn($t) => $t['responsable_tipo'] === 'cliente' && in_array($t['estado'], ['pendiente', 'en_progreso'], true)));
+            $pr['n_vencidas'] = count(array_filter($abiertas, fn($t) => $t['estado'] !== 'hecha' && $t['fecha_vencimiento'] !== null && substr((string) $t['fecha_vencimiento'], 0, 10) < $hoy));
         }
         return $proyectos;
     }

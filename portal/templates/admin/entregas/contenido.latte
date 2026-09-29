@@ -3,7 +3,7 @@
 {block page_title}{$c['titulo']}{/block}
 
 {block content}
-<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css">
+<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=2">
 
 <div class="page-header">
     <h1>{$c['titulo']}</h1>
@@ -52,7 +52,7 @@
 <div class="card mt-4" id="versiones">
     <h2 class="pa-h2">Versiones <span class="pa-chip">{count($versiones)}</span></h2>
     {foreach $versiones as $v}
-    <div style="border:1px solid #e2e8f0;border-radius:.75rem;padding:.8rem;margin-bottom:.8rem">
+    <div style="border:1px solid color-mix(in srgb, currentColor 14%, transparent);border-radius:.75rem;padding:.8rem;margin-bottom:.8rem">
         <p class="pa-row" style="margin:0 0 .5rem"><strong>v{$v['numero']}</strong>
             {if $v['numero'] === (int) $c['version_actual']}<span class="pa-chip brand">vigente</span>{/if}
             {if $v['decision'] === 'aprobado'}<span class="pa-chip ok">Aprobada por {$v['decidido_por_nombre']}</span>{elseif $v['decision'] === 'cambios'}<span class="pa-chip danger">Cambios pedidos por {$v['decidido_por_nombre']}</span>{/if}
@@ -73,7 +73,7 @@
                 <div class="pa-meta">
                     <a class="pa-name" href="{$admin_url('archivos/' . $a['id'])}" target="_blank" rel="noopener">{$a['nombre_original']}</a>
                     <span class="pa-muted">{$fmt->tamano($a['tamano'])}</span>
-                    {if in_array(strtolower($fmt->extension($a['nombre_original'])), ['ppt', 'pptx', 'odp', 'key', 'doc', 'docx', 'xls', 'xlsx'], true)}<span class="pa-muted" style="color:#b45309">El cliente no puede verlo en el portal, sólo descargarlo. Sube el PDF exportado, o pega un link de Google Slides / Canva.</span>{/if}
+                    {if in_array(strtolower($fmt->extension($a['nombre_original'])), ['ppt', 'pptx', 'odp', 'key', 'doc', 'docx', 'xls', 'xlsx'], true)}<span class="pa-lock" style="display:block">El cliente no puede verlo en el portal, sólo descargarlo. Sube el PDF exportado, o pega un link de Google Slides / Canva.</span>{/if}
                 </div>
                 <form method="post" action="{$admin_url('archivos/' . $a['id'] . '/borrar')}" onsubmit="return confirm('¿Eliminar este archivo?');">
                     <input type="hidden" name="_csrf_token" value="{$csrf_token}">

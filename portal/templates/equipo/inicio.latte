@@ -54,7 +54,7 @@
                             <span class="flex size-11 flex-none items-center justify-center rounded-xl bg-warn/15 text-warn"><svg class="size-5"><use href="#i-eye"/></svg></span>
                             <span class="min-w-0 flex-1">
                                 <span class="block truncate font-semibold">{$e['titulo']}</span>
-                                <span class="mt-0.5 block truncate text-xs text-muted">{$e['cliente_nombre']} · {$e['proyecto_nombre']} · {$e['respondida_por'] ?: 'El cliente'} envió su revisión {$fmt->rel($e['respondida_en'])}</span>
+                                <span class="mt-0.5 block truncate text-xs text-muted"><span class="inline-block size-2 flex-none rounded-full align-middle" style="background: {($colorProy[$e['proyecto_id']] ?? '#94a3b8')|noescape}" aria-hidden="true"></span> {$e['proyecto_nombre']} · {$e['cliente_nombre']} · {$e['respondida_por'] ?: 'El cliente'} envió su revisión {$fmt->rel($e['respondida_en'])}</span>
                             </span>
                             <span class="hidden flex-col items-end gap-1 sm:flex">
                                 {if $e['n_cambios'] > 0}<span class="chip chip-danger">{$e['n_cambios']} con cambios</span>{/if}
@@ -118,7 +118,7 @@
                         </span>
                         <span class="min-w-0">
                             <span class="block truncate text-sm font-semibold">{$r['titulo']}</span>
-                            <span class="block truncate text-xs text-muted">{$fmt->hora($r['fecha'])}{if $fmt->hora($r['fecha']) !== ''} · {/if}{$r['cliente_nombre']}</span>
+                            <span class="block truncate text-xs text-muted"><span class="inline-block size-2 flex-none rounded-full align-middle" style="background: {($colorProy[$r['proyecto_id']] ?? '#94a3b8')|noescape}" aria-hidden="true"></span> {$fmt->hora($r['fecha'])}{if $fmt->hora($r['fecha']) !== ''} · {/if}{$r['proyecto_nombre']}</span>
                             {if !(int) $r['publicada']}<span class="mt-0.5 block text-xs font-bold text-muted">Oculta al cliente</span>{elseif $r['enlace_meet']}<span class="mt-0.5 block text-xs font-bold text-brand-ink">Con link de Meet</span>{/if}
                         </span>
                     </a></li>
@@ -140,7 +140,7 @@
                             <span class="truncate text-sm font-semibold">{$e['titulo']}</span>
                             <span class="flex-none text-xs text-muted">{$e['n_aprobados'] + $e['n_cambios']}/{$e['n_total']}</span>
                         </span>
-                        <span class="block truncate text-xs text-muted">{$e['cliente_nombre']} · publicada {$fmt->rel($e['publicada_en'])}</span>
+                        <span class="block truncate text-xs text-muted"><span class="inline-block size-2 flex-none rounded-full align-middle" style="background: {($colorProy[$e['proyecto_id']] ?? '#94a3b8')|noescape}" aria-hidden="true"></span> {$e['proyecto_nombre']} · publicada {$fmt->rel($e['publicada_en'])}</span>
                         <span class="progress mt-2 block" aria-hidden="true"><span style="width: {$pct}%"></span></span>
                     </a></li>
                 {/foreach}
@@ -162,7 +162,7 @@
                         <p class="min-w-0 flex-1 text-sm leading-snug">
                             <span class="font-semibold">{$fmt->actividad($a, true)}</span>
                             {if $a['titulo']}«{$a['titulo']}»{/if}
-                            <span class="mt-0.5 block text-xs text-muted">{$a['cliente_nombre']} · {$fmt->rel($a['created_at'])}</span>
+                            <span class="mt-0.5 block text-xs text-muted">{if $a['proyecto_id']}<span class="inline-block size-2 flex-none rounded-full align-middle" style="background: {($colorProy[$a['proyecto_id']] ?? '#94a3b8')|noescape}" aria-hidden="true"></span> {$a['proyecto_nombre'] ?? ''} · {/if}{$a['cliente_nombre']} · {$fmt->rel($a['created_at'])}</span>
                         </p>
                     </li>
                 {/foreach}

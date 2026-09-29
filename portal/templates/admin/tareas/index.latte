@@ -3,25 +3,90 @@
 {block page_title}Tareas{/block}
 
 {block content}
-<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css">
+<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=2">
 
 <div class="page-header">
     <h1>Tareas</h1>
-    <a href="{$admin_url('tareas/nuevo')}" class="btn btn-primary">Nueva tarea</a>
+    <a href="{$admin_url('tareas/nuevo')}{if $filtros->get('proyecto')}?proyecto_id={$filtros->get('proyecto')}{/if}" class="btn btn-primary">Nueva tarea</a>
 </div>
 
 {if $flash_success}<div class="alert alert-success">{$flash_success}</div>{/if}
 {if $flash_error}<div class="alert alert-error">{$flash_error}</div>{/if}
 
+{* ---- Filtros ---- *}
+<div class="pa-filtros">
+    <div class="pa-pills" role="navigation" aria-label="Estado">
+        {foreach $grupos as $g => $txt}
+            {if $g === 'archivadas'}<span class="pa-sep" aria-hidden="true"></span>{/if}
+            <a href="{$filtros->url(['estado' => $g])}" class="pa-pill{if $g === 'archivadas'} gris{/if}" {if $filtros->es('estado', $g)}aria-current="true"{/if}>
+                {$txt} <span class="pa-n">{$conteos[$g]}</span>
+            </a>
+        {/foreach}
+    </div>
+
+    <form method="get" action="{$filtros->url(['proyecto' => '', 'turno' => '', 'orden' => ''])}" class="pa-selects" data-auto>
+        <input type="hidden" name="estado" value="{$filtros->get('estado')}">
+        <label for="f-proy">Proyecto</label>
+        <select id="f-proy" name="proyecto" class="form-input" style="width:auto">
+            <option value="">Todos los proyectos</option>
+            {foreach $proyectosF as $p}
+                <option value="{$p['id']}" {if $filtros->es('proyecto', $p['id'])}selected{/if}>{$p['cliente_nombre']} · {$p['nombre']}</option>
+            {/foreach}
+        </select>
+        <label for="f-turno">Le toca a</label>
+        <select id="f-turno" name="turno" class="form-input" style="width:auto">
+            <option value="">Todos</option>
+            <option value="equipo" {if $filtros->es('turno', 'equipo')}selected{/if}>Equipo</option>
+            <option value="cliente" {if $filtros->es('turno', 'cliente')}selected{/if}>Cliente</option>
+            {if $puedeMias}<option value="mias" {if $filtros->es('turno', 'mias')}selected{/if}>Asignadas a mí</option>{/if}
+        </select>
+        <label for="f-orden">Ordenar por</label>
+        <select id="f-orden" name="orden" class="form-input" style="width:auto">
+            {foreach $ordenes as $k => $txt}
+                <option value="{$k}" {if $filtros->es('orden', $k)}selected{/if}>{$txt}</option>
+            {/foreach}
+        </select>
+        <noscript><button type="submit" class="btn btn-sm">Filtrar</button></noscript>
+        {if $filtros->get('proyecto') || $filtros->get('turno')}<a href="{$filtros->url(['proyecto' => '', 'turno' => ''])}" class="pa-muted">Quitar filtros</a>{/if}
+    </form>
+</div>
+
+{* ---- Acciones en lote ---- *}
+<form method="post" action="{$admin_url('tareas/lote')}" id="lote">
+    <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+    <input type="hidden" name="volver" value="{$filtros->actual()}">
+    <input type="hidden" name="proyecto" value="{$filtros->get('proyecto')}">
+    <div class="pa-lote" data-lote hidden>
+        <strong><span data-lote-n>0</span> seleccionadas</strong>
+        {if $filtros->es('estado', 'archivadas')}
+            <button type="submit" name="accion" value="desarchivar" class="btn btn-sm">Devolver a la lista</button>
+        {else}
+            <button type="submit" name="accion" value="lista" class="btn btn-sm">Marcar como listas</button>
+            <button type="submit" name="accion" value="archivar" class="btn btn-sm">Archivar</button>
+        {/if}
+    </div>
+    {if $filtros->es('estado', 'hecha') && $conteos['hecha'] > 0}
+        <p class="pa-inline" style="margin:0 0 .75rem">
+            <button type="submit" name="accion" value="archivar_listas" class="btn btn-sm" onclick="return confirm('¿Archivar las {$conteos['hecha']} tareas listas{if $filtros->get('proyecto')} de este proyecto{/if}? El cliente las sigue viendo en su portal.');">Archivar todas las listas ({$conteos['hecha']})</button>
+            <span class="pa-muted">Salen de tus listas; el cliente las sigue viendo como terminadas.</span>
+        </p>
+    {/if}
+</form>
+
 {if empty($tareas)}
     <div class="card">
-        <p class="text-slate-500">Todavía no hay tareas.</p>
+        <p class="pa-muted" style="margin:0">
+            {if $filtros->es('estado', 'archivadas')}No hay tareas archivadas con estos filtros.
+            {elseif $filtros->es('estado', 'abiertas')}No hay tareas abiertas con estos filtros. 🎉
+            {else}No hay tareas con estos filtros.{/if}
+        </p>
     </div>
 {else}
 <div class="card" style="overflow-x:auto">
     <table class="table">
         <thead>
             <tr>
+                <th style="width:2rem"><input type="checkbox" data-lote-todas aria-label="Seleccionar todas"></th>
                 <th>Título</th>
                 <th>Proyecto</th>
                 <th>Le toca a</th>
@@ -35,29 +100,36 @@
         {foreach $tareas as $t}
             {var $e = $fmt->estado($t['estado'])}
             {var $tono = ['muted' => '', 'ok' => 'ok', 'warn' => 'warn', 'danger' => 'danger', 'info' => 'info'][$e[1]] ?? ''}
-            <tr {if $t['estado'] === 'entregada'}class="pa-new"{/if}>
+            {var $v = $fmt->vence($t['fecha_vencimiento'], $t['estado'])}
+            <tr class="{if $t['estado'] === 'entregada'}pa-new{/if}{if (int) ($t['archivada'] ?? 0)} pa-archivada{/if}">
+                <td><input type="checkbox" name="ids[]" value="{$t['id']}" form="lote" aria-label="Seleccionar «{$t['titulo']}»"></td>
                 <td>
                     <a href="{$admin_url('tareas/' . $t['id'])}">{$t['titulo']}</a>
                     <div class="pa-muted">{$fmt->tipo($t['tipo'] ?? 'tarea')}{if (int) ($t['visible_cliente'] ?? 1) === 0} · interna{/if}</div>
                 </td>
-                <td>{$t['cliente_nombre']}<div class="pa-muted">{$t['proyecto_nombre']}</div></td>
                 <td>
-                    {if $t['responsable_tipo'] === 'cliente'}<span class="pa-chip brand">Cliente</span> {$t['contacto_nombre']}
-                    {else}{$t['responsable_nombre'] ?? '—'}{/if}
+                    <span class="pa-proy"><span class="pa-dot" style="background: {($colorProy[$t['proyecto_id']] ?? '#94a3b8')|noescape}" aria-hidden="true"></span>{$t['proyecto_nombre']}</span>
+                    <div class="pa-muted">{$t['cliente_nombre']}</div>
                 </td>
-                <td>{$fmt->fecha($t['fecha_vencimiento'])}</td>
-                <td><span class="pa-chip {$tono}">{$e[0]}</span></td>
+                <td>
+                    {if $t['responsable_tipo'] === 'cliente'}<span class="pa-chip brand">Cliente</span><div class="pa-muted">{$t['contacto_nombre']}</div>
+                    {else}<span class="pa-chip">Equipo</span><div class="pa-muted">{$t['responsable_nombre'] ?? 'Sin responsable'}</div>{/if}
+                </td>
+                <td>{if $t['fecha_vencimiento']}<span class="pa-chip {['danger' => 'danger', 'warn' => 'warn', 'info' => 'info'][$v['tono']] ?? 'gris'}">{$v['texto']}</span>{else}<span class="pa-muted">—</span>{/if}</td>
+                <td><span class="pa-chip {$tono}">{$e[0]}</span>{if (int) ($t['archivada'] ?? 0)} <span class="pa-chip gris">Archivada</span>{/if}</td>
                 <td class="pa-muted">{$t['n_comentarios']} com. · {$t['n_archivos']} arch.</td>
-                <td>
-                    <form method="post" action="{$admin_url('tareas/' . $t['id'] . '/borrar')}" onsubmit="return confirm('¿Eliminar esta tarea con sus archivos y comentarios?');">
-                        <input type="hidden" name="_csrf_token" value="{$csrf_token}">
-                        <button type="submit" class="btn btn-sm btn-danger">Eliminar</button>
-                    </form>
-                </td>
+                <td><button type="submit" form="borrar-{$t['id']}" class="btn btn-sm btn-danger">Eliminar</button></td>
             </tr>
         {/foreach}
         </tbody>
     </table>
 </div>
+{foreach $tareas as $t}
+    <form method="post" action="{$admin_url('tareas/' . $t['id'] . '/borrar')}" id="borrar-{$t['id']}" onsubmit="return confirm('¿Eliminar esta tarea con sus archivos y comentarios? Si sólo quieres sacarla de la lista, mejor archívala.');" hidden>
+        <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+    </form>
+{/foreach}
 {/if}
+
+{include '../_filtros.js.latte'}
 {/block}
