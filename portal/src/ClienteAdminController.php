@@ -10,7 +10,12 @@ class ClienteAdminController
     private const LOGO_EXT = ['png', 'jpg', 'jpeg', 'webp'];
     private const LOGO_MAX = 2 * 1048576;
 
-    public function __construct(private readonly PluginContext $ctx) {}
+    protected readonly Pantalla $ui;
+
+    public function __construct(private readonly PluginContext $ctx, ?Pantalla $ui = null)
+    {
+        $this->ui = $ui ?? new PantallaAdmin($ctx);
+    }
 
     private function pdo(): \PDO
     {
@@ -29,16 +34,16 @@ class ClienteAdminController
 
     public function index(): void
     {
-        $this->ctx->view('templates/admin/clientes/index.latte', [
-            'clientes'      => $this->service()->listAll(),
-            'flash_success' => $this->ctx->getFlash('success'),
-            'flash_error'   => $this->ctx->getFlash('error'),
+        $this->ui->view('clientes/index.latte', [
+            'clientes'      => $this->ui->filtrar($this->service()->listAll(), 'id', 'cliente'),
+            'flash_success' => $this->ui->flash('success'),
+            'flash_error'   => $this->ui->flash('error'),
         ]);
     }
 
     public function create(): void
     {
-        $this->ctx->view('templates/admin/clientes/edit.latte', [
+        $this->ui->view('clientes/edit.latte', [
             'cliente' => null,
         ]);
     }
@@ -47,19 +52,19 @@ class ClienteAdminController
     {
         $id = $this->service()->create($_POST);
         // A la edición, donde está la personalización del portal de este cliente.
-        $this->ctx->redirect($this->ctx->adminUrl('clientes/' . $id), 'Cliente creado. Puedes personalizar su portal aquí abajo.');
+        $this->ui->redirect($this->ui->url('clientes/' . $id), 'Cliente creado. Puedes personalizar su portal aquí abajo.');
     }
 
     public function edit(string $id): void
     {
         $cliente = $this->service()->find($id);
         if ($cliente === null) {
-            $this->ctx->redirect($this->ctx->adminUrl(), 'Cliente no encontrado.', 'error');
+            $this->ui->redirect($this->ui->url(), 'Cliente no encontrado.', 'error');
             return;
         }
         $cfg = $this->ajustes()->todos('cliente', $id);
 
-        $this->ctx->view('templates/admin/clientes/edit.latte', [
+        $this->ui->view('clientes/edit.latte', [
             'cliente'       => $cliente,
             'cfg'           => [
                 'titulo' => $cfg['titulo'] ?? '',
@@ -67,15 +72,15 @@ class ClienteAdminController
                 'frases' => implode("\n", $this->ajustes()->frasesDeCliente($id)),
                 'logo_id' => $cfg['logo_id'] ?? '',
             ],
-            'flash_success' => $this->ctx->getFlash('success'),
-            'flash_error'   => $this->ctx->getFlash('error'),
+            'flash_success' => $this->ui->flash('success'),
+            'flash_error'   => $this->ui->flash('error'),
         ]);
     }
 
     public function update(string $id): void
     {
         $this->service()->update($id, $_POST);
-        $this->ctx->redirect($this->ctx->adminUrl('clientes/' . $id), 'Cliente actualizado.');
+        $this->ui->redirect($this->ui->url('clientes/' . $id), 'Cliente actualizado.');
     }
 
     /** Marca del portal de este cliente: título, color, logo y frases de bienvenida. */
@@ -83,10 +88,10 @@ class ClienteAdminController
     {
         $cliente = $this->service()->find($id);
         if ($cliente === null) {
-            $this->ctx->redirect($this->ctx->adminUrl(), 'Cliente no encontrado.', 'error');
+            $this->ui->redirect($this->ui->url(), 'Cliente no encontrado.', 'error');
             return;
         }
-        $volver = $this->ctx->adminUrl('clientes/' . $id);
+        $volver = $this->ui->url('clientes/' . $id);
         $aj     = $this->ajustes();
 
         $aj->setMuchos('cliente', $id, [
@@ -123,7 +128,7 @@ class ClienteAdminController
             }
         }
 
-        $this->ctx->redirect(
+        $this->ui->redirect(
             $volver,
             $avisoLogo === '' ? 'Personalización guardada.' : 'Guardamos los ajustes, pero:' . $avisoLogo,
             $avisoLogo === '' ? 'success' : 'error'
@@ -151,6 +156,6 @@ class ClienteAdminController
         (new ArchivoService($this->pdo()))->borrarFisicosDeCliente($id);
         $this->ajustes()->borrarDeCliente($id);
         $this->service()->delete($id);
-        $this->ctx->redirect($this->ctx->adminUrl(), 'Cliente eliminado.');
+        $this->ui->redirect($this->ui->url(), 'Cliente eliminado.');
     }
 }

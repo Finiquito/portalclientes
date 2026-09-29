@@ -2,7 +2,7 @@
 {var $v = $fmt->vence($t['fecha_vencimiento'], $t['estado'])}
 {var $e = $fmt->estado($t['estado'])}
 <li>
-    <a href="/equipo/proyectos/{$t['proyecto_id']}#t-{$t['id']}" class="group flex items-center gap-3 rounded-2xl p-3 transition hover:bg-surface2 sm:p-3.5">
+    <a href="/equipo/tareas/{$t['id']}" class="group flex items-center gap-3 rounded-2xl p-3 transition hover:bg-surface2 sm:p-3.5">
         <span class="flex size-11 flex-none items-center justify-center rounded-xl {in_array($t['estado'], ['entregada', 'cambios'], true) ? 'bg-warn/15 text-warn' : 'bg-brand-soft text-brand-ink'}">
             <svg class="size-5"><use href="#{$t['estado'] === 'cambios' ? 'i-chat' : ($t['tipo'] === 'archivo' ? 'i-upload' : ($t['tipo'] === 'revision' ? 'i-eye' : 'i-tasks'))}"/></svg>
         </span>

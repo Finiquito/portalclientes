@@ -15,7 +15,7 @@
         <label class="form-label">Cliente</label>
         <select name="cliente_id" class="form-input" required>
             {foreach $clientes as $c}
-                <option value="{$c['id']}" {if isset($proyecto['cliente_id']) && $proyecto['cliente_id'] === $c['id']}selected{/if}>{$c['nombre']}</option>
+                <option value="{$c['id']}" {if ($proyecto['cliente_id'] ?? $pre['cliente_id'] ?? '') === $c['id']}selected{/if}>{$c['nombre']}</option>
             {/foreach}
         </select>
 

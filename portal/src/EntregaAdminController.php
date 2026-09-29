@@ -8,7 +8,12 @@ use TypeDock\Core\PluginContext;
 /** Admin de entregas: paquetes de contenido que el cliente revisa. */
 class EntregaAdminController
 {
-    public function __construct(private readonly PluginContext $ctx) {}
+    protected readonly Pantalla $ui;
+
+    public function __construct(private readonly PluginContext $ctx, ?Pantalla $ui = null)
+    {
+        $this->ui = $ui ?? new PantallaAdmin($ctx);
+    }
 
     private function pdo(): \PDO
     {
@@ -37,8 +42,7 @@ class EntregaAdminController
 
     private function firma(): string
     {
-        $n = trim($this->ajustes()->get('global', 'portal', 'nombre_equipo'));
-        return $n !== '' ? $n : 'Equipo';
+        return $this->ui->firma();
     }
 
     private function maxMb(): int
@@ -48,20 +52,20 @@ class EntregaAdminController
 
     private function url(string $ruta): string
     {
-        return $this->ctx->adminUrl($ruta);
+        return $this->ui->url($ruta);
     }
 
     private function flashes(): array
     {
-        return ['flash_success' => $this->ctx->getFlash('success'), 'flash_error' => $this->ctx->getFlash('error')];
+        return ['flash_success' => $this->ui->flash('success'), 'flash_error' => $this->ui->flash('error')];
     }
 
     // ---- Entregas ---------------------------------------------------------
 
     public function index(): void
     {
-        $this->ctx->view('templates/admin/entregas/index.latte', [
-            'entregas' => $this->entregas()->listAll(),
+        $this->ui->view('entregas/index.latte', [
+            'entregas' => $this->ui->filtrar($this->entregas()->listAll(), 'proyecto_id'),
             'estados'  => TiposContenido::ESTADOS_ENTREGA,
             'fmt'      => new Fmt(),
         ] + $this->flashes());
@@ -69,12 +73,12 @@ class EntregaAdminController
 
     public function create(): void
     {
-        $proyectos = (new ProyectoService($this->pdo()))->listAll();
+        $proyectos = $this->ui->filtrar((new ProyectoService($this->pdo()))->listAll(), 'id');
         if ($proyectos === []) {
-            $this->ctx->redirect($this->url('entregas'), 'Crea un proyecto primero.', 'error');
+            $this->ui->redirect($this->url('entregas'), 'Crea un proyecto primero.', 'error');
             return;
         }
-        $this->ctx->view('templates/admin/entregas/edit.latte', [
+        $this->ui->view('entregas/edit.latte', [
             'entrega' => null, 'proyectos' => $proyectos, 'contenidos' => [], 'fmt' => new Fmt(),
             'estados' => TiposContenido::ESTADOS_ENTREGA, 'tipos' => TiposContenido::TIPOS,
             'estadosContenido' => TiposContenido::ESTADOS_CONTENIDO, 'reacciones' => TiposContenido::REACCIONES,
@@ -92,22 +96,22 @@ class EntregaAdminController
         try {
             $id = $this->entregas()->create($_POST);
         } catch (\InvalidArgumentException) {
-            $this->ctx->redirect($this->url('entregas/nuevo'), 'Elige un proyecto válido.', 'error');
+            $this->ui->redirect($this->url('entregas/nuevo'), 'Elige un proyecto válido.', 'error');
             return;
         }
         if ($planilla !== [] && ($e = $this->entregas()->find($id)) !== null) {
             $r = $this->expandir($e, array_slice($planilla, 0, 30), (string) ($_POST['tipo'] ?? ''), trim((string) ($_POST['cuenta'] ?? '')));
-            $this->ctx->redirect($this->url('entregas/' . $id), 'Entrega creada. ' . $r['mensaje']);
+            $this->ui->redirect($this->url('entregas/' . $id), 'Entrega creada. ' . $r['mensaje']);
             return;
         }
-        $this->ctx->redirect($this->url('entregas/' . $id), 'Entrega creada. Agrega los contenidos y luego publícala.');
+        $this->ui->redirect($this->url('entregas/' . $id), 'Entrega creada. Agrega los contenidos y luego publícala.');
     }
 
     public function edit(string $id): void
     {
         $e = $this->entregas()->find($id);
         if ($e === null) {
-            $this->ctx->redirect($this->url('entregas'), 'Entrega no encontrada.', 'error');
+            $this->ui->redirect($this->url('entregas'), 'Entrega no encontrada.', 'error');
             return;
         }
         $lista = $this->contenidos()->listar($id);
@@ -124,7 +128,7 @@ class EntregaAdminController
                 $resumen[$c['id']] = $this->contenidos()->reacciones((string) $c['version_id']);
             }
         }
-        $this->ctx->view('templates/admin/entregas/edit.latte', [
+        $this->ui->view('entregas/edit.latte', [
             'entrega' => $e, 'proyectos' => [], 'contenidos' => $lista, 'fmt' => new Fmt(),
             'estados' => TiposContenido::ESTADOS_ENTREGA, 'tipos' => TiposContenido::TIPOS,
             'estadosContenido' => TiposContenido::ESTADOS_CONTENIDO, 'reacciones' => TiposContenido::REACCIONES,
@@ -137,24 +141,24 @@ class EntregaAdminController
         if ($this->entregas()->find($id) !== null) {
             $this->entregas()->update($id, $_POST);
         }
-        $this->ctx->redirect($this->url('entregas/' . $id), 'Entrega actualizada.');
+        $this->ui->redirect($this->url('entregas/' . $id), 'Entrega actualizada.');
     }
 
     public function destroy(string $id): void
     {
         $this->entregas()->delete($id);
-        $this->ctx->redirect($this->url('entregas'), 'Entrega eliminada con todos sus contenidos.');
+        $this->ui->redirect($this->url('entregas'), 'Entrega eliminada con todos sus contenidos.');
     }
 
     public function publicar(string $id): void
     {
         $e = $this->entregas()->find($id);
         if ($e === null) {
-            $this->ctx->redirect($this->url('entregas'), 'Entrega no encontrada.', 'error');
+            $this->ui->redirect($this->url('entregas'), 'Entrega no encontrada.', 'error');
             return;
         }
         if ((int) $e['n_total'] === 0) {
-            $this->ctx->redirect($this->url('entregas/' . $id), 'Agrega al menos un contenido antes de publicar.', 'error');
+            $this->ui->redirect($this->url('entregas/' . $id), 'Agrega al menos un contenido antes de publicar.', 'error');
             return;
         }
         $this->entregas()->publicar($id);
@@ -170,13 +174,13 @@ class EntregaAdminController
                  'bloques' => [['tarjetas' => [['titulo' => (string) $e['titulo'], 'detalle' => ((int) $e['n_total']) . ' contenido(s) esperando tu opinión', 'chip' => 'Para revisar']]]]]
             );
         }
-        $this->ctx->redirect($this->url('entregas/' . $id), 'Entrega publicada: el cliente ya la ve en su portal.');
+        $this->ui->redirect($this->url('entregas/' . $id), 'Entrega publicada: el cliente ya la ve en su portal.');
     }
 
     public function borrador(string $id): void
     {
         $this->entregas()->volverABorrador($id);
-        $this->ctx->redirect($this->url('entregas/' . $id), 'La entrega volvió a borrador: el cliente ya no la ve.');
+        $this->ui->redirect($this->url('entregas/' . $id), 'La entrega volvió a borrador: el cliente ya no la ve.');
     }
 
     // ---- Contenidos -------------------------------------------------------
@@ -186,24 +190,24 @@ class EntregaAdminController
     {
         $e = $this->entregas()->find($id);
         if ($e === null) {
-            $this->ctx->redirect($this->url('entregas'), 'Entrega no encontrada.', 'error');
+            $this->ui->redirect($this->url('entregas'), 'Entrega no encontrada.', 'error');
             return;
         }
         $volver = $this->url('entregas/' . $id) . '#contenidos';
         if (ArchivoService::postExcedido()) {
-            $this->ctx->redirect($volver, 'Los archivos superan el máximo del servidor (post_max_size).', 'error');
+            $this->ui->redirect($volver, 'Los archivos superan el máximo del servidor (post_max_size).', 'error');
             return;
         }
         $lista = array_slice(ArchivoService::normalizar($_FILES['archivos'] ?? null), 0, 10);
         foreach ($lista as $f) {
             if (strtolower(pathinfo((string) ($f['name'] ?? ''), PATHINFO_EXTENSION)) === 'csv') {
-                $this->ctx->redirect($volver, 'Una planilla .csv no va aquí: súbela en «Subir archivos o planilla» y se despliega en un contenido por fila.', 'error');
+                $this->ui->redirect($volver, 'Una planilla .csv no va aquí: súbela en «Subir archivos o planilla» y se despliega en un contenido por fila.', 'error');
                 return;
             }
         }
         $enlace = TiposContenido::enlaceSeguro((string) ($_POST['enlace'] ?? ''));
         if (trim((string) ($_POST['enlace'] ?? '')) !== '' && $enlace === '') {
-            $this->ctx->redirect($volver, 'El link debe empezar con http:// o https://', 'error');
+            $this->ui->redirect($volver, 'El link debe empezar con http:// o https://', 'error');
             return;
         }
 
@@ -214,7 +218,7 @@ class EntregaAdminController
             $errores = $r['errores'];
         }
         $this->reabrirSiCorresponde($e);
-        $this->ctx->redirect($volver, $errores === [] ? 'Contenido agregado.' : 'Contenido agregado, pero: ' . implode(' · ', $errores), $errores === [] ? 'success' : 'error');
+        $this->ui->redirect($volver, $errores === [] ? 'Contenido agregado.' : 'Contenido agregado, pero: ' . implode(' · ', $errores), $errores === [] ? 'success' : 'error');
     }
 
     /**
@@ -226,21 +230,21 @@ class EntregaAdminController
     {
         $e = $this->entregas()->find($id);
         if ($e === null) {
-            $this->ctx->redirect($this->url('entregas'), 'Entrega no encontrada.', 'error');
+            $this->ui->redirect($this->url('entregas'), 'Entrega no encontrada.', 'error');
             return;
         }
         $volver = $this->url('entregas/' . $id) . '#contenidos';
         if (ArchivoService::postExcedido()) {
-            $this->ctx->redirect($volver, 'Los archivos superan el máximo del servidor (post_max_size).', 'error');
+            $this->ui->redirect($volver, 'Los archivos superan el máximo del servidor (post_max_size).', 'error');
             return;
         }
         $lista = array_slice(ArchivoService::normalizar($_FILES['archivos'] ?? null), 0, 30);
         if ($lista === []) {
-            $this->ctx->redirect($volver, 'Elige al menos un archivo o una planilla.', 'error');
+            $this->ui->redirect($volver, 'Elige al menos un archivo o una planilla.', 'error');
             return;
         }
         $r = $this->expandir($e, $lista, (string) ($_POST['tipo'] ?? ''), trim((string) ($_POST['cuenta'] ?? '')));
-        $this->ctx->redirect($volver, $r['mensaje'], $r['creados'] > 0 ? 'success' : 'error');
+        $this->ui->redirect($volver, $r['mensaje'], $r['creados'] > 0 ? 'success' : 'error');
     }
 
     /**
@@ -340,14 +344,14 @@ class EntregaAdminController
     /** @return array{tipo: string, id: ?string, nombre: string} */
     private function autor(): array
     {
-        return ['tipo' => 'equipo', 'id' => null, 'nombre' => $this->firma()];
+        return ['tipo' => 'equipo', 'id' => $this->ui->autorId(), 'nombre' => $this->firma()];
     }
 
     public function editContenido(string $id): void
     {
         $c = $this->contenidos()->find($id);
         if ($c === null) {
-            $this->ctx->redirect($this->url('entregas'), 'Contenido no encontrado.', 'error');
+            $this->ui->redirect($this->url('entregas'), 'Contenido no encontrado.', 'error');
             return;
         }
         $versiones = [];
@@ -356,7 +360,7 @@ class EntregaAdminController
             $v['reacciones']  = $this->contenidos()->reacciones((string) $v['id']);
             $versiones[] = $v;
         }
-        $this->ctx->view('templates/admin/entregas/contenido.latte', [
+        $this->ui->view('entregas/contenido.latte', [
             'c' => $c, 'versiones' => $versiones, 'tipos' => TiposContenido::TIPOS,
             'reacciones' => TiposContenido::REACCIONES, 'estadosContenido' => TiposContenido::ESTADOS_CONTENIDO,
             'comentarios' => (new ComentarioService($this->pdo()))->listar('contenido', $id),
@@ -368,12 +372,12 @@ class EntregaAdminController
     {
         if ($this->contenidos()->find($id) !== null) {
             if (trim((string) ($_POST['enlace'] ?? '')) !== '' && TiposContenido::enlaceSeguro((string) $_POST['enlace']) === '') {
-                $this->ctx->redirect($this->url('contenidos/' . $id), 'El link debe empezar con http:// o https://', 'error');
+                $this->ui->redirect($this->url('contenidos/' . $id), 'El link debe empezar con http:// o https://', 'error');
                 return;
             }
             $this->contenidos()->actualizar($id, $_POST);
         }
-        $this->ctx->redirect($this->url('contenidos/' . $id), 'Contenido actualizado.');
+        $this->ui->redirect($this->url('contenidos/' . $id), 'Contenido actualizado.');
     }
 
     public function borrarContenido(string $id): void
@@ -383,7 +387,7 @@ class EntregaAdminController
         if ($c !== null) {
             $this->contenidos()->borrar($id);
         }
-        $this->ctx->redirect($vol, 'Contenido eliminado.');
+        $this->ui->redirect($vol, 'Contenido eliminado.');
     }
 
     public function moverContenido(string $id): void
@@ -392,7 +396,7 @@ class EntregaAdminController
         if ($c !== null) {
             $this->contenidos()->mover($id, ($_POST['dir'] ?? '') === 'arriba' ? -1 : 1);
         }
-        $this->ctx->redirect($c !== null ? $this->url('entregas/' . $c['entrega_id']) . '#contenidos' : $this->url('entregas'));
+        $this->ui->redirect($c !== null ? $this->url('entregas/' . $c['entrega_id']) . '#contenidos' : $this->url('entregas'));
     }
 
     /** Sube una versión nueva (v2, v3…): el contenido vuelve a "por revisar". */
@@ -400,16 +404,16 @@ class EntregaAdminController
     {
         $c = $this->contenidos()->find($id);
         if ($c === null) {
-            $this->ctx->redirect($this->url('entregas'), 'Contenido no encontrado.', 'error');
+            $this->ui->redirect($this->url('entregas'), 'Contenido no encontrado.', 'error');
             return;
         }
         $volver = $this->url('contenidos/' . $id);
         if (ArchivoService::postExcedido()) {
-            $this->ctx->redirect($volver, 'Los archivos superan el máximo del servidor (post_max_size).', 'error');
+            $this->ui->redirect($volver, 'Los archivos superan el máximo del servidor (post_max_size).', 'error');
             return;
         }
         if (trim((string) ($_POST['enlace'] ?? '')) !== '' && TiposContenido::enlaceSeguro((string) $_POST['enlace']) === '') {
-            $this->ctx->redirect($volver, 'El link debe empezar con http:// o https://', 'error');
+            $this->ui->redirect($volver, 'El link debe empezar con http:// o https://', 'error');
             return;
         }
         $lista = array_slice(ArchivoService::normalizar($_FILES['archivos'] ?? null), 0, 10);
@@ -432,7 +436,7 @@ class EntregaAdminController
                 'v' . ((int) $c['version_actual'] + 1)
             );
         }
-        $this->ctx->redirect($volver, $errores === [] ? 'Versión nueva publicada.' : 'Versión creada, pero: ' . implode(' · ', $errores), $errores === [] ? 'success' : 'error');
+        $this->ui->redirect($volver, $errores === [] ? 'Versión nueva publicada.' : 'Versión creada, pero: ' . implode(' · ', $errores), $errores === [] ? 'success' : 'error');
     }
 
     /** Agrega más archivos a la versión vigente (por ejemplo, otra lámina del carrusel). */
@@ -440,22 +444,22 @@ class EntregaAdminController
     {
         $c = $this->contenidos()->find($id);
         if ($c === null || $c['version_id'] === null) {
-            $this->ctx->redirect($this->url('entregas'), 'Contenido no encontrado.', 'error');
+            $this->ui->redirect($this->url('entregas'), 'Contenido no encontrado.', 'error');
             return;
         }
         $volver = $this->url('contenidos/' . $id);
         if (ArchivoService::postExcedido()) {
-            $this->ctx->redirect($volver, 'Los archivos superan el máximo del servidor (post_max_size).', 'error');
+            $this->ui->redirect($volver, 'Los archivos superan el máximo del servidor (post_max_size).', 'error');
             return;
         }
         $lista = array_slice(ArchivoService::normalizar($_FILES['archivos'] ?? null), 0, 10);
         if ($lista === []) {
-            $this->ctx->redirect($volver, 'Elige al menos un archivo.', 'error');
+            $this->ui->redirect($volver, 'Elige al menos un archivo.', 'error');
             return;
         }
         $r = $this->archivos()->guardarVarios($lista, (string) $c['cliente_id'], (string) $c['proyecto_id'], 'version', (string) $c['version_id'], $this->autor(), $this->maxMb());
         $n = count($r['ok']);
-        $this->ctx->redirect($volver, $r['errores'] === [] ? ($n === 1 ? 'Archivo subido.' : "{$n} archivos subidos.") : ($n > 0 ? "Se subieron {$n}, pero: " : 'No se pudo subir: ') . implode(' · ', $r['errores']), $r['errores'] === [] ? 'success' : 'error');
+        $this->ui->redirect($volver, $r['errores'] === [] ? ($n === 1 ? 'Archivo subido.' : "{$n} archivos subidos.") : ($n > 0 ? "Se subieron {$n}, pero: " : 'No se pudo subir: ') . implode(' · ', $r['errores']), $r['errores'] === [] ? 'success' : 'error');
     }
 
     // ---- Conversación -----------------------------------------------------
@@ -464,16 +468,16 @@ class EntregaAdminController
     {
         $c = $this->contenidos()->find($id);
         if ($c === null) {
-            $this->ctx->redirect($this->url('entregas'), 'Contenido no encontrado.', 'error');
+            $this->ui->redirect($this->url('entregas'), 'Contenido no encontrado.', 'error');
             return;
         }
         $volver = $this->url('contenidos/' . $id) . '#conversacion';
         $texto = trim((string) ($_POST['cuerpo'] ?? ''));
         if ($texto === '') {
-            $this->ctx->redirect($volver, 'Escribe algo antes de enviar.', 'error');
+            $this->ui->redirect($volver, 'Escribe algo antes de enviar.', 'error');
             return;
         }
-        (new ComentarioService($this->pdo()))->crear((string) $c['cliente_id'], 'contenido', $id, 'equipo', null, $this->firma(), $texto, $c['version_id']);
+        (new ComentarioService($this->pdo()))->crear((string) $c['cliente_id'], 'contenido', $id, 'equipo', $this->ui->autorId(), $this->ui->firma(), $texto, $c['version_id']);
         if ($c['entrega_estado'] !== 'borrador') {
             (new ActividadService($this->pdo()))->registrar(
                 (string) $c['cliente_id'], (string) $c['proyecto_id'], 'equipo', $this->firma(), 'comento', 'contenido', $id, (string) $c['titulo'], mb_substr($texto, 0, 200)
@@ -487,7 +491,7 @@ class EntregaAdminController
                 );
             }
         }
-        $this->ctx->redirect($volver, 'Comentario publicado.');
+        $this->ui->redirect($volver, 'Comentario publicado.');
     }
 
     public function borrarComentario(string $id, string $comentarioId): void
@@ -497,6 +501,6 @@ class EntregaAdminController
         if ($x !== null && $x['entidad_tipo'] === 'contenido' && $x['entidad_id'] === $id) {
             $cm->borrar($comentarioId);
         }
-        $this->ctx->redirect($this->url('contenidos/' . $id) . '#conversacion', 'Comentario eliminado.');
+        $this->ui->redirect($this->url('contenidos/' . $id) . '#conversacion', 'Comentario eliminado.');
     }
 }

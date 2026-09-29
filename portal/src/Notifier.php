@@ -136,8 +136,8 @@ class Notifier
     public function alEquipo(string $asunto, string $cuerpo, ?string $rutaAdmin = null, array $op = []): void
     {
         $to = trim($this->ajustes()->get('global', 'portal', 'email_avisos'));
-        if ($to === '' || !filter_var($to, FILTER_VALIDATE_EMAIL)) {
-            return;
+        if (!filter_var($to, FILTER_VALIDATE_EMAIL)) {
+            $to = '';
         }
         $clienteId = (string) ($op['cliente_id'] ?? '');
         $proyecto = '';
@@ -163,10 +163,29 @@ class Notifier
                 ];
             }
         }
-        $url = $rutaAdmin !== null ? $this->absoluta($this->ctx->adminUrl($rutaAdmin)) : '';
-        $op += ['boton' => 'Abrir en el admin'];
-        [$html, $texto] = $this->componer($asunto, $cuerpo, $op, null, $url, $clienteId !== '' ? $clienteId : null, ['Aviso interno: el cliente no ve este correo.'], $contexto);
-        $this->enviarCorreo($to, $asunto, $html, $texto);
+        $cid = $clienteId !== '' ? $clienteId : null;
+        $pie = ['Aviso interno: el cliente no ve este correo.'];
+
+        // Correo de avisos de Ajustes: enlace al admin de TypeDock.
+        if ($to !== '') {
+            $url = $rutaAdmin !== null ? $this->absoluta($this->ctx->adminUrl($rutaAdmin)) : '';
+            [$html, $texto] = $this->componer($asunto, $cuerpo, $op + ['boton' => 'Abrir en el admin'], null, $url, $cid, $pie, $contexto);
+            $this->enviarCorreo($to, $asunto, $html, $texto);
+        }
+
+        // Personas de la agencia asignadas a ese proyecto/cliente: enlace al panel de equipo.
+        $enviados = [strtolower($to)];
+        $url = $rutaAdmin !== null ? $this->absoluta('/equipo/' . ltrim($rutaAdmin, '/')) : $this->absoluta('/equipo');
+        $pieEq = array_merge($pie, ['Te llega porque tienes asignado este cliente. Puedes desactivar estos avisos en «Mis ajustes» del panel.']);
+        foreach ((new EquipoService($this->pdo))->destinatariosAvisos((string) ($op['proyecto_id'] ?? ''), $cid) as $u) {
+            $mail = strtolower((string) $u['email']);
+            if (in_array($mail, $enviados, true)) {
+                continue;
+            }
+            $enviados[] = $mail;
+            [$html, $texto] = $this->componer($asunto, $cuerpo, $op + ['boton' => 'Abrir en el panel'], null, $url, $cid, $pieEq, $contexto);
+            $this->enviarCorreo($mail, $asunto, $html, $texto);
+        }
     }
 
     /**

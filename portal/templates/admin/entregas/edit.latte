@@ -21,7 +21,7 @@
         <label class="form-label">Proyecto</label>
         <select name="proyecto_id" class="form-input" required>
             {foreach $proyectos as $p}
-                <option value="{$p['id']}">{$p['cliente_nombre']} · {$p['nombre']}</option>
+                <option value="{$p['id']}" {if ($pre['proyecto_id'] ?? '') === $p['id']}selected{/if}>{$p['cliente_nombre']} · {$p['nombre']}</option>
             {/foreach}
         </select>
         {else}

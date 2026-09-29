@@ -88,9 +88,9 @@
     <form method="post" action="{$admin_url('ajustes/correo')}" enctype="multipart/form-data">
         <input type="hidden" name="_csrf_token" value="{$csrf_token}">
 
-        <label class="form-label mt-3">Tu logo en los correos</label>
+        <label class="form-label mt-3">Logo de la agencia <span class="form-hint">(correos y panel de equipo <code>/equipo</code>)</span></label>
         {if $correo['tieneLogo']}
-            <p><img src="/portal/marca/agencia" alt="Tu logo" style="max-height:48px;max-width:220px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:6px"></p>
+            <p><img src="/portal/marca/agencia?v={=time()}" alt="Tu logo" style="max-height:48px;max-width:220px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:6px"></p>
             <label class="pa-check"><input type="checkbox" name="quitar_logo_agencia" value="1"> <span>Quitar el logo actual (se usará el nombre del equipo en texto)</span></label>
         {/if}
         <input type="file" name="logo_agencia" class="form-input mt-1" accept=".png,.jpg,.jpeg,.webp">

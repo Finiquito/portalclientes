@@ -7,7 +7,12 @@ use TypeDock\Core\PluginContext;
 
 class ContactoAdminController
 {
-    public function __construct(private readonly PluginContext $ctx) {}
+    protected readonly Pantalla $ui;
+
+    public function __construct(private readonly PluginContext $ctx, ?Pantalla $ui = null)
+    {
+        $this->ui = $ui ?? new PantallaAdmin($ctx);
+    }
 
     private function service(): ContactoService
     {
@@ -16,15 +21,15 @@ class ContactoAdminController
 
     private function clientes(): array
     {
-        return (new ClienteService($this->ctx->db()->pdo()))->listAll();
+        return $this->ui->filtrar((new ClienteService($this->ctx->db()->pdo()))->listAll(), 'id', 'cliente');
     }
 
     public function index(): void
     {
-        $this->ctx->view('templates/admin/contactos/index.latte', [
-            'contactos'     => $this->service()->listAll(),
-            'flash_success' => $this->ctx->getFlash('success'),
-            'flash_error'   => $this->ctx->getFlash('error'),
+        $this->ui->view('contactos/index.latte', [
+            'contactos'     => $this->ui->filtrar($this->service()->listAll(), 'cliente_id', 'cliente'),
+            'flash_success' => $this->ui->flash('success'),
+            'flash_error'   => $this->ui->flash('error'),
         ]);
     }
 
@@ -32,10 +37,10 @@ class ContactoAdminController
     {
         $clientes = $this->clientes();
         if ($clientes === []) {
-            $this->ctx->redirect($this->ctx->adminUrl('contactos'), 'Crea un cliente primero.', 'error');
+            $this->ui->redirect($this->ui->url('contactos'), 'Crea un cliente primero.', 'error');
             return;
         }
-        $this->ctx->view('templates/admin/contactos/edit.latte', [
+        $this->ui->view('contactos/edit.latte', [
             'contacto' => null,
             'clientes' => $clientes,
         ]);
@@ -45,21 +50,21 @@ class ContactoAdminController
     {
         $existente = $this->service()->findByEmail((string) ($_POST['email'] ?? ''));
         if ($existente !== null) {
-            $this->ctx->redirect($this->ctx->adminUrl('contactos'), 'Ya existe un contacto con ese email.', 'error');
+            $this->ui->redirect($this->ui->url('contactos'), 'Ya existe un contacto con ese email.', 'error');
             return;
         }
         $this->service()->create($_POST);
-        $this->ctx->redirect($this->ctx->adminUrl('contactos'), 'Contacto creado.');
+        $this->ui->redirect($this->ui->url('contactos'), 'Contacto creado.');
     }
 
     public function edit(string $id): void
     {
         $contacto = $this->service()->find($id);
         if ($contacto === null) {
-            $this->ctx->redirect($this->ctx->adminUrl('contactos'), 'Contacto no encontrado.', 'error');
+            $this->ui->redirect($this->ui->url('contactos'), 'Contacto no encontrado.', 'error');
             return;
         }
-        $this->ctx->view('templates/admin/contactos/edit.latte', [
+        $this->ui->view('contactos/edit.latte', [
             'contacto' => $contacto,
             'clientes' => $this->clientes(),
         ]);
@@ -68,13 +73,13 @@ class ContactoAdminController
     public function update(string $id): void
     {
         $this->service()->update($id, $_POST);
-        $this->ctx->redirect($this->ctx->adminUrl('contactos'), 'Contacto actualizado.');
+        $this->ui->redirect($this->ui->url('contactos'), 'Contacto actualizado.');
     }
 
     public function destroy(string $id): void
     {
         (new AjustesService($this->ctx->db()->pdo()))->borrarDeDueno('contacto', $id);
         $this->service()->delete($id);
-        $this->ctx->redirect($this->ctx->adminUrl('contactos'), 'Contacto eliminado.');
+        $this->ui->redirect($this->ui->url('contactos'), 'Contacto eliminado.');
     }
 }

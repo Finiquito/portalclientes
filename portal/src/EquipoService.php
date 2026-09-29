@@ -174,6 +174,31 @@ class EquipoService
         }
     }
 
+    /**
+     * A quién del equipo avisar por correo cuando el cliente hace algo: los usuarios activos
+     * que ven ese proyecto (o ese cliente) y no desactivaron sus avisos en «Mis ajustes».
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function destinatariosAvisos(?string $proyectoId, ?string $clienteId): array
+    {
+        if ($proyectoId !== null && $proyectoId !== '') {
+            $lista = $this->delProyecto($proyectoId);
+        } elseif ($clienteId !== null && $clienteId !== '') {
+            $stmt = $this->pdo->prepare(
+                "SELECT DISTINCT e.id, e.nombre, e.email, e.cargo FROM portal_equipo e
+                 LEFT JOIN portal_equipo_asignaciones a ON a.usuario_id = e.id AND a.cliente_id = ?
+                 WHERE e.activo = 1 AND (e.rol = 'coordinador' OR a.id IS NOT NULL) ORDER BY e.nombre"
+            );
+            $stmt->execute([$clienteId]);
+            $lista = $stmt->fetchAll();
+        } else {
+            return [];
+        }
+        $aj = new AjustesService($this->pdo);
+        return array_values(array_filter($lista, fn(array $u): bool => $aj->get('equipo', (string) $u['id'], 'avisos', '1') !== '0'));
+    }
+
     /** @return array<int, array<string, mixed>> Usuarios asignados a un proyecto (directo o por cliente completo). */
     public function delProyecto(string $proyectoId): array
     {

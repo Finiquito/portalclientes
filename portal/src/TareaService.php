@@ -17,13 +17,14 @@ class TareaService
     {
         $stmt = $this->pdo->query(
             'SELECT t.*, p.nombre AS proyecto_nombre, p.cliente_id AS cliente_id, cl.nombre AS cliente_nombre,
-                    u.name AS responsable_nombre, ct.nombre AS contacto_nombre,
+                    COALESCE(eq.nombre, u.name) AS responsable_nombre, ct.nombre AS contacto_nombre,
                     (SELECT COUNT(*) FROM portal_comentarios c WHERE c.entidad_tipo = \'tarea\' AND c.entidad_id = t.id) AS n_comentarios,
                     (SELECT COUNT(*) FROM portal_archivos a WHERE a.entidad_tipo = \'tarea\' AND a.entidad_id = t.id) AS n_archivos
              FROM ' . self::TABLE . ' t
              JOIN portal_proyectos p ON p.id = t.proyecto_id
              JOIN portal_clientes cl ON cl.id = p.cliente_id
              LEFT JOIN users u ON u.id = t.responsable_usuario_id AND t.responsable_tipo = \'equipo\'
+             LEFT JOIN portal_equipo eq ON eq.id = t.responsable_usuario_id AND t.responsable_tipo = \'equipo\'
              LEFT JOIN portal_contactos ct ON ct.id = t.responsable_contacto_id AND t.responsable_tipo = \'cliente\'
              ORDER BY (CASE WHEN t.estado = \'entregada\' THEN 0 ELSE 1 END), (t.fecha_vencimiento IS NULL), t.fecha_vencimiento'
         );

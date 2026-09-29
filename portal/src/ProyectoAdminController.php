@@ -7,7 +7,12 @@ use TypeDock\Core\PluginContext;
 
 class ProyectoAdminController
 {
-    public function __construct(private readonly PluginContext $ctx) {}
+    protected readonly Pantalla $ui;
+
+    public function __construct(private readonly PluginContext $ctx, ?Pantalla $ui = null)
+    {
+        $this->ui = $ui ?? new PantallaAdmin($ctx);
+    }
 
     private function service(): ProyectoService
     {
@@ -16,15 +21,15 @@ class ProyectoAdminController
 
     private function clientes(): array
     {
-        return (new ClienteService($this->ctx->db()->pdo()))->listAll();
+        return $this->ui->filtrar((new ClienteService($this->ctx->db()->pdo()))->listAll(), 'id', 'cliente');
     }
 
     public function index(): void
     {
-        $this->ctx->view('templates/admin/proyectos/index.latte', [
-            'proyectos'     => $this->service()->listAll(),
-            'flash_success' => $this->ctx->getFlash('success'),
-            'flash_error'   => $this->ctx->getFlash('error'),
+        $this->ui->view('proyectos/index.latte', [
+            'proyectos'     => $this->ui->filtrar($this->service()->listAll(), 'id'),
+            'flash_success' => $this->ui->flash('success'),
+            'flash_error'   => $this->ui->flash('error'),
         ]);
     }
 
@@ -32,10 +37,10 @@ class ProyectoAdminController
     {
         $clientes = $this->clientes();
         if ($clientes === []) {
-            $this->ctx->redirect($this->ctx->adminUrl(), 'Crea un cliente primero.', 'error');
+            $this->ui->redirect($this->ui->url(), 'Crea un cliente primero.', 'error');
             return;
         }
-        $this->ctx->view('templates/admin/proyectos/edit.latte', [
+        $this->ui->view('proyectos/edit.latte', [
             'proyecto' => null,
             'clientes' => $clientes,
         ]);
@@ -44,17 +49,17 @@ class ProyectoAdminController
     public function store(): void
     {
         $this->service()->create($_POST);
-        $this->ctx->redirect($this->ctx->adminUrl('proyectos'), 'Proyecto creado.');
+        $this->ui->redirect($this->ui->url('proyectos'), 'Proyecto creado.');
     }
 
     public function edit(string $id): void
     {
         $proyecto = $this->service()->find($id);
         if ($proyecto === null) {
-            $this->ctx->redirect($this->ctx->adminUrl('proyectos'), 'Proyecto no encontrado.', 'error');
+            $this->ui->redirect($this->ui->url('proyectos'), 'Proyecto no encontrado.', 'error');
             return;
         }
-        $this->ctx->view('templates/admin/proyectos/edit.latte', [
+        $this->ui->view('proyectos/edit.latte', [
             'proyecto' => $proyecto,
             'clientes' => $this->clientes(),
         ]);
@@ -63,7 +68,7 @@ class ProyectoAdminController
     public function update(string $id): void
     {
         $this->service()->update($id, $_POST);
-        $this->ctx->redirect($this->ctx->adminUrl('proyectos'), 'Proyecto actualizado.');
+        $this->ui->redirect($this->ui->url('proyectos'), 'Proyecto actualizado.');
     }
 
     public function destroy(string $id): void
@@ -74,6 +79,6 @@ class ProyectoAdminController
         (new ComentarioService($pdo))->borrarDeProyecto($id);
         (new ArchivoService($pdo))->borrarFisicosDeProyecto($id);
         $this->service()->delete($id);
-        $this->ctx->redirect($this->ctx->adminUrl('proyectos'), 'Proyecto eliminado.');
+        $this->ui->redirect($this->ui->url('proyectos'), 'Proyecto eliminado.');
     }
 }

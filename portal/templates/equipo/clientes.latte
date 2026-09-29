@@ -3,9 +3,12 @@
 {block title}Clientes{/block}
 
 {block content}
-<section class="reveal pb-6 pt-1">
+<section class="reveal flex flex-wrap items-end justify-between gap-3 pb-6 pt-1">
+    <div>
     <h1 class="text-[2rem] font-extrabold leading-tight tracking-tight sm:text-4xl">Clientes</h1>
     <p class="mt-2 text-muted">{$usuario['rol'] === 'coordinador' ? 'Todos los clientes de la agencia.' : 'Los clientes y proyectos que tienes asignados.'}</p>
+    </div>
+    {if $usuario['rol'] === 'coordinador'}<a href="/equipo/clientes/nuevo" class="btn btn-primary btn-sm">Nuevo cliente</a>{/if}
 </section>
 
 {if empty($clientes)}

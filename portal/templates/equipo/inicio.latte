@@ -50,7 +50,7 @@
             <ul class="px-2 pb-2 sm:px-3 sm:pb-3">
                 {foreach $conCambios as $e}
                     <li>
-                        <a href="/equipo/proyectos/{$e['proyecto_id']}#entregas" class="group flex items-center gap-3 rounded-2xl p-3 transition hover:bg-surface2 sm:p-3.5">
+                        <a href="/equipo/entregas/{$e['id']}" class="group flex items-center gap-3 rounded-2xl p-3 transition hover:bg-surface2 sm:p-3.5">
                             <span class="flex size-11 flex-none items-center justify-center rounded-xl bg-warn/15 text-warn"><svg class="size-5"><use href="#i-eye"/></svg></span>
                             <span class="min-w-0 flex-1">
                                 <span class="block truncate font-semibold">{$e['titulo']}</span>
@@ -111,7 +111,7 @@
         {else}
             <ul class="mt-4 space-y-3">
                 {foreach $reuniones as $r}
-                    <li><a href="/equipo/proyectos/{$r['proyecto_id']}#reuniones" class="flex items-center gap-3 rounded-xl transition hover:opacity-80">
+                    <li><a href="/equipo/reuniones/{$r['id']}" class="flex items-center gap-3 rounded-xl transition hover:opacity-80">
                         <span class="flex size-12 flex-none flex-col items-center justify-center rounded-xl leading-none {substr((string) $r['fecha'], 0, 10) === $hoy ? 'bg-brand text-brand-fg' : 'bg-brand-soft text-brand-ink'}">
                             <span class="text-lg font-extrabold">{$fmt->dia($r['fecha'])}</span>
                             <span class="mt-0.5 text-[0.625rem] font-bold uppercase tracking-wide">{$fmt->mesCorto($r['fecha'])}</span>
@@ -135,7 +135,7 @@
             <ul class="mt-4 space-y-4">
                 {foreach $esperandoCli as $e}
                     {var $pct = $e['n_total'] > 0 ? (int) round(($e['n_aprobados'] + $e['n_cambios']) * 100 / $e['n_total']) : 0}
-                    <li><a href="/equipo/proyectos/{$e['proyecto_id']}#entregas" class="block transition hover:opacity-80">
+                    <li><a href="/equipo/entregas/{$e['id']}" class="block transition hover:opacity-80">
                         <span class="flex items-baseline justify-between gap-2">
                             <span class="truncate text-sm font-semibold">{$e['titulo']}</span>
                             <span class="flex-none text-xs text-muted">{$e['n_aprobados'] + $e['n_cambios']}/{$e['n_total']}</span>

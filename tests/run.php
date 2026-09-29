@@ -341,6 +341,169 @@ $correr(fn() => $adm->destroy($beto['id']));
 check($eq->find($beto['id']) === null && $eq->asignaciones($beto['id']) === [], 'eliminar borra usuario y asignaciones');
 
 // ---------------------------------------------------------------------------
+seccion('Gestión desde el panel (mismos controladores que el admin)');
+
+/** Panel de gestión que no termina el proceso. */
+final class GestionPrueba extends P\EquipoGestion
+{
+    public ?string $redir = null;
+
+    protected function redirectTo(string $url): void
+    {
+        $this->redir = $url;
+        throw new RuntimeException('redirect');
+    }
+
+    protected function terminate(): void
+    {
+        throw new RuntimeException('fin');
+    }
+
+    /** @return array{0: string, 1: ?string} */
+    public function hacer(string $metodo, string $clase, string $accion, array $args = [], ?string $tipo = null, bool $coord = false, array $post = []): array
+    {
+        $_SERVER['REQUEST_METHOD'] = $metodo;
+        $_POST = $post;
+        $this->redir = null;
+        ob_start();
+        try {
+            $this->gestionar($clase, $accion, $args, $tipo, $coord);
+        } catch (RuntimeException $e) {
+            if (!in_array($e->getMessage(), ['redirect', 'fin'], true)) {
+                ob_end_clean();
+                throw $e;
+            }
+        }
+        $_SERVER['REQUEST_METHOD'] = 'GET';
+        return [(string) ob_get_clean(), $this->redir];
+    }
+}
+
+$eq->update($ana, ['nombre' => 'Ana', 'email' => 'ana@agencia.cl', 'rol' => 'equipo', 'activo' => 1]);
+$_SESSION[P\EquipoController::SESION] = $ana;
+P\PortalSession::tomarFlash();
+$g = new GestionPrueba($ctx);
+$tok = P\PortalSession::csrf();
+$T = P\TareaAdminController::class;
+
+[$html, $r] = $g->hacer('GET', $T, 'index');
+check($r === null && str_contains($html, 'Tarea de Ana') && !str_contains($html, 'Tarea ajena'), 'lista de tareas filtrada por asignación');
+check(str_contains($html, 'class="min-w-0 pb-32 lg:pb-8 adm"'), 'se dibuja dentro del marco del panel');
+check(str_contains($html, 'href="/equipo/tareas/' . $tMia . '"'), 'los enlaces apuntan al panel, no al admin');
+
+[$html, $r] = $g->hacer('GET', $T, 'edit', [$tMia], 'tarea');
+check($r === null && str_contains($html, 'action="/equipo/tareas/' . $tMia . '"'), 'editar tarea propia');
+check(!str_contains($html, 'Tres A'), 'el selector de proyectos no ofrece proyectos ajenos');
+
+[, $r] = $g->hacer('GET', $T, 'edit', [$tOtra], 'tarea');
+check($r === '/equipo', 'tarea de un proyecto ajeno: bloqueada');
+
+[, $r] = $g->hacer('POST', $T, 'update', [$tMia], 'tarea', false, ['titulo' => 'Hackeada', 'proyecto_id' => $p1a]);
+check($r !== null && $ts->find($tMia)['titulo'] === 'Tarea de Ana', 'POST sin token CSRF: rechazado');
+
+[, $r] = $g->hacer('POST', $T, 'update', [$tMia], 'tarea', false, ['_csrf_token' => $tok, 'titulo' => 'Movida', 'proyecto_id' => $p3a]);
+check($r === '/equipo' && $ts->find($tMia)['proyecto_id'] === $p1a, 'no se puede mover una tarea a un proyecto ajeno');
+
+[, $r] = $g->hacer('POST', $T, 'store', [], null, false, ['_csrf_token' => $tok, 'titulo' => 'Colada', 'proyecto_id' => $p3a]);
+check($r === '/equipo' && (int) $pdo->query("SELECT COUNT(*) FROM portal_tareas WHERE titulo = 'Colada'")->fetchColumn() === 0, 'no se puede crear en un proyecto ajeno');
+
+[, $r] = $g->hacer('POST', $T, 'store', [], null, false, ['_csrf_token' => $tok, 'titulo' => 'Nueva desde el panel', 'proyecto_id' => $p1b, 'asignado' => 'equipo', 'responsable_usuario_id' => $ana]);
+$nueva = $pdo->query("SELECT id FROM portal_tareas WHERE titulo = 'Nueva desde el panel'")->fetchColumn();
+check($nueva !== false && $r === '/equipo/tareas/' . $nueva, 'crear tarea desde el panel y volver a ella');
+
+[, $r] = $g->hacer('POST', $T, 'update', [$tMia], 'tarea', false, ['_csrf_token' => $tok, 'titulo' => 'Tarea de Ana', 'proyecto_id' => $p1a, 'estado' => 'en_progreso', 'asignado' => 'equipo', 'responsable_usuario_id' => $ana, 'visible_cliente' => '1']);
+check($ts->find($tMia)['estado'] === 'en_progreso', 'cambiar estado desde el panel');
+$act = $pdo->query("SELECT actor_nombre FROM portal_actividad WHERE entidad_id = '{$tMia}' ORDER BY created_at DESC LIMIT 1")->fetchColumn();
+check($act === 'Ana', 'la actividad queda firmada por la persona, no por «Equipo»');
+
+$g->hacer('POST', $T, 'comentar', [$tMia], 'tarea', false, ['_csrf_token' => $tok, 'cuerpo' => 'Voy con esto']);
+$com = $pdo->query("SELECT autor_id, autor_nombre, autor_tipo FROM portal_comentarios WHERE entidad_id = '{$tMia}'")->fetch();
+check($com && $com['autor_id'] === $ana && $com['autor_nombre'] === 'Ana' && $com['autor_tipo'] === 'equipo', 'comentario con autor (id y nombre) del usuario de agencia');
+
+$lista = array_column($ts->listAll(), 'responsable_nombre', 'id');
+check(($lista[$tMia] ?? '') === 'Ana', 'responsable de agencia visible en la lista de tareas');
+
+// Archivos
+$archAjeno = typedock_uuid7();
+$pdo->prepare("INSERT INTO portal_archivos (id, cliente_id, proyecto_id, entidad_tipo, entidad_id, nombre_original, ruta, mime, tamano, subido_por_tipo, subido_por_nombre, created_at) VALUES (?, ?, ?, 'tarea', ?, 'x.png', 'x.png', 'image/png', 1, 'equipo', 'Equipo', '2026-01-01')")
+    ->execute([$archAjeno, $c3, $p3a, $tOtra]);
+[, $r] = $g->hacer('GET', $T, 'verArchivo', [$archAjeno], 'archivo');
+check($r === '/equipo', 'archivo de un proyecto ajeno: bloqueado');
+
+// Entregas, reuniones, fases, contactos
+$E = P\EntregaAdminController::class;
+[, $r] = $g->hacer('POST', $E, 'store', [], null, false, ['_csrf_token' => $tok, 'titulo' => 'Grilla panel', 'proyecto_id' => $p1a]);
+$ent = $pdo->query("SELECT id FROM portal_entregas WHERE titulo = 'Grilla panel'")->fetchColumn();
+check($ent !== false && $r === '/equipo/entregas/' . $ent, 'crear entrega desde el panel');
+$g->hacer('POST', $E, 'agregarContenido', [$ent], 'entrega', false, ['_csrf_token' => $tok, 'tipo' => 'post', 'titulo' => 'Post 1', 'copy' => 'Hola']);
+check((int) $pdo->query("SELECT COUNT(*) FROM portal_contenidos WHERE entrega_id = '{$ent}'")->fetchColumn() === 1, 'agregar contenido');
+$ctx->correos = [];
+$g->hacer('POST', $E, 'publicar', [$ent], 'entrega', false, ['_csrf_token' => $tok]);
+check($pdo->query("SELECT estado FROM portal_entregas WHERE id = '{$ent}'")->fetchColumn() === 'publicada', 'publicar entrega');
+[$html] = $g->hacer('GET', $E, 'index');
+check(str_contains($html, 'Grilla panel'), 'lista de entregas');
+$entAjena = (new P\EntregaService($pdo))->create(['proyecto_id' => $p3a, 'titulo' => 'Ajena']);
+[$html] = $g->hacer('GET', $E, 'index');
+check(!str_contains($html, '>Ajena<'), 'no lista entregas ajenas');
+[, $r] = $g->hacer('POST', $E, 'destroy', [$entAjena], 'entrega', false, ['_csrf_token' => $tok]);
+check($r === '/equipo' && (new P\EntregaService($pdo))->find($entAjena) !== null, 'no puede borrar entregas ajenas');
+
+$R = P\ReunionAdminController::class;
+[, $r] = $g->hacer('POST', $R, 'store', [], null, false, ['_csrf_token' => $tok, 'proyecto_id' => $p1a, 'titulo' => 'Reunión panel', 'fecha_d' => '2026-10-10', 'fecha_t' => '11:00', 'publicada' => '1']);
+$reu = $pdo->query("SELECT id FROM portal_reuniones WHERE titulo = 'Reunión panel'")->fetchColumn();
+check($reu !== false && $r === '/equipo/reuniones/' . $reu, 'agendar reunión desde el panel');
+[$html] = $g->hacer('GET', $R, 'edit', [$reu], 'reunion');
+check(str_contains($html, 'Reunión panel') && str_contains($html, 'transcrip'), 'espacio de trabajo de la reunión (transcripción, resumen, tareas)');
+
+[, $r] = $g->hacer('POST', P\FaseAdminController::class, 'store', [], null, false, ['_csrf_token' => $tok, 'proyecto_id' => $p1a, 'nombre' => 'Fase panel', 'orden' => 9]);
+check((int) $pdo->query("SELECT COUNT(*) FROM portal_fases WHERE nombre = 'Fase panel'")->fetchColumn() === 1, 'crear fase');
+[, $r] = $g->hacer('POST', P\ContactoAdminController::class, 'store', [], null, false, ['_csrf_token' => $tok, 'cliente_id' => $c3, 'nombre' => 'Intruso', 'email' => 'in@tres.cl']);
+check($r === '/equipo' && (new P\ContactoService($pdo))->findByEmail('in@tres.cl') === null, 'no crea contactos en clientes ajenos');
+
+// Sólo Coordinación
+$C = P\ClienteAdminController::class;
+[, $r] = $g->hacer('GET', $C, 'create', [], null, true);
+check($r === '/equipo', 'Equipo no puede crear clientes');
+[, $r] = $g->hacer('POST', P\ProyectoAdminController::class, 'destroy', [$p1b], 'proyecto', true, ['_csrf_token' => $tok]);
+check($r === '/equipo' && (new P\ProyectoService($pdo))->find($p1b) !== null, 'Equipo no puede borrar proyectos');
+$_SESSION[P\EquipoController::SESION] = $coord;
+[$html, $r] = $g->hacer('GET', $C, 'edit', [$c3], 'cliente', true);
+check($r === null && str_contains($html, 'Cliente Tres'), 'Coordinación edita clientes (y su portal)');
+$_SESSION[P\EquipoController::SESION] = $ana;
+
+// Avisos al equipo asignado
+$ctx->correos = [];
+(new P\AjustesService($pdo))->set('global', 'portal', 'email_avisos', 'jefe@agencia.cl');
+$n = new P\Notifier($ctx, $pdo);
+$n->alEquipo('María comentó', '', 'tareas/' . $tMia, ['proyecto_id' => $p1a]);
+$para = array_column($ctx->correos, 'to');
+check(in_array('jefe@agencia.cl', $para, true) && in_array('ana@agencia.cl', $para, true), 'aviso al correo de Ajustes y a la persona asignada');
+$aAna = array_values(array_filter($ctx->correos, fn($c) => $c['to'] === 'ana@agencia.cl'))[0] ?? ['body' => ''];
+check(str_contains($aAna['body'], '/equipo/tareas/' . $tMia), 'el aviso a la persona lleva el enlace al panel');
+(new P\AjustesService($pdo))->set('equipo', $ana, 'avisos', '0');
+$ctx->correos = [];
+$n->alEquipo('Otra vez', '', 'tareas/' . $tMia, ['proyecto_id' => $p1a]);
+check(!in_array('ana@agencia.cl', array_column($ctx->correos, 'to'), true), 'quien desactiva los avisos no los recibe');
+$ctx->correos = [];
+$n->alEquipo('Ajeno', '', 'tareas/' . $tOtra, ['proyecto_id' => $p3a]);
+check(!in_array('ana@agencia.cl', array_column($ctx->correos, 'to'), true), 'no avisa de proyectos no asignados');
+(new P\AjustesService($pdo))->set('equipo', $ana, 'avisos', '1');
+
+// Mis ajustes
+$_SERVER['REQUEST_METHOD'] = 'POST';
+$_POST = ['_csrf' => $tok, 'tema' => 'claro'];
+$ctl->correr(fn() => $ctl->guardarAjustes());
+check((new P\AjustesService($pdo))->get('equipo', $ana, 'avisos') === '0', 'Mis ajustes: desmarcar avisos los apaga');
+$_SERVER['REQUEST_METHOD'] = 'GET';
+
+// Admin de TypeDock: sigue viendo todo y firmando como equipo
+$adminT = new P\TareaAdminController($ctx);
+ob_start();
+$adminT->index();
+$html = (string) ob_get_clean();
+check(str_contains($html, 'Tarea ajena') && str_contains($html, 'Tarea de Ana'), 'el admin sigue viendo todas las tareas');
+
+// ---------------------------------------------------------------------------
 seccion('Portal del cliente sigue funcionando');
 final class PublicoPrueba extends P\PortalPublicController
 {

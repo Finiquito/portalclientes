@@ -11,15 +11,18 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
-    <link rel="stylesheet" href="/plugins/portal/assets/portal.css?v=8">
+    <link rel="stylesheet" href="/plugins/portal/assets/portal.css?v=9">
     <script>{$portalBoot|noescape}</script>
 </head>
 <body class="min-h-dvh bg-bg font-sans text-ink antialiased">
 {include '../_iconos.latte'}
 
 {var $items = [
-    ['inicio',   '/equipo',          'i-inbox', 'Inicio'],
-    ['clientes', '/equipo/clientes', 'i-users', 'Clientes'],
+    ['inicio',     '/equipo',           'i-inbox',    'Inicio'],
+    ['clientes',   '/equipo/clientes',  'i-users',    'Clientes'],
+    ['tareas',     '/equipo/tareas',    'i-tasks',    'Tareas'],
+    ['contenidos', '/equipo/entregas',  'i-eye',      'Contenidos'],
+    ['reuniones',  '/equipo/reuniones', 'i-calendar', 'Reuniones'],
 ]}
 
 <a href="#contenido" class="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:rounded-xl focus:bg-surface focus:px-4 focus:py-2 focus:shadow-pop">Saltar al contenido</a>
@@ -30,7 +33,7 @@
     <header class="flex items-center justify-between gap-3 py-4 lg:hidden">
         <a href="/equipo" class="flex min-w-0 items-center gap-2.5">
             {if $marca['logo']}
-                <img src="{$marca['logo']}" alt="{$marca['titulo']}" class="h-9 w-auto max-w-[9rem] object-contain">
+                <img src="{$marca['logo']}" alt="{$marca['titulo']}" class="h-9 w-auto max-w-[9rem] object-contain dark:rounded-lg dark:bg-white dark:p-1">
             {else}
                 <span class="avatar size-9! rounded-xl! bg-brand! text-brand-fg!">{$fmt->iniciales($marca['titulo'])}</span>
                 <span class="truncate text-[0.9375rem] font-extrabold tracking-tight">{$marca['titulo']}</span>
@@ -42,9 +45,7 @@
                 <svg class="size-5 dark:hidden"><use href="#i-moon"/></svg>
                 <svg class="hidden size-5 dark:block"><use href="#i-sun"/></svg>
             </button>
-            <a href="/equipo/salir" class="btn btn-ghost min-h-10! w-10! px-0!" aria-label="Salir">
-                <svg class="size-5"><use href="#i-logout"/></svg>
-            </a>
+            <a href="/equipo/ajustes" class="avatar size-10!" aria-label="Mis ajustes">{$fmt->iniciales($usuario['nombre'])}</a>
         </div>
     </header>
 
@@ -55,7 +56,7 @@
             <div class="card sticky top-8 flex max-h-[calc(100dvh-4rem)] flex-col p-3.5">
                 <a href="/equipo" class="mb-3 flex items-center gap-3 rounded-2xl p-2">
                     {if $marca['logo']}
-                        <img src="{$marca['logo']}" alt="{$marca['titulo']}" class="h-10 w-auto max-w-[10rem] object-contain">
+                        <img src="{$marca['logo']}" alt="{$marca['titulo']}" class="h-10 w-auto max-w-[10rem] object-contain dark:rounded-lg dark:bg-white dark:p-1">
                     {else}
                         <span class="avatar size-10! rounded-xl! bg-brand! text-brand-fg!">{$fmt->iniciales($marca['titulo'])}</span>
                         <span class="min-w-0 leading-tight">
@@ -76,6 +77,10 @@
                 </nav>
 
                 <div class="mt-auto border-t border-line pt-3">
+                    <a href="/equipo/ajustes" class="nav-item" {if $nav === 'ajustes'}aria-current="page"{/if}>
+                        <svg class="size-5 flex-none"><use href="#i-sliders"/></svg>
+                        <span class="flex-1">Mis ajustes</span>
+                    </a>
                     <div class="mt-2 rounded-2xl bg-surface2 p-3">
                         <div class="flex items-center gap-3">
                             <span class="avatar flex-none">{$fmt->iniciales($usuario['nombre'])}</span>
@@ -98,7 +103,7 @@
             </div>
         </aside>
 
-        <main id="contenido" class="min-w-0 pb-32 lg:pb-8">
+        <main id="contenido" class="min-w-0 pb-32 lg:pb-8{if $enPanel ?? false} adm{/if}">
             {if $flash}
                 <div role="status" class="reveal mb-5 flex items-start gap-3 rounded-2xl border px-4 py-3 text-sm font-medium {$flash['tipo'] === 'error' ? 'border-danger/30 bg-danger/10 text-danger' : 'border-ok/30 bg-ok/10 text-ok'}">
                     <svg class="mt-0.5 size-5 flex-none"><use href="#{$flash['tipo'] === 'error' ? 'i-alert' : 'i-check'}"/></svg>

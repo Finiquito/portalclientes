@@ -17,6 +17,12 @@
     </div>
 </section>
 
+<div class="-mt-2 mb-6 flex flex-wrap gap-2">
+    <a href="/equipo/proyectos/nuevo?cliente_id={$cliente['id']}" class="btn btn-primary btn-sm"><svg class="size-4"><use href="#i-briefcase"/></svg> Nuevo proyecto</a>
+    <a href="/equipo/contactos/nuevo?cliente_id={$cliente['id']}" class="btn btn-soft btn-sm"><svg class="size-4"><use href="#i-users"/></svg> Nuevo contacto</a>
+    {if $usuario['rol'] === 'coordinador'}<a href="/equipo/clientes/{$cliente['id']}/editar" class="btn btn-ghost btn-sm"><svg class="size-4"><use href="#i-edit"/></svg> Editar cliente y su portal</a>{/if}
+</div>
+
 <div class="xl:grid xl:grid-cols-[minmax(0,1fr)_20rem] xl:gap-6">
     <section class="min-w-0" aria-labelledby="h-proy">
         <h2 id="h-proy" class="mb-3 text-lg font-extrabold tracking-tight">Proyectos</h2>
@@ -44,6 +50,7 @@
                                 <a href="mailto:{$ct['email']}" class="block truncate text-xs text-muted hover:text-brand-ink">{$ct['email']}</a>
                             </span>
                             <span class="chip {$ct['rol'] === 'aprobador' ? 'chip-brand' : 'chip-muted'}">{$ct['rol'] === 'aprobador' ? 'Aprueba' : 'Lectura'}</span>
+                            <a href="/equipo/contactos/{$ct['id']}" class="text-muted hover:text-ink" aria-label="Editar contacto"><svg class="size-4"><use href="#i-edit"/></svg></a>
                         </li>
                     {/foreach}
                 </ul>

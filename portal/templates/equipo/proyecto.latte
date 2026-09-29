@@ -30,6 +30,14 @@
         <span class="text-3xl font-extrabold tracking-tight text-brand-ink">{$prog['pct']}<span class="text-lg">%</span></span>
     </div>
 
+    <div class="mt-4 flex flex-wrap gap-2">
+        <a href="/equipo/tareas/nuevo?proyecto_id={$proyecto['id']}" class="btn btn-primary btn-sm"><svg class="size-4"><use href="#i-tasks"/></svg> Nueva tarea</a>
+        <a href="/equipo/entregas/nuevo?proyecto_id={$proyecto['id']}" class="btn btn-soft btn-sm"><svg class="size-4"><use href="#i-eye"/></svg> Nueva entrega</a>
+        <a href="/equipo/reuniones/nuevo?proyecto_id={$proyecto['id']}" class="btn btn-soft btn-sm"><svg class="size-4"><use href="#i-calendar"/></svg> Agendar reunión</a>
+        <a href="/equipo/fases/nuevo?proyecto_id={$proyecto['id']}" class="btn btn-ghost btn-sm">Nueva fase</a>
+        <a href="/equipo/proyectos/{$proyecto['id']}/editar" class="btn btn-ghost btn-sm"><svg class="size-4"><use href="#i-edit"/></svg> Editar proyecto</a>
+    </div>
+
     <div class="progress mt-5" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{$prog['pct']}" aria-label="Avance">
         <span style="width: {$prog['pct']}%"></span>
     </div>
@@ -83,8 +91,8 @@
                     {foreach $g[1] as $t}
                         {var $v = $fmt->vence($t['fecha_vencimiento'], $t['estado'])}
                         {var $e = $fmt->estado($t['estado'])}
-                        <li id="t-{$t['id']}" class="scroll-mt-24 rounded-2xl p-3 target:bg-brand-soft sm:p-3.5">
-                            <div class="flex items-center gap-3">
+                        <li id="t-{$t['id']}" class="scroll-mt-24">
+                            <a href="/equipo/tareas/{$t['id']}" class="group flex items-center gap-3 rounded-2xl p-3 transition hover:bg-surface2 sm:p-3.5">
                                 <span class="min-w-0 flex-1">
                                     <span class="block font-semibold {$t['estado'] === 'hecha' ? 'text-muted line-through decoration-1' : ''}">{$t['titulo']}</span>
                                     <span class="mt-0.5 block truncate text-xs text-muted">
@@ -97,7 +105,8 @@
                                     <span class="chip chip-{$e[1]}">{$e[0]}</span>
                                     {if $t['fecha_vencimiento'] && $t['estado'] !== 'hecha'}<span class="chip chip-{$v['tono']}">{$v['texto']}</span>{/if}
                                 </span>
-                            </div>
+                                <svg class="size-4 flex-none text-muted transition group-hover:translate-x-0.5"><use href="#i-chevron"/></svg>
+                            </a>
                         </li>
                     {/foreach}
                 </ul>
@@ -115,13 +124,13 @@
             <ul class="mt-4 space-y-4">
                 {foreach $entregas as $en}
                     {var $st = $estEnt[$en['estado']] ?? [$en['estado'], 'muted']}
-                    <li>
+                    <li><a href="/equipo/entregas/{$en['id']}" class="block transition hover:opacity-80">
                         <span class="flex items-start justify-between gap-2">
                             <span class="min-w-0 text-sm font-semibold">{$en['titulo']}</span>
                             <span class="chip chip-{$st[1]} flex-none">{$st[0]}</span>
                         </span>
                         <span class="mt-1 block text-xs text-muted">{$en['n_total']} contenidos · {$en['n_aprobados']} aprobados{if $en['n_cambios'] > 0} · {$en['n_cambios']} con cambios{/if}</span>
-                    </li>
+                    </a></li>
                 {/foreach}
             </ul>
         {/if}
@@ -135,6 +144,7 @@
             <ul class="mt-4 space-y-3">
                 {foreach $reuniones as $r}
                     <li class="flex items-center gap-3">
+                        <a href="/equipo/reuniones/{$r['id']}" class="flex min-w-0 flex-1 items-center gap-3 transition hover:opacity-80">
                         <span class="flex size-12 flex-none flex-col items-center justify-center rounded-xl leading-none {substr((string) $r['fecha'], 0, 10) >= $hoy ? 'bg-brand-soft text-brand-ink' : 'bg-surface2 text-muted'}">
                             <span class="text-lg font-extrabold">{$fmt->dia($r['fecha'])}</span>
                             <span class="mt-0.5 text-[0.625rem] font-bold uppercase tracking-wide">{$fmt->mesCorto($r['fecha'])}</span>
@@ -143,6 +153,7 @@
                             <span class="block truncate text-sm font-semibold">{$r['titulo']}</span>
                             <span class="block truncate text-xs text-muted">{$fmt->hora($r['fecha'])}{if !(int) $r['publicada']} · oculta al cliente{elseif $r['resumen'] && (int) $r['resumen_publicado']} · resumen publicado{/if}</span>
                         </span>
+                        </a>
                         {if $r['enlace_meet'] && substr((string) $r['fecha'], 0, 10) >= $hoy}
                             <a href="{$r['enlace_meet']}" target="_blank" rel="noopener" class="btn btn-soft btn-sm ml-auto">Meet</a>
                         {/if}

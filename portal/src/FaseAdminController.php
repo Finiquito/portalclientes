@@ -7,7 +7,12 @@ use TypeDock\Core\PluginContext;
 
 class FaseAdminController
 {
-    public function __construct(private readonly PluginContext $ctx) {}
+    protected readonly Pantalla $ui;
+
+    public function __construct(private readonly PluginContext $ctx, ?Pantalla $ui = null)
+    {
+        $this->ui = $ui ?? new PantallaAdmin($ctx);
+    }
 
     private function service(): FaseService
     {
@@ -16,15 +21,15 @@ class FaseAdminController
 
     private function proyectos(): array
     {
-        return (new ProyectoService($this->ctx->db()->pdo()))->listAll();
+        return $this->ui->filtrar((new ProyectoService($this->ctx->db()->pdo()))->listAll(), 'id');
     }
 
     public function index(): void
     {
-        $this->ctx->view('templates/admin/fases/index.latte', [
-            'fases'         => $this->service()->listAll(),
-            'flash_success' => $this->ctx->getFlash('success'),
-            'flash_error'   => $this->ctx->getFlash('error'),
+        $this->ui->view('fases/index.latte', [
+            'fases'         => $this->ui->filtrar($this->service()->listAll(), 'proyecto_id'),
+            'flash_success' => $this->ui->flash('success'),
+            'flash_error'   => $this->ui->flash('error'),
         ]);
     }
 
@@ -32,10 +37,10 @@ class FaseAdminController
     {
         $proyectos = $this->proyectos();
         if ($proyectos === []) {
-            $this->ctx->redirect($this->ctx->adminUrl('fases'), 'Crea un proyecto primero.', 'error');
+            $this->ui->redirect($this->ui->url('fases'), 'Crea un proyecto primero.', 'error');
             return;
         }
-        $this->ctx->view('templates/admin/fases/edit.latte', [
+        $this->ui->view('fases/edit.latte', [
             'fase'      => null,
             'proyectos' => $proyectos,
         ]);
@@ -44,17 +49,17 @@ class FaseAdminController
     public function store(): void
     {
         $this->service()->create($_POST);
-        $this->ctx->redirect($this->ctx->adminUrl('fases'), 'Fase creada.');
+        $this->ui->redirect($this->ui->url('fases'), 'Fase creada.');
     }
 
     public function edit(string $id): void
     {
         $fase = $this->service()->find($id);
         if ($fase === null) {
-            $this->ctx->redirect($this->ctx->adminUrl('fases'), 'Fase no encontrada.', 'error');
+            $this->ui->redirect($this->ui->url('fases'), 'Fase no encontrada.', 'error');
             return;
         }
-        $this->ctx->view('templates/admin/fases/edit.latte', [
+        $this->ui->view('fases/edit.latte', [
             'fase'      => $fase,
             'proyectos' => $this->proyectos(),
         ]);
@@ -63,12 +68,12 @@ class FaseAdminController
     public function update(string $id): void
     {
         $this->service()->update($id, $_POST);
-        $this->ctx->redirect($this->ctx->adminUrl('fases'), 'Fase actualizada.');
+        $this->ui->redirect($this->ui->url('fases'), 'Fase actualizada.');
     }
 
     public function destroy(string $id): void
     {
         $this->service()->delete($id);
-        $this->ctx->redirect($this->ctx->adminUrl('fases'), 'Fase eliminada.');
+        $this->ui->redirect($this->ui->url('fases'), 'Fase eliminada.');
     }
 }

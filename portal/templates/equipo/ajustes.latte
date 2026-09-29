@@ -1,0 +1,54 @@
+{layout '_layout.latte'}
+
+{block title}Mis ajustes{/block}
+
+{block content}
+<section class="reveal pb-6 pt-1">
+    <h1 class="text-[2rem] font-extrabold leading-tight tracking-tight sm:text-4xl">Mis ajustes</h1>
+    <p class="mt-2 text-muted">{$usuario['nombre']} · {$usuario['email']}</p>
+</section>
+
+<div class="grid gap-5 lg:grid-cols-2">
+    <form method="post" action="/equipo/ajustes" class="card card-pad reveal" data-once>
+        <input type="hidden" name="_csrf" value="{$csrf}">
+        <h2 class="text-lg font-extrabold tracking-tight">Avisos por correo</h2>
+        <label class="mt-4 flex items-start gap-3">
+            <input type="checkbox" name="avisos" value="1" class="mt-1 size-4 accent-[var(--brand)]" {if $avisos}checked{/if}>
+            <span>
+                <span class="block font-semibold">Avisarme cuando un cliente mío haga algo</span>
+                <span class="hint">Comentarios, archivos entregados, aprobaciones, cambios pedidos y revisiones enviadas, de los clientes y proyectos que tienes asignados.</span>
+            </span>
+        </label>
+
+        <h2 class="mt-7 text-lg font-extrabold tracking-tight">Tema</h2>
+        <div class="mt-3 grid grid-cols-3 gap-2">
+            {foreach ['auto' => 'Automático', 'claro' => 'Claro', 'oscuro' => 'Oscuro'] as $k => $txt}
+                <label class="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-line px-3 py-2.5 text-sm font-semibold has-[:checked]:border-brand has-[:checked]:bg-brand-soft has-[:checked]:text-brand-ink">
+                    <input type="radio" name="tema" value="{$k}" class="sr-only" {if $temaPref === $k}checked{/if}>{$txt}
+                </label>
+            {/foreach}
+        </div>
+
+        <button type="submit" class="btn btn-primary mt-6" data-sending="Guardando…">Guardar</button>
+    </form>
+
+    <section class="card card-pad reveal" style="--i:2">
+        <h2 class="text-lg font-extrabold tracking-tight">Lo que tienes asignado</h2>
+        {if $asignados === null}
+            <p class="mt-3 text-sm text-muted">Tienes rol de Coordinación: ves todos los clientes y proyectos.</p>
+        {elseif empty($asignados)}
+            <p class="mt-3 text-sm text-muted">Todavía no tienes clientes asignados. Pídeselos a quien administra el portal.</p>
+        {else}
+            <ul class="mt-4 space-y-2">
+                {foreach $asignados as $a}
+                    <li class="flex items-center justify-between gap-3 rounded-xl bg-surface2 px-3 py-2 text-sm">
+                        <span class="font-semibold">{$a['cliente_nombre']}</span>
+                        <span class="chip {$a['proyecto_id'] ? 'chip-muted' : 'chip-brand'}">{$a['proyecto_id'] ? $a['proyecto_nombre'] : 'Cliente completo'}</span>
+                    </li>
+                {/foreach}
+            </ul>
+        {/if}
+        <a href="/equipo/salir" class="btn btn-ghost btn-sm mt-6"><svg class="size-4"><use href="#i-logout"/></svg> Salir del panel</a>
+    </section>
+</div>
+{/block}

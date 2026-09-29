@@ -166,13 +166,16 @@ class PortalPlugin implements PluginInterface
         \Flight::route('POST /portal/ajustes/tema',           [$publico, 'temaRapido']);
 
         // Front de agencia (/equipo): usuarios de portal_equipo, con código por correo.
-        $eq = new EquipoController($ctx);
+        $eq = new EquipoGestion($ctx);
+        $eq->registrar();   // gestión (tareas, entregas, reuniones…): antes que las vistas propias
         \Flight::route('GET /equipo/entrar',          [$eq, 'entrarForm']);
         \Flight::route('POST /equipo/entrar',         [$eq, 'pedirCodigo']);
         \Flight::route('GET /equipo/verificar',       [$eq, 'verificarForm']);
         \Flight::route('POST /equipo/verificar',      [$eq, 'verificarCodigo']);
         \Flight::route('GET /equipo/salir',           [$eq, 'salir']);
         \Flight::route('POST /equipo/tema',           [$eq, 'tema']);
+        \Flight::route('GET /equipo/ajustes',         [$eq, 'misAjustes']);
+        \Flight::route('POST /equipo/ajustes',        [$eq, 'guardarAjustes']);
         \Flight::route('GET /equipo',                 [$eq, 'inicio']);
         \Flight::route('GET /equipo/clientes',        [$eq, 'clientes']);
         \Flight::route('GET /equipo/clientes/@id',    fn(string $id) => $eq->cliente($id));
@@ -197,7 +200,7 @@ class PortalPlugin implements PluginInterface
 
     public function getVersion(): string
     {
-        return '0.7.0';
+        return '0.8.0';
     }
 
     public function provides(): array

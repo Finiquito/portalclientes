@@ -62,6 +62,35 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### v0.8.0: gestión completa desde el panel de equipo
+
+- **Todo lo del admin, ahora en `/equipo`.** El panel tiene las mismas pantallas y acciones que el admin de TypeDock, con la gráfica del panel:
+  - clientes, proyectos, fases y contactos;
+  - **tareas**: crear, editar, cambiar estado, responsable, comentarios, subir y borrar archivos, avisar al cliente;
+  - **contenidos**: entregas, contenidos uno a uno o subida masiva/CSV, versiones, comentarios, publicar o volver a borrador;
+  - **reuniones**: agendar, Meet y Calendar, pegar la transcripción o notas, **Analizar con IA**, tareas propuestas, próxima reunión, publicar y avisar.
+- **Mismos controladores para el admin y el panel.** Una capa nueva, `Pantalla`, separa qué hace cada acción de dónde se muestra (`PantallaAdmin` y `PantallaEquipo`). Lo que se arregle o mejore en una aplicación queda en las dos.
+- **Permisos.** En el panel, cada acción pasa por `EquipoGestion`, que revisa en este orden:
+  1. sesión de agencia activa;
+  2. CSRF en todo POST;
+  3. que el registro de la URL (tarea, entrega, contenido, reunión, fase, contacto, archivo, proyecto o cliente) sea visible para el usuario;
+  4. que los `proyecto_id`, `cliente_id` y `reunion_origen_id` del formulario también lo sean, para que nada se pueda mover a un proyecto ajeno.
+
+  Crear, editar o borrar clientes y borrar proyectos queda sólo para Coordinación. Las listas y selectores muestran sólo lo asignado.
+- **Firma real.** Comentarios, archivos y actividad hechos desde el panel quedan con el nombre y el id de la persona, y el cliente ve quién le escribió. Desde el admin se sigue firmando con el nombre del equipo.
+- **Responsables de tareas.** Se puede elegir a los usuarios de agencia. Los usuarios del admin siguen disponibles, marcados «(admin)», para no perder tareas antiguas.
+- **Avisos por correo al equipo asignado.** Cuando un cliente comenta, entrega, aprueba, pide cambios o envía una revisión:
+  - el aviso sigue llegando al correo de Ajustes, con enlace al admin;
+  - **además** le llega a cada persona que tiene asignado ese proyecto, con enlace directo al panel y sin repetir destinatarios.
+
+  Cada persona puede apagar sus avisos en **Mis ajustes**, página nueva del panel que también guarda el tema.
+- **Accesos directos.** La vista de proyecto tiene botones de Nueva tarea, Nueva entrega, Agendar reunión, Nueva fase y Editar proyecto; la ficha de cliente, Nuevo proyecto, Nuevo contacto y Editar cliente y su portal. Los formularios nuevos llegan con el proyecto o cliente ya elegido (`?proyecto_id=` o `?cliente_id=`). La bandeja lleva directo a la tarea, la entrega o la reunión.
+- **Logo de la agencia.**
+  - Se cambiaba en Ajustes pero seguía viéndose el anterior. Era la caché del navegador (1 día): ahora la URL lleva la versión del archivo.
+  - La etiqueta aclara que es el mismo logo para los correos y el panel.
+  - En modo oscuro el logo se muestra sobre una placa clara.
+- **Pruebas:** 115 comprobaciones, que pasan en SQLite y MariaDB. Cubren permisos del panel, CSRF, firma, avisos y que el admin siga viendo todo.
+
 ### v0.7.0 — Panel de equipo (fase 1) y arreglo para MySQL
 
 - **Usuarios de agencia.** Nuevo menú **Portal · Equipo** en el admin, para crear, editar, desactivar y eliminar usuarios.
@@ -97,11 +126,9 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 - v0.3.x: entregas de contenido con visores, subida masiva o CSV y visor de PDF propio.
 - Fase 1: seguimiento con clientes, contactos, proyectos, fases, tareas, comentarios, archivos y login por código.
 
-## Próximas fases del panel de equipo
+## Ideas siguientes para el panel
 
-1. ✅ Usuarios, acceso, bandeja, clientes y vista de proyecto.
-2. Editar desde el panel: proyectos, fases y contactos del cliente.
-3. Tareas: crear y editar, cambiar estado, comentar y subir archivos como equipo, responsables del equipo y vista kanban.
-4. Contenidos: crear entregas, subida masiva o CSV, versiones y comentarios, con los mismos visores que ve el cliente.
-5. Reuniones: el espacio de trabajo en 5 pasos, con IA.
-6. Actividad y pulido móvil.
+- Tareas en tablero (kanban) y filtros por cliente, responsable y estado.
+- Vista previa del contenido con los mismos visores que ve el cliente (mockup de Instagram, reel, PDF por páginas).
+- «Ver como cliente»: abrir el portal de un cliente tal como él lo ve.
+- Actividad filtrada por lo asignado.

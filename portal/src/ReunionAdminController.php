@@ -13,7 +13,12 @@ use TypeDock\Core\PluginContext;
  */
 class ReunionAdminController
 {
-    public function __construct(protected readonly PluginContext $ctx) {}
+    protected readonly Pantalla $ui;
+
+    public function __construct(protected readonly PluginContext $ctx, ?Pantalla $ui = null)
+    {
+        $this->ui = $ui ?? new PantallaAdmin($ctx);
+    }
 
     private function pdo(): \PDO
     {
@@ -32,18 +37,17 @@ class ReunionAdminController
 
     private function proyectos(): array
     {
-        return (new ProyectoService($this->pdo()))->listAll();
+        return $this->ui->filtrar((new ProyectoService($this->pdo()))->listAll(), 'id');
     }
 
     private function firma(): string
     {
-        $n = trim((new AjustesService($this->pdo()))->get('global', 'portal', 'nombre_equipo'));
-        return $n !== '' ? $n : 'Equipo';
+        return $this->ui->firma();
     }
 
     private function url(string $ruta): string
     {
-        return $this->ctx->adminUrl($ruta);
+        return $this->ui->url($ruta);
     }
 
     /** Une los campos <input type=date> + <input type=time> ('fecha_d' / 'fecha_t'); si no vienen, respeta el valor directo. */
@@ -59,11 +63,11 @@ class ReunionAdminController
 
     public function index(): void
     {
-        $this->ctx->view('templates/admin/reuniones/index.latte', [
-            'reuniones'     => $this->service()->listAll(),
+        $this->ui->view('reuniones/index.latte', [
+            'reuniones'     => $this->ui->filtrar($this->service()->listAll(), 'proyecto_id'),
             'fmt'           => new Fmt(),
-            'flash_success' => $this->ctx->getFlash('success'),
-            'flash_error'   => $this->ctx->getFlash('error'),
+            'flash_success' => $this->ui->flash('success'),
+            'flash_error'   => $this->ui->flash('error'),
         ]);
     }
 
@@ -71,12 +75,12 @@ class ReunionAdminController
     {
         $proyectos = $this->proyectos();
         if ($proyectos === []) {
-            $this->ctx->redirect($this->url('reuniones'), 'Crea un proyecto primero.', 'error');
+            $this->ui->redirect($this->url('reuniones'), 'Crea un proyecto primero.', 'error');
             return;
         }
-        $this->ctx->view('templates/admin/reuniones/nueva.latte', [
+        $this->ui->view('reuniones/nueva.latte', [
             'proyectos' => $proyectos,
-            'proyectoId' => (string) ($_GET['proyecto'] ?? ''),
+            'proyectoId' => (string) ($_GET['proyecto'] ?? $_GET['proyecto_id'] ?? ''),
         ]);
     }
 
@@ -86,18 +90,18 @@ class ReunionAdminController
         $_POST['publicada'] = $_POST['publicada'] ?? '';
         $_POST['resumen_publicado'] = '';
         $id = $this->service()->create($_POST);
-        $this->ctx->redirect($this->url('reuniones/' . $id), 'Reunión creada. Aquí puedes pegar la transcripción cuando termine.');
+        $this->ui->redirect($this->url('reuniones/' . $id), 'Reunión creada. Aquí puedes pegar la transcripción cuando termine.');
     }
 
     public function edit(string $id): void
     {
         $reunion = $this->service()->find($id);
         if ($reunion === null) {
-            $this->ctx->redirect($this->url('reuniones'), 'Reunión no encontrada.', 'error');
+            $this->ui->redirect($this->url('reuniones'), 'Reunión no encontrada.', 'error');
             return;
         }
         $ia = $this->ia();
-        $this->ctx->view('templates/admin/reuniones/edit.latte', [
+        $this->ui->view('reuniones/edit.latte', [
             'reunion'    => $reunion,
             'proyectos'  => $this->proyectos(),
             'propuestas' => $this->service()->propuestas($id),
@@ -105,8 +109,8 @@ class ReunionAdminController
             'gcal'       => $this->service()->enlaceGoogleCalendar($reunion),
             'proxima'    => $reunion['prox_reunion_id'] ? $this->service()->find((string) $reunion['prox_reunion_id']) : null,
             'fmt'        => new Fmt(),
-            'flash_success' => $this->ctx->getFlash('success'),
-            'flash_error'   => $this->ctx->getFlash('error'),
+            'flash_success' => $this->ui->flash('success'),
+            'flash_error'   => $this->ui->flash('error'),
         ]);
     }
 
@@ -116,7 +120,7 @@ class ReunionAdminController
         $svc = $this->service();
         $antes = $svc->find($id);
         if ($antes === null) {
-            $this->ctx->redirect($this->url('reuniones'), 'Reunión no encontrada.', 'error');
+            $this->ui->redirect($this->url('reuniones'), 'Reunión no encontrada.', 'error');
             return;
         }
         $accion = (string) ($_POST['accion'] ?? 'guardar');
@@ -176,7 +180,7 @@ class ReunionAdminController
             $tipo = 'error';
         }
 
-        $this->ctx->redirect($volver, $msg, $tipo);
+        $this->ui->redirect($volver, $msg, $tipo);
     }
 
     /** @return array{0: string, 1: string} */
@@ -307,12 +311,12 @@ class ReunionAdminController
         if ($q !== null && $q['reunion_id'] === $id) {
             $this->service()->borrarPropuesta($pid);
         }
-        $this->ctx->redirect($this->url('reuniones/' . $id), 'Propuesta descartada.');
+        $this->ui->redirect($this->url('reuniones/' . $id), 'Propuesta descartada.');
     }
 
     public function destroy(string $id): void
     {
         $this->service()->delete($id);
-        $this->ctx->redirect($this->url('reuniones'), 'Reunión eliminada.');
+        $this->ui->redirect($this->url('reuniones'), 'Reunión eliminada.');
     }
 }

@@ -7,7 +7,12 @@ use TypeDock\Core\PluginContext;
 
 class TareaAdminController
 {
-    public function __construct(private readonly PluginContext $ctx) {}
+    protected readonly Pantalla $ui;
+
+    public function __construct(private readonly PluginContext $ctx, ?Pantalla $ui = null)
+    {
+        $this->ui = $ui ?? new PantallaAdmin($ctx);
+    }
 
     private function pdo(): \PDO
     {
@@ -41,26 +46,39 @@ class TareaAdminController
 
     private function proyectos(): array
     {
-        return (new ProyectoService($this->pdo()))->listAll();
+        return $this->ui->filtrar((new ProyectoService($this->pdo()))->listAll(), 'id');
     }
 
     private function reuniones(): array
     {
-        return (new ReunionService($this->pdo()))->listAll();
+        return $this->ui->filtrar((new ReunionService($this->pdo()))->listAll(), 'proyecto_id');
     }
 
-    /** Usuarios de Core (equipo) que pueden ser responsables. */
+    /**
+     * Responsables posibles del lado del equipo: usuarios de agencia (Portal · Equipo)
+     * y, para no perder tareas antiguas, los usuarios del admin de TypeDock.
+     */
     private function usuariosEquipo(): array
     {
-        $stmt = $this->pdo()->query('SELECT id, name FROM users ORDER BY name');
-        return $stmt ? $stmt->fetchAll() : [];
+        $out = array_map(
+            fn(array $e): array => ['id' => $e['id'], 'name' => $e['nombre'] . ($e['cargo'] ? ' · ' . $e['cargo'] : '')],
+            (new EquipoService($this->pdo()))->activos()
+        );
+        try {
+            $stmt = $this->pdo()->query('SELECT id, name FROM users ORDER BY name');
+            foreach ($stmt ? $stmt->fetchAll() : [] as $u) {
+                $out[] = ['id' => $u['id'], 'name' => $u['name'] . ' (admin)'];
+            }
+        } catch (\Throwable) {
+            // sin tabla users (pruebas): sólo usuarios de agencia
+        }
+        return $out;
     }
 
     /** Cómo firma el equipo los comentarios y archivos (Portal · Ajustes). */
     private function firma(): string
     {
-        $n = trim($this->ajustes()->get('global', 'portal', 'nombre_equipo'));
-        return $n !== '' ? $n : 'Equipo';
+        return $this->ui->firma();
     }
 
     /** ¿Ve el cliente esta tarea? Sólo entonces tiene sentido registrar actividad / avisar. */
@@ -71,7 +89,7 @@ class TareaAdminController
 
     private function urlTarea(string $id): string
     {
-        return $this->ctx->adminUrl('tareas/' . $id);
+        return $this->ui->url('tareas/' . $id);
     }
 
     /** @return array<string, mixed> */
@@ -89,8 +107,8 @@ class TareaAdminController
             'proyectos' => $this->proyectos(),
             'reuniones' => $this->reuniones(),
             'usuarios'  => $this->usuariosEquipo(),
-            'contactos' => $this->service()->contactosAsignables(),
-            'fases'     => $this->service()->todasLasFases(),
+            'contactos' => $this->ui->filtrar($this->service()->contactosAsignables(), 'cliente_id', 'cliente'),
+            'fases'     => $this->ui->filtrar($this->service()->todasLasFases(), 'proyecto_id'),
             'firma'     => $this->firma(),
             'fmt'       => new Fmt(),
             'maxMb'     => (int) round($this->archivos()->limiteBytes(max(1, (int) $this->ajustes()->get('global', 'portal', 'max_mb', '20'))) / 1048576),
@@ -101,23 +119,23 @@ class TareaAdminController
 
     public function index(): void
     {
-        $this->ctx->view('templates/admin/tareas/index.latte', [
-            'tareas'        => $this->service()->listAll(),
+        $this->ui->view('tareas/index.latte', [
+            'tareas'        => $this->ui->filtrar($this->service()->listAll(), 'proyecto_id'),
             'fmt'           => new Fmt(),
-            'flash_success' => $this->ctx->getFlash('success'),
-            'flash_error'   => $this->ctx->getFlash('error'),
+            'flash_success' => $this->ui->flash('success'),
+            'flash_error'   => $this->ui->flash('error'),
         ]);
     }
 
     public function create(): void
     {
         if ($this->proyectos() === []) {
-            $this->ctx->redirect($this->ctx->adminUrl('tareas'), 'Crea un proyecto primero.', 'error');
+            $this->ui->redirect($this->ui->url('tareas'), 'Crea un proyecto primero.', 'error');
             return;
         }
-        $this->ctx->view('templates/admin/tareas/edit.latte', $this->datosFormulario(null) + [
-            'flash_success' => $this->ctx->getFlash('success'),
-            'flash_error'   => $this->ctx->getFlash('error'),
+        $this->ui->view('tareas/edit.latte', $this->datosFormulario(null) + [
+            'flash_success' => $this->ui->flash('success'),
+            'flash_error'   => $this->ui->flash('error'),
         ]);
     }
 
@@ -136,19 +154,19 @@ class TareaAdminController
         }
 
         // Directo a la edición: ahí se adjuntan los archivos y se conversa.
-        $this->ctx->redirect($this->urlTarea($id), 'Tarea creada. Ahora puedes adjuntar archivos o dejar un comentario.');
+        $this->ui->redirect($this->urlTarea($id), 'Tarea creada. Ahora puedes adjuntar archivos o dejar un comentario.');
     }
 
     public function edit(string $id): void
     {
         $tarea = $this->service()->find($id);
         if ($tarea === null) {
-            $this->ctx->redirect($this->ctx->adminUrl('tareas'), 'Tarea no encontrada.', 'error');
+            $this->ui->redirect($this->ui->url('tareas'), 'Tarea no encontrada.', 'error');
             return;
         }
-        $this->ctx->view('templates/admin/tareas/edit.latte', $this->datosFormulario($tarea) + [
-            'flash_success' => $this->ctx->getFlash('success'),
-            'flash_error'   => $this->ctx->getFlash('error'),
+        $this->ui->view('tareas/edit.latte', $this->datosFormulario($tarea) + [
+            'flash_success' => $this->ui->flash('success'),
+            'flash_error'   => $this->ui->flash('error'),
         ]);
     }
 
@@ -178,7 +196,7 @@ class TareaAdminController
             }
         }
 
-        $this->ctx->redirect($this->urlTarea($id), 'Tarea actualizada.');
+        $this->ui->redirect($this->urlTarea($id), 'Tarea actualizada.');
     }
 
     public function destroy(string $id): void
@@ -187,7 +205,7 @@ class TareaAdminController
         $this->archivos()->borrarDeEntidad('tarea', $id);
         $this->comentarios()->borrarDeEntidad('tarea', $id);
         $this->service()->delete($id);
-        $this->ctx->redirect($this->ctx->adminUrl('tareas'), 'Tarea eliminada.');
+        $this->ui->redirect($this->ui->url('tareas'), 'Tarea eliminada.');
     }
 
     // ---- Conversación -----------------------------------------------------
@@ -196,16 +214,16 @@ class TareaAdminController
     {
         $t = $this->service()->find($id);
         if ($t === null) {
-            $this->ctx->redirect($this->ctx->adminUrl('tareas'), 'Tarea no encontrada.', 'error');
+            $this->ui->redirect($this->ui->url('tareas'), 'Tarea no encontrada.', 'error');
             return;
         }
         $texto = trim((string) ($_POST['cuerpo'] ?? ''));
         if ($texto === '') {
-            $this->ctx->redirect($this->urlTarea($id) . '#conversacion', 'Escribe algo antes de enviar.', 'error');
+            $this->ui->redirect($this->urlTarea($id) . '#conversacion', 'Escribe algo antes de enviar.', 'error');
             return;
         }
 
-        $this->comentarios()->crear((string) $t['cliente_id'], 'tarea', $id, 'equipo', null, $this->firma(), $texto);
+        $this->comentarios()->crear((string) $t['cliente_id'], 'tarea', $id, 'equipo', $this->ui->autorId(), $this->ui->firma(), $texto);
         if ($this->visibleParaCliente($t)) {
             $this->actividad()->registrar((string) $t['cliente_id'], (string) $t['proyecto_id'], 'equipo', $this->firma(), 'comento', 'tarea', $id, (string) $t['titulo'], mb_substr($texto, 0, 200));
             if (!empty($_POST['avisar'])) {
@@ -213,7 +231,7 @@ class TareaAdminController
                     'bloques' => [['p' => 'En «' . $t['titulo'] . '»:'], ['cita' => mb_substr($texto, 0, 800)]]]);
             }
         }
-        $this->ctx->redirect($this->urlTarea($id) . '#conversacion', 'Comentario publicado.');
+        $this->ui->redirect($this->urlTarea($id) . '#conversacion', 'Comentario publicado.');
     }
 
     public function borrarComentario(string $id, string $comentarioId): void
@@ -222,7 +240,7 @@ class TareaAdminController
         if ($c !== null && $c['entidad_tipo'] === 'tarea' && $c['entidad_id'] === $id) {
             $this->comentarios()->borrar($comentarioId);
         }
-        $this->ctx->redirect($this->urlTarea($id) . '#conversacion', 'Comentario eliminado.');
+        $this->ui->redirect($this->urlTarea($id) . '#conversacion', 'Comentario eliminado.');
     }
 
     // ---- Archivos ---------------------------------------------------------
@@ -231,24 +249,24 @@ class TareaAdminController
     {
         $t = $this->service()->find($id);
         if ($t === null) {
-            $this->ctx->redirect($this->ctx->adminUrl('tareas'), 'Tarea no encontrada.', 'error');
+            $this->ui->redirect($this->ui->url('tareas'), 'Tarea no encontrada.', 'error');
             return;
         }
         $volver = $this->urlTarea($id) . '#archivos';
 
         if (ArchivoService::postExcedido()) {
-            $this->ctx->redirect($volver, 'Los archivos superan el máximo del servidor (post_max_size).', 'error');
+            $this->ui->redirect($volver, 'Los archivos superan el máximo del servidor (post_max_size).', 'error');
             return;
         }
         $lista = ArchivoService::normalizar($_FILES['archivos'] ?? null);
         if ($lista === []) {
-            $this->ctx->redirect($volver, 'Elige al menos un archivo.', 'error');
+            $this->ui->redirect($volver, 'Elige al menos un archivo.', 'error');
             return;
         }
 
         $r = $this->archivos()->guardarVarios(
             array_slice($lista, 0, 10), (string) $t['cliente_id'], (string) $t['proyecto_id'], 'tarea', $id,
-            ['tipo' => 'equipo', 'id' => null, 'nombre' => $this->firma()],
+            ['tipo' => 'equipo', 'id' => $this->ui->autorId(), 'nombre' => $this->firma()],
             max(1, (int) $this->ajustes()->get('global', 'portal', 'max_mb', '20'))
         );
         $n = count($r['ok']);
@@ -261,24 +279,24 @@ class TareaAdminController
         }
 
         if ($r['errores'] !== []) {
-            $this->ctx->redirect($volver, ($n > 0 ? "Se subieron {$n}, pero: " : 'No se pudo subir: ') . implode(' · ', $r['errores']), 'error');
+            $this->ui->redirect($volver, ($n > 0 ? "Se subieron {$n}, pero: " : 'No se pudo subir: ') . implode(' · ', $r['errores']), 'error');
             return;
         }
-        $this->ctx->redirect($volver, $n === 1 ? 'Archivo subido.' : "{$n} archivos subidos.");
+        $this->ui->redirect($volver, $n === 1 ? 'Archivo subido.' : "{$n} archivos subidos.");
     }
 
     public function borrarArchivo(string $id): void
     {
         $a = $this->archivos()->find($id);
-        $volver = $a !== null && $a['entidad_tipo'] === 'tarea' ? $this->urlTarea((string) $a['entidad_id']) . '#archivos' : $this->ctx->adminUrl('tareas');
+        $volver = $a !== null && $a['entidad_tipo'] === 'tarea' ? $this->urlTarea((string) $a['entidad_id']) . '#archivos' : $this->ui->url('tareas');
         if ($a !== null && $a['entidad_tipo'] === 'version') {
             $v = (new ContenidoService($this->pdo()))->version((string) $a['entidad_id']);
-            $volver = $v !== null ? $this->ctx->adminUrl('contenidos/' . $v['contenido_id']) : $this->ctx->adminUrl('entregas');
+            $volver = $v !== null ? $this->ui->url('contenidos/' . $v['contenido_id']) : $this->ui->url('entregas');
         }
         if ($a !== null) {
             $this->archivos()->borrar($id);
         }
-        $this->ctx->redirect($volver, 'Archivo eliminado.');
+        $this->ui->redirect($volver, 'Archivo eliminado.');
     }
 
     /** Descarga / vista de un archivo desde el admin. */

@@ -125,7 +125,7 @@ class EquipoController
             'color'  => $color,
             'texto'  => AjustesService::colorTexto($color),
             'titulo' => $m->nombreEquipo(),
-            'logo'   => $m->rutaLogoAgencia() !== null ? '/portal/marca/agencia' : null,
+            'logo'   => ($r = $m->rutaLogoAgencia()) !== null ? '/portal/marca/agencia?v=' . (int) filemtime($r) : null,
         ];
     }
 
@@ -282,6 +282,44 @@ class EquipoController
             http_response_code(204);
         }
         $this->terminate();
+    }
+
+    // ---------------------------------------------------------------------
+    // Mis ajustes: avisos por correo y tema
+    // ---------------------------------------------------------------------
+
+    public function misAjustes(): void
+    {
+        $u    = $this->requerirUsuario();
+        $pref = $this->ajustes()->todos('equipo', (string) $u['id']);
+        $this->view('ajustes.latte', $this->contexto($u, 'ajustes', [
+            'avisos'   => ($pref['avisos'] ?? '1') !== '0',
+            'temaPref' => in_array($pref['tema'] ?? '', ['claro', 'oscuro'], true) ? $pref['tema'] : 'auto',
+            'asignados' => $this->acceso($u)->todo() ? null : $this->fetchAll(
+                'SELECT a.proyecto_id, c.nombre AS cliente_nombre, p.nombre AS proyecto_nombre
+                 FROM portal_equipo_asignaciones a JOIN portal_clientes c ON c.id = a.cliente_id
+                 LEFT JOIN portal_proyectos p ON p.id = a.proyecto_id
+                 WHERE a.usuario_id = ? ORDER BY c.nombre, p.nombre',
+                [(string) $u['id']]
+            ),
+        ]));
+    }
+
+    public function guardarAjustes(): void
+    {
+        $u = $this->requerirUsuario();
+        if (!PortalSession::csrfValido()) {
+            PortalSession::flash('error', 'Tu sesión expiró. Vuelve a intentarlo.');
+            $this->redirectTo('/equipo/ajustes');
+            return;
+        }
+        $tema = (string) ($_POST['tema'] ?? 'auto');
+        $this->ajustes()->setMuchos('equipo', (string) $u['id'], [
+            'avisos' => !empty($_POST['avisos']) ? '1' : '0',
+            'tema'   => in_array($tema, ['claro', 'oscuro'], true) ? $tema : 'auto',
+        ]);
+        PortalSession::flash('ok', 'Ajustes guardados.');
+        $this->redirectTo('/equipo/ajustes');
     }
 
     // ---------------------------------------------------------------------
