@@ -35,7 +35,7 @@
         {if $cfg['origen'] === 'entorno'}
             <p class="inv-muted">Se usa la variable de entorno <code>MAILCHIMP_API_KEY</code> ({$cfg['clave']}, región {$cfg['region'] ?: '?'}).</p>
         {else}
-            {if $cfg['clave']}<p class="inv-muted" style="margin:0 0 .35rem">Guardada y cifrada: {$cfg['clave']} · región {$cfg['region']}. Escribe una nueva sólo si quieres cambiarla.</p>{/if}
+            {if $cfg['clave']}<p class="inv-muted" style="margin:0 0 .35rem">Guardada y cifrada: {$cfg['clave']} · región {$cfg['region']}. Escribe una nueva solo si quieres cambiarla.</p>{/if}
             <input type="password" name="mc_clave" class="form-input" placeholder="{$cfg['clave'] ? 'Dejar la actual' : 'abc123…-us21'}" spellcheck="false">
             <p class="form-hint mt-1">En Mailchimp: tu perfil → <em>Extras → API keys → Create A Key</em>. Cópiala completa: la región va al final (<code>-us21</code>, <code>-us14</code>…). Nunca se muestra de vuelta.</p>
             {if $cfg['clave']}<label class="inv-check"><input type="checkbox" name="quitar_clave" value="1"> <span>Quitar la clave guardada</span></label>{/if}

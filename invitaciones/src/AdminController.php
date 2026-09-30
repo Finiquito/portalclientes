@@ -100,7 +100,7 @@ class AdminController
     public function borrar(string $id): void
     {
         $this->servicio()->borrar($id);
-        $this->ctx->redirect($this->ctx->adminUrl(''), 'Inscripción eliminada (sólo de la copia local; en Mailchimp sigue).');
+        $this->ctx->redirect($this->ctx->adminUrl(''), 'Inscripción eliminada (solo de la copia local; en Mailchimp sigue).');
     }
 
     /** Descarga de la copia local en CSV (Excel: UTF-8 con BOM, separado por punto y coma). */

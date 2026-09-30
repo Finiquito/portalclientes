@@ -1,7 +1,7 @@
 {
   "name": "Prisma",
-  "version": "1.2.0",
-  "description": "Landing de Prisma (prismahub.com): portal de clientes para estudios, agencias chicas y freelancers. Una página con lista de espera (plugin «invitaciones»).",
+  "version": "1.3.0",
+  "description": "Landing de Prisma (prismahub.com): portal de clientes para freelancers, estudios y agencias pequeñas de Latinoamérica. Una página con lista de espera (plugin «invitaciones»).",
   "author": "Estudio RichGT",
   "menus": {},
   "slots": {},

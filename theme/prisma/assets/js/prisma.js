@@ -57,18 +57,31 @@
     e.setAttribute("data-tono", tono || "");
   }
 
+  /* «✓ Ya lo tenemos» junto al correo que vino de la portada; se apaga si lo borran o lo cambian */
+  var listo = largo && largo.querySelector("[data-listo]");
+  var correoLargo = largo && largo.querySelector("input[name=email]");
+  function marcarCorreo(si) {
+    if (listo) listo.hidden = !si;
+    if (correoLargo) correoLargo.classList.toggle("lleno", !!si);
+  }
+  if (correoLargo) {
+    var original = null;
+    correoLargo.addEventListener("focus", function () { original = correoLargo.value; });
+    correoLargo.addEventListener("input", function () { if (correoLargo.value !== original) marcarCorreo(false); });
+  }
+
   /* Pasa el correo al formulario completo, baja hasta él y deja el cursor en el nombre */
   function continuar(correo, desde) {
     if (!largo) return;
     var c = largo.querySelector("input[name=email]");
-    if (c && correo) c.value = correo;
+    if (c && correo) { c.value = correo; marcarCorreo(true); }
     var o = largo.querySelector("[data-origen]");
     if (o && desde) o.value = desde;
     var destino = document.getElementById("invitacion") || largo;
     destino.scrollIntoView({ behavior: reducir ? "auto" : "smooth", block: "start" });
     var n = largo.querySelector("input[name=nombre]");
     if (n) setTimeout(function () { n.focus({ preventScroll: true }); }, reducir ? 0 : 450);
-    aviso(largo, "Ya tenemos tu correo. Cuéntanos tu nombre y cuántos son, y listo.", "ok");
+    aviso(largo, "", "");
   }
 
   /* Formulario de la portada: sólo el correo; el envío real es el de abajo */
@@ -89,9 +102,9 @@
 
   /* Sin JS, la portada llega como ?email=…#invitacion */
   var correoUrl = new URLSearchParams(window.location.search).get("email");
-  if (correoUrl && largo) {
+  if (correoUrl && largo && CORREO.test(correoUrl)) {
     var cu = largo.querySelector("input[name=email]");
-    if (cu) cu.value = correoUrl;
+    if (cu) { cu.value = correoUrl; marcarCorreo(true); }
     var ou = largo.querySelector("[data-origen]");
     if (ou) ou.value = "portada";
   }

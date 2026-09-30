@@ -269,6 +269,9 @@ select.campo { appearance: none; background-image: linear-gradient(45deg, transp
 .campo-grupo label, .campo-grupo legend { font-size: var(--text-sm); font-weight: 600; padding: 0; }
 .campo-grupo legend { margin-bottom: var(--space-2); }
 .opcional { font-weight: 400; margin-left: var(--space-1); }
+.campo-listo { font-weight: 600; margin-left: var(--space-2); color: oklch(85% 0.12 155); }
+.campo-listo[hidden] { display: none; }
+.form-largo .campo.lleno { border-color: oklch(85% 0.12 155); background: color-mix(in oklab, oklch(85% 0.12 155) 10%, transparent); }
 
 .segmentos { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: var(--rule) solid color-mix(in oklab, var(--color-on-ink) 55%, transparent); border-radius: var(--radius); }
 .segmentos label { position: relative; display: block; cursor: pointer; font-weight: 500; }

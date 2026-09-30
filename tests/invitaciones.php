@@ -34,9 +34,9 @@ $srv = new I\InvitacionService($pdo, $aj);
 $check(I\InvitacionService::emailValido('ana@estudio.cl'), 'correo válido');
 $check(!I\InvitacionService::emailValido('ana@estudio'), 'correo sin dominio completo');
 $check(!I\InvitacionService::emailValido('hola'), 'correo inválido');
-$d = I\InvitacionService::normalizar(['email' => ' ANA@Estudio.CL ', 'nombre' => '<b>Ana</b>  María', 'tamano' => '6-10', 'rubro' => 'Publicidad', 'origen' => 'x']);
+$d = I\InvitacionService::normalizar(['email' => ' ANA@Estudio.CL ', 'nombre' => '<b>Ana</b>  María', 'tamano' => '6-15', 'rubro' => 'Publicidad', 'origen' => 'x']);
 $check($d['email'] === 'ana@estudio.cl' && $d['nombre'] === 'Ana María', 'normaliza correo y limpia etiquetas del nombre');
-$check($d['tamano'] === '6-10' && $d['rubro'] === 'Publicidad' && $d['origen'] === 'otro', 'tamaño y rubro válidos, origen desconocido');
+$check($d['tamano'] === '6-15' && $d['rubro'] === 'Publicidad' && $d['origen'] === 'otro', 'tamaño y rubro válidos, origen desconocido');
 $d2 = I\InvitacionService::normalizar(['email' => 'x@y.cl', 'tamano' => '999', 'rubro' => 'Hackeo']);
 $check($d2['tamano'] === '' && $d2['rubro'] === '', 'valores fuera de lista se descartan');
 

@@ -6,9 +6,11 @@
 {layout 'base.latte'}
 {var $accion = $accion ?? '/invitacion'}
 {var $assets = '/themes/prisma/assets'}
+{* Sin JS, el correo de la portada llega como ?email=…#invitacion *}
+{var $correoPrevio = isset($_GET['email']) && is_string($_GET['email']) && filter_var(trim($_GET['email']), FILTER_VALIDATE_EMAIL) ? trim($_GET['email']) : ''}
 
-{block title}Prisma · El portal de clientes para estudios y agencias chicas{/block}
-{block description}Prisma es un portal para tu estudio o agencia: tus clientes ven en qué va su proyecto, aprueban piezas y te mandan lo que falta. Hecho en Chile para equipos de 1 a 10 personas.{/block}
+{block title}Prisma · El portal de clientes para freelancers, estudios y agencias pequeñas{/block}
+{block description}Prisma es un portal para freelancers, estudios y agencias pequeñas: tus clientes ven cómo va su proyecto, aprueban piezas y te envían lo que falta. Para equipos de 1 a 15 personas en Latinoamérica.{/block}
 
 {block content}
 
@@ -18,11 +20,11 @@
         <div class="contenedor portada-grilla">
             <div class="portada-texto">
                 <h1>Tus clientes al día, sin perseguirlos por WhatsApp.</h1>
-                <p class="bajada">Prisma es un portal para tu estudio o agencia chica: tus clientes ven en qué va su proyecto, aprueban piezas y te mandan lo que falta. Tú dejas de reenviar correos.</p>
+                <p class="bajada">Prisma es un portal para tu estudio, tu agencia pequeña o tu trabajo independiente: tus clientes ven cómo va su proyecto, aprueban piezas y te envían lo que falta. Tú dejas de reenviar correos.</p>
 
                 <form class="form-corto" action="#invitacion" method="get" data-continuar novalidate>
                     <label for="correo-portada" class="solo-lector">Tu correo</label>
-                    <input id="correo-portada" class="campo" type="email" name="email" placeholder="tu@estudio.cl" autocomplete="email" inputmode="email" required>
+                    <input id="correo-portada" class="campo" type="email" name="email" placeholder="tu@estudio.com" autocomplete="email" inputmode="email" required>
                     <button type="submit" class="boton">Pedir invitación</button>
                     <p class="form-estado" data-estado role="status" aria-live="polite"></p>
                 </form>
@@ -35,9 +37,9 @@
         </div>
 
         <ul class="contenedor franja" aria-label="En corto">
-            <li>Para equipos de 1 a 10 personas</li>
+            <li>Para equipos de 1 a 15 personas</li>
             <li>Tu cliente entra con su correo, sin contraseña</li>
-            <li>Hecho en Chile</li>
+            <li>En español, para Latinoamérica</li>
         </ul>
     </section>
 
@@ -65,11 +67,11 @@
                 </thead>
                 <tbody>
                     <tr>
-                        <td>«¿Me mandas el logo en alta?», tres veces, por WhatsApp.</td>
+                        <td>«¿Me envías el logo en alta resolución?», tres veces, por WhatsApp.</td>
                         <td>Una tarea «Pedir archivos». El cliente los sube ahí y quedan guardados con la tarea.</td>
                     </tr>
                     <tr>
-                        <td>La aprobación de la grilla, perdida en un hilo de correos.</td>
+                        <td>La aprobación del calendario de publicaciones, perdida en un hilo de correos.</td>
                         <td>El cliente aprueba o pide cambios post por post, y te llega un solo aviso con todo.</td>
                     </tr>
                     <tr>
@@ -77,7 +79,7 @@
                         <td>Pegas tus notas o la transcripción: sale el resumen, los acuerdos y la lista de tareas.</td>
                     </tr>
                     <tr>
-                        <td>«¿En qué va lo mío?»</td>
+                        <td>«¿Cómo va lo mío?»</td>
                         <td>El cliente lo ve solo: qué está listo, qué le toca y qué viene.</td>
                     </tr>
                 </tbody>
@@ -97,7 +99,7 @@
                 </figure>
                 <div class="diptico-texto">
                     <h3>Lo que ve tu cliente.</h3>
-                    <p>Su logo, su color y sólo lo suyo: qué le toca, qué está en revisión y cuándo es la próxima reunión. Entra con su correo y un código; no hay contraseña que olvidar.</p>
+                    <p>Su logo, su color y solo lo suyo: qué le toca, qué está en revisión y cuándo es la próxima reunión. Entra con su correo y un código; no hay contraseña que olvidar.</p>
                 </div>
             </div>
 
@@ -117,9 +119,9 @@
     {* ---- Para quién ---- *}
     <section class="para-quien" aria-labelledby="t-quien">
         <div class="contenedor quien-grilla">
-            <h2 id="t-quien">Para equipos de 1 a 10 personas.</h2>
+            <h2 id="t-quien">Para equipos de 1 a 15 personas.</h2>
             <div class="quien-texto">
-                <p>Freelancers, estudios de diseño y agencias de publicidad chicas. Si hoy llevas a tus clientes entre WhatsApp, Drive y correo, Prisma es para ti.</p>
+                <p>Freelancers, profesionales independientes, estudios de diseño y agencias pequeñas de publicidad o marketing. Si hoy llevas a tus clientes entre WhatsApp, Drive y correo, Prisma es para ti.</p>
                 <p>Si tienes cuarenta cuentas y un área de TI, probablemente no.</p>
             </div>
         </div>
@@ -130,11 +132,11 @@
         <div class="contenedor invitacion-grilla">
             <div class="invitacion-texto">
                 <h2 id="t-invitacion">Pide tu invitación.</h2>
-                <p>Estamos abriendo Prisma de a poco, con estudios y agencias de Chile. Déjanos tus datos y te escribimos cuando tengamos cupo para ti.</p>
+                <p>Estamos abriendo Prisma de a poco, con freelancers, estudios y agencias de Latinoamérica. Déjanos tus datos y te escribimos cuando tengamos cupo para ti.</p>
             </div>
 
             <form class="form-largo" action="{$accion}" method="post" data-invitacion novalidate>
-                <input type="hidden" name="origen" value="formulario" data-origen>
+                <input type="hidden" name="origen" value="{$correoPrevio ? 'portada' : 'formulario'}" data-origen>
                 <input type="hidden" name="t" value="" data-t>
                 <div class="trampa" aria-hidden="true"><label>Sitio web <input type="text" name="sitio_web" tabindex="-1" autocomplete="off"></label></div>
 
@@ -144,8 +146,8 @@
                         <input id="f-nombre" class="campo" type="text" name="nombre" autocomplete="given-name" maxlength="80" required>
                     </div>
                     <div class="campo-grupo">
-                        <label for="f-correo">Correo</label>
-                        <input id="f-correo" class="campo" type="email" name="email" autocomplete="email" inputmode="email" required>
+                        <label for="f-correo">Correo <span class="campo-listo" data-listo n:attr="hidden: !$correoPrevio">✓ Ya lo tenemos</span></label>
+                        <input id="f-correo" n:class="campo, $correoPrevio ? lleno" type="email" name="email" value="{$correoPrevio}" autocomplete="email" inputmode="email" required>
                     </div>
                 </div>
 
@@ -154,8 +156,8 @@
                     <div class="segmentos">
                         <label><input type="radio" name="tamano" value="1" required><span>Trabajo solo</span></label>
                         <label><input type="radio" name="tamano" value="2-5"><span>2 a 5</span></label>
-                        <label><input type="radio" name="tamano" value="6-10"><span>6 a 10</span></label>
-                        <label><input type="radio" name="tamano" value="+10"><span>Más de 10</span></label>
+                        <label><input type="radio" name="tamano" value="6-15"><span>6 a 15</span></label>
+                        <label><input type="radio" name="tamano" value="+15"><span>Más de 15</span></label>
                     </div>
                 </fieldset>
 
@@ -174,7 +176,7 @@
 
                 <button type="submit" class="boton boton-grande" data-enviando="Enviando…">Pedir invitación</button>
                 <p class="form-estado" data-estado role="status" aria-live="polite"></p>
-                <p class="nota">Usamos tu correo sólo para esto. Te puedes dar de baja con un clic.</p>
+                <p class="nota">Usamos tu correo solo para esto. Te puedes dar de baja con un clic.</p>
             </form>
         </div>
     </section>

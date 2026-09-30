@@ -4,7 +4,7 @@
     Los enlaces de la barra apuntan a /#… para que funcionen desde cualquier página.
 *}
 {var $assets = '/themes/prisma/assets'}
-{var $v = 5}
+{var $v = 6}
 <!DOCTYPE html>
 <html lang="es-CL">
 <head>
@@ -24,10 +24,10 @@
         {$seo->jsonLd|noescape}
     {else}
         <title>{block title}Prisma{/block}</title>
-        <meta name="description" content="{block description}Prisma: el portal de clientes para estudios y agencias chicas de Chile.{/block}">
+        <meta name="description" content="{block description}Prisma: el portal de clientes para freelancers, estudios y agencias pequeñas de Latinoamérica.{/block}">
         <meta property="og:type" content="website">
         <meta property="og:title" content="Prisma · Tus clientes al día, sin perseguirlos por WhatsApp">
-        <meta property="og:description" content="Un portal para estudios y agencias chicas de Chile. Pide tu invitación.">
+        <meta property="og:description" content="Un portal de clientes para freelancers, estudios y agencias pequeñas. Pide tu invitación.">
     {/if}
     {if isset($site) && !empty($site->faviconUrl)}<link rel="icon" href="{$site->faviconUrl}">{/if}
     <meta name="theme-color" content="#141c40">
@@ -55,7 +55,7 @@
 <footer class="cierre">
     <div class="contenedor">
         <p class="cierre-marca" aria-hidden="true">Prisma</p>
-        <p class="cierre-linea"><span>prismahub.com</span><span>Hecho en Chile, para estudios y agencias chicas.</span><span>© {date('Y')}</span></p>
+        <p class="cierre-linea"><span>prismahub.com</span><span>Para freelancers, estudios y agencias pequeñas.</span><span>© {date('Y')}</span></p>
     </div>
 </footer>
 </body>

@@ -10,8 +10,8 @@ final class InvitacionService
     public const TAMANOS = [
         '1'    => 'Independiente',
         '2-5'  => '2 a 5',
-        '6-10' => '6 a 10',
-        '+10'  => 'Más de 10',
+        '6-15' => '6 a 15',
+        '+15'  => 'Más de 15',
     ];
     public const RUBROS = ['Diseño gráfico', 'Publicidad', 'Marketing digital y redes', 'Desarrollo web', 'Audiovisual', 'Otro'];
 
