@@ -6,8 +6,6 @@
 {layout 'base.latte'}
 {var $accion = $accion ?? '/invitacion'}
 {var $assets = '/themes/prisma/assets'}
-{* Sin JS, el correo de la portada llega como ?email=…#invitacion *}
-{var $correoPrevio = isset($_GET['email']) && is_string($_GET['email']) && filter_var(trim($_GET['email']), FILTER_VALIDATE_EMAIL) ? trim($_GET['email']) : ''}
 
 {block title}Prisma · El portal de clientes para freelancers, estudios y agencias pequeñas{/block}
 {block description}Prisma es un portal para freelancers, estudios y agencias pequeñas: tus clientes ven cómo va su proyecto, aprueban piezas y te envían lo que falta. Para equipos de 1 a 15 personas en Latinoamérica.{/block}
@@ -136,7 +134,7 @@
             </div>
 
             <form class="form-largo" action="{$accion}" method="post" data-invitacion novalidate>
-                <input type="hidden" name="origen" value="{$correoPrevio ? 'portada' : 'formulario'}" data-origen>
+                <input type="hidden" name="origen" value="formulario" data-origen>
                 <input type="hidden" name="t" value="" data-t>
                 <div class="trampa" aria-hidden="true"><label>Sitio web <input type="text" name="sitio_web" tabindex="-1" autocomplete="off"></label></div>
 
@@ -146,8 +144,8 @@
                         <input id="f-nombre" class="campo" type="text" name="nombre" autocomplete="given-name" maxlength="80" required>
                     </div>
                     <div class="campo-grupo">
-                        <label for="f-correo">Correo <span class="campo-listo" data-listo n:attr="hidden: !$correoPrevio">✓ Ya lo tenemos</span></label>
-                        <input id="f-correo" n:class="campo, $correoPrevio ? lleno" type="email" name="email" value="{$correoPrevio}" autocomplete="email" inputmode="email" required>
+                        <label for="f-correo">Correo <span class="campo-listo" data-listo hidden>✓ Ya lo tenemos</span></label>
+                        <input id="f-correo" class="campo" type="email" name="email" autocomplete="email" inputmode="email" required>
                     </div>
                 </div>
 
