@@ -47,6 +47,55 @@
     caja.focus({ preventScroll: true });
   }
 
+  var CORREO = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+  var largo = document.querySelector(".form-largo");
+
+  function aviso(form, msg, tono) {
+    var e = form && form.querySelector("[data-estado]");
+    if (!e) return;
+    e.textContent = msg;
+    e.setAttribute("data-tono", tono || "");
+  }
+
+  /* Pasa el correo al formulario completo, baja hasta él y deja el cursor en el nombre */
+  function continuar(correo, desde) {
+    if (!largo) return;
+    var c = largo.querySelector("input[name=email]");
+    if (c && correo) c.value = correo;
+    var o = largo.querySelector("[data-origen]");
+    if (o && desde) o.value = desde;
+    var destino = document.getElementById("invitacion") || largo;
+    destino.scrollIntoView({ behavior: reducir ? "auto" : "smooth", block: "start" });
+    var n = largo.querySelector("input[name=nombre]");
+    if (n) setTimeout(function () { n.focus({ preventScroll: true }); }, reducir ? 0 : 450);
+    aviso(largo, "Ya tenemos tu correo. Cuéntanos tu nombre y cuántos son, y listo.", "ok");
+  }
+
+  /* Formulario de la portada: sólo el correo; el envío real es el de abajo */
+  document.querySelectorAll("form[data-continuar]").forEach(function (form) {
+    form.addEventListener("submit", function (ev) {
+      ev.preventDefault();
+      var c = form.querySelector("input[name=email]");
+      var valor = c ? c.value.trim() : "";
+      if (valor && !CORREO.test(valor)) {
+        aviso(form, "Revisa tu correo: parece que le falta algo.", "error");
+        c.focus();
+        return;
+      }
+      aviso(form, "", "");
+      continuar(valor, "portada");
+    });
+  });
+
+  /* Sin JS, la portada llega como ?email=…#invitacion */
+  var correoUrl = new URLSearchParams(window.location.search).get("email");
+  if (correoUrl && largo) {
+    var cu = largo.querySelector("input[name=email]");
+    if (cu) cu.value = correoUrl;
+    var ou = largo.querySelector("[data-origen]");
+    if (ou) ou.value = "portada";
+  }
+
   document.querySelectorAll("form[data-invitacion]").forEach(function (form) {
     var estado = form.querySelector("[data-estado]");
     var boton = form.querySelector("button[type=submit]");
@@ -61,10 +110,24 @@
     form.addEventListener("submit", function (ev) {
       var correo = form.querySelector("input[name=email]");
       var valor = correo ? correo.value.trim() : "";
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(valor)) {
+      if (!CORREO.test(valor)) {
         ev.preventDefault();
         avisar("Revisa tu correo: parece que le falta algo.", "error");
         if (correo) correo.focus();
+        return;
+      }
+      var nombre = form.querySelector("input[name=nombre]");
+      if (nombre && !nombre.value.trim()) {
+        ev.preventDefault();
+        avisar("Falta tu nombre.", "error");
+        nombre.focus();
+        return;
+      }
+      var tamanos = form.querySelectorAll("input[name=tamano]");
+      if (tamanos.length && !form.querySelector("input[name=tamano]:checked")) {
+        ev.preventDefault();
+        avisar("Elige cuántos son en tu equipo.", "error");
+        tamanos[0].focus();
         return;
       }
       if (!window.fetch || !window.FormData) return; // envío normal

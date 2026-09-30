@@ -20,16 +20,13 @@
                 <h1>Tus clientes al día, sin perseguirlos por WhatsApp.</h1>
                 <p class="bajada">Prisma es un portal para tu estudio o agencia chica: tus clientes ven en qué va su proyecto, aprueban piezas y te mandan lo que falta. Tú dejas de reenviar correos.</p>
 
-                <form class="form-corto" action="{$accion}" method="post" data-invitacion novalidate>
-                    <input type="hidden" name="origen" value="portada">
-                    <input type="hidden" name="t" value="" data-t>
-                    <div class="trampa" aria-hidden="true"><label>Sitio web <input type="text" name="sitio_web" tabindex="-1" autocomplete="off"></label></div>
+                <form class="form-corto" action="#invitacion" method="get" data-continuar novalidate>
                     <label for="correo-portada" class="solo-lector">Tu correo</label>
                     <input id="correo-portada" class="campo" type="email" name="email" placeholder="tu@estudio.cl" autocomplete="email" inputmode="email" required>
-                    <button type="submit" class="boton" data-enviando="Enviando…">Pedir invitación</button>
+                    <button type="submit" class="boton">Pedir invitación</button>
                     <p class="form-estado" data-estado role="status" aria-live="polite"></p>
                 </form>
-                <p class="nota">Estamos abriendo de a poco. Te escribimos cuando haya cupo.</p>
+                <p class="nota">Luego te pedimos tu nombre y el tamaño de tu equipo, y listo.</p>
             </div>
 
             <figure class="portada-figura">
@@ -137,14 +134,14 @@
             </div>
 
             <form class="form-largo" action="{$accion}" method="post" data-invitacion novalidate>
-                <input type="hidden" name="origen" value="formulario">
+                <input type="hidden" name="origen" value="formulario" data-origen>
                 <input type="hidden" name="t" value="" data-t>
                 <div class="trampa" aria-hidden="true"><label>Sitio web <input type="text" name="sitio_web" tabindex="-1" autocomplete="off"></label></div>
 
                 <div class="fila-2">
                     <div class="campo-grupo">
                         <label for="f-nombre">Nombre</label>
-                        <input id="f-nombre" class="campo" type="text" name="nombre" autocomplete="given-name" maxlength="80">
+                        <input id="f-nombre" class="campo" type="text" name="nombre" autocomplete="given-name" maxlength="80" required>
                     </div>
                     <div class="campo-grupo">
                         <label for="f-correo">Correo</label>
@@ -155,7 +152,7 @@
                 <fieldset class="campo-grupo">
                     <legend>¿Cuántos son en tu equipo?</legend>
                     <div class="segmentos">
-                        <label><input type="radio" name="tamano" value="1"><span>Trabajo solo</span></label>
+                        <label><input type="radio" name="tamano" value="1" required><span>Trabajo solo</span></label>
                         <label><input type="radio" name="tamano" value="2-5"><span>2 a 5</span></label>
                         <label><input type="radio" name="tamano" value="6-10"><span>6 a 10</span></label>
                         <label><input type="radio" name="tamano" value="+10"><span>Más de 10</span></label>
