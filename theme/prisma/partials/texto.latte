@@ -1,0 +1,12 @@
+{*
+    Contenido genérico (páginas, entradas, búsqueda, errores) con la gráfica de Prisma.
+    Parámetros: $titulo, $bajada (opcional), $html (opcional, contenido ya renderizado por el núcleo).
+*}
+<section class="texto">
+    <div class="contenedor texto-grilla">
+        <h1>{$titulo}</h1>
+        {if !empty($bajada)}<p class="bajada">{$bajada}</p>{/if}
+        {if !empty($html)}<div class="prosa">{$html|noescape}</div>{/if}
+        <p class="texto-volver"><a href="/" class="boton">Volver al inicio</a></p>
+    </div>
+</section>

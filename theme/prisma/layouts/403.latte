@@ -1,0 +1,6 @@
+{* 403: contenido del núcleo con la gráfica de Prisma. *}
+{layout 'base.latte'}
+
+{block content}
+{include '../partials/texto.latte', titulo: 'No tienes acceso a esta página.', bajada: $message ?? '', html: ''}
+{/block}

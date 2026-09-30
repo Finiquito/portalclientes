@@ -336,3 +336,16 @@ select.campo { appearance: none; background-image: linear-gradient(45deg, transp
     .despiece .guia, .despiece .marca { opacity: 1; transition: none; }
     .boton, .campo, .barra-link, .segmentos span { transition: none; }
 }
+
+/* ---------------------------------------------------------------------------
+   Páginas de texto (página, entrada, búsqueda, errores)
+   --------------------------------------------------------------------------- */
+.texto { padding-block: clamp(var(--space-8), 10vw, var(--space-10)); border-bottom: var(--rule) solid var(--color-rule-strong); }
+.texto-grilla { max-width: 48rem; margin-inline: 0; }
+.texto h1 { font-size: var(--text-display); line-height: 1.04; }
+.texto .bajada { margin-top: var(--space-4); }
+.prosa { margin-top: var(--space-6); font-size: var(--text-lg); line-height: 1.65; }
+.prosa > * + * { margin-top: var(--space-4); }
+.prosa h2, .prosa h3 { margin-top: var(--space-7); font-size: var(--text-xl); }
+.prosa a { color: var(--color-signal-hover); }
+.texto-volver { margin-top: var(--space-7); }

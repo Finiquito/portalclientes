@@ -48,7 +48,7 @@ Flight::route('GET /dev/equipo', function () use ($ctx) {
 });
 // Landing Prisma (tema): la plantilla se dibuja con Latte, igual que en TypeDock.
 Flight::route('GET /landing', function () use ($ctx) {
-    echo $ctx->latte()->renderToString(dirname(__DIR__, 2) . '/theme/prisma/templates/home.latte', []);
+    echo $ctx->latte()->renderToString(dirname(__DIR__, 2) . '/theme/prisma/layouts/home.latte', []);
 });
 Flight::route('GET /admin', fn() => Flight::redirect('/admin/portal'));
 try {

@@ -1,43 +1,17 @@
 {*
-    Prisma · landing del home (prismahub.com)
-    Hallmark · macrostructure: Split Studio · tone: utilitarian-warm · anchor hue: navy 272 + signal red 33
-    Nav: N9 edge-aligned · Footer: Ft5 statement · Enrichment: E5 hand-built SVG (despiece isométrico con grano)
-
-    Variables opcionales (con valor por defecto, así la plantilla funciona sola):
-      $assets     URL base de los archivos del tema
-      $accion     URL a la que se envía el formulario de invitación
+    Prisma · landing (prismahub.com). Es el inicio del sitio y también el layout «Landing Prisma»
+    que se puede elegir en cualquier página desde el editor (ver theme.json → layouts).
+    Hallmark · macrostructure: Split Studio · nav: N9 edge-aligned · footer: Ft5 statement · enrichment: E5 hand-built SVG
 *}
-{var $assets = $assets ?? '/themes/prisma/assets'}
+{layout 'base.latte'}
 {var $accion = $accion ?? '/invitacion'}
-<!DOCTYPE html>
-<html lang="es-CL">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Prisma · El portal de clientes para estudios y agencias chicas</title>
-    <meta name="description" content="Prisma es un portal para tu estudio o agencia: tus clientes ven en qué va su proyecto, aprueban piezas y te mandan lo que falta. Hecho en Chile para equipos de 1 a 10 personas.">
-    <meta property="og:title" content="Prisma · Tus clientes al día, sin perseguirlos por WhatsApp">
-    <meta property="og:description" content="Un portal para estudios y agencias chicas de Chile. Pide tu invitación.">
-    <meta property="og:type" content="website">
-    <meta name="theme-color" content="#141c40">
-    <link rel="preload" href="{$assets}/fonts/schibsted-grotesk-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
-    <link rel="stylesheet" href="{$assets}/css/prisma.css?v=1">
-    <script src="{$assets}/js/prisma.js?v=1" defer></script>
-</head>
-<body>
-<a class="saltar" href="#contenido">Saltar al contenido</a>
+{var $assets = '/themes/prisma/assets'}
 
-<header class="barra">
-    <div class="contenedor barra-fila">
-        <a href="/" class="barra-marca">{include 'partials/logo.latte'}</a>
-        <nav class="barra-nav" aria-label="Principal">
-            <a href="#como-funciona" class="barra-link">Cómo funciona</a>
-            <a href="#invitacion" class="boton boton-chico">Pedir invitación</a>
-        </nav>
-    </div>
-</header>
+{block title}Prisma · El portal de clientes para estudios y agencias chicas{/block}
+{block description}Prisma es un portal para tu estudio o agencia: tus clientes ven en qué va su proyecto, aprueban piezas y te mandan lo que falta. Hecho en Chile para equipos de 1 a 10 personas.{/block}
 
-<main id="contenido">
+{block content}
+
 
     {* ---- Portada: texto a la izquierda, el prisma desarmándose a la derecha ---- *}
     <section class="portada">
@@ -59,7 +33,7 @@
             </div>
 
             <figure class="portada-figura">
-                <div class="lamina">{include 'partials/despiece-hero.latte'}</div>
+                <div class="lamina">{include '../partials/despiece-hero.latte'}</div>
             </figure>
         </div>
 
@@ -76,10 +50,10 @@
             <div class="piezas-texto">
                 <h2 id="t-piezas">Un proyecto, cinco piezas.</h2>
                 <p>Lo que hoy vive mezclado en el chat, en Prisma tiene su lugar. Cada pieza hace una sola cosa, y el cliente sabe siempre dónde mirar.</p>
-                {include 'partials/despiece-leyenda.latte'}
+                {include '../partials/despiece-leyenda.latte'}
             </div>
             <figure class="piezas-figura">
-                {include 'partials/despiece-diagrama.latte'}
+                {include '../partials/despiece-diagrama.latte'}
             </figure>
         </div>
     </section>
@@ -207,13 +181,4 @@
             </form>
         </div>
     </section>
-</main>
-
-<footer class="cierre">
-    <div class="contenedor">
-        <p class="cierre-marca" aria-hidden="true">Prisma</p>
-        <p class="cierre-linea"><span>prismahub.com</span><span>Hecho en Chile, para estudios y agencias chicas.</span><span>© {date('Y')}</span></p>
-    </div>
-</footer>
-</body>
-</html>
+{/block}

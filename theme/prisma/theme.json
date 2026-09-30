@@ -1,13 +1,14 @@
 {
-    "name": "Prisma",
-    "version": "1.0.0",
-    "description": "Landing de Prisma (prismahub.com): portal de clientes para estudios, agencias chicas y freelancers. Una página con lista de espera (plugin «invitaciones»).",
-    "author": "Estudio RichGT",
-    "menus": {
-        "header": {
-            "label": "Navegación superior",
-            "description": "Enlaces junto al botón «Pedir invitación». Si está vacío, se muestra «Cómo funciona»."
-        }
-    },
-    "slots": {}
+  "name": "Prisma",
+  "version": "1.1.0",
+  "description": "Landing de Prisma (prismahub.com): portal de clientes para estudios, agencias chicas y freelancers. Una página con lista de espera (plugin «invitaciones»).",
+  "author": "Estudio RichGT",
+  "menus": {},
+  "slots": {},
+  "layouts": {
+    "landing": {
+      "label": "Landing Prisma",
+      "description": "La página completa de Prisma con el formulario de invitación. Úsala en la página de inicio."
+    }
+  }
 }

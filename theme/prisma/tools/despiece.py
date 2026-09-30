@@ -160,7 +160,7 @@ def svg(variante):
 
 def main():
     raiz = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    dest = os.path.join(raiz, "templates", "partials")
+    dest = os.path.join(raiz, "partials")
     os.makedirs(dest, exist_ok=True)
     cab = "{* Generado por tools/despiece.py: no editar a mano. *}\n"
     for v in ("hero", "diagrama"):

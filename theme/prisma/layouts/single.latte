@@ -1,0 +1,6 @@
+{* Entrada: contenido del núcleo con la gráfica de Prisma. *}
+{layout 'base.latte'}
+
+{block content}
+{include '../partials/texto.latte', titulo: $post->title ?? $page->title ?? $page['title'] ?? 'Prisma', bajada: '', html: $post->content ?? $page->content ?? $page['content'] ?? ''}
+{/block}

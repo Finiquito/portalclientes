@@ -1,0 +1,62 @@
+{*
+    Marco común del tema Prisma: <head> (con el SEO del núcleo cuando existe), barra y cierre.
+    Las demás plantillas definen {block content} y, si quieren, {block title} y {block description}.
+    Los enlaces de la barra apuntan a /#… para que funcionen desde cualquier página.
+*}
+{var $assets = '/themes/prisma/assets'}
+{var $v = 2}
+<!DOCTYPE html>
+<html lang="es-CL">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    {if isset($seo)}
+        <title>{$seo->title}{if isset($site)} · {$site->name}{/if}</title>
+        {if $seo->description}<meta name="description" content="{$seo->description}">{/if}
+        {if $seo->robots}<meta name="robots" content="{$seo->robots}">{/if}
+        {if $seo->canonical}<link rel="canonical" href="{$seo->canonical}">{/if}
+        <meta property="og:type" content="{$seo->ogType}">
+        <meta property="og:title" content="{$seo->ogTitle}">
+        {if $seo->ogDescription}<meta property="og:description" content="{$seo->ogDescription}">{/if}
+        {if $seo->canonical}<meta property="og:url" content="{$seo->canonical}">{/if}
+        {if $seo->ogImageUrl}<meta property="og:image" content="{$seo->ogImageUrl}">{/if}
+        <meta name="twitter:card" content="{$seo->twitterCard}">
+        {$seo->jsonLd|noescape}
+    {else}
+        <title>{block title}Prisma{/block}</title>
+        <meta name="description" content="{block description}Prisma: el portal de clientes para estudios y agencias chicas de Chile.{/block}">
+        <meta property="og:type" content="website">
+        <meta property="og:title" content="Prisma · Tus clientes al día, sin perseguirlos por WhatsApp">
+        <meta property="og:description" content="Un portal para estudios y agencias chicas de Chile. Pide tu invitación.">
+    {/if}
+    {if isset($site) && !empty($site->faviconUrl)}<link rel="icon" href="{$site->faviconUrl}">{/if}
+    <meta name="theme-color" content="#141c40">
+    <link rel="preload" href="{$assets}/fonts/schibsted-grotesk-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="{$assets}/css/prisma.css?v={$v}">
+    <script src="{$assets}/js/prisma.js?v={$v}" defer></script>
+</head>
+<body class="{$body_class ?? ''}">
+<a class="saltar" href="#contenido">Saltar al contenido</a>
+
+<header class="barra">
+    <div class="contenedor barra-fila">
+        <a href="/" class="barra-marca">{include '../partials/logo.latte'}</a>
+        <nav class="barra-nav" aria-label="Principal">
+            <a href="/#como-funciona" class="barra-link">Cómo funciona</a>
+            <a href="/#invitacion" class="boton boton-chico">Pedir invitación</a>
+        </nav>
+    </div>
+</header>
+
+<main id="contenido">
+{block content}{/block}
+</main>
+
+<footer class="cierre">
+    <div class="contenedor">
+        <p class="cierre-marca" aria-hidden="true">Prisma</p>
+        <p class="cierre-linea"><span>prismahub.com</span><span>Hecho en Chile, para estudios y agencias chicas.</span><span>© {date('Y')}</span></p>
+    </div>
+</footer>
+</body>
+</html>

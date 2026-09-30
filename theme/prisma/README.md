@@ -2,35 +2,37 @@
 
 Landing de una página para Prisma, el portal de clientes ofrecido a estudios, agencias chicas y freelancers de Chile. Su objetivo es una sola acción: **pedir una invitación**. Las inscripciones las recibe el plugin `invitaciones/`, que las guarda y las envía a Mailchimp.
 
+## Instalación en TypeDock
+
+1. Sube la carpeta `prisma` a `typedock/themes/prisma` (no a `public_html/themes`: el núcleo publica solo los `assets` en `/themes/prisma/assets/`).
+2. En el admin, ve a **Apariencia → Temas** y activa **Prisma**.
+3. Crea una página (por ejemplo «Inicio»), elige el layout **Landing Prisma** en el editor y déjala como página de inicio (**Ajustes → Sitio → Inicio: página**). Si el inicio está en modo «archivo», también se ve el landing: `layouts/home.latte` es la misma página.
+4. Instala el plugin `invitaciones` y, en **Invitaciones**, guarda la clave completa de Mailchimp (termina en `-us…`), la audiencia `fc1f3c0eb6` y el campo del tamaño (`TAMANO` o `MERGE7`). Aprieta «Probar conexión».
+
 ## Estructura
 
 ```
-templates/home.latte                 la página completa (Latte)
-templates/partials/logo.latte        wordmark «Prism» + marca triangular
-templates/partials/despiece-*.latte  ilustraciones SVG en línea (generadas; no editar a mano)
-assets/css/prisma.css                estilos: todos los colores, tipos y medidas como tokens en :root
-assets/js/prisma.js                  despiece animado y envío del formulario (sin dependencias)
-assets/fonts/                        Schibsted Grotesk (OFL), alojada en el tema: sin CDN externo
-assets/img/                          capturas reales del portal y del panel (datos de demo)
-tools/despiece.py                    genera las ilustraciones isométricas
+theme.json                         nombre, versión y el layout «Landing Prisma» para el editor
+layouts/base.latte                 <head> (usa el SEO del núcleo), barra y pie
+layouts/home.latte                 el landing completo
+layouts/landing.latte              el mismo landing, elegible en cualquier página
+layouts/page|single|archive|…      plantillas mínimas que exige el núcleo, con la misma gráfica
+layouts/403|404|500.latte          páginas de error
+partials/logo.latte                wordmark «Prism» + marca triangular
+partials/texto.latte               bloque de texto de las plantillas mínimas
+partials/despiece-*.latte          ilustraciones SVG en línea (generadas; no editar a mano)
+assets/css/prisma.css              estilos: colores, tipos y medidas como tokens en :root
+assets/js/prisma.js                despiece animado y envío del formulario (sin dependencias)
+assets/fonts/                      Schibsted Grotesk (OFL), alojada en el tema: sin CDN externo
+assets/img/                        capturas reales del portal y del panel (datos de demo)
+assets/screenshot.png              miniatura para la lista de temas
+tools/despiece.py                  genera las ilustraciones isométricas
 ```
 
-## Variables de la plantilla
+## Variables
 
-Las dos tienen valor por defecto, así la plantilla funciona sola:
-
-- `$assets`: URL base de los archivos del tema (por defecto `/themes/prisma/assets`).
 - `$accion`: adónde se envía el formulario (por defecto `/invitacion`, la ruta del plugin).
-
-## Pendiente para instalarlo en TypeDock
-
-El zip de ejemplo (`kinari`) sólo traía la carpeta `assets`, así que todavía falta saber:
-
-- cómo se declara un tema (¿`theme.json`?);
-- qué plantilla usa el home y qué variables le pasa el núcleo;
-- en qué URL se sirven los `assets` del tema.
-
-Con un tema completo de ejemplo se ajustan el nombre del archivo y `$assets`. El resto no cambia.
+- `$seo`, `$site`: si el núcleo las entrega, el `<head>` las usa; si no, hay título y descripción propios.
 
 ## Ilustraciones
 
