@@ -20,11 +20,16 @@ class PluginContext
 
     private ?\Latte\Engine $latte = null;
 
+    private readonly string $prefijo;
+
     public function __construct(
         private readonly \PDO $pdo,
         private readonly string $pluginDir,
         private readonly string $cacheDir,
-    ) {}
+        string $slug = 'portal',
+    ) {
+        $this->prefijo = '/admin/' . $slug;
+    }
 
     public function db(): object
     {
@@ -49,7 +54,7 @@ class PluginContext
 
     public function registerAdminRoute(string $method, string $path, callable $handler): void
     {
-        $url = self::ADMIN_PREFIX . ($path === '' ? '' : '/' . $path);
+        $url = $this->prefijo . ($path === '' ? '' : '/' . $path);
         \Flight::route($method . ' ' . ($url === '' ? '/' : $url), $handler);
     }
 
@@ -60,7 +65,7 @@ class PluginContext
 
     public function adminUrl(string $path = ''): string
     {
-        return self::ADMIN_PREFIX . ($path === '' ? '' : '/' . ltrim($path, '/'));
+        return $this->prefijo . ($path === '' ? '' : '/' . ltrim($path, '/'));
     }
 
     public function latte(): \Latte\Engine

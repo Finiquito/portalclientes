@@ -15,9 +15,23 @@ if (str_starts_with($uri, '/plugins/portal/assets/')) {
     }
 }
 
+// Archivos del tema Prisma (theme/prisma/assets) en /themes/prisma/assets/
+if (str_starts_with($uri, '/themes/prisma/assets/')) {
+    $base = realpath(dirname(__DIR__, 2) . '/theme/prisma/assets');
+    $f = realpath(dirname(__DIR__, 2) . '/theme/prisma/assets/' . substr($uri, strlen('/themes/prisma/assets/')));
+    if ($f && $base && str_starts_with($f, $base) && is_file($f)) {
+        $tipos = ['css' => 'text/css', 'js' => 'text/javascript', 'jpg' => 'image/jpeg', 'png' => 'image/png', 'svg' => 'image/svg+xml', 'webp' => 'image/webp', 'woff2' => 'font/woff2'];
+        header('Content-Type: ' . ($tipos[pathinfo($f, PATHINFO_EXTENSION)] ?? 'application/octet-stream'));
+        readfile($f);
+        return true;
+    }
+}
+
 require dirname(__DIR__) . '/bootstrap.php';
 
-$ctx = portal_dev_contexto(portal_dev_pdo());
+$pdo = portal_dev_pdo();
+$ctx = portal_dev_contexto($pdo);
+$ctxInv = portal_dev_invitaciones($pdo);
 Flight::route('GET /', fn() => Flight::redirect('/equipo'));
 // Atajos sólo de desarrollo: entrar sin código.
 Flight::route('GET /dev/cliente', function () use ($ctx) {
@@ -31,6 +45,10 @@ Flight::route('GET /dev/equipo', function () use ($ctx) {
     $u = (new TypeDock\Plugin\Portal\EquipoService($ctx->db()->pdo()))->findByEmail((string) ($_GET['email'] ?? ''));
     $_SESSION['portal_equipo_id'] = $u['id'] ?? null;
     Flight::redirect('/equipo');
+});
+// Landing Prisma (tema): la plantilla se dibuja con Latte, igual que en TypeDock.
+Flight::route('GET /landing', function () use ($ctx) {
+    echo $ctx->latte()->renderToString(dirname(__DIR__, 2) . '/theme/prisma/templates/home.latte', []);
 });
 Flight::route('GET /admin', fn() => Flight::redirect('/admin/portal'));
 try {

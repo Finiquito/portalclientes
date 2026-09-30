@@ -1,0 +1,130 @@
+{layout $plugin_ui_layout}
+
+{block page_title}Invitaciones{/block}
+
+{block content}
+<style n:syntax="off">
+    .inv-grid { display: grid; gap: 1rem; grid-template-columns: 1fr; }
+    @media (min-width: 900px) { .inv-grid { grid-template-columns: 1fr 1fr; } }
+    .inv-muted { color: color-mix(in srgb, currentColor 65%, transparent); font-size: .875rem; }
+    .inv-chip { display: inline-block; padding: .1rem .5rem; border-radius: 999px; font-size: .75rem; font-weight: 650; background: color-mix(in srgb, currentColor 10%, transparent); }
+    .inv-chip.ok { background: color-mix(in srgb, #10b981 16%, transparent); color: color-mix(in srgb, #059669 72%, currentColor); }
+    .inv-chip.error { background: color-mix(in srgb, #f43f5e 15%, transparent); color: color-mix(in srgb, #e11d48 72%, currentColor); }
+    .inv-chip.pendiente { background: color-mix(in srgb, #f59e0b 18%, transparent); color: color-mix(in srgb, #d97706 72%, currentColor); }
+    .inv-stats { display: flex; gap: 1.5rem; flex-wrap: wrap; margin: 0 0 1rem; }
+    .inv-stats b { display: block; font-size: 1.6rem; line-height: 1.1; }
+    .inv-campos { width: 100%; border-collapse: collapse; font-size: .875rem; margin-top: .5rem; }
+    .inv-campos td, .inv-campos th { text-align: left; padding: .35rem .4rem; border-top: 1px solid color-mix(in srgb, currentColor 14%, transparent); }
+    .inv-check { display: flex; gap: .5rem; align-items: flex-start; margin-top: .75rem; }
+</style>
+
+<div class="page-header">
+    <h1>Invitaciones</h1>
+    <a href="{$admin_url('csv')}" class="btn">Descargar CSV</a>
+</div>
+
+{if $flash_success}<div class="alert alert-success">{$flash_success}</div>{/if}
+{if $flash_error}<div class="alert alert-error">{$flash_error}</div>{/if}
+
+<div class="inv-grid">
+    <form method="post" action="{$admin_url('ajustes')}" class="card" autocomplete="off">
+        <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+        <h2 style="font-size:1.05rem;font-weight:800;margin:0 0 .5rem">Mailchimp</h2>
+
+        <label class="form-label">Clave de la API</label>
+        {if $cfg['origen'] === 'entorno'}
+            <p class="inv-muted">Se usa la variable de entorno <code>MAILCHIMP_API_KEY</code> ({$cfg['clave']}, región {$cfg['region'] ?: '?'}).</p>
+        {else}
+            {if $cfg['clave']}<p class="inv-muted" style="margin:0 0 .35rem">Guardada y cifrada: {$cfg['clave']} · región {$cfg['region']}. Escribe una nueva sólo si quieres cambiarla.</p>{/if}
+            <input type="password" name="mc_clave" class="form-input" placeholder="{$cfg['clave'] ? 'Dejar la actual' : 'abc123…-us21'}" spellcheck="false">
+            <p class="form-hint mt-1">En Mailchimp: tu perfil → <em>Extras → API keys → Create A Key</em>. Cópiala completa: la región va al final (<code>-us21</code>, <code>-us14</code>…). Nunca se muestra de vuelta.</p>
+            {if $cfg['clave']}<label class="inv-check"><input type="checkbox" name="quitar_clave" value="1"> <span>Quitar la clave guardada</span></label>{/if}
+        {/if}
+
+        <label class="form-label mt-3">ID de la audiencia</label>
+        <input type="text" name="mc_audiencia" class="form-input" value="{$cfg['audiencia']}" placeholder="fc1f3c0eb6" spellcheck="false">
+        <p class="form-hint mt-1">En Mailchimp: <em>Audience → Settings → Audience name and defaults</em> → «Audience ID».</p>
+
+        <label class="inv-check"><input type="checkbox" name="mc_doble" value="1" {if $cfg['doble']}checked{/if}> <span><strong>Doble confirmación</strong>: Mailchimp le envía un correo para confirmar antes de sumarlo (recomendado; evita correos falsos).</span></label>
+
+        <h3 style="font-size:.95rem;font-weight:800;margin:1.25rem 0 .25rem">Campos de la audiencia</h3>
+        <p class="form-hint" style="margin:0 0 .5rem">Escribe la etiqueta del campo (merge tag) tal como está en Mailchimp, sin los <code>*| |*</code>. Si un campo no existe, la persona igual se inscribe, sin ese dato.</p>
+        <div class="inv-grid" style="grid-template-columns:repeat(3,minmax(0,1fr))">
+            <div><label class="form-label">Nombre</label><input type="text" name="mc_campo_nombre" class="form-input" value="{$cfg['campo_nombre']}" placeholder="FNAME"></div>
+            <div><label class="form-label">Tamaño del equipo</label><input type="text" name="mc_campo_tamano" class="form-input" value="{$cfg['campo_tamano']}" placeholder="TAMANO"></div>
+            <div><label class="form-label">Rubro <span class="inv-muted">(opcional)</span></label><input type="text" name="mc_campo_rubro" class="form-input" value="{$cfg['campo_rubro']}" placeholder="RUBRO"></div>
+        </div>
+        <p class="form-hint mt-1">El tamaño se guarda como texto: {foreach $tamanos as $t}«{$t}»{sep}, {/sep}{/foreach}. Si en Mailchimp el campo es de lista desplegable, crea exactamente esas opciones.</p>
+
+        <label class="form-label mt-3">Etiquetas <span class="inv-muted">(separadas por coma)</span></label>
+        <input type="text" name="mc_etiquetas" class="form-input" value="{$cfg['etiquetas']}" placeholder="invitacion-prisma">
+
+        <p class="mt-4" style="display:flex;gap:.5rem;flex-wrap:wrap">
+            <button type="submit" class="btn btn-primary">Guardar</button>
+            <button type="submit" class="btn" formaction="{$admin_url('probar')}">Probar conexión</button>
+        </p>
+    </form>
+
+    <div class="card">
+        <h2 style="font-size:1.05rem;font-weight:800;margin:0 0 .75rem">Estado</h2>
+        <div class="inv-stats">
+            <div><b>{$resumen['total']}</b><span class="inv-muted">inscritos</span></div>
+            <div><b>{$resumen['ok']}</b><span class="inv-muted">en Mailchimp</span></div>
+            <div><b>{$resumen['pendiente'] + $resumen['error']}</b><span class="inv-muted">por enviar</span></div>
+        </div>
+        {if $resumen['pendiente'] + $resumen['error'] > 0}
+            <form method="post" action="{$admin_url('reintentar')}">
+                <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+                <button type="submit" class="btn btn-sm">Reintentar las pendientes</button>
+            </form>
+        {/if}
+
+        {if $prueba}
+            <h3 style="font-size:.95rem;font-weight:800;margin:1.25rem 0 .25rem">Última prueba ({$prueba['fecha'] ?? ''})</h3>
+            {if !empty($prueba['ok'])}
+                <p class="inv-muted">Audiencia «{$prueba['audiencia']}» · {$prueba['miembros'] ?? 0} contactos. Campos disponibles:</p>
+                <table class="inv-campos">
+                    <tr><th>Etiqueta</th><th>Nombre</th><th>Tipo</th></tr>
+                    {foreach $prueba['campos'] ?? [] as $c}
+                        <tr><td><code>{$c['tag']}</code></td><td>{$c['nombre']}</td><td>{$c['tipo']}{if $c['opciones']} · {implode(', ', $c['opciones'])}{/if}</td></tr>
+                    {/foreach}
+                </table>
+            {else}
+                <p class="inv-chip error">{$prueba['error'] ?? 'Error'}</p>
+            {/if}
+        {else}
+            <p class="inv-muted">Guarda la clave y la audiencia, y aprieta «Probar conexión»: te mostramos los campos que tiene tu audiencia para que elijas la etiqueta del tamaño (TAMANO o MERGE7).</p>
+        {/if}
+    </div>
+</div>
+
+<div class="card mt-3" style="overflow-x:auto">
+    <h2 style="font-size:1.05rem;font-weight:800;margin:0 0 .75rem">Inscripciones</h2>
+    {if empty($lista)}
+        <p class="inv-muted">Todavía no hay inscripciones. Llegan desde el formulario del landing.</p>
+    {else}
+    <table class="table">
+        <thead><tr><th>Correo</th><th>Nombre</th><th>Equipo</th><th>Rubro</th><th>Desde</th><th>Mailchimp</th><th>Fecha</th><th></th></tr></thead>
+        <tbody>
+        {foreach $lista as $f}
+            <tr>
+                <td>{$f['email']}</td>
+                <td>{$f['nombre'] ?: '—'}</td>
+                <td>{$tamanos[$f['tamano']] ?? '—'}</td>
+                <td>{$f['rubro'] ?: '—'}</td>
+                <td class="inv-muted">{$f['origen']}</td>
+                <td><span class="inv-chip {$f['mc_estado']}">{['ok' => 'Enviado', 'error' => 'Error', 'pendiente' => 'Pendiente'][$f['mc_estado']] ?? $f['mc_estado']}</span>{if $f['mc_error']}<div class="inv-muted" style="max-width:22rem">{$f['mc_error']}</div>{/if}</td>
+                <td class="inv-muted">{substr($f['created_at'], 0, 16)}</td>
+                <td>
+                    <form method="post" action="{$admin_url($f['id'] . '/borrar')}" onsubmit="return confirm('¿Eliminar esta inscripción de la copia local? En Mailchimp se mantiene.');">
+                        <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+                        <button type="submit" class="btn btn-sm btn-danger">Eliminar</button>
+                    </form>
+                </td>
+            </tr>
+        {/foreach}
+        </tbody>
+    </table>
+    {/if}
+</div>
+{/block}

@@ -1,0 +1,14 @@
+{
+    "slug": "invitaciones",
+    "name": "Invitaciones (lista de espera)",
+    "version": "0.1.0",
+    "description": "Recibe las inscripciones del landing (POST /invitacion), guarda una copia local y las sincroniza con una audiencia de Mailchimp.",
+    "main_class": "TypeDock\\Plugin\\Invitaciones\\InvitacionesPlugin",
+    "min_core_version": "0.1",
+    "provides": [],
+    "autoload": {
+        "psr-4": {
+            "TypeDock\\Plugin\\Invitaciones\\": "src/"
+        }
+    }
+}

@@ -1,0 +1,219 @@
+{*
+    Prisma · landing del home (prismahub.com)
+    Hallmark · macrostructure: Split Studio · tone: utilitarian-warm · anchor hue: navy 272 + signal red 33
+    Nav: N9 edge-aligned · Footer: Ft5 statement · Enrichment: E5 hand-built SVG (despiece isométrico con grano)
+
+    Variables opcionales (con valor por defecto, así la plantilla funciona sola):
+      $assets     URL base de los archivos del tema
+      $accion     URL a la que se envía el formulario de invitación
+*}
+{var $assets = $assets ?? '/themes/prisma/assets'}
+{var $accion = $accion ?? '/invitacion'}
+<!DOCTYPE html>
+<html lang="es-CL">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Prisma · El portal de clientes para estudios y agencias chicas</title>
+    <meta name="description" content="Prisma es un portal para tu estudio o agencia: tus clientes ven en qué va su proyecto, aprueban piezas y te mandan lo que falta. Hecho en Chile para equipos de 1 a 10 personas.">
+    <meta property="og:title" content="Prisma · Tus clientes al día, sin perseguirlos por WhatsApp">
+    <meta property="og:description" content="Un portal para estudios y agencias chicas de Chile. Pide tu invitación.">
+    <meta property="og:type" content="website">
+    <meta name="theme-color" content="#141c40">
+    <link rel="preload" href="{$assets}/fonts/schibsted-grotesk-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="{$assets}/css/prisma.css?v=1">
+    <script src="{$assets}/js/prisma.js?v=1" defer></script>
+</head>
+<body>
+<a class="saltar" href="#contenido">Saltar al contenido</a>
+
+<header class="barra">
+    <div class="contenedor barra-fila">
+        <a href="/" class="barra-marca">{include 'partials/logo.latte'}</a>
+        <nav class="barra-nav" aria-label="Principal">
+            <a href="#como-funciona" class="barra-link">Cómo funciona</a>
+            <a href="#invitacion" class="boton boton-chico">Pedir invitación</a>
+        </nav>
+    </div>
+</header>
+
+<main id="contenido">
+
+    {* ---- Portada: texto a la izquierda, el prisma desarmándose a la derecha ---- *}
+    <section class="portada">
+        <div class="contenedor portada-grilla">
+            <div class="portada-texto">
+                <h1>Tus clientes al día, sin perseguirlos por WhatsApp.</h1>
+                <p class="bajada">Prisma es un portal para tu estudio o agencia chica: tus clientes ven en qué va su proyecto, aprueban piezas y te mandan lo que falta. Tú dejas de reenviar correos.</p>
+
+                <form class="form-corto" action="{$accion}" method="post" data-invitacion novalidate>
+                    <input type="hidden" name="origen" value="portada">
+                    <input type="hidden" name="t" value="" data-t>
+                    <div class="trampa" aria-hidden="true"><label>Sitio web <input type="text" name="sitio_web" tabindex="-1" autocomplete="off"></label></div>
+                    <label for="correo-portada" class="solo-lector">Tu correo</label>
+                    <input id="correo-portada" class="campo" type="email" name="email" placeholder="tu@estudio.cl" autocomplete="email" inputmode="email" required>
+                    <button type="submit" class="boton" data-enviando="Enviando…">Pedir invitación</button>
+                    <p class="form-estado" data-estado role="status" aria-live="polite"></p>
+                </form>
+                <p class="nota">Estamos abriendo de a poco. Te escribimos cuando haya cupo.</p>
+            </div>
+
+            <figure class="portada-figura">
+                <div class="lamina">{include 'partials/despiece-hero.latte'}</div>
+            </figure>
+        </div>
+
+        <ul class="contenedor franja" aria-label="En corto">
+            <li>Para equipos de 1 a 10 personas</li>
+            <li>Tu cliente entra con su correo, sin contraseña</li>
+            <li>Hecho en Chile</li>
+        </ul>
+    </section>
+
+    {* ---- Las piezas ---- *}
+    <section class="piezas" id="como-funciona" aria-labelledby="t-piezas">
+        <div class="contenedor piezas-grilla">
+            <div class="piezas-texto">
+                <h2 id="t-piezas">Un proyecto, cinco piezas.</h2>
+                <p>Lo que hoy vive mezclado en el chat, en Prisma tiene su lugar. Cada pieza hace una sola cosa, y el cliente sabe siempre dónde mirar.</p>
+                {include 'partials/despiece-leyenda.latte'}
+            </div>
+            <figure class="piezas-figura">
+                {include 'partials/despiece-diagrama.latte'}
+            </figure>
+        </div>
+    </section>
+
+    {* ---- Antes / con Prisma ---- *}
+    <section class="cambio" aria-labelledby="t-cambio">
+        <div class="contenedor">
+            <h2 id="t-cambio">Lo que cambia el lunes.</h2>
+            <table class="tabla-cambio">
+                <thead>
+                    <tr><th scope="col">Hoy</th><th scope="col">Con Prisma</th></tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>«¿Me mandas el logo en alta?», tres veces, por WhatsApp.</td>
+                        <td>Una tarea «Pedir archivos». El cliente los sube ahí y quedan guardados con la tarea.</td>
+                    </tr>
+                    <tr>
+                        <td>La aprobación de la grilla, perdida en un hilo de correos.</td>
+                        <td>El cliente aprueba o pide cambios post por post, y te llega un solo aviso con todo.</td>
+                    </tr>
+                    <tr>
+                        <td>La reunión terminó y nadie anotó qué quedó para quién.</td>
+                        <td>Pegas tus notas o la transcripción: sale el resumen, los acuerdos y la lista de tareas.</td>
+                    </tr>
+                    <tr>
+                        <td>«¿En qué va lo mío?»</td>
+                        <td>El cliente lo ve solo: qué está listo, qué le toca y qué viene.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    {* ---- El producto, de verdad ---- *}
+    <section class="producto" aria-labelledby="t-producto">
+        <div class="contenedor">
+            <h2 id="t-producto" class="solo-lector">Cómo se ve</h2>
+
+            <div class="diptico">
+                <figure class="diptico-figura">
+                    <img src="{$assets}/img/portal-cliente.jpg" width="1920" height="1230" alt="Portal de una panadería: saludo a Josefa, una tarea pendiente para aprobar precios, la próxima reunión y el avance del proyecto por fases." loading="lazy" decoding="async">
+                    <figcaption>Portal de un cliente · datos de ejemplo</figcaption>
+                </figure>
+                <div class="diptico-texto">
+                    <h3>Lo que ve tu cliente.</h3>
+                    <p>Su logo, su color y sólo lo suyo: qué le toca, qué está en revisión y cuándo es la próxima reunión. Entra con su correo y un código; no hay contraseña que olvidar.</p>
+                </div>
+            </div>
+
+            <div class="diptico diptico-invertido">
+                <div class="diptico-texto">
+                    <h3>Lo que ves tú.</h3>
+                    <p>Una bandeja con lo que respondió cada cliente, lo vencido y lo que viene esta semana. Cada persona de tu equipo ve las cuentas que tiene asignadas, y los avisos le llegan a quien corresponde.</p>
+                </div>
+                <figure class="diptico-figura">
+                    <img src="{$assets}/img/panel-equipo.jpg" width="1920" height="1230" alt="Panel del equipo: respuestas de los clientes por revisar, tareas asignadas, próximas reuniones y novedades." loading="lazy" decoding="async">
+                    <figcaption>Panel del equipo · datos de ejemplo</figcaption>
+                </figure>
+            </div>
+        </div>
+    </section>
+
+    {* ---- Para quién ---- *}
+    <section class="para-quien" aria-labelledby="t-quien">
+        <div class="contenedor quien-grilla">
+            <h2 id="t-quien">Para equipos de 1 a 10 personas.</h2>
+            <div class="quien-texto">
+                <p>Freelancers, estudios de diseño y agencias de publicidad chicas. Si hoy llevas a tus clientes entre WhatsApp, Drive y correo, Prisma es para ti.</p>
+                <p>Si tienes cuarenta cuentas y un área de TI, probablemente no.</p>
+            </div>
+        </div>
+    </section>
+
+    {* ---- Invitación ---- *}
+    <section class="invitacion" id="invitacion" aria-labelledby="t-invitacion">
+        <div class="contenedor invitacion-grilla">
+            <div class="invitacion-texto">
+                <h2 id="t-invitacion">Pide tu invitación.</h2>
+                <p>Estamos abriendo Prisma de a poco, con estudios y agencias de Chile. Déjanos tus datos y te escribimos cuando tengamos cupo para ti.</p>
+            </div>
+
+            <form class="form-largo" action="{$accion}" method="post" data-invitacion novalidate>
+                <input type="hidden" name="origen" value="formulario">
+                <input type="hidden" name="t" value="" data-t>
+                <div class="trampa" aria-hidden="true"><label>Sitio web <input type="text" name="sitio_web" tabindex="-1" autocomplete="off"></label></div>
+
+                <div class="fila-2">
+                    <div class="campo-grupo">
+                        <label for="f-nombre">Nombre</label>
+                        <input id="f-nombre" class="campo" type="text" name="nombre" autocomplete="given-name" maxlength="80">
+                    </div>
+                    <div class="campo-grupo">
+                        <label for="f-correo">Correo</label>
+                        <input id="f-correo" class="campo" type="email" name="email" autocomplete="email" inputmode="email" required>
+                    </div>
+                </div>
+
+                <fieldset class="campo-grupo">
+                    <legend>¿Cuántos son en tu equipo?</legend>
+                    <div class="segmentos">
+                        <label><input type="radio" name="tamano" value="1"><span>Trabajo solo</span></label>
+                        <label><input type="radio" name="tamano" value="2-5"><span>2 a 5</span></label>
+                        <label><input type="radio" name="tamano" value="6-10"><span>6 a 10</span></label>
+                        <label><input type="radio" name="tamano" value="+10"><span>Más de 10</span></label>
+                    </div>
+                </fieldset>
+
+                <div class="campo-grupo">
+                    <label for="f-rubro">¿A qué se dedican? <span class="opcional">opcional</span></label>
+                    <select id="f-rubro" class="campo" name="rubro">
+                        <option value="">Elige una opción</option>
+                        <option>Diseño gráfico</option>
+                        <option>Publicidad</option>
+                        <option>Marketing digital y redes</option>
+                        <option>Desarrollo web</option>
+                        <option>Audiovisual</option>
+                        <option>Otro</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="boton boton-grande" data-enviando="Enviando…">Pedir invitación</button>
+                <p class="form-estado" data-estado role="status" aria-live="polite"></p>
+                <p class="nota">Usamos tu correo sólo para esto. Te puedes dar de baja con un clic.</p>
+            </form>
+        </div>
+    </section>
+</main>
+
+<footer class="cierre">
+    <div class="contenedor">
+        <p class="cierre-marca" aria-hidden="true">Prisma</p>
+        <p class="cierre-linea"><span>prismahub.com</span><span>Hecho en Chile, para estudios y agencias chicas.</span><span>© {date('Y')}</span></p>
+    </div>
+</footer>
+</body>
+</html>

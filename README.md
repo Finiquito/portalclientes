@@ -7,6 +7,18 @@ Plugin drop-in de TypeDock que se instala en `proyectos.richgt.com`. Tiene dos c
 
 La configuración de fondo (IA, SMTP, correos, usuarios de agencia) queda en el admin de TypeDock, en los menús **Portal · …**.
 
+## Landing Prisma (prismahub.com)
+
+- `theme/prisma/`: tema del home. Es una página, con ilustraciones isométricas con grano y capturas reales del producto. Detalles en `theme/prisma/README.md`.
+- `invitaciones/`: plugin de lista de espera.
+  - Recibe `POST /invitacion` y guarda una copia local.
+  - Sincroniza cada inscripción con una audiencia de Mailchimp: tamaño del equipo en el campo que elijas (`TAMANO`, `MERGE7`…), doble confirmación y etiquetas.
+  - Se configura en el admin → **Invitaciones**. La clave de la API se guarda cifrada, o se toma de la variable de entorno `MAILCHIMP_API_KEY`.
+- En local: `php dev/seed-demo.php` (datos de demo creíbles) y luego `dev/serve.sh`. La maqueta queda en <http://127.0.0.1:8080/landing> y el admin del plugin en <http://127.0.0.1:8080/admin/invitaciones>.
+- Pruebas: `php tests/invitaciones.php`, que simula Mailchimp.
+- Zips: `scripts/zip-landing.sh`.
+- Skills de diseño guardadas en el repo: `.claude/skills/hallmark` y `.claude/skills/anti-slop-ui-workflow`.
+
 ## Estructura
 
 ```

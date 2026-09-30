@@ -12,11 +12,12 @@ require __DIR__ . '/core/PluginInterface.php';
 require __DIR__ . '/core/PluginContext.php';
 
 spl_autoload_register(static function (string $class): void {
-    $prefix = 'TypeDock\\Plugin\\Portal\\';
-    if (str_starts_with($class, $prefix)) {
-        $f = dirname(__DIR__) . '/portal/src/' . str_replace('\\', '/', substr($class, strlen($prefix))) . '.php';
-        if (is_file($f)) {
-            require $f;
+    foreach (['TypeDock\\Plugin\\Portal\\' => '/portal/src/', 'TypeDock\\Plugin\\Invitaciones\\' => '/invitaciones/src/'] as $prefix => $dir) {
+        if (str_starts_with($class, $prefix)) {
+            $f = dirname(__DIR__) . $dir . str_replace('\\', '/', substr($class, strlen($prefix))) . '.php';
+            if (is_file($f)) {
+                require $f;
+            }
         }
     }
 });
@@ -48,5 +49,16 @@ function portal_dev_contexto(PDO $pdo): TypeDock\Core\PluginContext
     }
     $ctx = new TypeDock\Core\PluginContext($pdo, dirname(__DIR__) . '/portal', $cache);
     (new TypeDock\Plugin\Portal\PortalPlugin())->register($ctx);
+    return $ctx;
+}
+
+/** Plugin de invitaciones (lista de espera del landing), con su propio contexto y rutas /admin/invitaciones. */
+function portal_dev_invitaciones(PDO $pdo): TypeDock\Core\PluginContext
+{
+    if (!defined('INVITACIONES_DIR')) {
+        define('INVITACIONES_DIR', getenv('INVITACIONES_DIR') ?: __DIR__ . '/storage/invitaciones');
+    }
+    $ctx = new TypeDock\Core\PluginContext($pdo, dirname(__DIR__) . '/invitaciones', __DIR__ . '/storage/latte', 'invitaciones');
+    (new TypeDock\Plugin\Invitaciones\InvitacionesPlugin())->register($ctx);
     return $ctx;
 }
