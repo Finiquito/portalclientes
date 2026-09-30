@@ -1,6 +1,7 @@
-{* 500: contenido del núcleo con la gráfica de Prisma. *}
+{* 500: contenido del núcleo con la gráfica de Prisma. El detalle que entrega el núcleo queda en un comentario HTML (ver código fuente). *}
 {layout 'base.latte'}
 
 {block content}
-{include '../partials/texto.latte', titulo: 'Algo falló de nuestro lado.', bajada: 'Ya quedó registrado. Intenta de nuevo en un rato.', html: ''}
+{include '../partials/texto.latte', titulo: 'Algo falló de nuestro lado.', bajada: 'Intenta de nuevo en un rato.', html: ''}
+<!-- detalle: {$message ?? 'sin detalle'} -->
 {/block}
