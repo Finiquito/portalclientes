@@ -44,9 +44,45 @@ class SolicitudPublicController extends PortalPublicController
         ]);
     }
 
+    /**
+     * Si el servidor manda «Permissions-Policy: microphone=()», Chrome bloquea el dictado sin preguntar.
+     * En la página del formulario se cambia sólo esa parte a microphone=(self) (el resto de la política
+     * se respeta). Si la cabecera la pone Apache (.htaccess), PHP no la alcanza: ver README.
+     */
+    protected function permitirMicrofono(): void
+    {
+        $actual = '';
+        foreach (headers_list() as $h) {
+            if (stripos($h, 'permissions-policy:') === 0) {
+                $actual = trim(substr($h, strlen('permissions-policy:')));
+            }
+        }
+        try {
+            $r = \Flight::response();
+            foreach ($r->headers() as $k => $v) {
+                if (strcasecmp((string) $k, 'Permissions-Policy') === 0) {
+                    $actual = is_array($v) ? (string) end($v) : (string) $v;
+                }
+            }
+        } catch (\Throwable) {
+            $r = null;
+        }
+        $nueva = $actual === '' ? 'microphone=(self)'
+            : (preg_match('/microphone=\([^)]*\)/i', $actual) === 1
+                ? (string) preg_replace('/microphone=\([^)]*\)/i', 'microphone=(self)', $actual)
+                : $actual . ', microphone=(self)');
+        if (!headers_sent()) {
+            header('Permissions-Policy: ' . $nueva, true);
+        }
+        if ($r !== null) {
+            $r->header('Permissions-Policy', $nueva);
+        }
+    }
+
     public function nueva(): void
     {
         $c = $this->requerirContacto();
+        $this->permitirMicrofono();
         $clienteId = (string) $c['cliente_id'];
         $proyectos = $this->proyectosDe($clienteId);
         if ($proyectos === []) {

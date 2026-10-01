@@ -83,6 +83,7 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
   - la reunión confirmada se le muestra al cliente en su hora.
 - **Presupuesto para un proyecto nuevo:** el cliente puede elegir «Un proyecto nuevo». Al aceptar, el equipo elige un proyecto existente o crea uno con el nombre que indique.
 - **Dictado por voz:** el detalle de una solicitud se puede dictar (máximo 2 minutos). Usa el reconocimiento de voz del navegador (Chrome, Edge y Safari), así que no tiene costo; en Firefox el botón no aparece.
+- **Si el dictado dice que el micrófono está bloqueado por «Permissions-Policy»:** el servidor manda `microphone=()`. El plugin lo cambia a `microphone=(self)` sólo en el formulario de solicitud, pero si la cabecera la pone Apache (`.htaccess` o el panel del hosting), hay que cambiar ahí `microphone=()` por `microphone=(self)`.
 - **«Ordenar con IA»:** si la agencia tiene una clave de IA, ordena el texto dictado sin inventar datos. El cliente lo revisa y puede deshacer. Hay un tope de 10 usos por persona por hora.
 - **Hora de tus clientes:** en la barra del panel `/equipo` aparece la bandera y la hora en vivo de cada país donde hay clientes, si alguno está en otra zona horaria. También aparece en la ficha del cliente y en la de cada solicitud.
 - **Pruebas:** 190 comprobaciones que pasan en SQLite y MariaDB.
