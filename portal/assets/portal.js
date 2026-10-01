@@ -90,8 +90,15 @@
         tiempo.hidden = true;
         revisar();
       };
-      bDict.addEventListener('click', function () {
-        if (rec) { rec.stop(); return; }
+      var politica = document.permissionsPolicy || document.featurePolicy;
+      var errores = {
+        'not-allowed': 'Chrome no tiene permiso para usar el micrófono en este sitio. Haz clic en el candado de la barra de direcciones → Micrófono → Permitir, y recarga.',
+        'service-not-allowed': 'El dictado no está disponible en este navegador o ventana. Puedes escribirlo a mano.',
+        'audio-capture': 'No encontramos un micrófono. Revisa que esté conectado y elegido en Chrome.',
+        'network': 'El servicio de dictado de Chrome no responde (usa los servidores de Google). Prueba de nuevo en un momento.',
+        'language-not-supported': 'El dictado no está disponible en tu idioma en este navegador.'
+      };
+      var empezar = function () {
         rec = new SR();
         var idioma = (navigator.language || '').toLowerCase().indexOf('es') === 0 ? navigator.language : 'es-419';
         rec.lang = idioma;
@@ -99,7 +106,9 @@
         rec.interimResults = true;
         var base = ta.value.trim() ? ta.value.trim() + ' ' : '';
         var final = '';
+        var oyo = false;
         rec.onresult = function (e) {
+          oyo = true;
           var inter = '';
           for (var i = e.resultIndex; i < e.results.length; i++) {
             if (e.results[i].isFinal) final += e.results[i][0].transcript.trim() + ' ';
@@ -109,12 +118,13 @@
           cambio();
         };
         rec.onerror = function (e) {
-          aviso(e.error === 'not-allowed' || e.error === 'service-not-allowed'
-            ? 'El navegador no dio permiso para usar el micrófono.'
-            : 'Se cortó el dictado. Puedes seguir escribiendo o volver a dictar.');
+          if (e.error === 'no-speech') { aviso('No escuchamos nada. Revisa qué micrófono usa Chrome e inténtalo de nuevo.'); return; }
+          if (e.error === 'aborted') return;
+          aviso((errores[e.error] || 'Se cortó el dictado.') + ' (código: ' + e.error + ')');
         };
+        rec.onstart = function () { aviso('Escuchando… habla con naturalidad. Cuando termines, aprieta «Detener».'); };
         rec.onend = fin;
-        try { rec.start(); } catch (err) { fin(); return; }
+        try { rec.start(); } catch (err) { aviso('No se pudo iniciar el dictado (' + err.message + ').'); fin(); return; }
         t0 = Date.now();
         txtDict.textContent = 'Detener';
         bDict.classList.add('btn-primary');
@@ -123,9 +133,38 @@
         reloj = setInterval(function () {
           var seg = Math.floor((Date.now() - t0) / 1000);
           tiempo.textContent = mmss(Math.min(seg, 120)) + ' / 2:00';
+          if (seg === 8 && !oyo) aviso('Todavía no llega tu voz. Si no aparece texto, revisa qué micrófono está elegido en Chrome.');
           if (seg >= 120 && rec) rec.stop();
         }, 500);
-        aviso('Habla con naturalidad. Cuando termines, aprieta «Detener». Después puedes corregir el texto.');
+      };
+      bDict.addEventListener('click', function () {
+        if (rec) { rec.stop(); return; }
+        // Un servidor puede prohibir el micrófono con la cabecera Permissions-Policy: Chrome lo bloquea sin preguntar.
+        if (politica && politica.allowsFeature && !politica.allowsFeature('microphone')) {
+          aviso('Este sitio tiene el micrófono bloqueado por su configuración (cabecera «Permissions-Policy» del servidor). Hay que permitirlo en el hosting.');
+          return;
+        }
+        aviso('Pidiendo acceso al micrófono…');
+        // Pedir el micrófono primero hace aparecer el aviso de permiso de forma confiable.
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+          // Si Chrome muestra el permiso «silencioso» (sólo un ícono en la barra de direcciones), la promesa queda esperando.
+          var espera = setTimeout(function () {
+            aviso('Chrome está esperando tu permiso: busca el ícono del micrófono en la barra de direcciones (a la derecha) y elige «Permitir».');
+          }, 4000);
+          navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
+            clearTimeout(espera);
+            stream.getTracks().forEach(function (t) { t.stop(); });
+            empezar();
+          }).catch(function (err) {
+            clearTimeout(espera);
+            var n = err && err.name;
+            aviso(n === 'NotAllowedError' ? errores['not-allowed']
+              : n === 'NotFoundError' ? errores['audio-capture']
+              : 'No pudimos usar el micrófono (' + (n || 'error') + ').');
+          });
+        } else {
+          empezar();
+        }
       });
     }
 
