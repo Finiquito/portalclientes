@@ -35,6 +35,19 @@
         </a>
     </section>
 
+    {* Pedir algo *}
+    <section class="card reveal mt-5 flex flex-wrap items-center gap-x-4 gap-y-3 p-4 sm:p-5" style="--i:4" aria-labelledby="h-pedir">
+        <span class="flex size-11 flex-none items-center justify-center rounded-xl bg-brand-soft text-brand-ink"><svg class="size-5"><use href="#i-plus"/></svg></span>
+        <div class="min-w-0 flex-1">
+            <h2 id="h-pedir" class="font-extrabold leading-tight">¿Necesitas algo?</h2>
+            <p class="mt-0.5 text-sm text-muted">Pídenos algo nuevo, un presupuesto o una reunión, o avísanos si algo falla.</p>
+        </div>
+        <div class="flex w-full flex-wrap gap-2 sm:w-auto">
+            <a href="/portal/solicitudes/nueva?tipo=pedido" class="btn btn-primary btn-sm flex-1 sm:flex-none">Pedir algo</a>
+            <a href="/portal/solicitudes/nueva" class="btn btn-ghost btn-sm flex-1 sm:flex-none">Otras opciones</a>
+        </div>
+    </section>
+
     {* Te toca a ti *}
     <section class="card reveal mt-5 overflow-hidden" style="--i:4" aria-labelledby="h-toca">
         <div class="flex items-center justify-between gap-3 px-5 pb-2 pt-5 sm:px-6 sm:pt-6">
@@ -142,6 +155,8 @@
                                     <a href="/portal/tareas/{$a['entidad_id']}" class="text-brand-ink underline-offset-2 hover:underline">«{$a['titulo']}»</a>
                                 {elseif $a['entidad_tipo'] === 'contenido'}
                                     <a href="/portal/contenidos/{$a['entidad_id']}" class="text-brand-ink underline-offset-2 hover:underline">«{$a['titulo']}»</a>
+                                {elseif $a['entidad_tipo'] === 'solicitud'}
+                                    <a href="/portal/solicitudes/{$a['entidad_id']}" class="text-brand-ink underline-offset-2 hover:underline">«{$a['titulo']}»</a>
                                 {elseif $a['entidad_tipo'] === 'entrega'}
                                     <a href="/portal/entregas/{$a['entidad_id']}" class="text-brand-ink underline-offset-2 hover:underline">«{$a['titulo']}»</a>
                                 {else}«{$a['titulo']}»{/if}

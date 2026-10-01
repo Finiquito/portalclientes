@@ -272,6 +272,7 @@ class PortalPublicController
                  WHERE p.cliente_id = ? AND r.publicada = 1 AND r.fecha >= ?',
                 [$clienteId, (new \DateTimeImmutable('now', new \DateTimeZone(ReunionService::ZONA)))->format('Y-m-d')]
             )['n'] ?? 0),
+            'solicitudesCliente' => (int) ($this->fetchOne("SELECT COUNT(*) AS n FROM portal_solicitudes WHERE cliente_id = ? AND estado = 'cotizada'", [$clienteId])['n'] ?? 0),
             'hayRevisiones' => (int) ($this->fetchOne("SELECT COUNT(*) AS n FROM portal_entregas WHERE cliente_id = ? AND estado <> 'borrador'", [$clienteId])['n'] ?? 0) > 0,
             'puedeColaborar' => $this->esColaborador($contacto),
             'maxMb'         => (int) round($this->archivos()->limiteBytes($this->maxMb()) / 1048576),
@@ -775,6 +776,8 @@ class PortalPublicController
                 $permitido = true;
             } elseif ($a['entidad_tipo'] === 'tarea') {
                 $permitido = $this->tareaDelCliente((string) $a['entidad_id'], (string) $c['cliente_id']) !== null;
+            } elseif ($a['entidad_tipo'] === 'solicitud') {
+                $permitido = (new SolicitudService($this->pdo()))->findDelCliente((string) $a['entidad_id'], (string) $c['cliente_id']) !== null;
             } elseif ($a['entidad_tipo'] === 'version') {
                 // Archivos de contenidos: sólo si la entrega es de este cliente y ya no es borrador.
                 $permitido = $this->fetchOne(

@@ -69,6 +69,16 @@ class PortalPlugin implements PluginInterface
         $ctx->registerAdminRoute('GET',  'archivos/@id',           fn(string $id) => $tareas->verArchivo($id));
         $ctx->registerAdminRoute('POST', 'archivos/@id/borrar',    fn(string $id) => $tareas->borrarArchivo($id));
 
+        $solicitudes = new SolicitudAdminController($ctx);
+        $ctx->registerAdminRoute('GET',  'solicitudes',                    [$solicitudes, 'index']);
+        $ctx->registerAdminRoute('GET',  'solicitudes/@id',                fn(string $id) => $solicitudes->ver($id));
+        $ctx->registerAdminRoute('POST', 'solicitudes/@id/aceptar',        fn(string $id) => $solicitudes->aceptar($id));
+        $ctx->registerAdminRoute('POST', 'solicitudes/@id/agendar',        fn(string $id) => $solicitudes->agendar($id));
+        $ctx->registerAdminRoute('POST', 'solicitudes/@id/cotizar',        fn(string $id) => $solicitudes->cotizar($id));
+        $ctx->registerAdminRoute('POST', 'solicitudes/@id/cerrar',         fn(string $id) => $solicitudes->cerrar($id));
+        $ctx->registerAdminRoute('POST', 'solicitudes/@id/comentarios',    fn(string $id) => $solicitudes->comentar($id));
+        $ctx->registerAdminRoute('POST', 'solicitudes/@id/borrar',         fn(string $id) => $solicitudes->destroy($id));
+
         $fases = new FaseAdminController($ctx);
         $ctx->registerAdminRoute('GET',  'fases',                [$fases, 'index']);
         $ctx->registerAdminRoute('GET',  'fases/nuevo',           [$fases, 'create']);
@@ -162,6 +172,13 @@ class PortalPlugin implements PluginInterface
         \Flight::route('GET /portal/reuniones',               [$publico, 'reuniones']);
         \Flight::route('GET /portal/reuniones/@id',           fn(string $id) => $publico->reunion($id));
         \Flight::route('GET /portal/reuniones/@id/calendario.ics', fn(string $id) => $publico->reunionIcs($id));
+        $sol = new SolicitudPublicController($ctx);
+        \Flight::route('GET /portal/solicitudes',                 [$sol, 'lista']);
+        \Flight::route('GET /portal/solicitudes/nueva',           [$sol, 'nueva']);
+        \Flight::route('POST /portal/solicitudes',                [$sol, 'crear']);
+        \Flight::route('GET /portal/solicitudes/@id',             fn(string $id) => $sol->ver($id));
+        \Flight::route('POST /portal/solicitudes/@id/comentarios', fn(string $id) => $sol->comentar($id));
+        \Flight::route('POST /portal/solicitudes/@id/decidir',    fn(string $id) => $sol->decidir($id));
         \Flight::route('GET /portal/ajustes',                 [$publico, 'ajustesForm']);
         \Flight::route('POST /portal/ajustes',                [$publico, 'ajustesGuardar']);
         \Flight::route('POST /portal/ajustes/tema',           [$publico, 'temaRapido']);
@@ -187,6 +204,7 @@ class PortalPlugin implements PluginInterface
         $ctx->addAdminMenuItem('Portal · Proyectos', 'proyectos');
         $ctx->addAdminMenuItem('Portal · Fases', 'fases');
         $ctx->addAdminMenuItem('Portal · Reuniones', 'reuniones');
+        $ctx->addAdminMenuItem('Portal · Solicitudes', 'solicitudes');
         $ctx->addAdminMenuItem('Portal · Tareas', 'tareas');
         $ctx->addAdminMenuItem('Portal · Actividad', 'actividad');
         $ctx->addAdminMenuItem('Portal · Ajustes', 'ajustes');
@@ -201,7 +219,7 @@ class PortalPlugin implements PluginInterface
 
     public function getVersion(): string
     {
-        return '0.9.0';
+        return '0.10.0';
     }
 
     public function provides(): array

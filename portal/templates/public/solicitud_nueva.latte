@@ -1,0 +1,148 @@
+{layout '_layout.latte'}
+
+{block title}Nueva solicitud{/block}
+
+{block content}
+<a href="/portal/solicitudes" class="reveal mb-3 inline-flex items-center gap-1.5 text-sm font-semibold text-muted transition hover:text-ink">
+    <svg class="size-4"><use href="#i-back"/></svg> Solicitudes
+</a>
+
+{if $tipo === ''}
+    <header class="reveal pb-5 pt-1">
+        <h1 class="text-3xl font-extrabold tracking-tight sm:text-4xl">¿Qué necesitas?</h1>
+        <p class="mt-1.5 text-muted">Elige una opción y te pedimos solo lo justo.</p>
+    </header>
+    <section class="reveal grid gap-3 sm:grid-cols-2" style="--i:1">
+        {foreach $tipos as $k => $t}
+            <a href="/portal/solicitudes/nueva?tipo={$k}" class="card group flex items-center gap-4 p-4 transition hover:-translate-y-0.5 hover:shadow-pop sm:p-5">
+                <span class="flex size-12 flex-none items-center justify-center rounded-xl {$k === 'problema' ? 'bg-danger/10 text-danger' : 'bg-brand-soft text-brand-ink'}"><svg class="size-6"><use href="#{$t[2]}"/></svg></span>
+                <span class="min-w-0 flex-1"><span class="block font-extrabold">{$t[0]}</span><span class="mt-0.5 block text-sm text-muted">{$t[1]}</span></span>
+                <svg class="size-4 flex-none text-muted transition group-hover:translate-x-0.5"><use href="#i-chevron"/></svg>
+            </a>
+        {/foreach}
+    </section>
+{else}
+    {var $t = $tipos[$tipo]}
+    {var $textos = [
+        'pedido'      => ['¿Qué necesitas?', 'Ej.: banner para la promo de diciembre', 'Cuéntanos los detalles', 'Formato, medidas, textos, referencias… lo que tengas claro.'],
+        'presupuesto' => ['¿Qué quieres cotizar?', 'Ej.: rediseño de la página de productos', 'Cuéntanos qué esperas', 'Alcance, cantidades, plazos o un presupuesto de referencia, si lo tienes.'],
+        'reunion'     => ['¿De qué quieres hablar?', 'Ej.: revisar la campaña de verano', 'Algo que debamos preparar', 'Temas, dudas o quiénes van a estar.'],
+        'problema'    => ['¿Qué está fallando?', 'Ej.: el formulario de contacto no envía', '¿Qué pasa y dónde?', 'Qué intentabas hacer, en qué página o pieza, y desde cuándo. Una captura ayuda mucho.'],
+    ][$tipo]}
+
+    <header class="reveal flex items-start gap-4 pb-5 pt-1">
+        <span class="flex size-12 flex-none items-center justify-center rounded-xl {$tipo === 'problema' ? 'bg-danger/10 text-danger' : 'bg-brand-soft text-brand-ink'}"><svg class="size-6"><use href="#{$t[2]}"/></svg></span>
+        <div class="min-w-0">
+            <h1 class="text-2xl font-extrabold tracking-tight sm:text-3xl">{$t[0]}</h1>
+            <p class="mt-1 text-muted">{$t[1]} <a href="/portal/solicitudes/nueva" class="font-semibold text-brand-ink hover:underline">Cambiar</a></p>
+        </div>
+    </header>
+
+    <form method="post" action="/portal/solicitudes" enctype="multipart/form-data" data-upload data-upload-opcional data-once data-max="{$maxMb}" class="card card-pad reveal max-w-3xl space-y-5" style="--i:1">
+        <input type="hidden" name="_csrf" value="{$csrf}">
+        <input type="hidden" name="tipo" value="{$tipo}">
+
+        {if count($proyectos) === 1}
+            <input type="hidden" name="proyecto_id" value="{$proyectos[0]['id']}">
+        {else}
+            <div>
+                <label for="s-proyecto" class="label">Proyecto</label>
+                <select id="s-proyecto" name="proyecto_id" class="field" required>
+                    <option value="">Elige un proyecto</option>
+                    {foreach $proyectos as $p}
+                        <option value="{$p['id']}" {if $proyectoSel === $p['id']}selected{/if}>{$p['nombre']}{if $p['estado'] !== 'activo'} ({$p['estado']}){/if}</option>
+                    {/foreach}
+                </select>
+            </div>
+        {/if}
+
+        <div>
+            <label for="s-titulo" class="label">{$textos[0]}</label>
+            <input id="s-titulo" name="titulo" type="text" class="field" maxlength="255" required placeholder="{$textos[1]}" value="{$previo['titulo'] ?? ''}">
+        </div>
+
+        <div>
+            <label for="s-detalle" class="label">{$textos[2]} <span class="font-normal text-muted">(opcional)</span></label>
+            <textarea id="s-detalle" name="detalle" rows="4" maxlength="8000" data-autogrow class="field" placeholder="{$textos[3]}">{$previo['detalle'] ?? ''}</textarea>
+        </div>
+
+        {if $tipo === 'reunion'}
+            {var $hs = $previo['horarios'] ?? []}
+            <fieldset>
+                <legend class="label">Propón hasta tres horarios</legend>
+                <div class="grid gap-3 sm:grid-cols-3">
+                    {for $i = 0; $i < 3; $i++}
+                        <div>
+                            <label for="s-h{$i}" class="sr-only">Opción {$i + 1}</label>
+                            <input id="s-h{$i}" name="horarios[]" type="datetime-local" class="field" min="{$minHorario}" step="900" value="{$hs[$i] ?? ''}" {if $i === 0}required{/if}>
+                            <span class="mt-1 block text-xs text-muted">Opción {$i + 1}{if $i === 0} · obligatoria{/if}</span>
+                        </div>
+                    {/for}
+                </div>
+            </fieldset>
+            <fieldset>
+                <legend class="label">¿Cómo prefieres?</legend>
+                <div class="grid gap-2.5 sm:grid-cols-3">
+                    {foreach $modalidades as $k => $m}
+                        <label class="opcion"><input type="radio" name="modalidad" value="{$k}" class="sr-only" {if ($previo['modalidad'] ?? 'video') === $k}checked{/if}><span class="font-semibold">{$m}</span></label>
+                    {/foreach}
+                </div>
+            </fieldset>
+        {elseif $tipo === 'problema'}
+            <div class="flex items-start gap-3 rounded-2xl bg-danger/10 px-4 py-3 text-sm text-danger">
+                <svg class="mt-0.5 size-5 flex-none"><use href="#i-alert"/></svg>
+                <p class="font-semibold leading-snug">Los problemas llegan como urgentes y avisamos al equipo de inmediato.</p>
+            </div>
+        {else}
+            {var $urg = $previo['urgencia'] ?? 'semana'}
+            {if $urg === 'urgente' && !$puedeUrgente}{var $urg = 'semana'}{/if}
+            <fieldset>
+                <legend class="label">¿Para cuándo?</legend>
+                <div class="grid gap-2.5 sm:grid-cols-3">
+                    <label class="opcion">
+                        <input type="radio" name="urgencia" value="urgente" class="sr-only" {if $urg === 'urgente'}checked{/if} {if !$puedeUrgente}disabled{/if}>
+                        <span class="font-semibold">Urgente</span>
+                        <span class="text-xs text-muted">Lo antes posible.</span>
+                    </label>
+                    <label class="opcion">
+                        <input type="radio" name="urgencia" value="semana" class="sr-only" {if $urg === 'semana'}checked{/if}>
+                        <span class="font-semibold">Esta semana</span>
+                        <span class="text-xs text-muted">Para el {$fmt->fecha($fechas['semana'])}.</span>
+                    </label>
+                    <label class="opcion">
+                        <input type="radio" name="urgencia" value="sin_apuro" class="sr-only" {if $urg === 'sin_apuro'}checked{/if}>
+                        <span class="font-semibold">Sin apuro</span>
+                        <span class="text-xs text-muted">Cuando tengamos espacio.</span>
+                    </label>
+                </div>
+                {if !$puedeUrgente}
+                    <p class="mt-2 text-sm text-muted">Ya tienes {$maxUrgentes === 1 ? 'una solicitud urgente abierta' : $maxUrgentes . ' solicitudes urgentes abiertas'}. Mientras la resolvemos, las nuevas entran como «Esta semana» o «Sin apuro». Si esta es más importante, escríbenos en la urgente y reordenamos.</p>
+                {/if}
+            </fieldset>
+            <div data-mostrar-si="urgencia=urgente" {if $urg !== 'urgente'}hidden{/if} class="rounded-2xl border border-warn/40 bg-warn/10 p-4">
+                <p class="text-sm font-semibold leading-snug">Lo urgente se pasa adelante de lo que ya estamos haciendo para ti, así que puede mover las fechas de tus otras entregas.</p>
+                <label for="s-motivo" class="label mt-3">¿Por qué es urgente?</label>
+                <textarea id="s-motivo" name="motivo_urgencia" rows="2" maxlength="500" data-autogrow data-requerido class="field" placeholder="Ej.: la promo sale el lunes y nos cambiaron el precio">{$previo['motivo_urgencia'] ?? ''}</textarea>
+            </div>
+        {/if}
+
+        <div>
+            <span class="label">Adjuntos <span class="font-normal text-muted">(opcional)</span></span>
+            <label data-dropzone class="dropzone flex cursor-pointer flex-col items-center px-4 py-6 text-center">
+                <span class="flex size-10 items-center justify-center rounded-xl bg-surface text-brand-ink shadow-soft"><svg class="size-5"><use href="#i-clip"/></svg></span>
+                <span class="mt-2.5 text-sm font-bold">{$tipo === 'problema' ? 'Agrega una captura' : 'Agrega referencias o un brief'} <span class="hidden font-medium text-muted sm:inline">o arrástralos aquí</span></span>
+                <span class="mt-1 text-xs text-muted">Hasta 10 archivos · máximo {$maxMb} MB cada uno</span>
+                <input type="file" name="archivos[]" multiple class="sr-only">
+            </label>
+            <ul data-filelist class="mt-3 space-y-2"></ul>
+            <p data-upload-msg hidden role="alert" class="mt-2 text-sm font-semibold text-danger"></p>
+            <div data-progress hidden role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Subiendo" class="progress mt-3"><span style="width: 0%"></span></div>
+        </div>
+
+        <div class="flex flex-col-reverse gap-2.5 border-t border-line pt-5 sm:flex-row sm:items-center sm:justify-between">
+            <p class="text-xs text-muted">Le llega al equipo a cargo de tu proyecto. Te avisamos por correo cuando la tomemos.</p>
+            <button type="submit" data-upload-btn data-sending="Enviando…" class="btn btn-primary w-full sm:w-auto"><svg class="size-5"><use href="#i-send"/></svg> Enviar solicitud</button>
+        </div>
+    </form>
+{/if}
+{/block}

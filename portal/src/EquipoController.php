@@ -163,8 +163,18 @@ class EquipoController
             'SELECT COUNT(*) AS n FROM portal_tareas t WHERE ' . self::TURNO_EQUIPO . ' AND ' . $w, $p
         )['n'] ?? 0);
 
+        [$ws, $ps] = $this->acceso($u)->filtroProyecto('s.proyecto_id');
+        try {
+            $nSolicitudes = (int) ($this->fetchOne(
+                "SELECT COUNT(*) AS n FROM portal_solicitudes s WHERE s.estado IN ('nueva', 'aprobada') AND " . $ws, $ps
+            )['n'] ?? 0);
+        } catch (\Throwable) {
+            $nSolicitudes = 0;
+        }
+
         return [
             'fmt'        => new Fmt(),
+            'nSolicitudes' => $nSolicitudes,
             'usuario'    => $u,
             'marca'      => $this->marca(),
             'tema'       => $tema,

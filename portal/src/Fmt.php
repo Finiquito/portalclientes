@@ -290,6 +290,10 @@ final class Fmt
             'subio_version' => 'subió una versión nueva de',
             'respondio'     => 'terminó la revisión de',
             'reunion'       => $vistaAdmin ? 'compartió novedades de la reunión' : 'compartió novedades de la reunión',
+            'solicito'      => 'hizo una solicitud:',
+            'atendio'       => $vistaAdmin ? 'atendió la solicitud' : 'respondió tu solicitud',
+            'cotizo'        => $vistaAdmin ? 'envió la cotización' : 'te envió la cotización de',
+            'decidio'       => 'respondió la cotización de',
             default         => 'actualizó',
         };
         return $quien . ' ' . $que;
@@ -308,6 +312,8 @@ final class Fmt
             'publico', 'subio_version' => 'i-image',
             'respondio'     => 'i-send',
             'reunion'       => 'i-chat',
+            'solicito'      => 'i-plus',
+            'atendio', 'cotizo', 'decidio' => 'i-inbox',
             default         => 'i-dot',
         };
     }

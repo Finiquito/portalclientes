@@ -48,6 +48,21 @@
     });
   });
 
+  /* ---- Mostrar un bloque según una opción elegida: data-mostrar-si="urgencia=urgente" ---- */
+  $$('[data-mostrar-si]').forEach(function (bloque) {
+    var par = bloque.getAttribute('data-mostrar-si').split('=');
+    var form = bloque.closest('form');
+    if (!form) return;
+    function ajustar() {
+      var marcado = $('input[name="' + par[0] + '"]:checked', form);
+      var ver = !!marcado && marcado.value === par[1];
+      bloque.hidden = !ver;
+      $$('textarea, input', bloque).forEach(function (x) { if (x.hasAttribute('data-requerido')) x.required = ver; });
+    }
+    $$('input[name="' + par[0] + '"]', form).forEach(function (r) { r.addEventListener('change', ajustar); });
+    ajustar();
+  });
+
   /* ---- Evitar doble envío ---- */
   $$('form[data-once]').forEach(function (f) {
     f.addEventListener('submit', function (e) {
@@ -109,6 +124,8 @@
     var maxTotal = 10;
     var canDT = true;
     var seleccion = [];
+    // data-upload-opcional: el formulario se puede enviar sin archivos (una solicitud con adjuntos opcionales).
+    var opcional = form.hasAttribute('data-upload-opcional');
 
     try { new DataTransfer(); } catch (e) { canDT = false; }
 
@@ -137,7 +154,7 @@
         li.appendChild(n); li.appendChild(s); li.appendChild(x);
         list.appendChild(li);
       });
-      if (btn) btn.disabled = seleccion.length === 0;
+      if (btn && !opcional) btn.disabled = seleccion.length === 0;
     }
 
     function agregar(files) {
@@ -170,8 +187,9 @@
     }
 
     form.addEventListener('submit', function (e) {
+      if (e.defaultPrevented) return;
       if (!window.XMLHttpRequest || !window.FormData || seleccion.length === 0 && canDT) {
-        if (seleccion.length === 0 && canDT) { e.preventDefault(); aviso('Elige al menos un archivo.'); }
+        if (seleccion.length === 0 && canDT && !opcional) { e.preventDefault(); aviso('Elige al menos un archivo.'); }
         return;
       }
       e.preventDefault();

@@ -49,6 +49,7 @@ class ActividadAdminController
                 'email_avisos'  => $aj['email_avisos'] ?? '',
                 'nombre_equipo' => $aj['nombre_equipo'] ?? '',
                 'max_mb'        => $aj['max_mb'] ?? '20',
+                'urgentes_max'  => $aj['urgentes_max'] ?? '1',
             ],
             'ia' => (function () {
                 $ia = new IaService($this->pdo());
@@ -85,6 +86,7 @@ class ActividadAdminController
             'email_avisos'  => $email,
             'nombre_equipo' => mb_substr(trim((string) ($_POST['nombre_equipo'] ?? '')), 0, 60),
             'max_mb'        => (string) max(1, min(500, (int) ($_POST['max_mb'] ?? 20))),
+            'urgentes_max'  => (string) max(0, min(20, (int) ($_POST['urgentes_max'] ?? 1))),
             'color_agencia' => preg_match('/^#[0-9a-f]{6}$/i', (string) ($_POST['color_agencia'] ?? '')) === 1 ? strtolower((string) $_POST['color_agencia']) : '',
         ]);
         // IA (opcional): las claves sólo se cambian si se escribe una nueva; nunca se muestran de vuelta.

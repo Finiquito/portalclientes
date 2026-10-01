@@ -1,0 +1,67 @@
+{layout $plugin_ui_layout}
+
+{block page_title}Solicitudes{/block}
+
+{block content}
+<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=3">
+<div class="page-header">
+    <h1>Solicitudes</h1>
+</div>
+
+{if $flash_success}<div class="alert alert-success">{$flash_success}</div>{/if}
+{if $flash_error}<div class="alert alert-error">{$flash_error}</div>{/if}
+
+<div class="pa-filtros">
+    <div class="pa-pills" role="navigation" aria-label="Estado">
+        {foreach $grupos as $k => $txt}
+            <a href="{$filtros->url(['estado' => $k])}" class="pa-pill" {if $filtros->es('estado', $k)}aria-current="true"{/if}>{$txt} <span class="pa-n">{$conteos[$k]}</span></a>
+        {/foreach}
+    </div>
+    <form method="get" action="{$filtros->url(['tipo' => '', 'proyecto' => ''])}" class="pa-selects" data-auto>
+        <input type="hidden" name="estado" value="{$filtros->get('estado')}">
+        <label for="f-tipo">Tipo</label>
+        <select id="f-tipo" name="tipo" class="form-input" style="width:auto">
+            <option value="">Todos</option>
+            {foreach $tipos as $k => $t}<option value="{$k}" {if $filtros->es('tipo', $k)}selected{/if}>{$t[0]}</option>{/foreach}
+        </select>
+        <label for="f-proy">Proyecto</label>
+        <select id="f-proy" name="proyecto" class="form-input" style="width:auto">
+            <option value="">Todos los proyectos</option>
+            {foreach $proyectosF as $p}
+                <option value="{$p['id']}" {if $filtros->es('proyecto', $p['id'])}selected{/if}>{$p['cliente_nombre']} · {$p['nombre']}</option>
+            {/foreach}
+        </select>
+        <noscript><button type="submit" class="btn btn-sm">Filtrar</button></noscript>
+        {if $filtros->get('proyecto') || $filtros->get('tipo')}<a href="{$filtros->url(['proyecto' => '', 'tipo' => ''])}" class="pa-muted">Quitar filtros</a>{/if}
+    </form>
+</div>
+
+{if empty($solicitudes)}
+    <div class="card"><p class="pa-muted" style="margin:0">{if $filtros->es('estado', 'por_atender')}No hay solicitudes por atender. Cuando un cliente pida algo desde su portal, aparece aquí y te llega un correo.{else}No hay solicitudes con estos filtros.{/if}</p></div>
+{else}
+<div class="card" style="overflow-x:auto">
+    <table class="table">
+        <thead><tr><th>Solicitud</th><th>Proyecto</th><th>Urgencia</th><th>Estado</th><th>Recibida</th></tr></thead>
+        <tbody>
+        {foreach $solicitudes as $s}
+            {var $e = $estadosS[$s['estado']] ?? ['—', 'muted']}
+            <tr {if in_array($s['estado'], ['nueva', 'aprobada'], true)}class="pa-new"{/if}>
+                <td>
+                    <a href="{$admin_url('solicitudes/' . $s['id'])}"><strong>{$s['titulo']}</strong></a>
+                    <div class="pa-muted">{$tipos[$s['tipo']][0]} · {$s['contacto_nombre'] ?: 'Cliente'}{if $s['n_comentarios'] > 0} · {$s['n_comentarios']} comentario{if $s['n_comentarios'] > 1}s{/if}{/if}</div>
+                </td>
+                <td>
+                    <span class="pa-proy"><span class="pa-dot" style="background: {($colorProy[$s['proyecto_id']] ?? '#94a3b8')|noescape}" aria-hidden="true"></span>{$s['proyecto_nombre']}</span>
+                    <div class="pa-muted">{$s['cliente_empresa'] ?: $s['cliente_nombre']}</div>
+                </td>
+                <td>{if $s['tipo'] === 'reunion'}<span class="pa-muted">—</span>{else}<span class="pa-chip {['urgente' => 'danger', 'semana' => 'info', 'sin_apuro' => 'gris'][$s['urgencia']] ?? 'gris'}">{$urgencias[$s['urgencia']]}</span>{/if}</td>
+                <td><span class="pa-chip {$e[1] === 'muted' ? 'gris' : $e[1]}">{$s['estado'] === 'en_curso' && $s['tarea_estado'] === 'hecha' ? 'Tarea lista' : $e[0]}</span></td>
+                <td>{$fmt->rel($s['created_at'])}</td>
+            </tr>
+        {/foreach}
+        </tbody>
+    </table>
+</div>
+{/if}
+{include '../_filtros.js.latte'}
+{/block}

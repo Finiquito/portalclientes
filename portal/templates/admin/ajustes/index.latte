@@ -32,6 +32,10 @@
         <input type="number" name="max_mb" class="form-input" value="{$cfg['max_mb']}" min="1" max="500" style="max-width:8rem">
         <p class="form-hint mt-1">Tu hosting hoy permite como máximo <strong>{$iniMax} MB</strong> por subida (upload_max_filesize / post_max_size); el menor de los dos valores es el que manda.</p>
 
+        <label class="form-label mt-3">Solicitudes urgentes abiertas por cliente</label>
+        <input type="number" name="urgentes_max" class="form-input" value="{$cfg['urgentes_max']}" min="0" max="20" style="max-width:8rem">
+        <p class="form-hint mt-1">Para el cliente todo es urgente: con 1, mientras tenga una urgencia abierta las siguientes entran como «Esta semana» o «Sin apuro». Al marcar urgente se le pide el motivo y se le avisa que puede mover sus otras entregas. Los problemas («algo dejó de funcionar») no cuentan. 0 = sin límite.</p>
+
         <hr style="margin:1.5rem 0;border:0;border-top:1px solid #e2e8f0">
         <h2 style="font-size:1.05rem;font-weight:800;margin:0 0 .25rem">IA para reuniones <span class="pa-muted" style="font-weight:500">(opcional)</span></h2>
         <p class="form-hint">Con una clave de IA, en cada reunión aparece «Analizar con IA»: a partir de la transcripción que pegues propone resumen, acuerdos, tareas y próxima reunión. <strong>Nada se publica solo</strong>: tú lo revisas antes. Sin clave, esa parte no aparece y todo se escribe a mano.</p>

@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
-    <link rel="stylesheet" href="/plugins/portal/assets/portal.css?v=11">
+    <link rel="stylesheet" href="/plugins/portal/assets/portal.css?v=12">
     <script>{$portalBoot|noescape}</script>
 </head>
 <body class="min-h-dvh bg-bg font-sans text-ink antialiased">
@@ -22,9 +22,10 @@
     ['tareas',    '/portal/tareas',    'i-tasks',    'Tareas'],
     ['archivos',  '/portal/archivos',  'i-folder',   'Archivos'],
     ['reuniones', '/portal/reuniones', 'i-calendar', 'Reuniones'],
+    ['solicitudes', '/portal/solicitudes', 'i-plus', 'Solicitudes'],
 ]}
 {if $hayRevisiones}
-    {var $items = [$items[0], $items[1], ['revisiones', '/portal/entregas', 'i-eye', 'Revisiones'], $items[2], $items[3]]}
+    {var $items = [$items[0], $items[1], ['revisiones', '/portal/entregas', 'i-eye', 'Revisiones'], $items[2], $items[3], $items[4]]}
 {/if}
 
 <a href="#contenido" class="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:rounded-xl focus:bg-surface focus:px-4 focus:py-2 focus:shadow-pop">Saltar al contenido</a>
@@ -69,7 +70,7 @@
                         <a href="{$it[1]}" class="nav-item" {if $nav === $it[0]}aria-current="page"{/if}>
                             <svg class="size-5 flex-none"><use href="#{$it[2]}"/></svg>
                             <span class="flex-1">{$it[3]}</span>
-                            {var $n = $it[0] === 'tareas' ? $pendientes : ($it[0] === 'revisiones' ? $porRevisar : ($it[0] === 'reuniones' ? $proximasReuniones : 0))}
+                            {var $n = $it[0] === 'tareas' ? $pendientes : ($it[0] === 'revisiones' ? $porRevisar : ($it[0] === 'reuniones' ? $proximasReuniones : ($it[0] === 'solicitudes' ? $solicitudesCliente : 0)))}
                             {if $n > 0}<span class="chip chip-brand">{$n}</span>{/if}
                         </a>
                     {/foreach}
@@ -119,10 +120,11 @@
 <nav class="pb-safe fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface/90 backdrop-blur-xl lg:hidden" aria-label="Navegación">
     <div class="mx-auto flex max-w-xl">
         {foreach $items as $it}
+            {continueIf $it[0] === 'solicitudes'}
             <a href="{$it[1]}" class="tab-item" {if $nav === $it[0]}aria-current="page"{/if}>
                 <span class="relative">
                     <svg class="size-[1.4rem]"><use href="#{$it[2]}"/></svg>
-                    {var $n = $it[0] === 'tareas' ? $pendientes : ($it[0] === 'revisiones' ? $porRevisar : ($it[0] === 'reuniones' ? $proximasReuniones : 0))}
+                    {var $n = $it[0] === 'tareas' ? $pendientes : ($it[0] === 'revisiones' ? $porRevisar : ($it[0] === 'reuniones' ? $proximasReuniones : ($it[0] === 'solicitudes' ? $solicitudesCliente : 0)))}
                     {if $n > 0}
                         <span class="absolute -right-2.5 -top-1.5 flex min-w-4 items-center justify-center rounded-full bg-brand px-1 text-[0.625rem] font-bold leading-4 text-brand-fg">{$n}</span>
                     {/if}
@@ -130,9 +132,13 @@
                 {$it[3]}
             </a>
         {/foreach}
-        <a href="/portal/ajustes" class="tab-item" {if $nav === 'ajustes'}aria-current="page"{/if}>
-            <svg class="size-[1.4rem]"><use href="#i-sliders"/></svg>
-            Ajustes
+        {* Ajustes queda en el avatar del encabezado móvil; aquí va «Pedir» *}
+        <a href="/portal/solicitudes" class="tab-item" {if $nav === 'solicitudes'}aria-current="page"{/if}>
+            <span class="relative">
+                <svg class="size-[1.4rem]"><use href="#i-plus"/></svg>
+                {if $solicitudesCliente > 0}<span class="absolute -right-2.5 -top-1.5 flex min-w-4 items-center justify-center rounded-full bg-brand px-1 text-[0.625rem] font-bold leading-4 text-brand-fg">{$solicitudesCliente}</span>{/if}
+            </span>
+            Pedir
         </a>
     </div>
 </nav>

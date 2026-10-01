@@ -92,6 +92,15 @@ class EquipoGestion extends EquipoController
         $r('POST', 'contenidos/@id/comentarios',    EntregaAdminController::class, 'comentar', 'contenido');
         $r('POST', 'contenidos/@id/comentarios/@cid/borrar', EntregaAdminController::class, 'borrarComentario', 'contenido');
 
+        $r('GET',  'solicitudes',                   SolicitudAdminController::class, 'index');
+        $r('GET',  'solicitudes/@id',               SolicitudAdminController::class, 'ver', 'solicitud');
+        $r('POST', 'solicitudes/@id/aceptar',       SolicitudAdminController::class, 'aceptar', 'solicitud');
+        $r('POST', 'solicitudes/@id/agendar',       SolicitudAdminController::class, 'agendar', 'solicitud');
+        $r('POST', 'solicitudes/@id/cotizar',       SolicitudAdminController::class, 'cotizar', 'solicitud');
+        $r('POST', 'solicitudes/@id/cerrar',        SolicitudAdminController::class, 'cerrar', 'solicitud');
+        $r('POST', 'solicitudes/@id/comentarios',   SolicitudAdminController::class, 'comentar', 'solicitud');
+        $r('POST', 'solicitudes/@id/borrar',        SolicitudAdminController::class, 'destroy', 'solicitud', true);
+
         $r('GET',  'reuniones',                     ReunionAdminController::class, 'index');
         $r('GET',  'reuniones/nuevo',               ReunionAdminController::class, 'create');
         $r('POST', 'reuniones',                     ReunionAdminController::class, 'store');
@@ -160,7 +169,7 @@ class EquipoGestion extends EquipoController
         }
         $tablas = [
             'tarea' => 'portal_tareas', 'reunion' => 'portal_reuniones', 'entrega' => 'portal_entregas',
-            'contenido' => 'portal_contenidos', 'fase' => 'portal_fases',
+            'contenido' => 'portal_contenidos', 'fase' => 'portal_fases', 'solicitud' => 'portal_solicitudes',
         ];
         switch ($tipo) {
             case 'proyecto':
@@ -198,6 +207,7 @@ class EquipoGestion extends EquipoController
             'tareas'    => 'tareas',
             'entregas'  => 'contenidos',
             'reuniones' => 'reuniones',
+            'solicitudes' => 'solicitudes',
             default     => 'clientes',
         };
     }

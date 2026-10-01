@@ -76,6 +76,7 @@ class ProyectoAdminController
         // Limpieza de lo que las FK no alcanzan: comentarios y binarios de sus tareas.
         $pdo = $this->ctx->db()->pdo();
         (new EntregaService($pdo))->borrarDeProyecto($id);
+        (new SolicitudService($pdo))->borrarDeProyecto($id);
         (new ComentarioService($pdo))->borrarDeProyecto($id);
         (new ArchivoService($pdo))->borrarFisicosDeProyecto($id);
         $this->service()->delete($id);

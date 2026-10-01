@@ -74,6 +74,25 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### v0.10.0: solicitudes del cliente
+
+- **El cliente puede pedir cosas desde su portal** (nueva sección «Solicitudes»; en el celular, la pestaña «Pedir»). Cualquier contacto del cliente puede hacerlas. Hay cuatro tipos:
+  - **Un pedido:** algo nuevo que necesita.
+  - **Un presupuesto:** el equipo cotiza (valor, validez, qué incluye y un PDF) y el cliente lo aprueba con un clic.
+  - **Una reunión:** propone hasta tres horarios y la modalidad; el equipo confirma uno y la reunión queda creada y publicada.
+  - **Reportar un problema:** entra siempre como urgente.
+- Cada solicitud tiene proyecto, detalle, adjuntos opcionales y una conversación propia.
+- **Urgencias:** para el cliente todo es urgente, así que:
+  - al marcar «Urgente» se le avisa que puede mover sus otras entregas y se le pide el motivo;
+  - cada cliente puede tener una sola urgencia abierta a la vez (se cambia en Portal · Ajustes; 0 = sin límite). Los problemas no cuentan;
+  - la urgencia se libera cuando la tarea que salió de ella queda lista.
+- **Bandeja del equipo** (Portal · Solicitudes y `/equipo/solicitudes`), con filtros Por atender, Esperando al cliente, En curso, Cerradas y Todas, más tipo y proyecto. Las urgentes van primero. Desde la ficha se puede:
+  - **aceptar:** crea la tarea con responsable y fecha sugerida (urgente = próximo día hábil, esta semana = viernes, sin apuro = sin fecha), y los adjuntos pasan a la tarea;
+  - **cotizar**, **agendar**, **responder y cerrar** o **no tomarla**, siempre con un mensaje para el cliente.
+- **Avisos:** cada solicitud nueva le llega por correo al equipo asignado al proyecto y al correo de avisos, con «[URGENTE]» en el asunto cuando corresponde. El cliente recibe un correo cuando su solicitud se acepta, se cotiza, se agenda o se responde.
+- Nueva tabla `portal_solicitudes` (migración 0008, también garantizada por `Schema::asegurar`).
+- **Pruebas:** 175 comprobaciones que pasan en SQLite y MariaDB.
+
 ### v0.9.0: filtros, archivado, color por proyecto y modo oscuro
 
 - **Tareas** (admin y panel):

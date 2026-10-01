@@ -73,6 +73,7 @@ final class Schema
         self::tablaPropuestas($pdo);
         self::tablaCola($pdo);
         self::tablasEquipo($pdo);
+        self::tablaSolicitudes($pdo);
         self::ampliarTextos($pdo);
     }
 
@@ -146,6 +147,24 @@ final class Schema
     }
 
     /** Usuarios de agencia (migración 0007): se ejecuta el mismo archivo si falta alguna tabla. */
+    /** Solicitudes del cliente (pedido, presupuesto, reunión, problema). También en la migración 0008. */
+    private static function tablaSolicitudes(\PDO $pdo): void
+    {
+        if (self::existe($pdo, 'portal_solicitudes', 'id, cliente_id, tipo, estado, urgencia, tarea_id')) {
+            return;
+        }
+        $sql = (string) @file_get_contents(dirname(__DIR__) . '/migrations/0008_solicitudes.sql');
+        $sql = preg_replace('/^\s*--.*$/m', '', $sql) ?? '';
+        foreach (array_filter(array_map('trim', explode(';', $sql))) as $stmt) {
+            try {
+                $pdo->exec($stmt);
+            } catch (\Throwable) {
+                // sin la clave foránea (bases que no la aceptan)
+                $pdo->exec((string) preg_replace('/,\s*FOREIGN KEY[^)]*\)[^)]*\)/', '', $stmt));
+            }
+        }
+    }
+
     private static function tablasEquipo(\PDO $pdo): void
     {
         if (self::existe($pdo, 'portal_equipo', 'id, email, rol, activo')

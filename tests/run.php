@@ -600,6 +600,157 @@ check(str_contains($html, 'Clara'), 'inicio del cliente se dibuja');
 check(str_contains($html, 'id="i-home"'), 'íconos compartidos incluidos en el layout del cliente');
 
 // ---------------------------------------------------------------------------
+seccion('Solicitudes del cliente');
+final class SolicitudPrueba extends P\SolicitudPublicController
+{
+    public ?string $redir = null;
+
+    protected function redirectTo(string $path, array $query = []): void
+    {
+        $this->redir = $this->publicUrl($path, $query);
+        throw new RuntimeException('redirect');
+    }
+
+    protected function terminate(): void
+    {
+        throw new RuntimeException('fin');
+    }
+
+    /** @return array{0: string, 1: ?string} */
+    public function correr(string $metodo, array $args = [], array $post = []): array
+    {
+        $_POST = $post;
+        $this->redir = null;
+        ob_start();
+        try {
+            $this->{$metodo}(...$args);
+        } catch (RuntimeException $e) {
+            if (!in_array($e->getMessage(), ['redirect', 'fin'], true)) {
+                ob_end_clean();
+                throw $e;
+            }
+        }
+        return [(string) ob_get_clean(), $this->redir];
+    }
+}
+
+$sv = new P\SolicitudService($pdo, new DateTimeImmutable('2026-10-01 10:00', new DateTimeZone('America/Santiago')));
+check($sv->fechaSugerida('urgente') === '2026-10-02' && $sv->fechaSugerida('semana') === '2026-10-02' && $sv->fechaSugerida('sin_apuro') === null, 'fechas sugeridas un jueves');
+$svV = new P\SolicitudService($pdo, new DateTimeImmutable('2026-10-02 10:00', new DateTimeZone('America/Santiago')));
+check($svV->fechaSugerida('urgente') === '2026-10-05' && $svV->fechaSugerida('semana') === '2026-10-09', 'un viernes: urgente salta el fin de semana, «esta semana» pasa al próximo viernes');
+
+$_SESSION[P\PortalSession::CONTACTO] = $contacto;
+$ctk = P\PortalSession::csrf();
+(new P\AjustesService($pdo))->set('equipo', $ana, 'avisos', '1');
+$sp = new SolicitudPrueba($ctx);
+$ss = new P\SolicitudService($pdo);
+$contar = fn(): int => (int) $pdo->query('SELECT COUNT(*) FROM portal_solicitudes')->fetchColumn();
+
+[$html] = $sp->correr('lista');
+check(str_contains($html, 'Un presupuesto') && str_contains($html, 'Reportar un problema'), 'lista del cliente con los cuatro tipos');
+$_GET = ['tipo' => 'pedido'];
+[$html] = $sp->correr('nueva');
+check(str_contains($html, 'name="urgencia"') && str_contains($html, 'Uno B'), 'formulario de pedido con urgencia y proyectos del cliente');
+$_GET = [];
+
+[, $r] = $sp->correr('crear', [], ['tipo' => 'pedido', 'proyecto_id' => $p1a, 'titulo' => 'Banner']);
+check($contar() === 0, "sin token CSRF: no se guarda ({$r})");
+
+[, $r] = $sp->correr('crear', [], ['_csrf' => $ctk, 'tipo' => 'pedido', 'proyecto_id' => $p3a, 'titulo' => 'Ajeno']);
+check($contar() === 0, 'no se puede pedir en un proyecto de otro cliente');
+
+[, $r] = $sp->correr('crear', [], ['_csrf' => $ctk, 'tipo' => 'pedido', 'proyecto_id' => $p1a, 'titulo' => 'Banner', 'urgencia' => 'urgente']);
+check($contar() === 0 && str_contains((string) ($_SESSION['td_flash']['mensaje'] ?? json_encode($_SESSION)), 'urgente'), 'urgente sin motivo: se pide el motivo');
+P\PortalSession::tomarFlash();
+
+$ctx->correos = [];
+[, $r] = $sp->correr('crear', [], ['_csrf' => $ctk, 'tipo' => 'pedido', 'proyecto_id' => $p1a, 'titulo' => 'Banner promo', 'detalle' => 'Formato 1080x1080', 'urgencia' => 'urgente', 'motivo_urgencia' => 'Sale el lunes']);
+$sid = (string) $pdo->query("SELECT id FROM portal_solicitudes WHERE titulo = 'Banner promo'")->fetchColumn();
+check($sid !== '' && $r === '/portal/solicitudes/' . $sid, 'pedido urgente con motivo: guardado');
+$aviso = array_values(array_filter($ctx->correos, fn($c) => $c['to'] === 'ana@agencia.cl'))[0] ?? null;
+check($aviso !== null && str_contains($aviso['subject'], '[URGENTE]') && str_contains($aviso['body'], 'Sale el lunes'), 'aviso al equipo asignado, marcado urgente y con el motivo');
+check(str_contains((string) ($aviso['body'] ?? ''), '/equipo/solicitudes/' . $sid), 'el aviso enlaza a la solicitud en el panel');
+
+[, $r] = $sp->correr('crear', [], ['_csrf' => $ctk, 'tipo' => 'pedido', 'proyecto_id' => $p1b, 'titulo' => 'Otro urgente', 'urgencia' => 'urgente', 'motivo_urgencia' => 'Todo es urgente']);
+check((int) $pdo->query("SELECT COUNT(*) FROM portal_solicitudes WHERE titulo = 'Otro urgente'")->fetchColumn() === 0, 'segunda urgencia abierta: no se acepta (tope 1)');
+P\PortalSession::tomarFlash();
+[, $r] = $sp->correr('crear', [], ['_csrf' => $ctk, 'tipo' => 'problema', 'proyecto_id' => $p1b, 'titulo' => 'La web no carga']);
+$prob = $ss->find((string) $pdo->query("SELECT id FROM portal_solicitudes WHERE titulo = 'La web no carga'")->fetchColumn());
+check($prob !== null && $prob['urgencia'] === 'urgente', 'un problema siempre entra como urgente y no choca con el tope');
+
+[, $r] = $sp->correr('crear', [], ['_csrf' => $ctk, 'tipo' => 'reunion', 'proyecto_id' => $p1a, 'titulo' => 'Revisar campaña', 'horarios' => ['2020-01-01T10:00']]);
+check((int) $pdo->query("SELECT COUNT(*) FROM portal_solicitudes WHERE tipo = 'reunion'")->fetchColumn() === 0, 'reunión con horarios pasados: rechazada');
+P\PortalSession::tomarFlash();
+$futuro = (new DateTimeImmutable('+3 days', new DateTimeZone('America/Santiago')))->format('Y-m-d') . 'T11:00';
+$sp->correr('crear', [], ['_csrf' => $ctk, 'tipo' => 'reunion', 'proyecto_id' => $p1a, 'titulo' => 'Revisar campaña', 'horarios' => [$futuro, '', $futuro], 'modalidad' => 'video']);
+$sre = $ss->find((string) $pdo->query("SELECT id FROM portal_solicitudes WHERE tipo = 'reunion'")->fetchColumn());
+check($sre !== null && P\SolicitudService::horarios($sre['horarios']) === [str_replace('T', ' ', $futuro)], 'reunión con horarios válidos (sin repetidos)');
+$sp->correr('crear', [], ['_csrf' => $ctk, 'tipo' => 'presupuesto', 'proyecto_id' => $p1a, 'titulo' => 'Rediseño web', 'urgencia' => 'sin_apuro']);
+$spre = (string) $pdo->query("SELECT id FROM portal_solicitudes WHERE tipo = 'presupuesto'")->fetchColumn();
+
+[$html] = $sp->correr('ver', [$sid]);
+check(str_contains($html, 'Banner promo') && str_contains($html, 'Sale el lunes'), 'detalle de la solicitud para el cliente');
+$ajena = $ss->crear(['id' => 'x', 'cliente_id' => $c3, 'nombre' => 'Otro'], ['tipo' => 'pedido', 'proyecto_id' => $p3a, 'titulo' => 'De otro cliente']);
+[, $r] = $sp->correr('ver', [(string) $ajena['id']]);
+check($r === '/portal/solicitudes', 'el cliente no ve solicitudes de otro cliente');
+
+// Equipo
+$_SESSION[P\EquipoController::SESION] = $ana;
+$tok = P\PortalSession::csrf();
+$S = P\SolicitudAdminController::class;
+[$html] = $g->hacer('GET', $S, 'index');
+check(str_contains($html, 'Banner promo') && !str_contains($html, 'De otro cliente'), 'bandeja del panel filtrada por asignación');
+check(strpos($html, 'Banner promo') < strpos($html, 'Rediseño web'), 'las urgentes primero');
+[, $r] = $g->hacer('GET', $S, 'ver', [(string) $ajena['id']], 'solicitud');
+check($r === '/equipo', 'solicitud de un proyecto ajeno: bloqueada');
+[$html] = $g->hacer('GET', $S, 'ver', [$sid], 'solicitud');
+check(str_contains($html, 'Aceptar y crear la tarea') && str_contains($html, 'value="' . $ss->fechaSugerida('urgente') . '"'), 'ficha con la fecha sugerida por la urgencia');
+
+$ctx->correos = [];
+[, $r] = $g->hacer('POST', $S, 'aceptar', [$sid], 'solicitud', false, ['_csrf_token' => $tok, 'titulo' => 'Banner promo', 'descripcion' => 'Formato 1080x1080', 'fecha_vencimiento' => '2026-10-02', 'responsable_usuario_id' => $ana, 'mensaje' => 'Lo tomamos']);
+$sAc = $ss->find($sid);
+$tarea = $ts->find((string) $sAc['tarea_id']);
+check($sAc['estado'] === 'en_curso' && $tarea !== null && $tarea['responsable_usuario_id'] === $ana && (int) $tarea['visible_cliente'] === 1 && $tarea['fecha_vencimiento'] === '2026-10-02', 'aceptar crea la tarea visible, con responsable y fecha');
+check($r === '/equipo/tareas/' . $sAc['tarea_id'], 'después de aceptar se abre la tarea');
+$enCola = (int) $pdo->query("SELECT COUNT(*) FROM portal_correos_cola WHERE destino = 'clara@uno.cl' AND asunto LIKE 'Tomamos%'")->fetchColumn();
+check(count(array_filter($ctx->correos, fn($c) => $c['to'] === 'clara@uno.cl' && str_contains($c['subject'], 'Tomamos'))) + $enCola === 1, 'el cliente recibe el aviso (o queda en cola hasta su horario hábil)');
+[, $r] = $g->hacer('POST', $S, 'aceptar', [$sid], 'solicitud', false, ['_csrf_token' => $tok]);
+check((int) $pdo->query("SELECT COUNT(*) FROM portal_tareas WHERE titulo = 'Banner promo'")->fetchColumn() === 1, 'aceptar dos veces no duplica la tarea');
+check($ss->urgentesAbiertas($c1) === 1, 'la urgencia sigue abierta mientras la tarea no esté lista');
+$ts->cambiarEstado((string) $sAc['tarea_id'], 'hecha');
+check($ss->urgentesAbiertas($c1) === 0 && $ss->puedeUrgente($c1), 'tarea lista: se libera el cupo de urgencia');
+
+[, $r] = $g->hacer('POST', $S, 'cotizar', [$spre], 'solicitud', false, ['_csrf_token' => $tok, 'monto' => '', 'mensaje' => 'x']);
+check($ss->find($spre)['estado'] === 'nueva', 'cotizar sin valor: no se envía');
+$g->hacer('POST', $S, 'cotizar', [$spre], 'solicitud', false, ['_csrf_token' => $tok, 'monto' => '$450.000 + IVA', 'validez' => '2026-10-30', 'mensaje' => 'Incluye 2 rondas']);
+check($ss->find($spre)['estado'] === 'cotizada' && $ss->find($spre)['monto'] === '$450.000 + IVA', 'cotización enviada');
+$_SESSION[P\PortalSession::CONTACTO] = $contacto;
+[$html] = $sp->correr('ver', [$spre]);
+check(str_contains($html, '$450.000 + IVA') && str_contains($html, 'Aprobar presupuesto'), 'el cliente ve la cotización y puede aprobarla');
+$ctx->correos = [];
+$sp->correr('decidir', [$spre], ['_csrf' => $ctk, 'decision' => 'aprobar', 'cuerpo' => 'Dale']);
+check($ss->find($spre)['estado'] === 'aprobada' && count(array_filter($ctx->correos, fn($c) => str_contains($c['subject'], 'aprobó el presupuesto'))) >= 1, 'aprobar avisa al equipo');
+$g->hacer('POST', $S, 'aceptar', [$spre], 'solicitud', false, ['_csrf_token' => $tok, 'titulo' => 'Rediseño web']);
+check($ss->find($spre)['estado'] === 'en_curso', 'presupuesto aprobado: se convierte en tarea');
+
+$ctx->correos = [];
+[, $r] = $g->hacer('POST', $S, 'agendar', [$sre['id']], 'solicitud', false, ['_csrf_token' => $tok, 'fecha_elegida' => str_replace('T', ' ', $futuro), 'duracion_min' => '45', 'enlace_meet' => 'https://meet.google.com/abc-defg-hij']);
+$sAg = $ss->find((string) $sre['id']);
+$reu = $rs->find((string) $sAg['reunion_id']);
+check($sAg['estado'] === 'agendada' && $reu !== null && (int) $reu['publicada'] === 1 && str_starts_with((string) $reu['fecha'], substr($futuro, 0, 10)), 'agendar crea la reunión publicada en el horario elegido');
+check(count(array_filter($ctx->correos, fn($c) => $c['to'] === 'clara@uno.cl')) === 1, 'reunión confirmada al cliente');
+
+[, $r] = $g->hacer('POST', $S, 'cerrar', [(string) $prob['id']], 'solicitud', false, ['_csrf_token' => $tok, 'estado' => 'respondida', 'mensaje' => '']);
+check($ss->find((string) $prob['id'])['estado'] === 'nueva', 'cerrar exige un mensaje para el cliente');
+$g->hacer('POST', $S, 'cerrar', [(string) $prob['id']], 'solicitud', false, ['_csrf_token' => $tok, 'estado' => 'respondida', 'mensaje' => 'Era la caché, ya está']);
+check($ss->find((string) $prob['id'])['estado'] === 'respondida', 'responder y cerrar');
+[, $r] = $g->hacer('POST', $S, 'destroy', [(string) $prob['id']], 'solicitud', true, ['_csrf_token' => $tok]);
+check($ss->find((string) $prob['id']) !== null, 'borrar solicitudes: sólo Coordinación');
+
+$ss->borrarDeProyecto($p3a);
+check($ss->find((string) $ajena['id']) === null, 'al borrar un proyecto se van sus solicitudes');
+
+// ---------------------------------------------------------------------------
 echo "\n\n" . $GLOBALS['ok'] . ' comprobaciones OK, ' . count($GLOBALS['fallas']) . " fallas ({$motor}).\n";
 foreach ($GLOBALS['fallas'] as $f) {
     echo "  ✗ {$f}\n";

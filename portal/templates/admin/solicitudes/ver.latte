@@ -1,0 +1,213 @@
+{layout $plugin_ui_layout}
+
+{block page_title}Solicitud{/block}
+
+{block content}
+<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=3">
+{var $t = $tipos[$s['tipo']]}
+{var $e = $estadosS[$s['estado']] ?? ['—', 'muted']}
+{var $abierta = in_array($s['estado'], ['nueva', 'aprobada', 'cotizada'], true)}
+
+<div class="page-header">
+    <h1>{$s['titulo']}</h1>
+    <a href="{$admin_url('solicitudes')}" class="btn">Volver</a>
+</div>
+
+{if $flash_success}<div class="alert alert-success">{$flash_success}</div>{/if}
+{if $flash_error}<div class="alert alert-error">{$flash_error}</div>{/if}
+
+<div class="card">
+    <p style="display:flex;flex-wrap:wrap;gap:.4rem;margin:0 0 .75rem">
+        <span class="pa-chip {$s['tipo'] === 'problema' ? 'danger' : 'brand'}">{$t[0]}</span>
+        <span class="pa-chip {$e[1] === 'muted' ? 'gris' : $e[1]}">{$e[0]}</span>
+        {if $s['tipo'] !== 'reunion'}<span class="pa-chip {['urgente' => 'danger', 'semana' => 'info', 'sin_apuro' => 'gris'][$s['urgencia']] ?? 'gris'}">{$urgencias[$s['urgencia']]}</span>{/if}
+    </p>
+    <p class="pa-muted" style="margin:0">
+        <span class="pa-proy"><span class="pa-dot" style="background: {($colorProy[$s['proyecto_id']] ?? '#94a3b8')|noescape}" aria-hidden="true"></span>{$s['cliente_empresa'] ?: $s['cliente_nombre']} · {$s['proyecto_nombre']}</span>
+        · Pedida por <strong>{$s['contacto_nombre'] ?: 'el cliente'}</strong> · {$fmt->rel($s['created_at'])}
+    </p>
+    {if $s['detalle']}<div style="margin-top:1rem;white-space:pre-line;line-height:1.55">{$s['detalle']}</div>{/if}
+
+    {if $s['urgencia'] === 'urgente' && $s['tipo'] !== 'problema'}
+        <div class="pa-new" style="margin-top:1rem;padding:.75rem 1rem;border-radius:.75rem">
+            <strong>Por qué es urgente:</strong> {$s['motivo_urgencia'] ?: 'no lo dijo'}
+            {if $urgentesCliente > 1}<div class="pa-muted" style="margin-top:.25rem">Este cliente tiene {$urgentesCliente} urgencias abiertas.</div>{/if}
+        </div>
+    {/if}
+
+    {if $s['tipo'] === 'reunion'}
+        <p style="margin:1rem 0 .3rem"><strong>Horarios propuestos</strong> · {$modalidades[$s['modalidad']] ?? 'Videollamada'}</p>
+        <ul style="margin:0;padding-left:1.1rem">
+            {foreach $horarios as $h}<li>{$fmt->fechaLarga($h)} · {substr($h, 11, 5)}</li>{/foreach}
+        </ul>
+    {/if}
+
+    {if $archivos}
+        <p style="margin:1rem 0 .3rem"><strong>Adjuntos</strong></p>
+        <ul class="pa-files">
+            {foreach $archivos as $a}
+                <li class="pa-file">
+                    {if $fmt->esImagen($a['mime'])}
+                        <a href="{$admin_url('archivos/' . $a['id'])}" target="_blank" rel="noopener"><img src="{$admin_url('archivos/' . $a['id'])}?t=1" alt="" loading="lazy"></a>
+                    {else}
+                        <span class="pa-ico">{$fmt->extension($a['nombre_original'])}</span>
+                    {/if}
+                    <div class="pa-meta">
+                        <a class="pa-name" href="{$admin_url('archivos/' . $a['id'])}" target="_blank" rel="noopener">{$a['nombre_original']}</a>
+                        <span class="pa-muted">{$a['subido_por_tipo'] === 'equipo' ? 'Equipo' : $a['subido_por_nombre'] . ' (cliente)'} · {$fmt->tamano($a['tamano'])}</span>
+                    </div>
+                </li>
+            {/foreach}
+        </ul>
+    {/if}
+
+    {if $s['estado'] === 'en_curso' && $s['tarea_id']}
+        <p style="margin:1rem 0 0"><a href="{$admin_url('tareas/' . $s['tarea_id'])}" class="btn btn-sm">Abrir la tarea «{$s['tarea_titulo']}»</a> <span class="pa-muted">· {$s['atendida_por']}, {$fmt->rel($s['atendida_en'])}</span></p>
+    {elseif $s['estado'] === 'agendada' && $s['reunion_id']}
+        <p style="margin:1rem 0 0"><a href="{$admin_url('reuniones/' . $s['reunion_id'])}" class="btn btn-sm">Abrir la reunión del {$fmt->fecha($s['reunion_fecha'])}</a> <span class="pa-muted">· {$s['atendida_por']}</span></p>
+    {elseif $s['respuesta'] || $s['monto']}
+        <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid color-mix(in srgb, currentColor 12%, transparent)">
+            {if $s['monto']}<p style="margin:0 0 .3rem"><strong>Cotización:</strong> {$s['monto']}{if $s['validez']} · válida hasta el {$fmt->fecha($s['validez'])}{/if}</p>{/if}
+            {if $s['respuesta']}<div style="white-space:pre-line">{$s['respuesta']}</div>{/if}
+            <p class="pa-muted" style="margin:.3rem 0 0">{$s['atendida_por']} · {$fmt->rel($s['atendida_en'])}{if $s['decision_en']} · el cliente respondió {$fmt->rel($s['decision_en'])}{/if}</p>
+        </div>
+    {/if}
+</div>
+
+{* ---- Acciones ---- *}
+{if ($s['tipo'] === 'pedido' || $s['tipo'] === 'problema') && $s['estado'] === 'nueva' || ($s['tipo'] === 'presupuesto' && $s['estado'] === 'aprobada')}
+<div class="card mt-4">
+    <h2 class="pa-h2">Aceptar y crear la tarea</h2>
+    <p class="pa-muted" style="margin-top:0">Queda como tarea del equipo, visible para el cliente. Los adjuntos pasan a la tarea.</p>
+    <form method="post" action="{$admin_url('solicitudes/' . $s['id'] . '/aceptar')}">
+        <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+        <label class="form-label">Título de la tarea</label>
+        <input type="text" name="titulo" class="form-input" value="{$s['titulo']}" maxlength="255" required>
+        <label class="form-label mt-3">Descripción</label>
+        <textarea name="descripcion" class="form-input" rows="4">{$s['detalle']}</textarea>
+        <div class="pa-grid-2">
+            <div>
+                <label class="form-label mt-3">Responsable</label>
+                <select name="responsable_usuario_id" class="form-input">
+                    <option value="">Sin asignar</option>
+                    {foreach $usuarios as $u}
+                        <option value="{$u['id']}" {if $responsable === $u['id']}selected{/if}>{$u['nombre']}{if in_array($u['id'], $delProyecto, true)} · en este proyecto{/if}</option>
+                    {/foreach}
+                </select>
+            </div>
+            <div>
+                <label class="form-label mt-3">Fecha límite</label>
+                <input type="date" name="fecha_vencimiento" class="form-input" value="{$fechaSug}">
+                <p class="form-hint mt-1">Sugerida por la urgencia: {$urgencias[$s['urgencia']]|lower}. Cámbiala si hace falta.</p>
+            </div>
+        </div>
+        <label class="form-label mt-3">Mensaje para el cliente <span class="pa-muted">(opcional)</span></label>
+        <textarea name="mensaje" class="form-input" rows="2" placeholder="Ej.: Lo tomamos. Te mostramos una primera versión el jueves."></textarea>
+        <p class="mt-3"><button type="submit" class="btn btn-primary">Aceptar y crear tarea</button></p>
+    </form>
+</div>
+{/if}
+
+{if $s['tipo'] === 'presupuesto' && in_array($s['estado'], ['nueva', 'cotizada'], true)}
+<div class="card mt-4">
+    <h2 class="pa-h2">{$s['estado'] === 'cotizada' ? 'Corregir la cotización' : 'Enviar la cotización'}</h2>
+    <p class="pa-muted" style="margin-top:0">El cliente la ve en su portal y la aprueba con un clic. Si la aprueba, aquí aparece «Aceptar y crear la tarea».</p>
+    <form method="post" action="{$admin_url('solicitudes/' . $s['id'] . '/cotizar')}" enctype="multipart/form-data">
+        <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+        <div class="pa-grid-2">
+            <div>
+                <label class="form-label">Valor</label>
+                <input type="text" name="monto" class="form-input" value="{$s['monto']}" maxlength="80" required placeholder="Ej.: $450.000 + IVA">
+            </div>
+            <div>
+                <label class="form-label">Válida hasta <span class="pa-muted">(opcional)</span></label>
+                <input type="date" name="validez" class="form-input" value="{$s['validez']}">
+            </div>
+        </div>
+        <label class="form-label mt-3">Qué incluye</label>
+        <textarea name="mensaje" class="form-input" rows="4" placeholder="Alcance, plazos, rondas de cambios…">{$s['respuesta']}</textarea>
+        <label class="form-label mt-3">Adjuntar el PDF <span class="pa-muted">(opcional)</span></label>
+        <input type="file" name="archivos[]" multiple class="form-input">
+        <p class="mt-3"><button type="submit" class="btn btn-primary">{$s['estado'] === 'cotizada' ? 'Actualizar y avisar' : 'Enviar al cliente'}</button></p>
+    </form>
+</div>
+{/if}
+
+{if $s['tipo'] === 'reunion' && $s['estado'] === 'nueva'}
+<div class="card mt-4">
+    <h2 class="pa-h2">Agendar la reunión</h2>
+    <form method="post" action="{$admin_url('solicitudes/' . $s['id'] . '/agendar')}">
+        <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+        <label class="form-label">Horario</label>
+        <div class="pa-radios" style="flex-direction:column;align-items:flex-start">
+            {foreach $horarios as $h}
+                <label class="pa-check"><input type="radio" name="fecha_elegida" value="{$h}" {if $iterator->first}checked{/if}> <span>{$fmt->fechaLarga($h)} · {substr($h, 11, 5)}</span></label>
+            {/foreach}
+            <label class="pa-check"><input type="radio" name="fecha_elegida" value="otra" {if !$horarios}checked{/if}> <span>Otro horario:</span></label>
+        </div>
+        <div class="pa-grid-2">
+            <div><input type="date" name="fecha_d" class="form-input" aria-label="Otra fecha"></div>
+            <div><input type="time" name="fecha_t" class="form-input" aria-label="Otra hora" step="900"></div>
+        </div>
+        <div class="pa-grid-2">
+            <div>
+                <label class="form-label mt-3">Título</label>
+                <input type="text" name="titulo" class="form-input" value="{$s['titulo']}" maxlength="255">
+            </div>
+            <div>
+                <label class="form-label mt-3">Duración (minutos)</label>
+                <input type="number" name="duracion_min" class="form-input" value="60" min="15" max="600" step="15">
+            </div>
+        </div>
+        <label class="form-label mt-3">Enlace de la videollamada <span class="pa-muted">(opcional)</span></label>
+        <input type="url" name="enlace_meet" class="form-input" placeholder="https://meet.google.com/…">
+        <label class="form-label mt-3">Mensaje para el cliente <span class="pa-muted">(opcional)</span></label>
+        <textarea name="mensaje" class="form-input" rows="2"></textarea>
+        <p class="mt-3"><button type="submit" class="btn btn-primary">Agendar y avisar</button></p>
+    </form>
+</div>
+{/if}
+
+{if $abierta}
+<div class="card mt-4">
+    <h2 class="pa-h2">Responder sin crear nada, o no tomarla</h2>
+    <p class="pa-muted" style="margin-top:0">Para una duda que se resuelve con una respuesta, o algo que no vamos a hacer. El cliente recibe tu mensaje.</p>
+    <form method="post" action="{$admin_url('solicitudes/' . $s['id'] . '/cerrar')}">
+        <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+        <textarea name="mensaje" class="form-input" rows="3" required maxlength="8000" placeholder="Tu respuesta para el cliente…"></textarea>
+        <p class="mt-3" style="display:flex;gap:.5rem;flex-wrap:wrap">
+            <button type="submit" name="estado" value="respondida" class="btn">Responder y cerrar</button>
+            <button type="submit" name="estado" value="rechazada" class="btn btn-danger" onclick="return confirm('¿Cerrar la solicitud como no tomada?');">No la tomamos</button>
+        </p>
+    </form>
+</div>
+{/if}
+
+<div class="card mt-4" id="conversacion">
+    <h2 class="pa-h2">Conversación <span class="pa-chip">{count($comentarios)}</span></h2>
+    {if $comentarios}
+    <ul class="pa-thread">
+        {foreach $comentarios as $c}
+        <li class="pa-msg {$c['autor_tipo'] === 'equipo' ? 'equipo' : 'cliente'}">
+            <header><span><strong>{$c['autor_nombre']}</strong>{if $c['autor_tipo'] !== 'equipo'} (cliente){/if} · {$fmt->rel($c['created_at'])}</span></header>
+            <p>{$c['cuerpo']}</p>
+        </li>
+        {/foreach}
+    </ul>
+    {else}
+        <p class="pa-muted">Si necesitas más datos antes de decidir, pregúntale aquí.</p>
+    {/if}
+    <form method="post" action="{$admin_url('solicitudes/' . $s['id'] . '/comentarios')}">
+        <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+        <label class="form-label">Escribir como «{$firma}»</label>
+        <textarea name="cuerpo" class="form-input" rows="3" required maxlength="4000"></textarea>
+        <label class="pa-check"><input type="checkbox" name="avisar" value="1" checked> <span>Avisar al cliente por correo</span></label>
+        <p class="mt-3"><button type="submit" class="btn btn-primary">Publicar</button></p>
+    </form>
+</div>
+
+<form method="post" action="{$admin_url('solicitudes/' . $s['id'] . '/borrar')}" class="mt-4" onsubmit="return confirm('¿Eliminar esta solicitud? La tarea o reunión que haya creado no se borra.');">
+    <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+    <button type="submit" class="btn btn-sm btn-danger">Eliminar solicitud</button>
+</form>
+{/block}
