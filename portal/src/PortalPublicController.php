@@ -301,7 +301,9 @@ class PortalPublicController
 
     public function loginForm(): void
     {
+        $email = trim((string) ($_GET['email'] ?? ''));
         $this->ctx->view('templates/public/login.latte', [
+            'email' => filter_var($email, FILTER_VALIDATE_EMAIL) ? $email : '',
             'error' => $_GET['error'] ?? null,
             'csrf'  => PortalSession::csrf(),
             'portalBoot' => $this->asset('theme.js'),
@@ -383,6 +385,11 @@ class PortalPublicController
         }
         unset($_SESSION['portal_login_email']);
         $_SESSION[PortalSession::CONTACTO] = $contacto['id'];
+        try {
+            $this->contactos()->marcarAcceso((string) $contacto['id']);
+        } catch (\Throwable) {
+            // sin las columnas nuevas todavía: no impide entrar
+        }
 
         $this->redirectTo('');
     }
@@ -458,6 +465,7 @@ class PortalPublicController
             'reuniones'   => $reuniones,
             'actividad'   => $this->actividad()->deCliente($clienteId, 8),
             'multiples'   => count($proyectos) > 1,
+            'pasos'       => $this->primerosPasos($c, $pref, $meTocan),
         ]));
     }
 
@@ -556,6 +564,7 @@ class PortalPublicController
             return;
         }
 
+        $this->marcarPaso($c, 'tarea');
         $archivos = $this->archivos()->deEntidad('tarea', $id);
         $delEquipo = array_values(array_filter($archivos, fn($a) => $a['subido_por_tipo'] === 'equipo'));
         $tuyos     = array_values(array_filter($archivos, fn($a) => $a['subido_por_tipo'] !== 'equipo'));
@@ -875,6 +884,71 @@ class PortalPublicController
     }
 
     // ---------------------------------------------------------------------
+    // Bienvenida: «¿Cómo funciona?» y primeros pasos
+    // ---------------------------------------------------------------------
+
+    /** Primeros pasos que el contacto va completando (se guardan en sus ajustes). */
+    protected function marcarPaso(array $contacto, string $paso): void
+    {
+        try {
+            $this->ajustes()->set('contacto', (string) $contacto['id'], 'paso_' . $paso, '1');
+        } catch (\Throwable) {
+            // no es crítico
+        }
+    }
+
+    /**
+     * Tarjeta «Primeros pasos» del inicio. Null si ya la completó, la cerró o lleva más de 45 días usando el portal.
+     *
+     * @param array<string, mixed> $c
+     * @param array<int, array<string, mixed>> $meTocan
+     * @return array<int, array{0: string, 1: string, 2: bool}>|null [texto, enlace, hecho]
+     */
+    private function primerosPasos(array $c, array $pref, array $meTocan): ?array
+    {
+        if (($pref['primeros_pasos'] ?? '') === 'oculto') {
+            return null;
+        }
+        $desde = (string) ($c['primer_acceso'] ?? '');
+        if ($desde !== '' && strtotime($desde) < strtotime('-45 days')) {
+            return null;
+        }
+        $tarea = $meTocan[0] ?? null;
+        $pasos = [
+            ['Entraste a tu portal', '/portal', true],
+            [$tarea ? 'Revisa tu primera tarea: «' . $tarea['titulo'] . '»' : 'Mira en qué va tu proyecto', $tarea ? '/portal/tareas/' . $tarea['id'] : '/portal/tareas', !empty($pref['paso_tarea'])],
+            ['Lee cómo funciona el portal (dos minutos)', '/portal/ayuda', !empty($pref['paso_ayuda'])],
+            ['Conoce cómo pedirnos algo', '/portal/solicitudes', !empty($pref['paso_solicitudes'])],
+            ['Elige qué avisos quieres recibir', '/portal/ajustes', !empty($pref['paso_avisos'])],
+        ];
+        foreach ($pasos as $p) {
+            if (!$p[2]) {
+                return $pasos;
+            }
+        }
+        return null;
+    }
+
+    public function ayuda(): void
+    {
+        $c = $this->requerirContacto();
+        $this->marcarPaso($c, 'ayuda');
+        $this->ctx->view('templates/public/ayuda.latte', $this->contexto($c, 'ayuda') + [
+            'estados'  => Fmt::ESTADOS,
+            'agencia'  => (new MarcaService($this->pdo()))->nombreEquipo(),
+            'maxUrgentes' => (new SolicitudService($this->pdo()))->maxUrgentes(),
+        ]);
+    }
+
+    public function ocultarPrimerosPasos(): void
+    {
+        $c = $this->requerirContacto();
+        $this->exigirCsrf('portal');
+        $this->ajustes()->set('contacto', (string) $c['id'], 'primeros_pasos', 'oculto');
+        $this->redirectTo('portal');
+    }
+
+    // ---------------------------------------------------------------------
     // Ajustes personales
     // ---------------------------------------------------------------------
 
@@ -904,6 +978,7 @@ class PortalPublicController
             'apodo'        => $this->tomarString('apodo', 40),
             'frase_propia' => $this->tomarString('frase_propia', 140),
             'avisos_email' => !empty($_POST['avisos_email']) ? '1' : '0',
+            'paso_avisos'  => '1',
         ]);
 
         PortalSession::flash('ok', 'Guardamos tus preferencias.');

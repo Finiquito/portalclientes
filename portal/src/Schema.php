@@ -46,6 +46,11 @@ final class Schema
         'portal_clientes' => [
             'pais' => "VARCHAR(2) NOT NULL DEFAULT 'CL'",
         ],
+        'portal_contactos' => [
+            'invitado_en'   => 'VARCHAR(32)',
+            'primer_acceso' => 'VARCHAR(32)',
+            'ultimo_acceso' => 'VARCHAR(32)',
+        ],
         'portal_comentarios' => [
             'version_id' => 'VARCHAR(36)',
             'ubicacion'  => 'VARCHAR(64)',

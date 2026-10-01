@@ -16,6 +16,35 @@
         <p class="relative mt-3 max-w-2xl text-base text-muted sm:text-lg">{$frase}</p>
     </section>
 
+    {* Primeros pasos: sólo las primeras veces *}
+    {if $pasos}
+        {var $hechos = count(array_filter($pasos, fn($p) => $p[2]))}
+        <section class="card reveal mb-5 p-4 sm:p-5" aria-labelledby="h-pasos">
+            <div class="flex items-start justify-between gap-3">
+                <div>
+                    <h2 id="h-pasos" class="text-lg font-extrabold tracking-tight">Primeros pasos</h2>
+                    <p class="mt-0.5 text-sm text-muted">{$hechos} de {count($pasos)} listos. Te toma unos minutos.</p>
+                </div>
+                <form method="post" action="/portal/primeros-pasos/ocultar">
+                    <input type="hidden" name="_csrf" value="{$csrf}">
+                    <button type="submit" class="btn btn-ghost btn-sm">Ya lo entendí</button>
+                </form>
+            </div>
+            <div class="progress mt-3" role="progressbar" aria-valuemin="0" aria-valuemax="{count($pasos)}" aria-valuenow="{$hechos}" aria-label="Avance de primeros pasos"><span style="width: {round($hechos * 100 / count($pasos))|noescape}%"></span></div>
+            <ol class="mt-3 space-y-1">
+                {foreach $pasos as $p}
+                    <li>
+                        <a href="{$p[1]}" class="flex items-center gap-3 rounded-xl px-2 py-2 text-sm transition hover:bg-surface2 {$p[2] ? 'text-muted' : 'font-semibold'}">
+                            <span class="flex size-6 flex-none items-center justify-center rounded-full {$p[2] ? 'bg-ok text-white' : 'border-2 border-line'}">{if $p[2]}<svg class="size-3.5"><use href="#i-check"/></svg>{/if}</span>
+                            <span class="min-w-0 flex-1 {$p[2] ? 'line-through decoration-1' : ''}">{$p[0]}</span>
+                            {if !$p[2]}<svg class="size-4 flex-none text-muted"><use href="#i-chevron"/></svg>{/if}
+                        </a>
+                    </li>
+                {/foreach}
+            </ol>
+        </section>
+    {/if}
+
     {* Accesos rápidos *}
     <section class="grid grid-cols-3 gap-3 sm:gap-4" aria-label="Resumen">
         <a href="/portal/tareas?f=mias" class="card reveal group p-3.5 transition hover:-translate-y-0.5 hover:shadow-pop sm:p-5" style="--i:1">

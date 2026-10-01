@@ -48,6 +48,7 @@
                             <span class="min-w-0 flex-1 leading-snug">
                                 <span class="block truncate text-sm font-semibold">{$ct['nombre']}</span>
                                 <a href="mailto:{$ct['email']}" class="block truncate text-xs text-muted hover:text-brand-ink">{$ct['email']}</a>
+                                <a href="/equipo/contactos/{$ct['id']}" class="block text-xs font-semibold {$ct['primer_acceso'] ? 'text-ok' : ($ct['invitado_en'] ? 'text-warn' : 'text-brand-ink')}">{if $ct['primer_acceso']}Entró {$fmt->rel($ct['ultimo_acceso'])}{elseif $ct['invitado_en']}Invitado {$fmt->rel($ct['invitado_en'])} · aún no entra{else}Sin invitar · enviar invitación{/if}</a>
                             </span>
                             <span class="chip {$ct['rol'] === 'aprobador' ? 'chip-brand' : 'chip-muted'}">{$ct['rol'] === 'aprobador' ? 'Aprueba' : 'Lectura'}</span>
                             <a href="/equipo/contactos/{$ct['id']}" class="text-muted hover:text-ink" aria-label="Editar contacto"><svg class="size-4"><use href="#i-edit"/></svg></a>

@@ -243,6 +243,59 @@ class Notifier
         $this->enviarCorreo((string) $contacto['email'], 'Tu código de acceso: ' . $codigo, $html, $texto, true);
     }
 
+    /**
+     * Invitación de un contacto del cliente a su portal: qué es, cómo entrar (sin contraseña),
+     * qué va a encontrar y, si ya hay algo esperándolo, su primera tarea. Sale al tiro.
+     *
+     * @param array<string, mixed> $contacto
+     */
+    public function invitacionCliente(array $contacto, string $mensaje = '', string $firma = ''): bool
+    {
+        $clienteId = (string) $contacto['cliente_id'];
+        $agencia = $this->marca()->nombreEquipo();
+        $email = (string) $contacto['email'];
+
+        // La primera tarea que le toca (si hay): la más próxima a vencer.
+        $st = $this->pdo->prepare(
+            "SELECT t.titulo, t.fecha_vencimiento, t.tipo FROM portal_tareas t JOIN portal_proyectos p ON p.id = t.proyecto_id
+             WHERE p.cliente_id = ? AND t.responsable_tipo = 'cliente' AND t.estado IN ('pendiente', 'en_progreso')
+               AND (t.responsable_contacto_id IS NULL OR t.responsable_contacto_id = ?)
+             ORDER BY (t.fecha_vencimiento IS NULL), t.fecha_vencimiento, t.created_at LIMIT 1"
+        );
+        $st->execute([$clienteId, (string) $contacto['id']]);
+        $tarea = $st->fetch() ?: null;
+
+        $bloques = [];
+        if (trim($mensaje) !== '') {
+            $bloques[] = ['cita' => mb_substr(trim($mensaje), 0, 1500) . ($firma !== '' ? "\n— " . $firma : '')];
+        }
+        $bloques[] = ['p' => 'Te abrimos un portal para trabajar juntos: ahí ves en qué va tu proyecto, lo que necesitamos de ti y lo que tenemos listo para que revises. Todo en un solo lugar, sin perseguir correos.'];
+        if ($tarea) {
+            $fmt = new Fmt();
+            $bloques[] = ['p' => 'Ya tienes algo esperándote:'];
+            $bloques[] = ['tarjetas' => [['titulo' => (string) $tarea['titulo'], 'detalle' => $fmt->tipo((string) $tarea['tipo']) . ($tarea['fecha_vencimiento'] ? ' · para el ' . $fmt->fecha((string) $tarea['fecha_vencimiento']) : '')]]];
+        }
+        $bloques[] = ['p' => 'Lo que vas a encontrar:'];
+        $bloques[] = ['lista' => [
+            'Tareas: lo que te toca a ti (enviar un archivo, revisar algo) y lo que está haciendo el equipo.',
+            'Revisiones: piezas y contenidos para aprobar o pedir cambios con un clic.',
+            'Reuniones: la próxima, con su enlace, y el resumen de las anteriores.',
+            'Solicitudes: para pedirnos algo nuevo, un presupuesto, una reunión o avisarnos de un problema.',
+        ]];
+        $bloques[] = ['p' => 'Para entrar no necesitas contraseña: escribe tu correo y te llega un código de 6 dígitos. Dentro del portal, en «¿Cómo funciona?», está todo explicado en dos minutos.'];
+
+        $asunto = $agencia . ' te invita a tu portal de proyecto';
+        [$html, $texto] = $this->componer(
+            $asunto, '',
+            ['etiqueta' => 'Invitación', 'titulo' => 'Tu portal con ' . $agencia, 'resaltado' => 'portal', 'boton' => 'Entrar a mi portal',
+                'bloques' => $bloques, 'preheader' => 'Aquí vas a ver tu proyecto, lo que te toca y lo que está listo para revisar.'],
+            'Hola ' . $this->primerNombre((string) $contacto['nombre']) . ',',
+            $this->absoluta('/login?email=' . rawurlencode($email)), $clienteId,
+            ['Entras siempre con este correo: ' . $email, 'Puedes elegir qué avisos recibir en Ajustes, dentro del portal.']
+        );
+        return $this->enviarCorreo($email, $asunto, $html, $texto, false);
+    }
+
     /** Invitación a un usuario de agencia: cómo entrar al panel de equipo. */
     public function invitacionEquipo(array $usuario): bool
     {

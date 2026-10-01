@@ -8,6 +8,10 @@
     <a href="{$admin_url('contactos')}" class="btn">Volver</a>
 </div>
 
+<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=3">
+{if !empty($flash_success)}<div class="alert alert-success">{$flash_success}</div>{/if}
+{if !empty($flash_error)}<div class="alert alert-error">{$flash_error}</div>{/if}
+
 <div class="card">
     <form method="post" action="{if $contacto}{$admin_url('contactos/' . $contacto['id'])}{else}{$admin_url('contactos')}{/if}">
         <input type="hidden" name="_csrf_token" value="{$csrf_token}">
@@ -32,6 +36,51 @@
             <option value="viewer" {if $rolActual === 'viewer'}selected{/if}>Sólo lectura: ve el avance y comenta</option>
         </select>
 
+        {if !$contacto}
+            <div style="margin-top:1.25rem;padding-top:1rem;border-top:1px solid color-mix(in srgb, currentColor 12%, transparent)">
+                <label class="pa-check"><input type="checkbox" name="invitar" value="1" data-toggle-msg> <span><strong>Enviar invitación ahora</strong>: un correo con el enlace al portal, cómo entrar y qué va a encontrar.</span></label>
+                <p class="form-hint" style="margin:.25rem 0 0 1.6rem">Si su portal todavía está vacío, déjalo para después: lo envías desde la ficha del contacto.</p>
+                <div data-msg hidden style="margin-top:.75rem">
+                    <label class="form-label">Mensaje personal <span class="pa-muted">(opcional)</span></label>
+                    <textarea name="mensaje" class="form-input" rows="3" maxlength="1500" placeholder="Ej.: ¡Hola Josefa! Aquí vamos a ir subiendo las piezas de la campaña para que las revises."></textarea>
+                    <p class="form-hint mt-1">Va al comienzo del correo, firmado por «{$firma}».</p>
+                </div>
+            </div>
+        {/if}
+
         <p class="mt-4"><button type="submit" class="btn btn-primary">Guardar</button></p>
     </form>
 </div>
+
+{if $contacto}
+<div class="card mt-4">
+    <h2 class="pa-h2">Acceso al portal</h2>
+    <p style="margin:0 0 .75rem">
+        {if $contacto['primer_acceso']}
+            <span class="pa-chip ok">Ya entró</span> <span class="pa-muted">por primera vez {$fmt->fecha($contacto['primer_acceso'])} · última vez {$fmt->rel($contacto['ultimo_acceso'])}</span>
+        {elseif $contacto['invitado_en']}
+            <span class="pa-chip warn">Invitado, aún no entra</span> <span class="pa-muted">invitación enviada {$fmt->rel($contacto['invitado_en'])}</span>
+        {else}
+            <span class="pa-chip gris">Sin invitar</span> <span class="pa-muted">todavía no le avisamos que tiene portal</span>
+        {/if}
+    </p>
+    <form method="post" action="{$admin_url('contactos/' . $contacto['id'] . '/invitar')}">
+        <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+        <label class="form-label">Mensaje personal <span class="pa-muted">(opcional)</span></label>
+        <textarea name="mensaje" class="form-input" rows="3" maxlength="1500" placeholder="Ej.: ¡Hola {$fmt->primerNombre((string) $contacto['nombre'])}! Aquí vamos a ir subiendo las piezas para que las revises."></textarea>
+        <p class="form-hint mt-1">El correo explica qué es el portal, cómo entrar sin contraseña y qué va a encontrar. Si tiene una tarea pendiente, se la destaca.</p>
+        <p class="mt-3"><button type="submit" class="btn btn-primary">{$contacto['invitado_en'] ? 'Reenviar invitación' : 'Enviar invitación'}</button></p>
+    </form>
+</div>
+{/if}
+
+<script n:syntax="off">
+(function () {
+  var c = document.querySelector('[data-toggle-msg]');
+  var m = document.querySelector('[data-msg]');
+  if (!c || !m) return;
+  function ver() { m.hidden = !c.checked; }
+  c.addEventListener('change', ver);
+  ver();
+})();
+</script>

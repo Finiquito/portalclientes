@@ -828,6 +828,53 @@ $_SESSION[P\EquipoController::SESION] = $ana;
 [$html] = $g->hacer('GET', $S, 'index');
 check(str_contains($html, 'Hora de tus clientes') && str_contains($html, 'data-reloj="America/Mexico_City"') && str_contains($html, '🇲🇽'), 'la barra muestra la hora de cada país de sus clientes');
 
+// Bienvenida: invitación, primeros pasos y ayuda
+seccion('Bienvenida del cliente');
+$_SESSION[P\EquipoController::SESION] = $ana;
+$tok = P\PortalSession::csrf();
+$CT = P\ContactoAdminController::class;
+$ts->create(['proyecto_id' => $p1a, 'titulo' => 'Enviar el logo en alta', 'asignado' => 'cliente', 'tipo' => 'archivo', 'fecha_vencimiento' => '2030-01-10']);
+$ctx->correos = [];
+[, $r] = $g->hacer('POST', $CT, 'store', [], null, false, ['_csrf_token' => $tok, 'cliente_id' => $c1, 'nombre' => 'Nora Nueva', 'email' => 'nora@uno.cl', 'rol' => 'aprobador']);
+$nora = (new P\ContactoService($pdo))->findByEmail('nora@uno.cl');
+check($nora !== null && $ctx->correos === [] && $nora['invitado_en'] === null, 'crear contacto sin marcar la casilla: no se invita');
+check($r === '/equipo/contactos/' . $nora['id'], 'y queda en su ficha para invitarlo después');
+[$html] = $g->hacer('GET', $CT, 'edit', [$nora['id']], 'contacto');
+check(str_contains($html, 'Sin invitar') && str_contains($html, 'Enviar invitación'), 'la ficha muestra que está sin invitar');
+[, $r] = $g->hacer('POST', $CT, 'invitar', [$nora['id']], 'contacto', false, ['_csrf_token' => $tok, 'mensaje' => 'Aquí vamos a subir las piezas']);
+$inv = $ctx->correos[0] ?? ['to' => '', 'subject' => '', 'body' => ''];
+check($inv['to'] === 'nora@uno.cl' && str_contains($inv['subject'], 'te invita a tu portal'), 'invitación enviada al contacto');
+check(str_contains($inv['body'], '/login?email=nora%40uno.cl') && str_contains($inv['body'], 'Aquí vamos a subir las piezas') && str_contains($inv['body'], 'Ana'), 'con el enlace al login, el mensaje personal y la firma');
+check(str_contains($inv['body'], 'Enviar el logo en alta') && str_contains($inv['body'], 'código de 6 dígitos'), 'destaca la primera tarea y explica cómo entrar');
+check((new P\ContactoService($pdo))->find($nora['id'])['invitado_en'] !== null, 'queda la fecha de invitación');
+$ctx->correos = [];
+$g->hacer('POST', $CT, 'store', [], null, false, ['_csrf_token' => $tok, 'cliente_id' => $c1, 'nombre' => 'Óscar Otro', 'email' => 'oscar@uno.cl', 'rol' => 'viewer', 'invitar' => '1']);
+check(count($ctx->correos) === 1 && $ctx->correos[0]['to'] === 'oscar@uno.cl', 'con la casilla marcada, invita al crear');
+$oscarTres = (new P\ContactoService($pdo))->create(['cliente_id' => $c3, 'nombre' => 'Ajeno', 'email' => 'ajeno@tres.cl']);
+[, $r] = $g->hacer('POST', $CT, 'invitar', [$oscarTres], 'contacto', false, ['_csrf_token' => $tok]);
+check($r === '/equipo', 'no se puede invitar a un contacto de un cliente ajeno');
+(new P\ContactoService($pdo))->marcarAcceso($nora['id']);
+$nf = (new P\ContactoService($pdo))->find($nora['id']);
+$primero = $nf['primer_acceso'];
+(new P\ContactoService($pdo))->marcarAcceso($nora['id']);
+check($primero !== null && (new P\ContactoService($pdo))->find($nora['id'])['primer_acceso'] === $primero, 'el primer acceso no se pisa con los siguientes');
+
+$_SESSION[P\PortalSession::CONTACTO] = $nora['id'];
+$ctk = P\PortalSession::csrf();
+$sn = new SolicitudPrueba($ctx);
+[$html] = $sn->correr('dashboard');
+check(str_contains($html, 'Primeros pasos') && str_contains($html, 'Revisa tu primera tarea') && str_contains($html, '1 de 5'), 'el inicio muestra los primeros pasos');
+[$html] = $sn->correr('ayuda');
+check(str_contains($html, '¿Cómo funciona?') && str_contains($html, 'Cambios pedidos') && str_contains($html, 'sin contraseña'), 'página «¿Cómo funciona?»');
+$sn->correr('lista');
+[$html] = $sn->correr('dashboard');
+check(str_contains($html, '3 de 5'), 'leer la ayuda y ver Solicitudes marcan sus pasos');
+$sn->correr('ocultarPrimerosPasos', [], ['_csrf' => $ctk]);
+[$html] = $sn->correr('dashboard');
+check(!str_contains($html, 'Primeros pasos'), '«Ya lo entendí» los oculta');
+$_SESSION[P\PortalSession::CONTACTO] = $contacto;
+$_SESSION[P\EquipoController::SESION] = $ana;
+
 $ss->borrarDeProyecto($p3a);
 check($ss->find((string) $ajena['id']) === null, 'al borrar un proyecto se van sus solicitudes');
 

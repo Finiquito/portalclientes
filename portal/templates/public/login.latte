@@ -35,7 +35,7 @@
             <form method="post" action="/login" data-once>
                 <input type="hidden" name="_csrf" value="{$csrf}">
                 <label for="email" class="label">Correo electrónico</label>
-                <input id="email" type="email" name="email" placeholder="tu@empresa.com" required autofocus autocomplete="email" inputmode="email" class="field">
+                <input id="email" type="email" name="email" value="{$email ?? ''}" placeholder="tu@empresa.com" required autofocus autocomplete="email" inputmode="email" class="field">
                 <button type="submit" data-sending="Enviando código…" class="btn btn-primary mt-4 w-full">Enviar código</button>
             </form>
         </div>

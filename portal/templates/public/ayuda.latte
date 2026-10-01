@@ -1,0 +1,95 @@
+{layout '_layout.latte'}
+
+{block title}¿Cómo funciona?{/block}
+
+{block content}
+<header class="reveal pb-5 pt-1">
+    <h1 class="text-3xl font-extrabold tracking-tight sm:text-4xl">¿Cómo funciona?</h1>
+    <p class="mt-1.5 max-w-2xl text-muted">Este es tu portal con {$agencia}. Aquí ves en qué va tu proyecto, lo que necesitamos de ti y lo que está listo para revisar. Te lo explicamos en dos minutos.</p>
+</header>
+
+<div class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_17rem]">
+<div class="min-w-0 space-y-5">
+
+    <section class="card card-pad reveal" style="--i:1" aria-labelledby="h-entrar">
+        <h2 id="h-entrar" class="text-lg font-extrabold tracking-tight">Entrar, sin contraseña</h2>
+        <p class="mt-2 text-[0.9375rem] leading-relaxed text-ink/85">Escribe tu correo en la página de entrada y te llega un código de 6 dígitos. Lo ingresas y listo. No hay contraseña que recordar. Si no ves el correo, revisa la carpeta de spam.</p>
+    </section>
+
+    <section class="card card-pad reveal" style="--i:2" aria-labelledby="h-secciones">
+        <h2 id="h-secciones" class="text-lg font-extrabold tracking-tight">Qué hay en cada sección</h2>
+        <dl class="mt-4 space-y-4">
+            {var $secciones = [
+                ['i-home', 'Inicio', 'Un resumen: lo que te toca a ti, el avance de tu proyecto, las novedades y la próxima reunión.'],
+                ['i-tasks', 'Tareas', 'Todo lo que hay que hacer. Algunas te tocan a ti: enviarnos un archivo, revisar algo o completar un paso. Otras son del equipo, para que sepas en qué estamos.'],
+                ['i-eye', 'Revisiones', 'Las piezas listas para que las veas (posts, videos, logos, documentos). En cada una puedes aprobar o pedir cambios, y comentar sobre la pieza misma.'],
+                ['i-folder', 'Archivos', 'Todo lo que tú y nosotros subimos, ordenado por tarea. Nada se pierde en un chat.'],
+                ['i-calendar', 'Reuniones', 'La próxima reunión con su enlace para conectarte, y el resumen y los acuerdos de las anteriores.'],
+                ['i-plus', 'Solicitudes', 'Para pedirnos algo nuevo, un presupuesto o una reunión, o avisarnos si algo dejó de funcionar.'],
+            ]}
+            {foreach $secciones as $x}
+                <div class="flex gap-3">
+                    <span class="flex size-10 flex-none items-center justify-center rounded-xl bg-brand-soft text-brand-ink"><svg class="size-5"><use href="#{$x[0]}"/></svg></span>
+                    <div class="min-w-0">
+                        <dt class="font-bold">{$x[1]}</dt>
+                        <dd class="mt-0.5 text-sm leading-relaxed text-muted">{$x[2]}</dd>
+                    </div>
+                </div>
+            {/foreach}
+        </dl>
+    </section>
+
+    <section class="card card-pad reveal" style="--i:3" aria-labelledby="h-tarea">
+        <h2 id="h-tarea" class="text-lg font-extrabold tracking-tight">Cuando algo te toca a ti</h2>
+        <p class="mt-2 text-[0.9375rem] leading-relaxed text-ink/85">Te llega un correo y la tarea aparece en «Te toca a ti». Ábrela y, según el tipo:</p>
+        <ul class="mt-3 space-y-2 text-[0.9375rem] leading-relaxed text-ink/85">
+            <li><strong>Pedir archivos:</strong> sube lo que te pedimos y aprieta «Entregar al equipo».</li>
+            <li><strong>Revisar y aprobar:</strong> mira lo que dejamos y elige «Aprobar» o «Pedir cambios». Si pides cambios, cuéntanos qué cambiarías.</li>
+            <li><strong>Tarea:</strong> cuando la hagas, márcala como lista.</li>
+        </ul>
+        <p class="mt-3 text-sm text-muted">¿Dudas sobre algo puntual? Escribe en la conversación de esa misma tarea: le llega al equipo.</p>
+    </section>
+
+    <section class="card card-pad reveal" style="--i:4" aria-labelledby="h-estados">
+        <h2 id="h-estados" class="text-lg font-extrabold tracking-tight">Qué significa cada estado</h2>
+        {var $explica = [
+            'pendiente'   => 'Todavía no empieza.',
+            'en_progreso' => 'Alguien está trabajando en esto.',
+            'entregada'   => 'Ya entregaste o enviamos algo, y se está revisando.',
+            'cambios'     => 'Se pidieron ajustes y los estamos aplicando.',
+            'hecha'       => 'Terminada.',
+        ]}
+        <ul class="mt-4 space-y-2.5">
+            {foreach $estados as $k => $e}
+                <li class="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                    <span class="chip chip-{$e[1]} min-w-[7.5rem] justify-center">{$e[0]}</span>
+                    <span class="text-muted">{$explica[$k] ?? ''}</span>
+                </li>
+            {/foreach}
+        </ul>
+    </section>
+
+    <section class="card card-pad reveal" style="--i:5" aria-labelledby="h-pedir">
+        <h2 id="h-pedir" class="text-lg font-extrabold tracking-tight">Cómo pedirnos algo</h2>
+        <p class="mt-2 text-[0.9375rem] leading-relaxed text-ink/85">En «Solicitudes» eliges qué necesitas, el proyecto y para cuándo. Puedes adjuntar archivos o dictarlo en vez de escribirlo. Te avisamos por correo cuando la tomemos.</p>
+        <ul class="mt-3 space-y-2 text-[0.9375rem] leading-relaxed text-ink/85">
+            <li><strong>Urgente:</strong> para el próximo día hábil. Se pasa adelante de lo que estamos haciendo, así que puede mover otras entregas tuyas.{if $maxUrgentes > 0} Puedes tener {$maxUrgentes === 1 ? 'una urgencia abierta' : $maxUrgentes . ' urgencias abiertas'} a la vez.{/if}</li>
+            <li><strong>Prioritario:</strong> en máximo 5 días hábiles.</li>
+            <li><strong>Sin apuro:</strong> cuando tengamos espacio.</li>
+            <li><strong>Reportar un problema</strong> (algo dejó de funcionar) siempre llega como urgente.</li>
+        </ul>
+        <p class="mt-4"><a href="/portal/solicitudes" class="btn btn-soft btn-sm"><svg class="size-4"><use href="#i-plus"/></svg> Ir a Solicitudes</a></p>
+    </section>
+</div>
+
+<aside class="space-y-5" aria-label="Más ayuda">
+    <section class="card card-pad reveal lg:sticky lg:top-8" style="--i:2">
+        <h2 class="text-sm font-extrabold uppercase tracking-wide text-muted">Avisos por correo</h2>
+        <p class="mt-3 text-sm leading-relaxed text-muted">Te escribimos cuando algo te toca, cuando hay piezas para revisar o cuando respondemos. Los correos salen en horario hábil. Puedes apagarlos en Ajustes.</p>
+        <p class="mt-4"><a href="/portal/ajustes" class="btn btn-ghost btn-sm w-full justify-center"><svg class="size-4"><use href="#i-sliders"/></svg> Ajustes</a></p>
+        <h2 class="mt-6 text-sm font-extrabold uppercase tracking-wide text-muted">¿Algo no está claro?</h2>
+        <p class="mt-3 text-sm leading-relaxed text-muted">Escríbenos en cualquier tarea o haz una solicitud. Respondemos en el portal y te llega el aviso por correo.</p>
+    </section>
+</aside>
+</div>
+{/block}

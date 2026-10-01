@@ -94,6 +94,7 @@ class PortalPlugin implements PluginInterface
         $ctx->registerAdminRoute('GET',  'contactos/@id',             fn(string $id) => $contactos->edit($id));
         $ctx->registerAdminRoute('POST', 'contactos/@id',             fn(string $id) => $contactos->update($id));
         $ctx->registerAdminRoute('POST', 'contactos/@id/borrar',      fn(string $id) => $contactos->destroy($id));
+        $ctx->registerAdminRoute('POST', 'contactos/@id/invitar',     fn(string $id) => $contactos->invitar($id));
 
         $extras = new ActividadAdminController($ctx);
         $ctx->registerAdminRoute('GET',  'actividad', [$extras, 'actividad']);
@@ -180,6 +181,8 @@ class PortalPlugin implements PluginInterface
         \Flight::route('GET /portal/solicitudes/@id',             fn(string $id) => $sol->ver($id));
         \Flight::route('POST /portal/solicitudes/@id/comentarios', fn(string $id) => $sol->comentar($id));
         \Flight::route('POST /portal/solicitudes/@id/decidir',    fn(string $id) => $sol->decidir($id));
+        \Flight::route('GET /portal/ayuda',                   [$publico, 'ayuda']);
+        \Flight::route('POST /portal/primeros-pasos/ocultar', [$publico, 'ocultarPrimerosPasos']);
         \Flight::route('GET /portal/ajustes',                 [$publico, 'ajustesForm']);
         \Flight::route('POST /portal/ajustes',                [$publico, 'ajustesGuardar']);
         \Flight::route('POST /portal/ajustes/tema',           [$publico, 'temaRapido']);
@@ -220,7 +223,7 @@ class PortalPlugin implements PluginInterface
 
     public function getVersion(): string
     {
-        return '0.11.1';
+        return '0.12.0';
     }
 
     public function provides(): array

@@ -21,6 +21,21 @@ class ContactoService
         return $stmt ? $stmt->fetchAll() : [];
     }
 
+    /** Se envió (o reenvió) la invitación al portal. */
+    public function marcarInvitado(string $id): void
+    {
+        $this->pdo->prepare('UPDATE ' . self::TABLE . ' SET invitado_en = ? WHERE id = ?')
+            ->execute([(new \DateTimeImmutable())->format('Y-m-d H:i:s'), $id]);
+    }
+
+    /** Entró al portal: guarda el primer y el último acceso. */
+    public function marcarAcceso(string $id): void
+    {
+        $ahora = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
+        $this->pdo->prepare('UPDATE ' . self::TABLE . ' SET ultimo_acceso = ?, primer_acceso = COALESCE(primer_acceso, ?) WHERE id = ?')
+            ->execute([$ahora, $ahora, $id]);
+    }
+
     /** @return array<string, mixed>|null */
     public function find(string $id): ?array
     {

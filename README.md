@@ -74,6 +74,14 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### v0.12.0: bienvenida del cliente
+
+- **Invitación por correo** a cada contacto. No es automática: al crear el contacto hay una casilla «Enviar invitación ahora», y en su ficha un botón para enviarla o reenviarla, con un **mensaje personal** opcional firmado por quien invita. El correo explica qué es el portal, qué va a encontrar, cómo entrar sin contraseña y, si ya tiene algo pendiente, le destaca su primera tarea. El botón lleva al login con su correo ya escrito.
+- **Estado de cada contacto** en la lista, en su ficha y en la ficha del cliente del panel: sin invitar, invitado pero sin entrar, o ya entró (primer y último acceso). Columnas nuevas en `portal_contactos`: `invitado_en`, `primer_acceso` y `ultimo_acceso`.
+- **Primeros pasos** en el inicio del cliente: entraste, revisa tu primera tarea, lee cómo funciona, conoce cómo pedirnos algo y elige tus avisos. Los pasos se marcan solos. La tarjeta desaparece al completarla, con «Ya lo entendí» o después de 45 días.
+- **Página «¿Cómo funciona?»** (`/portal/ayuda`): cómo entrar, qué hay en cada sección, qué hacer cuando algo le toca, qué significa cada estado y cómo pedir algo, con los plazos. Está en el menú y en el encabezado del celular.
+- **Pruebas:** 207 comprobaciones que pasan en SQLite y MariaDB.
+
 ### v0.11.1
 
 - Los presupuestos ya no pueden ser «Urgente»: son para algo nuevo y no compiten con el trabajo en curso. Solo se elige «Prioritario» o «Sin apuro», y no cuentan para el tope de urgencias.

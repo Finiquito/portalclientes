@@ -43,6 +43,7 @@
             {/if}
         </a>
         <div class="flex items-center gap-1.5">
+            <a href="/portal/ayuda" class="btn btn-ghost min-h-10! w-10! px-0!" aria-label="¿Cómo funciona el portal?"><svg class="size-5"><use href="#i-help"/></svg></a>
             <button type="button" data-tema-toggle class="btn btn-ghost min-h-10! w-10! px-0!" aria-label="Cambiar entre tema claro y oscuro">
                 <svg class="size-5 dark:hidden"><use href="#i-moon"/></svg>
                 <svg class="hidden size-5 dark:block"><use href="#i-sun"/></svg>
@@ -77,6 +78,10 @@
                 </nav>
 
                 <div class="mt-auto border-t border-line pt-3">
+                    <a href="/portal/ayuda" class="nav-item" {if $nav === 'ayuda'}aria-current="page"{/if}>
+                        <svg class="size-5 flex-none"><use href="#i-help"/></svg>
+                        <span class="flex-1">¿Cómo funciona?</span>
+                    </a>
                     <a href="/portal/ajustes" class="nav-item" {if $nav === 'ajustes'}aria-current="page"{/if}>
                         <svg class="size-5 flex-none"><use href="#i-sliders"/></svg>
                         <span class="flex-1">Ajustes</span>
