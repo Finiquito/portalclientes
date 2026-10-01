@@ -1,14 +1,6 @@
 {layout $plugin_ui_layout}
 
-{block page_title}Solicitud<script n:syntax="off">
-(function () {
-  var r = document.querySelectorAll('[data-reloj]');
-  if (!r.length || !window.Intl) return;
-  function tic() { r.forEach(function (x) { try { x.textContent = new Intl.DateTimeFormat('es', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: x.getAttribute('data-reloj') }).format(new Date()); } catch (e) {} }); }
-  tic(); setInterval(tic, 20000);
-})();
-</script>
-{/block}
+{block page_title}Solicitud{/block}
 
 {block content}
 <link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=3">

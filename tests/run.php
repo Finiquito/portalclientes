@@ -780,6 +780,19 @@ $g->hacer('POST', $S, 'aceptar', [(string) $pn['id']], 'solicitud', false, ['_cs
 $pnA = $ss->find((string) $pn['id']);
 check($pnA['estado'] === 'en_curso' && $pnA['proyecto_nombre'] === 'App de reservas' && $ps->find((string) $pnA['proyecto_id'])['cliente_id'] === $c1, 'al aceptar se crea el proyecto del cliente y la tarea queda en él');
 
+// Un presupuesto no es urgente ni ocupa el cupo de urgencias
+$_SESSION[P\PortalSession::CONTACTO] = $contacto;
+$antesU = $ss->urgentesAbiertas($c1);
+$pu = $ss->crear(['id' => $contacto, 'cliente_id' => $c1, 'nombre' => 'Clara'], ['tipo' => 'presupuesto', 'proyecto_id' => $p1a, 'titulo' => 'Cotizar video', 'urgencia' => 'urgente', 'motivo_urgencia' => 'ya']);
+check($ss->find((string) $pu['id'])['urgencia'] === 'semana' && $ss->urgentesAbiertas($c1) === $antesU, 'un presupuesto nunca queda urgente ni cuenta para el tope');
+$_GET = ['tipo' => 'presupuesto'];
+[$html] = $sp->correr('nueva');
+check(!str_contains($html, 'value="urgente"') && str_contains($html, 'Prioritario'), 'el formulario de presupuesto no ofrece «Urgente»');
+$_GET = [];
+$_SESSION[P\EquipoController::SESION] = $ana;
+[$html] = $g->hacer('GET', $S, 'ver', [(string) $pu['id']], 'solicitud');
+check(preg_match('#<title>[^<]*</title>#', $html) === 1, 'el título de la ficha no trae el script del reloj');
+
 // Ordenar un dictado con IA (simulada)
 final class IaFalsa extends P\IaService
 {

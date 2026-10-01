@@ -74,6 +74,11 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### v0.11.1
+
+- Los presupuestos ya no pueden ser «Urgente»: son para algo nuevo y no compiten con el trabajo en curso. Solo se elige «Prioritario» o «Sin apuro», y no cuentan para el tope de urgencias.
+- Arreglo: el título de la ficha de solicitud mostraba el código del reloj.
+
 ### v0.11.0: plazos claros, horarios por país, proyecto nuevo y dictado
 
 - **«Esta semana» pasa a ser «Prioritario»**, con un plazo de máximo 5 días hábiles. El cliente ve el rango de fechas (por ejemplo, un jueves 1: «lun 5 al jue 8 oct»). «Urgente» muestra el próximo día hábil. La fecha sugerida para la tarea es el último día del rango.

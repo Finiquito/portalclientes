@@ -213,7 +213,7 @@ class SolicitudService
     {
         return (int) ($this->uno(
             "SELECT COUNT(*) AS n FROM portal_solicitudes s LEFT JOIN portal_tareas t ON t.id = s.tarea_id
-             WHERE s.cliente_id = ? AND s.urgencia = 'urgente' AND s.tipo <> 'problema'
+             WHERE s.cliente_id = ? AND s.urgencia = 'urgente' AND s.tipo NOT IN ('problema', 'presupuesto')
                AND (s.estado IN ('nueva', 'cotizada', 'aprobada') OR (s.estado = 'en_curso' AND (t.id IS NULL OR t.estado <> 'hecha')))",
             [$clienteId]
         )['n'] ?? 0);
@@ -292,6 +292,9 @@ class SolicitudService
         $motivo = mb_substr(trim((string) ($p['motivo_urgencia'] ?? '')), 0, 500);
         if ($tipo === 'problema') {
             $urgencia = 'urgente';
+        } elseif ($tipo === 'presupuesto' && $urgencia === 'urgente') {
+            // Un presupuesto es para algo nuevo: no compite con el trabajo en curso, así que no hay «urgente».
+            $urgencia = 'semana';
         } elseif ($urgencia === 'urgente') {
             if (!$this->puedeUrgente($clienteId)) {
                 return ['error' => 'Ya tienes una solicitud urgente abierta. Mientras la resolvemos, elige «Prioritario» o «Sin apuro», o escríbenos en la urgente para cambiar prioridades.'];
