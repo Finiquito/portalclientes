@@ -42,7 +42,7 @@
         <input type="hidden" name="_csrf" value="{$csrf}">
         <input type="hidden" name="tipo" value="{$tipo}">
 
-        {if count($proyectos) === 1}
+        {if count($proyectos) === 1 && $tipo !== 'presupuesto'}
             <input type="hidden" name="proyecto_id" value="{$proyectos[0]['id']}">
         {else}
             <div>
@@ -52,7 +52,9 @@
                     {foreach $proyectos as $p}
                         <option value="{$p['id']}" {if $proyectoSel === $p['id']}selected{/if}>{$p['nombre']}{if $p['estado'] !== 'activo'} ({$p['estado']}){/if}</option>
                     {/foreach}
+                    {if $tipo === 'presupuesto'}<option value="nuevo" {if $proyectoSel === 'nuevo'}selected{/if}>Un proyecto nuevo</option>{/if}
                 </select>
+                {if $tipo === 'presupuesto'}<p class="mt-1.5 text-xs text-muted">¿Es algo que todavía no trabajamos juntos? Elige «Un proyecto nuevo».</p>{/if}
             </div>
         {/if}
 
@@ -64,12 +66,22 @@
         <div>
             <label for="s-detalle" class="label">{$textos[2]} <span class="font-normal text-muted">(opcional)</span></label>
             <textarea id="s-detalle" name="detalle" rows="4" maxlength="8000" data-autogrow class="field" placeholder="{$textos[3]}">{$previo['detalle'] ?? ''}</textarea>
+            {* Dictado por voz (si el navegador lo permite) y ordenar con IA (si la agencia la tiene activa) *}
+            <div data-dictado class="mt-2 flex flex-wrap items-center gap-2">
+                <button type="button" data-dictar hidden class="btn btn-ghost btn-sm"><svg class="size-4"><use href="#i-mic"/></svg> <span data-dictar-txt>Dictar en vez de escribir</span></button>
+                <span data-dictado-tiempo hidden class="text-xs font-semibold tabular-nums text-danger">0:00 / 2:00</span>
+                {if $iaActiva}
+                    <button type="button" data-ordenar disabled class="btn btn-ghost btn-sm"><svg class="size-4"><use href="#i-sparkles"/></svg> <span data-ordenar-txt>Ordenar con IA</span></button>
+                    <button type="button" data-deshacer hidden class="btn btn-ghost btn-sm">Deshacer</button>
+                {/if}
+                <p data-dictado-msg hidden role="status" class="w-full text-xs text-muted"></p>
+            </div>
         </div>
 
         {if $tipo === 'reunion'}
             {var $hs = $previo['horarios'] ?? []}
             <fieldset>
-                <legend class="label">Propón hasta tres horarios</legend>
+                <legend class="label">Propón hasta tres horarios <span class="font-normal text-muted">· en hora de {\TypeDock\Plugin\Portal\HorarioHabil::nombreDe($paisCliente)} <span aria-hidden="true">{\TypeDock\Plugin\Portal\Fmt::bandera($paisCliente)}</span></span></legend>
                 <div class="grid gap-3 sm:grid-cols-3">
                     {for $i = 0; $i < 3; $i++}
                         <div>
@@ -102,12 +114,12 @@
                     <label class="opcion">
                         <input type="radio" name="urgencia" value="urgente" class="sr-only" {if $urg === 'urgente'}checked{/if} {if !$puedeUrgente}disabled{/if}>
                         <span class="font-semibold">Urgente</span>
-                        <span class="text-xs text-muted">Lo antes posible.</span>
+                        <span class="text-xs text-muted">Próximo día hábil · {$fmt->fechaCorta($rangos['urgente'][0])}</span>
                     </label>
                     <label class="opcion">
                         <input type="radio" name="urgencia" value="semana" class="sr-only" {if $urg === 'semana'}checked{/if}>
-                        <span class="font-semibold">Esta semana</span>
-                        <span class="text-xs text-muted">Para el {$fmt->fecha($fechas['semana'])}.</span>
+                        <span class="font-semibold">Prioritario</span>
+                        <span class="text-xs text-muted">Máximo 5 días hábiles · {$fmt->rangoFechas($rangos['semana'][0], $rangos['semana'][1])}</span>
                     </label>
                     <label class="opcion">
                         <input type="radio" name="urgencia" value="sin_apuro" class="sr-only" {if $urg === 'sin_apuro'}checked{/if}>
@@ -116,7 +128,7 @@
                     </label>
                 </div>
                 {if !$puedeUrgente}
-                    <p class="mt-2 text-sm text-muted">Ya tienes {$maxUrgentes === 1 ? 'una solicitud urgente abierta' : $maxUrgentes . ' solicitudes urgentes abiertas'}. Mientras la resolvemos, las nuevas entran como «Esta semana» o «Sin apuro». Si esta es más importante, escríbenos en la urgente y reordenamos.</p>
+                    <p class="mt-2 text-sm text-muted">Ya tienes {$maxUrgentes === 1 ? 'una solicitud urgente abierta' : $maxUrgentes . ' solicitudes urgentes abiertas'}. Mientras la resolvemos, las nuevas entran como «Prioritario» o «Sin apuro». Si esta es más importante, escríbenos en la urgente y reordenamos.</p>
                 {/if}
             </fieldset>
             <div data-mostrar-si="urgencia=urgente" {if $urg !== 'urgente'}hidden{/if} class="rounded-2xl border border-warn/40 bg-warn/10 p-4">

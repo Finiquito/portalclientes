@@ -39,7 +39,7 @@
                             <span class="block truncate font-semibold">{$s['titulo']}</span>
                             <span class="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-muted">
                                 <span>{$tipos[$s['tipo']][0]}</span>
-                                {if $multiples}<span class="inline-flex items-center gap-1.5 font-semibold"><span aria-hidden="true" style="display:inline-block;width:.6rem;height:.6rem;border-radius:9999px;flex:none;background:{($colorProy[$s['proyecto_id']] ?? '#94a3b8')|noescape}"></span>{$s['proyecto_nombre']}</span>{/if}
+                                {if $multiples}<span class="inline-flex items-center gap-1.5 font-semibold"><span aria-hidden="true" style="display:inline-block;width:.6rem;height:.6rem;border-radius:9999px;flex:none;background:{($colorProy[$s['proyecto_id']] ?? '#94a3b8')|noescape}"></span>{$s['proyecto_nombre'] ?: 'Proyecto nuevo'}</span>{/if}
                                 {if $s['urgencia'] === 'urgente'}<span class="font-bold text-danger">Urgente</span>{/if}
                                 <span>{$fmt->rel($s['created_at'])}</span>
                                 {if $s['n_comentarios'] > 0}<span class="inline-flex items-center gap-1"><svg class="size-3.5"><use href="#i-chat"/></svg>{$s['n_comentarios']}</span>{/if}

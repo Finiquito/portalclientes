@@ -27,10 +27,17 @@ class SolicitudService
         'problema'    => ['Reportar un problema', 'Algo dejó de funcionar o tiene un error.', 'i-alert'],
     ];
 
+    /** La clave 'semana' se mantiene por compatibilidad; para el cliente es «Prioritario» (2 a 5 días hábiles). */
     public const URGENCIAS = [
         'urgente'   => 'Urgente',
-        'semana'    => 'Esta semana',
+        'semana'    => 'Prioritario',
         'sin_apuro' => 'Sin apuro',
+    ];
+
+    /** Días hábiles de cada urgencia: [desde, hasta]. */
+    public const PLAZOS = [
+        'urgente' => [1, 1],
+        'semana'  => [2, 5],
     ];
 
     /** estado => [etiqueta para el equipo, tono .chip-*] */
@@ -91,11 +98,11 @@ class SolicitudService
         return $st->fetchAll();
     }
 
-    private const SELECT = 'SELECT s.*, p.nombre AS proyecto_nombre, c.nombre AS cliente_nombre, c.empresa AS cliente_empresa,
+    private const SELECT = 'SELECT s.*, p.nombre AS proyecto_nombre, c.nombre AS cliente_nombre, c.empresa AS cliente_empresa, c.pais AS cliente_pais,
             t.estado AS tarea_estado, t.titulo AS tarea_titulo, r.fecha AS reunion_fecha,
             (SELECT COUNT(*) FROM portal_comentarios k WHERE k.entidad_tipo = \'solicitud\' AND k.entidad_id = s.id) AS n_comentarios
         FROM portal_solicitudes s
-        JOIN portal_proyectos p ON p.id = s.proyecto_id
+        LEFT JOIN portal_proyectos p ON p.id = s.proyecto_id
         JOIN portal_clientes c ON c.id = s.cliente_id
         LEFT JOIN portal_tareas t ON t.id = s.tarea_id
         LEFT JOIN portal_reuniones r ON r.id = s.reunion_id';
@@ -144,11 +151,52 @@ class SolicitudService
         return (int) ($this->uno("SELECT COUNT(*) AS n FROM portal_solicitudes WHERE estado IN ('nueva', 'aprobada')", [])['n'] ?? 0);
     }
 
-    /** @return array<int, string> horarios propuestos ('Y-m-d H:i') */
+    /** @return array<int, string> horarios propuestos ('Y-m-d H:i', en la hora del cliente) */
     public static function horarios(?string $json): array
     {
+        return self::horariosZona($json)['lista'];
+    }
+
+    /**
+     * Horarios propuestos con la zona en que los escribió el cliente.
+     * (Las solicitudes antiguas guardaban sólo la lista, en hora de la agencia.)
+     *
+     * @return array{pais: string, zona: string, lista: array<int, string>}
+     */
+    public static function horariosZona(?string $json): array
+    {
         $l = json_decode((string) $json, true);
-        return is_array($l) ? array_values(array_filter($l, 'is_string')) : [];
+        $agencia = self::paisAgencia();
+        if (is_array($l) && isset($l['lista'])) {
+            $pais = HorarioHabil::paisValido((string) ($l['pais'] ?? $agencia));
+            return ['pais' => $pais, 'zona' => HorarioHabil::zonaDe($pais), 'lista' => array_values(array_filter((array) $l['lista'], 'is_string'))];
+        }
+        return ['pais' => $agencia, 'zona' => ReunionService::ZONA, 'lista' => is_array($l) ? array_values(array_filter($l, 'is_string')) : []];
+    }
+
+    /** País de la zona horaria de la agencia (la de las reuniones). */
+    public static function paisAgencia(): string
+    {
+        foreach (HorarioHabil::PAISES as $cod => [, $zona]) {
+            if ($zona === ReunionService::ZONA) {
+                return $cod;
+            }
+        }
+        return HorarioHabil::PAIS_DEFECTO;
+    }
+
+    /** Pasa 'Y-m-d H:i' de una zona horaria a otra. */
+    public static function convertir(string $fecha, string $desde, string $hacia): string
+    {
+        $d = \DateTimeImmutable::createFromFormat('!Y-m-d H:i', substr(str_replace('T', ' ', $fecha), 0, 16), new \DateTimeZone($desde));
+        return $d === false ? $fecha : $d->setTimezone(new \DateTimeZone($hacia))->format('Y-m-d H:i');
+    }
+
+    public function paisCliente(string $clienteId): string
+    {
+        $st = $this->pdo->prepare('SELECT pais FROM portal_clientes WHERE id = ?');
+        $st->execute([$clienteId]);
+        return HorarioHabil::paisValido((string) $st->fetchColumn());
     }
 
     // ---------------------------------------------------------------------
@@ -177,25 +225,37 @@ class SolicitudService
         return $max === 0 || $this->urgentesAbiertas($clienteId) < $max;
     }
 
-    /** Fecha límite sugerida para la tarea: urgente → próximo día hábil; esta semana → viernes; sin apuro → ninguna. */
+    /** Suma días hábiles (lunes a viernes; los feriados no se consideran). */
+    public function diasHabiles(int $n, ?\DateTimeImmutable $desde = null): \DateTimeImmutable
+    {
+        $d = ($desde ?? $this->ahora())->setTime(0, 0);
+        while ($n > 0) {
+            $d = $d->modify('+1 day');
+            if ((int) $d->format('N') <= 5) {
+                $n--;
+            }
+        }
+        return $d;
+    }
+
+    /** Rango de fechas que se le muestra al cliente para una urgencia: [desde, hasta] (Y-m-d) o null. */
+    public function rango(string $urgencia): ?array
+    {
+        if (!isset(self::PLAZOS[$urgencia])) {
+            return null;
+        }
+        [$a, $b] = self::PLAZOS[$urgencia];
+        return [$this->diasHabiles($a)->format('Y-m-d'), $this->diasHabiles($b)->format('Y-m-d')];
+    }
+
+    /** Fecha límite sugerida para la tarea: urgente → próximo día hábil; prioritario → máximo 5 días hábiles; sin apuro → ninguna. */
     public function fechaSugerida(string $urgencia, string $tipo = 'pedido'): ?string
     {
-        $hoy = $this->ahora()->setTime(0, 0);
         if ($tipo === 'problema') {
-            return $hoy->format('Y-m-d');
+            return $this->ahora()->format('Y-m-d');
         }
-        if ($urgencia === 'urgente') {
-            $d = $hoy->modify('+1 day');
-            while ((int) $d->format('N') >= 6) {
-                $d = $d->modify('+1 day');
-            }
-            return $d->format('Y-m-d');
-        }
-        if ($urgencia === 'semana') {
-            $n = (int) $hoy->format('N');
-            return ($n <= 4 ? $hoy->modify('friday this week') : $hoy->modify('next friday'))->format('Y-m-d');
-        }
-        return null;
+        $r = $this->rango($urgencia);
+        return $r !== null ? $r[1] : null;
     }
 
     // ---------------------------------------------------------------------
@@ -217,7 +277,9 @@ class SolicitudService
             return ['error' => 'Elige qué necesitas.'];
         }
         $proyectoId = (string) ($p['proyecto_id'] ?? '');
-        if ($this->uno('SELECT id FROM portal_proyectos WHERE id = ? AND cliente_id = ?', [$proyectoId, $clienteId]) === null) {
+        if ($tipo === 'presupuesto' && $proyectoId === 'nuevo') {
+            $proyectoId = '';   // un presupuesto para algo nuevo: el proyecto se crea al aceptarlo
+        } elseif ($this->uno('SELECT id FROM portal_proyectos WHERE id = ? AND cliente_id = ?', [$proyectoId, $clienteId]) === null) {
             return ['error' => 'Elige el proyecto.'];
         }
         $titulo = mb_substr(trim((string) ($p['titulo'] ?? '')), 0, 255);
@@ -232,7 +294,7 @@ class SolicitudService
             $urgencia = 'urgente';
         } elseif ($urgencia === 'urgente') {
             if (!$this->puedeUrgente($clienteId)) {
-                return ['error' => 'Ya tienes una solicitud urgente abierta. Mientras la resolvemos, elige «Esta semana» o «Sin apuro», o escríbenos en la urgente para cambiar prioridades.'];
+                return ['error' => 'Ya tienes una solicitud urgente abierta. Mientras la resolvemos, elige «Prioritario» o «Sin apuro», o escríbenos en la urgente para cambiar prioridades.'];
             }
             if ($motivo === '') {
                 return ['error' => 'Cuéntanos por qué es urgente: nos ayuda a reordenar el trabajo.'];
@@ -244,10 +306,12 @@ class SolicitudService
 
         $horarios = [];
         $modalidad = null;
+        $pais = $this->paisCliente($clienteId);
         if ($tipo === 'reunion') {
+            // Los horarios se escriben en la hora del país del cliente.
             foreach ((array) ($p['horarios'] ?? []) as $h) {
                 $h = str_replace('T', ' ', trim((string) $h));
-                $d = \DateTimeImmutable::createFromFormat('!Y-m-d H:i', substr($h, 0, 16), new \DateTimeZone(Fmt::ZONA));
+                $d = \DateTimeImmutable::createFromFormat('!Y-m-d H:i', substr($h, 0, 16), new \DateTimeZone(HorarioHabil::zonaDe($pais)));
                 if ($d !== false && $d > $this->ahora() && !in_array($d->format('Y-m-d H:i'), $horarios, true)) {
                     $horarios[] = $d->format('Y-m-d H:i');
                 }
@@ -267,7 +331,7 @@ class SolicitudService
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         )->execute([
             $id, $clienteId, $proyectoId, (string) $contacto['id'], (string) $contacto['nombre'], $tipo, $titulo, $detalle,
-            $urgencia, $motivo !== '' ? $motivo : null, $horarios !== [] ? json_encode($horarios) : null, $modalidad, 'nueva', $now, $now,
+            $urgencia, $motivo !== '' ? $motivo : null, $horarios !== [] ? json_encode(['pais' => $pais, 'lista' => $horarios]) : null, $modalidad, 'nueva', $now, $now,
         ]);
         return ['id' => $id];
     }
@@ -290,6 +354,20 @@ class SolicitudService
         $s = $this->find($id);
         if ($s === null || $s['tipo'] === 'reunion' || !in_array($s['estado'], ['nueva', 'aprobada'], true)) {
             return null;
+        }
+        // Presupuesto para un proyecto nuevo: se elige uno del cliente o se crea con el nombre que se indique.
+        if ((string) $s['proyecto_id'] === '') {
+            $elegido = (string) ($d['proyecto_id'] ?? '');
+            $nombre = mb_substr(trim((string) ($d['proyecto_nuevo'] ?? '')), 0, 255);
+            if ($elegido !== '' && $this->uno('SELECT id FROM portal_proyectos WHERE id = ? AND cliente_id = ?', [$elegido, $s['cliente_id']]) !== null) {
+                $s['proyecto_id'] = $elegido;
+            } elseif ($nombre !== '') {
+                $s['proyecto_id'] = (new ProyectoService($this->pdo))->create(['cliente_id' => $s['cliente_id'], 'nombre' => $nombre]);
+            } else {
+                return null;
+            }
+            $this->cambiar($id, ['proyecto_id' => $s['proyecto_id']]);
+            $this->pdo->prepare("UPDATE portal_archivos SET proyecto_id = ? WHERE entidad_tipo = 'solicitud' AND entidad_id = ?")->execute([$s['proyecto_id'], $id]);
         }
         $desc = trim((string) ($d['descripcion'] ?? ''));
         $tareaId = (new TareaService($this->pdo))->create([

@@ -13,7 +13,7 @@
     {/if}
     <div class="min-w-0">
         <h1 class="truncate text-[1.75rem] font-extrabold leading-tight tracking-tight sm:text-4xl">{$cliente['nombre']}</h1>
-        <p class="mt-1 text-sm text-muted">{$cliente['empresa']}{if $cliente['empresa'] && $pais} · {/if}{if $pais}{$pais[0]}{/if}</p>
+        <p class="mt-1 text-sm text-muted">{$cliente['empresa']}{if $cliente['empresa'] && $pais} · {/if}{if $pais}<span aria-hidden="true">{\TypeDock\Plugin\Portal\Fmt::bandera((string) $cliente['pais'])}</span> {$pais[0]} · son las <strong class="tabular-nums text-ink" data-reloj="{$pais[1]}">{(new \DateTimeImmutable('now', new \DateTimeZone($pais[1])))->format('H:i')}</strong>{/if}</p>
     </div>
 </section>
 

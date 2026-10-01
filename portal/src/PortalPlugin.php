@@ -176,6 +176,7 @@ class PortalPlugin implements PluginInterface
         \Flight::route('GET /portal/solicitudes',                 [$sol, 'lista']);
         \Flight::route('GET /portal/solicitudes/nueva',           [$sol, 'nueva']);
         \Flight::route('POST /portal/solicitudes',                [$sol, 'crear']);
+        \Flight::route('POST /portal/solicitudes/ordenar',        [$sol, 'ordenar']);
         \Flight::route('GET /portal/solicitudes/@id',             fn(string $id) => $sol->ver($id));
         \Flight::route('POST /portal/solicitudes/@id/comentarios', fn(string $id) => $sol->comentar($id));
         \Flight::route('POST /portal/solicitudes/@id/decidir',    fn(string $id) => $sol->decidir($id));
@@ -219,7 +220,7 @@ class PortalPlugin implements PluginInterface
 
     public function getVersion(): string
     {
-        return '0.10.0';
+        return '0.11.0';
     }
 
     public function provides(): array

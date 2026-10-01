@@ -74,6 +74,19 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### v0.11.0: plazos claros, horarios por país, proyecto nuevo y dictado
+
+- **«Esta semana» pasa a ser «Prioritario»**, con un plazo de máximo 5 días hábiles. El cliente ve el rango de fechas (por ejemplo, un jueves 1: «lun 5 al jue 8 oct»). «Urgente» muestra el próximo día hábil. La fecha sugerida para la tarea es el último día del rango.
+- **Reuniones en la hora del cliente:**
+  - el cliente propone los horarios en la hora de su país, y el formulario se lo indica con el nombre del país y la bandera;
+  - en la bandeja, el equipo ve cada horario en la hora del cliente y en la de la agencia, y al agendar elige directamente la hora convertida;
+  - la reunión confirmada se le muestra al cliente en su hora.
+- **Presupuesto para un proyecto nuevo:** el cliente puede elegir «Un proyecto nuevo». Al aceptar, el equipo elige un proyecto existente o crea uno con el nombre que indique.
+- **Dictado por voz:** el detalle de una solicitud se puede dictar (máximo 2 minutos). Usa el reconocimiento de voz del navegador (Chrome, Edge y Safari), así que no tiene costo; en Firefox el botón no aparece.
+- **«Ordenar con IA»:** si la agencia tiene una clave de IA, ordena el texto dictado sin inventar datos. El cliente lo revisa y puede deshacer. Hay un tope de 10 usos por persona por hora.
+- **Hora de tus clientes:** en la barra del panel `/equipo` aparece la bandera y la hora en vivo de cada país donde hay clientes, si alguno está en otra zona horaria. También aparece en la ficha del cliente y en la de cada solicitud.
+- **Pruebas:** 190 comprobaciones que pasan en SQLite y MariaDB.
+
 ### v0.10.0: solicitudes del cliente
 
 - **El cliente puede pedir cosas desde su portal** (nueva sección «Solicitudes»; en el celular, la pestaña «Pedir»). Cualquier contacto del cliente puede hacerlas. Hay cuatro tipos:
@@ -87,7 +100,7 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
   - cada cliente puede tener una sola urgencia abierta a la vez (se cambia en Portal · Ajustes; 0 = sin límite). Los problemas no cuentan;
   - la urgencia se libera cuando la tarea que salió de ella queda lista.
 - **Bandeja del equipo** (Portal · Solicitudes y `/equipo/solicitudes`), con filtros Por atender, Esperando al cliente, En curso, Cerradas y Todas, más tipo y proyecto. Las urgentes van primero. Desde la ficha se puede:
-  - **aceptar:** crea la tarea con responsable y fecha sugerida (urgente = próximo día hábil, esta semana = viernes, sin apuro = sin fecha), y los adjuntos pasan a la tarea;
+  - **aceptar:** crea la tarea con responsable y fecha sugerida (urgente = próximo día hábil, prioritario = máximo 5 días hábiles, sin apuro = sin fecha), y los adjuntos pasan a la tarea;
   - **cotizar**, **agendar**, **responder y cerrar** o **no tomarla**, siempre con un mensaje para el cliente.
 - **Avisos:** cada solicitud nueva le llega por correo al equipo asignado al proyecto y al correo de avisos, con «[URGENTE]» en el asunto cuando corresponde. El cliente recibe un correo cuando su solicitud se acepta, se cotiza, se agenda o se responde.
 - Nueva tabla `portal_solicitudes` (migración 0008, también garantizada por `Schema::asegurar`).

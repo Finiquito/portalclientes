@@ -175,6 +175,7 @@ class EquipoController
         return [
             'fmt'        => new Fmt(),
             'nSolicitudes' => $nSolicitudes,
+            'relojes'    => $this->relojes($u),
             'usuario'    => $u,
             'marca'      => $this->marca(),
             'tema'       => $tema,
@@ -186,6 +187,43 @@ class EquipoController
             'portalBoot' => $this->asset('theme.js'),
             'portalJs'   => $this->asset('portal.js'),
         ] + $extra;
+    }
+
+    /**
+     * Hora actual en el país de cada cliente que ve el usuario (barra lateral).
+     * Sólo se muestra si hay algún cliente en otra zona horaria que la de la agencia.
+     *
+     * @return array<int, array{pais: string, nombre: string, zona: string, hora: string, clientes: string, agencia: bool}>
+     */
+    protected function relojes(array $u): array
+    {
+        [$w, $p] = $this->acceso($u)->filtroCliente('id');
+        try {
+            $filas = $this->fetchAll('SELECT pais, nombre FROM portal_clientes WHERE ' . $w . ' ORDER BY nombre', $p);
+        } catch (\Throwable) {
+            return [];
+        }
+        $agencia = SolicitudService::paisAgencia();
+        $por = [];
+        foreach ($filas as $f) {
+            $pais = HorarioHabil::paisValido((string) ($f['pais'] ?? ''));
+            $por[$pais][] = (string) $f['nombre'];
+        }
+        if (array_keys($por) === [] || array_keys($por) === [$agencia]) {
+            return [];
+        }
+        $out = [];
+        foreach ($por as $pais => $nombres) {
+            $zona = HorarioHabil::zonaDe($pais);
+            $out[] = [
+                'pais' => $pais, 'nombre' => HorarioHabil::nombreDe($pais), 'zona' => $zona,
+                'hora' => (new \DateTimeImmutable('now', new \DateTimeZone($zona)))->format('H:i'),
+                'clientes' => implode(', ', array_slice($nombres, 0, 8)) . (count($nombres) > 8 ? '…' : ''),
+                'agencia' => $pais === $agencia,
+            ];
+        }
+        usort($out, fn($a, $b) => [!$a['agencia'], $a['nombre']] <=> [!$b['agencia'], $b['nombre']]);
+        return $out;
     }
 
     protected function view(string $plantilla, array $datos): void

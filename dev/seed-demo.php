@@ -91,6 +91,9 @@ $pdo->prepare("UPDATE portal_contenidos SET estado = 'aprobado' WHERE id = ?")->
 $pdo->prepare("UPDATE portal_contenidos SET estado = 'cambios' WHERE id = ?")->execute([$lista[0]]);
 $es->responder($eid2, 'Tomás Herrera');
 
+// Viña Los Robles está en España (para ver los horarios y relojes por país)
+$pdo->exec("UPDATE portal_clientes SET pais = 'ES' WHERE nombre = 'Viña Los Robles'");
+
 // Solicitudes de los clientes
 $sol = new P\SolicitudService($pdo);
 $josefa = ['id' => $ids['Redes octubre']['ct'], 'cliente_id' => $ids['Redes octubre']['c'], 'nombre' => 'Josefa Ruiz'];
@@ -98,6 +101,7 @@ $sol->crear($josefa, ['tipo' => 'pedido', 'proyecto_id' => $ids['Redes octubre']
 $pre = $sol->crear($josefa, ['tipo' => 'presupuesto', 'proyecto_id' => $ids['Nueva carta']['p'], 'titulo' => 'Fotos de producto para la carta', 'detalle' => 'Unas 20 fotos de los productos nuevos, fondo blanco y ambientadas.', 'urgencia' => 'sin_apuro']);
 $sol->cotizar((string) $pre['id'], '$380.000 + IVA', $d(20), "Incluye media jornada de producción en el local, 20 fotos editadas y 2 rondas de ajustes.\nEntrega en 7 días hábiles.", 'Camila Rojas');
 $sol->crear($josefa, ['tipo' => 'reunion', 'proyecto_id' => $ids['Redes octubre']['p'], 'titulo' => 'Planificar noviembre', 'horarios' => [$d(2) . ' 10:00', $d(3) . ' 16:30'], 'modalidad' => 'video']);
+$sol->crear(['id' => $ids['Etiqueta reserva 2026']['ct'], 'cliente_id' => $ids['Etiqueta reserva 2026']['c'], 'nombre' => 'Tomás Herrera'], ['tipo' => 'reunion', 'proyecto_id' => $ids['Etiqueta reserva 2026']['p'], 'titulo' => 'Revisar pruebas de imprenta', 'horarios' => [$d(5) . ' 16:00', $d(6) . ' 10:30'], 'modalidad' => 'video']);
 $sol->crear(['id' => $ids['Sitio web']['ct'], 'cliente_id' => $ids['Sitio web']['c'], 'nombre' => 'Paula Méndez'], ['tipo' => 'problema', 'proyecto_id' => $ids['Sitio web']['p'], 'titulo' => 'El formulario de reservas no envía', 'detalle' => 'Desde ayer, al apretar «Reservar» queda cargando y no llega nada.']);
 
 echo "Demo lista. Camila (coordinación): camila@estudiopampa.cl · Josefa (cliente): josefa@panaderiaruiz.cl\n";

@@ -63,6 +63,119 @@
     ajustar();
   });
 
+  /* ---- Dictado por voz (Web Speech API, máx. 2 min) y «Ordenar con IA» ---- */
+  $$('[data-dictado]').forEach(function (box) {
+    var form = box.closest('form');
+    var ta = form ? $('textarea[name="detalle"]', form) : null;
+    if (!ta) return;
+    var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    var bDict = $('[data-dictar]', box), txtDict = $('[data-dictar-txt]', box), tiempo = $('[data-dictado-tiempo]', box);
+    var bOrd = $('[data-ordenar]', box), txtOrd = $('[data-ordenar-txt]', box), bUndo = $('[data-deshacer]', box);
+    var msg = $('[data-dictado-msg]', box);
+    function aviso(t) { msg.textContent = t || ''; msg.hidden = !t; }
+    function cambio() { ta.dispatchEvent(new Event('input', { bubbles: true })); }
+    function revisar() { if (bOrd) bOrd.disabled = ta.value.trim().length < 20; }
+    ta.addEventListener('input', revisar);
+    revisar();
+
+    if (SR && bDict) {
+      bDict.hidden = false;
+      var rec = null, t0 = 0, reloj = null;
+      var mmss = function (s) { return Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2); };
+      var fin = function () {
+        rec = null;
+        clearInterval(reloj);
+        txtDict.textContent = 'Dictar en vez de escribir';
+        bDict.classList.remove('btn-primary');
+        tiempo.hidden = true;
+        revisar();
+      };
+      bDict.addEventListener('click', function () {
+        if (rec) { rec.stop(); return; }
+        rec = new SR();
+        var idioma = (navigator.language || '').toLowerCase().indexOf('es') === 0 ? navigator.language : 'es-419';
+        rec.lang = idioma;
+        rec.continuous = true;
+        rec.interimResults = true;
+        var base = ta.value.trim() ? ta.value.trim() + ' ' : '';
+        var final = '';
+        rec.onresult = function (e) {
+          var inter = '';
+          for (var i = e.resultIndex; i < e.results.length; i++) {
+            if (e.results[i].isFinal) final += e.results[i][0].transcript.trim() + ' ';
+            else inter += e.results[i][0].transcript;
+          }
+          ta.value = base + final + inter;
+          cambio();
+        };
+        rec.onerror = function (e) {
+          aviso(e.error === 'not-allowed' || e.error === 'service-not-allowed'
+            ? 'El navegador no dio permiso para usar el micrófono.'
+            : 'Se cortó el dictado. Puedes seguir escribiendo o volver a dictar.');
+        };
+        rec.onend = fin;
+        try { rec.start(); } catch (err) { fin(); return; }
+        t0 = Date.now();
+        txtDict.textContent = 'Detener';
+        bDict.classList.add('btn-primary');
+        tiempo.hidden = false;
+        tiempo.textContent = '0:00 / 2:00';
+        reloj = setInterval(function () {
+          var seg = Math.floor((Date.now() - t0) / 1000);
+          tiempo.textContent = mmss(Math.min(seg, 120)) + ' / 2:00';
+          if (seg >= 120 && rec) rec.stop();
+        }, 500);
+        aviso('Habla con naturalidad. Cuando termines, aprieta «Detener». Después puedes corregir el texto.');
+      });
+    }
+
+    if (bOrd) {
+      bOrd.addEventListener('click', function () {
+        var antes = ta.value;
+        var fd = new FormData();
+        fd.append('_csrf', ($('input[name="_csrf"]', form) || {}).value || '');
+        fd.append('texto', ta.value);
+        fd.append('tipo', ($('input[name="tipo"]', form) || {}).value || '');
+        fd.append('titulo', ($('input[name="titulo"]', form) || {}).value || '');
+        bOrd.disabled = true;
+        txtOrd.textContent = 'Ordenando…';
+        aviso('');
+        fetch('/portal/solicitudes/ordenar', { method: 'POST', body: fd, credentials: 'same-origin' })
+          .then(function (r) { return r.json(); })
+          .then(function (j) {
+            if (j && j.texto) {
+              ta.value = j.texto;
+              cambio();
+              if (bUndo) {
+                bUndo.hidden = false;
+                bUndo.onclick = function () { ta.value = antes; cambio(); bUndo.hidden = true; aviso(''); };
+              }
+              aviso('Revísalo y corrige lo que haga falta antes de enviar.');
+            } else {
+              aviso((j && j.error) || 'No pudimos ordenarlo. Puedes enviarlo tal como está.');
+            }
+          })
+          .catch(function () { aviso('No pudimos conectarnos. Intenta de nuevo.'); })
+          .then(function () { txtOrd.textContent = 'Ordenar con IA'; revisar(); });
+      });
+    }
+  });
+
+  /* ---- Relojes en vivo por zona horaria: <span data-reloj="Europe/Madrid"> ---- */
+  (function () {
+    var relojes = $$('[data-reloj]');
+    if (!relojes.length || !window.Intl) return;
+    function tic() {
+      relojes.forEach(function (r) {
+        try {
+          r.textContent = new Intl.DateTimeFormat('es', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: r.getAttribute('data-reloj') }).format(new Date());
+        } catch (e) { /* zona desconocida: queda la hora del servidor */ }
+      });
+    }
+    tic();
+    setInterval(tic, 20000);
+  })();
+
   /* ---- Evitar doble envío ---- */
   $$('form[data-once]').forEach(function (f) {
     f.addEventListener('submit', function (e) {

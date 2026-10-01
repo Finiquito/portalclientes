@@ -169,7 +169,7 @@ class EquipoGestion extends EquipoController
         }
         $tablas = [
             'tarea' => 'portal_tareas', 'reunion' => 'portal_reuniones', 'entrega' => 'portal_entregas',
-            'contenido' => 'portal_contenidos', 'fase' => 'portal_fases', 'solicitud' => 'portal_solicitudes',
+            'contenido' => 'portal_contenidos', 'fase' => 'portal_fases'
         ];
         switch ($tipo) {
             case 'proyecto':
@@ -179,7 +179,14 @@ class EquipoGestion extends EquipoController
             case 'contacto':
                 $c = $this->fetchOne('SELECT cliente_id FROM portal_contactos WHERE id = ?', [$id]);
                 return $c !== null && $acc->puedeVerCliente((string) $c['cliente_id']);
-            case 'archivo':
+            case 'solicitud':
+                // Un presupuesto para un proyecto nuevo todavía no tiene proyecto: cuenta el cliente.
+                $f = $this->fetchOne('SELECT proyecto_id, cliente_id FROM portal_solicitudes WHERE id = ?', [$id]);
+                if ($f === null) {
+                    return false;
+                }
+                return (string) $f['proyecto_id'] !== '' ? $acc->puedeVerProyecto((string) $f['proyecto_id']) : $acc->puedeVerCliente((string) $f['cliente_id']);
+                        case 'archivo':
                 $a = $this->fetchOne('SELECT cliente_id, proyecto_id, entidad_tipo FROM portal_archivos WHERE id = ?', [$id]);
                 if ($a === null) {
                     return false;

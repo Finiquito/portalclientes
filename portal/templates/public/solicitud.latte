@@ -28,7 +28,7 @@
             <p class="mt-3 text-sm text-muted"><strong class="text-ink">Por qué es urgente:</strong> {$s['motivo_urgencia']}</p>
         {/if}
         {if $s['tipo'] === 'reunion' && $horarios}
-            <p class="mt-4 text-xs font-bold uppercase tracking-wide text-muted">Horarios que propusiste · {$modalidades[$s['modalidad']] ?? 'Videollamada'}</p>
+            <p class="mt-4 text-xs font-bold uppercase tracking-wide text-muted">Horarios que propusiste · {$modalidades[$s['modalidad']] ?? 'Videollamada'} · hora de {\TypeDock\Plugin\Portal\HorarioHabil::nombreDe($paisCliente)} <span aria-hidden="true">{\TypeDock\Plugin\Portal\Fmt::bandera($paisCliente)}</span></p>
             <ul class="mt-2 flex flex-wrap gap-2">
                 {foreach $horarios as $h}<li class="chip chip-muted">{$fmt->fecha($h)} · {substr($h, 11, 5)}</li>{/foreach}
             </ul>
@@ -67,12 +67,12 @@
     {elseif $s['estado'] === 'agendada' && $s['reunion_id']}
         <a href="/portal/reuniones/{$s['reunion_id']}" class="card reveal group flex items-center gap-4 p-4 transition hover:shadow-pop sm:p-5" style="--i:1">
             <span class="flex size-12 flex-none flex-col items-center justify-center rounded-xl bg-brand-soft leading-none text-brand-ink">
-                <span class="text-lg font-extrabold">{$fmt->dia($s['reunion_fecha'])}</span>
-                <span class="mt-0.5 text-[0.625rem] font-bold uppercase tracking-wide">{$fmt->mesCorto($s['reunion_fecha'])}</span>
+                <span class="text-lg font-extrabold">{$fmt->dia($reunionLocal)}</span>
+                <span class="mt-0.5 text-[0.625rem] font-bold uppercase tracking-wide">{$fmt->mesCorto($reunionLocal)}</span>
             </span>
             <span class="min-w-0 flex-1">
                 <span class="block text-xs text-muted">Reunión confirmada</span>
-                <span class="block font-bold">{$fmt->fecha($s['reunion_fecha'])}{if $fmt->hora($s['reunion_fecha']) !== ''} · {$fmt->hora($s['reunion_fecha'])}{/if}</span>
+                <span class="block font-bold">{$fmt->fechaCorta($reunionLocal)}{if $fmt->hora($reunionLocal) !== ''} · {$fmt->hora($reunionLocal)} <span class="font-normal text-muted">hora de {\TypeDock\Plugin\Portal\HorarioHabil::nombreDe($paisCliente)}</span>{/if}</span>
             </span>
             <svg class="size-4 flex-none text-muted transition group-hover:translate-x-0.5"><use href="#i-chevron"/></svg>
         </a>
@@ -161,7 +161,7 @@
     <div class="card card-pad reveal lg:sticky lg:top-8" style="--i:2">
         <h2 class="text-sm font-extrabold uppercase tracking-wide text-muted">Detalles</h2>
         <dl class="mt-4 space-y-4 text-sm">
-            <div><dt class="text-xs text-muted">Proyecto</dt><dd class="mt-0.5 font-semibold">{$s['proyecto_nombre']}</dd></div>
+            <div><dt class="text-xs text-muted">Proyecto</dt><dd class="mt-0.5 font-semibold">{$s['proyecto_nombre'] ?: 'Proyecto nuevo'}</dd></div>
             <div><dt class="text-xs text-muted">Pedida por</dt><dd class="mt-0.5 font-semibold">{$s['contacto_nombre'] ?: '—'}</dd></div>
             <div><dt class="text-xs text-muted">Enviada</dt><dd class="mt-0.5 font-semibold">{$fmt->fecha($s['created_at'])}</dd></div>
             {if $s['tipo'] !== 'reunion'}<div><dt class="text-xs text-muted">Urgencia</dt><dd class="mt-0.5 font-semibold">{$urgencias[$s['urgencia']] ?? '—'}</dd></div>{/if}

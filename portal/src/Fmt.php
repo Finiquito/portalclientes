@@ -68,6 +68,41 @@ final class Fmt
         return self::DIAS[(int) $d->format('w')] . ' ' . $d->format('j') . ' ' . self::MESES[(int) $d->format('n') - 1];
     }
 
+    /** "vie 2 oct" */
+    public function fechaCorta(?string $s): string
+    {
+        $d = $this->parse($s);
+        return $d === null ? '—' : mb_substr(self::DIAS[(int) $d->format('w')], 0, 3) . ' ' . $d->format('j') . ' ' . self::MESES[(int) $d->format('n') - 1];
+    }
+
+    /** Rango "lun 5 al jue 8 oct" (o "vie 30 sep al mar 4 oct" si cambia el mes). */
+    public function rangoFechas(string $desde, string $hasta): string
+    {
+        $a = $this->parse($desde);
+        $b = $this->parse($hasta);
+        if ($a === null || $b === null) {
+            return '';
+        }
+        if ($a->format('Y-m-d') === $b->format('Y-m-d')) {
+            return $this->fechaCorta($desde);
+        }
+        $ini = mb_substr(self::DIAS[(int) $a->format('w')], 0, 3) . ' ' . $a->format('j');
+        if ($a->format('n') !== $b->format('n')) {
+            $ini .= ' ' . self::MESES[(int) $a->format('n') - 1];
+        }
+        return $ini . ' al ' . $this->fechaCorta($hasta);
+    }
+
+    /** Bandera (emoji) de un código de país de dos letras. */
+    public static function bandera(string $pais): string
+    {
+        $pais = strtoupper(trim($pais));
+        if (preg_match('/^[A-Z]{2}$/', $pais) !== 1) {
+            return '';
+        }
+        return mb_chr(0x1F1E6 + ord($pais[0]) - 65) . mb_chr(0x1F1E6 + ord($pais[1]) - 65);
+    }
+
     public function dia(?string $s): string
     {
         $d = $this->parse($s);

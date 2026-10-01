@@ -11,7 +11,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
-    <link rel="stylesheet" href="/plugins/portal/assets/portal.css?v=12">
+    <link rel="stylesheet" href="/plugins/portal/assets/portal.css?v=13">
     <script>{$portalBoot|noescape}</script>
 </head>
 <body class="min-h-dvh bg-bg font-sans text-ink antialiased">
@@ -77,6 +77,21 @@
                         </a>
                     {/foreach}
                 </nav>
+
+                {if $relojes}
+                    <div class="mt-4 px-3" aria-label="Hora de tus clientes">
+                        <p class="text-[0.6875rem] font-bold uppercase tracking-wide text-muted">Hora de tus clientes</p>
+                        <ul class="mt-2 space-y-1.5">
+                            {foreach $relojes as $r}
+                                <li class="flex items-center gap-2 text-sm" title="{$r['clientes']}">
+                                    <span aria-hidden="true">{\TypeDock\Plugin\Portal\Fmt::bandera($r['pais'])}</span>
+                                    <span class="min-w-0 flex-1 truncate">{$r['nombre']}{if $r['agencia']} <span class="text-muted">· tú</span>{/if}</span>
+                                    <span class="font-bold tabular-nums" data-reloj="{$r['zona']}">{$r['hora']}</span>
+                                </li>
+                            {/foreach}
+                        </ul>
+                    </div>
+                {/if}
 
                 <div class="mt-auto border-t border-line pt-3">
                     <a href="/equipo/ajustes" class="nav-item" {if $nav === 'ajustes'}aria-current="page"{/if}>

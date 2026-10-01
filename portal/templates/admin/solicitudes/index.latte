@@ -51,7 +51,7 @@
                     <div class="pa-muted">{$tipos[$s['tipo']][0]} · {$s['contacto_nombre'] ?: 'Cliente'}{if $s['n_comentarios'] > 0} · {$s['n_comentarios']} comentario{if $s['n_comentarios'] > 1}s{/if}{/if}</div>
                 </td>
                 <td>
-                    <span class="pa-proy"><span class="pa-dot" style="background: {($colorProy[$s['proyecto_id']] ?? '#94a3b8')|noescape}" aria-hidden="true"></span>{$s['proyecto_nombre']}</span>
+                    <span class="pa-proy"><span class="pa-dot" style="background: {($colorProy[$s['proyecto_id']] ?? '#94a3b8')|noescape}" aria-hidden="true"></span>{$s['proyecto_nombre'] ?: 'Proyecto nuevo'}</span>
                     <div class="pa-muted">{$s['cliente_empresa'] ?: $s['cliente_nombre']}</div>
                 </td>
                 <td>{if $s['tipo'] === 'reunion'}<span class="pa-muted">—</span>{else}<span class="pa-chip {['urgente' => 'danger', 'semana' => 'info', 'sin_apuro' => 'gris'][$s['urgencia']] ?? 'gris'}">{$urgencias[$s['urgencia']]}</span>{/if}</td>

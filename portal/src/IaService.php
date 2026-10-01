@@ -393,6 +393,50 @@ class IaService
     }
 
     // ---------------------------------------------------------------------
+    // Ordenar un dictado (solicitudes del cliente)
+    // ---------------------------------------------------------------------
+
+    public const MAX_DICTADO = 6000;   // caracteres (≈ 2 minutos hablando)
+
+    /**
+     * Convierte lo que el cliente dictó en un texto claro para la agencia, sin inventar nada.
+     * Es una llamada corta: unas pocas centenas de tokens de entrada y de salida.
+     *
+     * @throws \RuntimeException
+     */
+    public function ordenar(string $texto, string $tipo, string $titulo = ''): string
+    {
+        $texto = trim(mb_substr($texto, 0, self::MAX_DICTADO));
+        if ($texto === '') {
+            throw new \RuntimeException('No hay texto para ordenar.');
+        }
+        $sistema = 'Eres asistente de una agencia creativa. Recibes lo que un cliente dictó por voz para pedir algo a la agencia '
+            . '(tipo de solicitud: ' . $tipo . ($titulo !== '' ? ', título: «' . $titulo . '»' : '') . '). '
+            . 'Reescríbelo como un texto claro y breve para que el equipo lo entienda: corrige muletillas, repeticiones y errores del dictado, '
+            . 'ordena las ideas y usa una lista con guiones si hay varias cosas (formatos, medidas, fechas, referencias). '
+            . 'Escribe en primera persona, como si fuera el cliente, en español neutro y con tuteo. '
+            . 'No inventes datos, precios ni fechas que no estén en el dictado; si algo importante quedó poco claro, no lo completes. '
+            . 'Responde solo con el texto final, sin títulos, sin comillas y sin comentarios.';
+        $cuerpo = match ($this->proveedor()) {
+            'openai' => ['model' => $this->modelo(), 'max_completion_tokens' => 4000, 'messages' => [['role' => 'system', 'content' => $sistema], ['role' => 'user', 'content' => $texto]]],
+            'google' => ['_modelo' => $this->modelo(), 'systemInstruction' => ['parts' => [['text' => $sistema]]], 'contents' => [['role' => 'user', 'parts' => [['text' => $texto]]]], 'generationConfig' => ['maxOutputTokens' => 2000]],
+            default  => ['model' => $this->modelo(), 'max_tokens' => 1200, 'system' => $sistema, 'messages' => [['role' => 'user', 'content' => $texto]]],
+        };
+        $r = $this->llamar($cuerpo);
+        $salida = '';
+        foreach ((array) ($r['content'] ?? []) as $b) {
+            if (is_array($b) && ($b['type'] ?? '') === 'text') {
+                $salida .= (string) ($b['text'] ?? '');
+            }
+        }
+        $salida = trim($salida);
+        if ($salida === '') {
+            throw new \RuntimeException('La IA no devolvió texto. Intenta de nuevo.');
+        }
+        return mb_substr($salida, 0, 8000);
+    }
+
+    // ---------------------------------------------------------------------
     // Análisis de la reunión
     // ---------------------------------------------------------------------
 

@@ -1,6 +1,14 @@
 {layout $plugin_ui_layout}
 
-{block page_title}Solicitud{/block}
+{block page_title}Solicitud<script n:syntax="off">
+(function () {
+  var r = document.querySelectorAll('[data-reloj]');
+  if (!r.length || !window.Intl) return;
+  function tic() { r.forEach(function (x) { try { x.textContent = new Intl.DateTimeFormat('es', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: x.getAttribute('data-reloj') }).format(new Date()); } catch (e) {} }); }
+  tic(); setInterval(tic, 20000);
+})();
+</script>
+{/block}
 
 {block content}
 <link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=3">
@@ -23,8 +31,9 @@
         {if $s['tipo'] !== 'reunion'}<span class="pa-chip {['urgente' => 'danger', 'semana' => 'info', 'sin_apuro' => 'gris'][$s['urgencia']] ?? 'gris'}">{$urgencias[$s['urgencia']]}</span>{/if}
     </p>
     <p class="pa-muted" style="margin:0">
-        <span class="pa-proy"><span class="pa-dot" style="background: {($colorProy[$s['proyecto_id']] ?? '#94a3b8')|noescape}" aria-hidden="true"></span>{$s['cliente_empresa'] ?: $s['cliente_nombre']} · {$s['proyecto_nombre']}</span>
+        <span class="pa-proy"><span class="pa-dot" style="background: {($colorProy[$s['proyecto_id']] ?? '#94a3b8')|noescape}" aria-hidden="true"></span>{$s['cliente_empresa'] ?: $s['cliente_nombre']} · {$s['proyecto_nombre'] ?: 'Proyecto nuevo'}</span>
         · Pedida por <strong>{$s['contacto_nombre'] ?: 'el cliente'}</strong> · {$fmt->rel($s['created_at'])}
+        {if $paisCliente !== $paisAgencia}· <span title="Hora local del cliente">{\TypeDock\Plugin\Portal\Fmt::bandera($paisCliente)} {\TypeDock\Plugin\Portal\HorarioHabil::nombreDe($paisCliente)}: son las <strong data-reloj="{$zonaCliente}">{$horaCliente}</strong></span>{/if}
     </p>
     {if $s['detalle']}<div style="margin-top:1rem;white-space:pre-line;line-height:1.55">{$s['detalle']}</div>{/if}
 
@@ -36,9 +45,9 @@
     {/if}
 
     {if $s['tipo'] === 'reunion'}
-        <p style="margin:1rem 0 .3rem"><strong>Horarios propuestos</strong> · {$modalidades[$s['modalidad']] ?? 'Videollamada'}</p>
+        <p style="margin:1rem 0 .3rem"><strong>Horarios propuestos</strong> · {$modalidades[$s['modalidad']] ?? 'Videollamada'}{if $paisHorarios !== $paisAgencia} · en hora de {\TypeDock\Plugin\Portal\HorarioHabil::nombreDe($paisHorarios)} {\TypeDock\Plugin\Portal\Fmt::bandera($paisHorarios)}{/if}</p>
         <ul style="margin:0;padding-left:1.1rem">
-            {foreach $horarios as $h}<li>{$fmt->fechaLarga($h)} · {substr($h, 11, 5)}</li>{/foreach}
+            {foreach $horarios as $h}<li>{$fmt->fechaLarga($h['local'])} · {substr($h['local'], 11, 5)}{if $paisHorarios !== $paisAgencia} <span class="pa-muted">→ {$fmt->fechaCorta($h['agencia'])} {substr($h['agencia'], 11, 5)} en {\TypeDock\Plugin\Portal\HorarioHabil::nombreDe($paisAgencia)}</span>{/if}</li>{/foreach}
         </ul>
     {/if}
 
@@ -81,6 +90,22 @@
     <p class="pa-muted" style="margin-top:0">Queda como tarea del equipo, visible para el cliente. Los adjuntos pasan a la tarea.</p>
     <form method="post" action="{$admin_url('solicitudes/' . $s['id'] . '/aceptar')}">
         <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+        {if (string) $s['proyecto_id'] === ''}
+            <div class="pa-grid-2">
+                <div>
+                    <label class="form-label">Proyecto del cliente</label>
+                    <select name="proyecto_id" class="form-input">
+                        <option value="">Crear uno nuevo →</option>
+                        {foreach $proyectosCliente as $p}<option value="{$p['id']}">{$p['nombre']}</option>{/foreach}
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label">Nombre del proyecto nuevo</label>
+                    <input type="text" name="proyecto_nuevo" class="form-input" maxlength="255" value="{$s['titulo']}">
+                </div>
+            </div>
+            <p class="form-hint mt-1" style="margin-bottom:.75rem">El cliente lo pidió como proyecto nuevo: se crea al aceptar (o elige uno existente).</p>
+        {/if}
         <label class="form-label">Título de la tarea</label>
         <input type="text" name="titulo" class="form-input" value="{$s['titulo']}" maxlength="255" required>
         <label class="form-label mt-3">Descripción</label>
@@ -141,9 +166,9 @@
         <label class="form-label">Horario</label>
         <div class="pa-radios" style="flex-direction:column;align-items:flex-start">
             {foreach $horarios as $h}
-                <label class="pa-check"><input type="radio" name="fecha_elegida" value="{$h}" {if $iterator->first}checked{/if}> <span>{$fmt->fechaLarga($h)} · {substr($h, 11, 5)}</span></label>
+                <label class="pa-check"><input type="radio" name="fecha_elegida" value="{$h['agencia']}" {if $iterator->first}checked{/if}> <span>{$fmt->fechaLarga($h['agencia'])} · {substr($h['agencia'], 11, 5)}{if $paisHorarios !== $paisAgencia} <span class="pa-muted">(para el cliente: {substr($h['local'], 11, 5)} en {\TypeDock\Plugin\Portal\HorarioHabil::nombreDe($paisHorarios)})</span>{/if}</span></label>
             {/foreach}
-            <label class="pa-check"><input type="radio" name="fecha_elegida" value="otra" {if !$horarios}checked{/if}> <span>Otro horario:</span></label>
+            <label class="pa-check"><input type="radio" name="fecha_elegida" value="otra" {if !$horarios}checked{/if}> <span>Otro horario, en hora de {\TypeDock\Plugin\Portal\HorarioHabil::nombreDe($paisAgencia)}:</span></label>
         </div>
         <div class="pa-grid-2">
             <div><input type="date" name="fecha_d" class="form-input" aria-label="Otra fecha"></div>
@@ -210,4 +235,12 @@
     <input type="hidden" name="_csrf_token" value="{$csrf_token}">
     <button type="submit" class="btn btn-sm btn-danger">Eliminar solicitud</button>
 </form>
+<script n:syntax="off">
+(function () {
+  var r = document.querySelectorAll('[data-reloj]');
+  if (!r.length || !window.Intl) return;
+  function tic() { r.forEach(function (x) { try { x.textContent = new Intl.DateTimeFormat('es', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: x.getAttribute('data-reloj') }).format(new Date()); } catch (e) {} }); }
+  tic(); setInterval(tic, 20000);
+})();
+</script>
 {/block}

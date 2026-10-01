@@ -63,7 +63,14 @@ class SolicitudAdminController
             'tipo'     => array_keys(SolicitudService::TIPOS),
             'proyecto' => 'uuid',
         ]);
-        $todas = $this->ui->filtrar($this->service()->listAll(), 'proyecto_id');
+        // Las de proyecto nuevo (presupuestos) no tienen proyecto: se ven si el cliente está asignado.
+        $lista = $this->service()->listAll();
+        $todas = array_merge(
+            $this->ui->filtrar(array_values(array_filter($lista, fn(array $s): bool => (string) $s['proyecto_id'] !== '')), 'proyecto_id'),
+            $this->ui->filtrar(array_values(array_filter($lista, fn(array $s): bool => (string) $s['proyecto_id'] === '')), 'cliente_id', 'cliente'),
+        );
+        $orden = array_flip(array_column($lista, 'id'));
+        usort($todas, fn(array $a, array $b): int => $orden[$a['id']] <=> $orden[$b['id']]);
         $base = array_values(array_filter($todas, fn(array $s): bool => ($f->get('tipo') === '' || $s['tipo'] === $f->get('tipo'))
             && ($f->get('proyecto') === '' || $s['proyecto_id'] === $f->get('proyecto'))));
         $conteos = [];
@@ -98,11 +105,13 @@ class SolicitudAdminController
             return;
         }
         $eq = new EquipoService($this->pdo());
-        $delProyecto = array_column($eq->delProyecto((string) $s['proyecto_id']), 'id');
+        $delProyecto = (string) $s['proyecto_id'] !== '' ? array_column($eq->delProyecto((string) $s['proyecto_id']), 'id') : [];
         $usuarios = $eq->activos();
         usort($usuarios, fn($a, $b) => [!in_array($a['id'], $delProyecto, true), $a['nombre']] <=> [!in_array($b['id'], $delProyecto, true), $b['nombre']]);
         $yo = $this->ui->autorId();
-        $horarios = SolicitudService::horarios($s['horarios']);
+        // Cada horario en la hora del cliente y en la de la agencia (la que usa la reunión).
+        $hz = SolicitudService::horariosZona($s['horarios']);
+        $horarios = array_map(fn(string $h): array => ['local' => $h, 'agencia' => SolicitudService::convertir($h, $hz['zona'], ReunionService::ZONA)], $hz['lista']);
 
         $this->ui->view('solicitudes/ver.latte', [
             's'           => $s,
@@ -111,6 +120,13 @@ class SolicitudAdminController
             'urgencias'   => SolicitudService::URGENCIAS,
             'modalidades' => SolicitudService::MODALIDADES,
             'horarios'    => $horarios,
+            'proyectosCliente' => array_values(array_filter(
+                $this->ui->filtrar((new ProyectoService($this->pdo()))->listAll(), 'id'), fn(array $p): bool => $p['cliente_id'] === $s['cliente_id'])),
+            'paisHorarios' => $hz['pais'],
+            'paisCliente' => HorarioHabil::paisValido((string) $s['cliente_pais']),
+            'paisAgencia' => SolicitudService::paisAgencia(),
+            'horaCliente' => (new \DateTimeImmutable('now', new \DateTimeZone(HorarioHabil::zonaDe((string) $s['cliente_pais']))))->format('H:i'),
+            'zonaCliente' => HorarioHabil::zonaDe((string) $s['cliente_pais']),
             'archivos'    => (new ArchivoService($this->pdo()))->deEntidad('solicitud', $id),
             'comentarios' => (new ComentarioService($this->pdo()))->listar('solicitud', $id),
             'usuarios'    => $usuarios,
@@ -132,7 +148,10 @@ class SolicitudAdminController
         $s = $this->service()->find($id);
         $tareaId = $s !== null ? $this->service()->aceptar($id, $_POST, $this->ui->firma()) : null;
         if ($tareaId === null) {
-            $this->ui->redirect($this->url('solicitudes/' . $id), 'No se pudo aceptar: puede que ya la haya atendido alguien.', 'error');
+            $msg = $s !== null && (string) $s['proyecto_id'] === '' && in_array($s['estado'], ['nueva', 'aprobada'], true)
+                ? 'Elige un proyecto del cliente o escribe el nombre del proyecto nuevo.'
+                : 'No se pudo aceptar: puede que ya la haya atendido alguien.';
+            $this->ui->redirect($this->url('solicitudes/' . $id), $msg, 'error');
             return;
         }
         $this->registrar($s, 'atendio', 'Convertida en tarea');
@@ -190,7 +209,7 @@ class SolicitudAdminController
         $lista = ArchivoService::normalizar($_FILES['archivos'] ?? null);
         if ($lista !== []) {
             $maxMb = max(1, (int) (new AjustesService($this->pdo()))->get('global', 'portal', 'max_mb', '20'));
-            (new ArchivoService($this->pdo()))->guardarVarios(array_slice($lista, 0, 10), (string) $s['cliente_id'], (string) $s['proyecto_id'], 'solicitud', $id,
+            (new ArchivoService($this->pdo()))->guardarVarios(array_slice($lista, 0, 10), (string) $s['cliente_id'], ((string) $s['proyecto_id']) ?: null, 'solicitud', $id,
                 ['tipo' => 'equipo', 'id' => $this->ui->autorId(), 'nombre' => $this->ui->firma()], $maxMb);
         }
         $this->registrar($s, 'cotizo', (string) ($_POST['monto'] ?? ''));
@@ -231,7 +250,7 @@ class SolicitudAdminController
             return;
         }
         (new ComentarioService($this->pdo()))->crear((string) $s['cliente_id'], 'solicitud', $id, 'equipo', $this->ui->autorId(), $this->ui->firma(), $texto);
-        (new ActividadService($this->pdo()))->registrar((string) $s['cliente_id'], (string) $s['proyecto_id'], 'equipo', $this->ui->firma(), 'comento', 'solicitud', $id, (string) $s['titulo'], mb_substr($texto, 0, 200));
+        (new ActividadService($this->pdo()))->registrar((string) $s['cliente_id'], ((string) $s['proyecto_id']) ?: null, 'equipo', $this->ui->firma(), 'comento', 'solicitud', $id, (string) $s['titulo'], mb_substr($texto, 0, 200));
         if (!empty($_POST['avisar'])) {
             $this->avisarCliente($s, 'Nuevo comentario en tu solicitud: ' . $s['titulo'], [
                 'etiqueta' => 'Comentario', 'titulo' => 'Nuevo comentario del equipo', 'resaltado' => 'comentario', 'boton' => 'Ver y responder',
@@ -260,7 +279,7 @@ class SolicitudAdminController
 
     private function registrar(array $s, string $accion, string $detalle): void
     {
-        (new ActividadService($this->pdo()))->registrar((string) $s['cliente_id'], (string) $s['proyecto_id'], 'equipo', $this->ui->firma(), $accion, 'solicitud', (string) $s['id'], (string) $s['titulo'], $detalle);
+        (new ActividadService($this->pdo()))->registrar((string) $s['cliente_id'], ((string) $s['proyecto_id']) ?: null, 'equipo', $this->ui->firma(), $accion, 'solicitud', (string) $s['id'], (string) $s['titulo'], $detalle);
     }
 
     /** @param array<string, mixed> $op */

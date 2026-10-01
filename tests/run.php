@@ -635,9 +635,11 @@ final class SolicitudPrueba extends P\SolicitudPublicController
 }
 
 $sv = new P\SolicitudService($pdo, new DateTimeImmutable('2026-10-01 10:00', new DateTimeZone('America/Santiago')));
-check($sv->fechaSugerida('urgente') === '2026-10-02' && $sv->fechaSugerida('semana') === '2026-10-02' && $sv->fechaSugerida('sin_apuro') === null, 'fechas sugeridas un jueves');
+check($sv->fechaSugerida('urgente') === '2026-10-02' && $sv->fechaSugerida('semana') === '2026-10-08' && $sv->fechaSugerida('sin_apuro') === null, 'fechas sugeridas un jueves (prioritario = máximo 5 días hábiles)');
+check($sv->rango('semana') === ['2026-10-05', '2026-10-08'], 'prioritario: entre 2 y 5 días hábiles, sin contar el fin de semana');
+check((new P\Fmt(new DateTimeImmutable('2026-10-01')))->rangoFechas('2026-10-05', '2026-10-08') === 'lun 5 al jue 8 oct', 'rango legible para el cliente');
 $svV = new P\SolicitudService($pdo, new DateTimeImmutable('2026-10-02 10:00', new DateTimeZone('America/Santiago')));
-check($svV->fechaSugerida('urgente') === '2026-10-05' && $svV->fechaSugerida('semana') === '2026-10-09', 'un viernes: urgente salta el fin de semana, «esta semana» pasa al próximo viernes');
+check($svV->fechaSugerida('urgente') === '2026-10-05' && $svV->fechaSugerida('semana') === '2026-10-09', 'un viernes: urgente salta el fin de semana');
 
 $_SESSION[P\PortalSession::CONTACTO] = $contacto;
 $ctk = P\PortalSession::csrf();
@@ -746,6 +748,72 @@ $g->hacer('POST', $S, 'cerrar', [(string) $prob['id']], 'solicitud', false, ['_c
 check($ss->find((string) $prob['id'])['estado'] === 'respondida', 'responder y cerrar');
 [, $r] = $g->hacer('POST', $S, 'destroy', [(string) $prob['id']], 'solicitud', true, ['_csrf_token' => $tok]);
 check($ss->find((string) $prob['id']) !== null, 'borrar solicitudes: sólo Coordinación');
+
+// Horarios en la hora del cliente (Cliente Dos está en México)
+$c2c = (new P\ContactoService($pdo))->create(['cliente_id' => $c2, 'nombre' => 'Mario México', 'email' => 'mario@dos.mx', 'rol' => 'aprobador']);
+$enMx = (new DateTimeImmutable('+4 days', new DateTimeZone('America/Mexico_City')))->format('Y-m-d') . ' 10:00';
+$rmx = $ss->crear(['id' => $c2c, 'cliente_id' => $c2, 'nombre' => 'Mario México'], ['tipo' => 'reunion', 'proyecto_id' => $p2a, 'titulo' => 'Reunión MX', 'horarios' => [$enMx]]);
+$hz = P\SolicitudService::horariosZona($ss->find((string) $rmx['id'])['horarios']);
+check($hz['pais'] === 'MX' && $hz['lista'] === [$enMx], 'los horarios se guardan en la hora del país del cliente');
+$enCl = P\SolicitudService::convertir($enMx, 'America/Mexico_City', P\ReunionService::ZONA);
+check($enCl !== $enMx && substr($enCl, 0, 10) === substr($enMx, 0, 10), 'y se convierten a la hora de la agencia');
+[$html] = $g->hacer('GET', $S, 'ver', [(string) $rmx['id']], 'solicitud');
+check(str_contains($html, 'value="' . $enCl . '"') && str_contains($html, 'México'), 'al agendar se elige el horario ya convertido, con el país a la vista');
+$g->hacer('POST', $S, 'agendar', [(string) $rmx['id']], 'solicitud', false, ['_csrf_token' => $tok, 'fecha_elegida' => $enCl]);
+check(str_starts_with((string) $rs->find((string) $ss->find((string) $rmx['id'])['reunion_id'])['fecha'], $enCl), 'la reunión queda en hora de la agencia');
+
+// Presupuesto para un proyecto nuevo
+$_SESSION[P\PortalSession::CONTACTO] = $contacto;
+$sp->correr('crear', [], ['_csrf' => $ctk, 'tipo' => 'presupuesto', 'proyecto_id' => 'nuevo', 'titulo' => 'App de reservas', 'urgencia' => 'sin_apuro']);
+$pn = $ss->find((string) $pdo->query("SELECT id FROM portal_solicitudes WHERE titulo = 'App de reservas'")->fetchColumn());
+check($pn !== null && $pn['proyecto_id'] === '' && $pn['proyecto_nombre'] === null, 'presupuesto de un proyecto nuevo: sin proyecto todavía');
+[, $r] = $sp->correr('crear', [], ['_csrf' => $ctk, 'tipo' => 'pedido', 'proyecto_id' => 'nuevo', 'titulo' => 'Pedido sin proyecto']);
+check((int) $pdo->query("SELECT COUNT(*) FROM portal_solicitudes WHERE titulo = 'Pedido sin proyecto'")->fetchColumn() === 0, '«proyecto nuevo» sólo vale para presupuestos');
+P\PortalSession::tomarFlash();
+[$html] = $g->hacer('GET', $S, 'index');
+check(str_contains($html, 'App de reservas') && str_contains($html, 'Proyecto nuevo'), 'aparece en la bandeja de quien tiene el cliente asignado');
+$ss->cotizar((string) $pn['id'], 'USD 2.000', '', 'Primera etapa', 'Ana');
+$ss->decidir((string) $pn['id'], true);
+[, $r] = $g->hacer('POST', $S, 'aceptar', [(string) $pn['id']], 'solicitud', false, ['_csrf_token' => $tok, 'titulo' => 'App de reservas', 'proyecto_id' => '', 'proyecto_nuevo' => '']);
+check($ss->find((string) $pn['id'])['estado'] === 'aprobada', 'aceptar sin elegir ni nombrar el proyecto: no se crea nada');
+$g->hacer('POST', $S, 'aceptar', [(string) $pn['id']], 'solicitud', false, ['_csrf_token' => $tok, 'titulo' => 'App de reservas', 'proyecto_id' => '', 'proyecto_nuevo' => 'App de reservas']);
+$pnA = $ss->find((string) $pn['id']);
+check($pnA['estado'] === 'en_curso' && $pnA['proyecto_nombre'] === 'App de reservas' && $ps->find((string) $pnA['proyecto_id'])['cliente_id'] === $c1, 'al aceptar se crea el proyecto del cliente y la tarea queda en él');
+
+// Ordenar un dictado con IA (simulada)
+final class IaFalsa extends P\IaService
+{
+    public array $enviado = [];
+    public function activa(): bool { return true; }
+    protected function llamar(array $cuerpo): array { $this->enviado = $cuerpo; return ['content' => [['type' => 'text', 'text' => "- Carrusel de 3 láminas\n- Promo 2x1"]]]; }
+}
+final class SolicitudIa extends P\SolicitudPublicController
+{
+    public ?IaFalsa $falsa = null;
+    protected function ia(): P\IaService { return $this->falsa ??= new IaFalsa($this->pdo()); }
+    protected function terminate(): void { throw new RuntimeException('fin'); }
+}
+$si = new SolicitudIa($ctx);
+$_POST = ['_csrf' => $ctk, 'texto' => 'eh necesito un carrusel de tres láminas eh con la promo dos por uno', 'tipo' => 'pedido'];
+ob_start();
+try { $si->ordenar(); } catch (RuntimeException) {}
+$resp = json_decode((string) ob_get_clean(), true);
+check(($resp['texto'] ?? '') === "- Carrusel de 3 láminas\n- Promo 2x1" && str_contains(json_encode($si->falsa->enviado, JSON_UNESCAPED_UNICODE), 'No inventes'), 'ordenar con IA devuelve el texto limpio y pide no inventar');
+$_SESSION['portal_ia_dictado'] = array_fill(0, 10, time());
+ob_start();
+try { $si->ordenar(); } catch (RuntimeException) {}
+$sal = (string) ob_get_clean();
+check(str_contains($sal, 'última hora'), 'tope de 10 usos por hora y persona');
+$_POST = ['texto' => 'x'];
+ob_start();
+try { $si->ordenar(); } catch (RuntimeException) {}
+check(str_contains((string) ob_get_clean(), 'expiró'), 'sin token CSRF no se llama a la IA');
+$_SESSION['portal_ia_dictado'] = [];
+
+// Relojes del panel: Ana tiene clientes en Chile y México
+$_SESSION[P\EquipoController::SESION] = $ana;
+[$html] = $g->hacer('GET', $S, 'index');
+check(str_contains($html, 'Hora de tus clientes') && str_contains($html, 'data-reloj="America/Mexico_City"') && str_contains($html, '🇲🇽'), 'la barra muestra la hora de cada país de sus clientes');
 
 $ss->borrarDeProyecto($p3a);
 check($ss->find((string) $ajena['id']) === null, 'al borrar un proyecto se van sus solicitudes');
