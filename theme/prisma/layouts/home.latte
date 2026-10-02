@@ -7,8 +7,31 @@
 {var $accion = $accion ?? '/invitacion'}
 {var $assets = '/themes/prisma/assets'}
 
-{block title}Prisma · El portal de clientes para freelancers, estudios y agencias pequeñas{/block}
-{block description}Prisma es un portal para freelancers, estudios y agencias pequeñas: tus clientes ven cómo va su proyecto, aprueban piezas y te envían lo que falta. Para equipos de 1 a 15 personas en Latinoamérica.{/block}
+{* Metadatos del landing: propios del tema, no los del SEO general del sitio (que
+   pueden decir «Blog»). La imagen para compartir es assets/img/compartir.jpg (1200×630). *}
+{var $sitio = 'https://prismahub.com'}
+{block metas}
+    {var $tituloComp = 'Prisma · Pieza a pieza, tus proyectos toman forma'}
+    {var $descComp = 'El portal de clientes para freelancers, estudios y agencias pequeñas: tus clientes ven cómo avanza su proyecto, aprueban y te envían lo que falta. Y tú dejas de perseguirlos por WhatsApp.'}
+    {var $url = (isset($seo) && $seo->canonical) ? $seo->canonical : $sitio . '/'}
+    <title>{$tituloComp}</title>
+    <meta name="description" content="{$descComp}">
+    <link rel="canonical" href="{$url}">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Prisma">
+    <meta property="og:locale" content="es_LA">
+    <meta property="og:title" content="{$tituloComp}">
+    <meta property="og:description" content="{$descComp}">
+    <meta property="og:url" content="{$url}">
+    <meta property="og:image" content="{$sitio}/themes/prisma/assets/img/compartir.jpg?v=1">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="Las cinco piezas de Prisma apiladas: portal, tareas, reuniones, revisiones y archivos">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{$tituloComp}">
+    <meta name="twitter:description" content="{$descComp}">
+    <meta name="twitter:image" content="{$sitio}/themes/prisma/assets/img/compartir.jpg?v=1">
+{/block}
 
 {block content}
 
