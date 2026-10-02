@@ -74,6 +74,11 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### v0.14.1
+
+- En los primeros pasos, «Entraste a tu portal» se marca solo cuando la persona entró de verdad. Antes aparecía marcado siempre, también en «Ver como cliente».
+- Cambia la versión de `portal.css` para que el navegador tome los estilos nuevos (el círculo verde de los pasos listos).
+
 ### v0.14.0: ver como cliente
 
 - **«Ver su portal»** en la ficha del cliente del panel (entra como su primer colaborador), un ícono de ojo junto a cada contacto y **«Ver como»** en la lista de contactos (admin y panel). Abre el portal tal como lo ve esa persona, con su marca, sus permisos y su hora.

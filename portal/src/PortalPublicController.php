@@ -960,7 +960,8 @@ class PortalPublicController
         }
         $tarea = $meTocan[0] ?? null;
         $pasos = [
-            ['Entraste a tu portal', '/portal', true],
+            // Se marca con el primer acceso real (en «Ver como cliente» puede que la persona aún no haya entrado).
+            ['Entraste a tu portal', '/portal', !empty($c['primer_acceso'])],
             [$tarea ? 'Revisa tu primera tarea: «' . $tarea['titulo'] . '»' : 'Mira en qué va tu proyecto', $tarea ? '/portal/tareas/' . $tarea['id'] : '/portal/tareas', !empty($pref['paso_tarea'])],
             ['Lee cómo funciona el portal (dos minutos)', '/portal/ayuda', !empty($pref['paso_ayuda'])],
             ['Conoce cómo pedirnos algo', '/portal/solicitudes', !empty($pref['paso_solicitudes'])],

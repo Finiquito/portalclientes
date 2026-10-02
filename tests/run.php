@@ -918,6 +918,7 @@ check($r === '/portal' && $_SESSION[P\PortalSession::CONTACTO] === $contacto && 
 $sv2 = new SolicitudPrueba($ctx);
 [$html] = $sv2->correr('dashboard');
 check(str_contains($html, 'Vista previa:') && str_contains($html, 'Clara Cliente') && str_contains($html, 'Salir de la vista previa'), 'el portal muestra el aviso de vista previa');
+check(str_contains($html, 'Entraste a tu portal') && !str_contains($html, 'line-through decoration-1">Entraste a tu portal'), 'si el contacto nunca entró, «Entraste a tu portal» no aparece marcado');
 $antes = (int) $pdo->query('SELECT COUNT(*) FROM portal_solicitudes')->fetchColumn();
 $sv2->correr('crear', [], ['_csrf' => P\PortalSession::csrf(), 'tipo' => 'pedido', 'proyecto_id' => $p1a, 'titulo' => 'Desde la vista previa', 'urgencia' => 'sin_apuro']);
 check((int) $pdo->query('SELECT COUNT(*) FROM portal_solicitudes')->fetchColumn() === $antes && str_contains((string) json_encode($_SESSION['portal_flash'] ?? '', JSON_UNESCAPED_UNICODE), 'vista previa'), 'en vista previa no se puede enviar nada');
