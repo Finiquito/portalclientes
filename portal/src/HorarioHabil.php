@@ -28,6 +28,7 @@ final class HorarioHabil
         'EC' => ['Ecuador', 'America/Guayaquil'],
         'ES' => ['España', 'Europe/Madrid'],
         'US' => ['Estados Unidos (costa este)', 'America/New_York'],
+        'FR' => ['Francia', 'Europe/Paris'],
         'GT' => ['Guatemala', 'America/Guatemala'],
         'MX' => ['México', 'America/Mexico_City'],
         'PA' => ['Panamá', 'America/Panama'],

@@ -74,6 +74,10 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### v0.13.1
+
+- Francia (hora de París) en la lista de países, para la agencia y para los clientes.
+
 ### v0.13.0: reuniones en la hora del cliente
 
 - **País de la agencia** en Portal · Ajustes. Define la zona horaria de la agencia, que antes estaba fija en Chile. Las reuniones se guardan en esa hora y la usan los «hoy» del sistema y la IA.
