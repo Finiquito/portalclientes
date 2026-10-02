@@ -152,11 +152,46 @@ def svg(variante):
     vb = "-240 -690 470 870" if variante == "hero" else "-240 -690 470 870"
     titulo = "El prisma de Prisma, desarmado en sus piezas: portal, tareas, reuniones, revisiones y archivos"
     return (
-        f'<svg class="despiece despiece-{variante}" viewBox="{vb}" role="img" aria-label="{titulo}" '
+        f'<svg class="diagrama-piezas despiece-{variante}" viewBox="{vb}" role="img" aria-label="{titulo}" '
         f'xmlns="http://www.w3.org/2000/svg">{defs(id_grano)}'
         f'<g class="sombra"><ellipse cx="0" cy="120" rx="190" ry="48"/></g>'
         + "".join(capas) + "</svg>"
     )
+
+
+# El CSS y el JS van dentro del partial: no dependen de que el hosting haya
+# refrescado assets/ del tema. Las piezas se separan, una sola vez, cuando el
+# diagrama ocupa la pantalla: se ve al menos el 72 % de su alto (o de la ventana,
+# si el diagrama es más alto que ella).
+CSS = (
+    ".piezas-figura .diagrama-piezas{display:block;width:100%;max-width:30rem;margin-inline:auto}"
+    "@media (max-width:60rem){.piezas-figura .diagrama-piezas{max-width:22rem}}"
+    ".diagrama-piezas .sombra ellipse{fill:var(--color-shadow)}"
+    ".diagrama-piezas .guia{stroke:var(--color-ink);stroke-width:1.2}"
+    ".diagrama-piezas .marca rect{fill:var(--color-ink)}"
+    ".diagrama-piezas .marca text{fill:var(--color-on-ink);font:700 13px var(--font-body)}"
+    ".diagrama-piezas .capa{transform:translateY(var(--dy))}"
+    ".diagrama-piezas .capa.activa>g:first-child{filter:url(#grano-diagrama) brightness(1.08)}"
+    "@media (prefers-reduced-motion:no-preference){"
+    ".js .diagrama-piezas .capa{transform:translateY(calc(var(--dy) * .42));transition:transform 900ms cubic-bezier(.22,1,.36,1);transition-delay:calc(var(--i) * 45ms)}"
+    ".js .diagrama-piezas .guia,.js .diagrama-piezas .marca{opacity:0;transition:opacity 220ms linear;transition-delay:calc(450ms + var(--i) * 60ms)}"
+    ".js .diagrama-piezas.abierta .capa{transform:translateY(var(--dy))}"
+    ".js .diagrama-piezas.abierta .guia,.js .diagrama-piezas.abierta .marca{opacity:1}}"
+)
+
+JS = (
+    '(function(){var s=document.currentScript,d=s&&s.previousElementSibling;'
+    'if(!d||!("IntersectionObserver" in window)){if(d)d.classList.add("abierta");return;}'
+    'function abrir(){io.disconnect();setTimeout(function(){d.classList.add("abierta");},250);}'
+    'var io=new IntersectionObserver(function(e){var r=e[0];'
+    'var alto=Math.min(r.boundingClientRect.height,innerHeight);'
+    'if(r.isIntersecting&&r.intersectionRect.height>=alto*.72)abrir();},'
+    '{threshold:Array.from({length:21},function(_,i){return i/20;})});io.observe(d);'
+    'document.querySelectorAll(".leyenda li").forEach(function(li){'
+    'var c=d.querySelector(".capa-"+li.getAttribute("data-pieza"));if(!c)return;'
+    'li.addEventListener("mouseenter",function(){c.classList.add("activa");});'
+    'li.addEventListener("mouseleave",function(){c.classList.remove("activa");});});})();'
+)
 
 
 def main():
@@ -166,7 +201,7 @@ def main():
     cab = "{* Generado por tools/despiece.py: no editar a mano. *}\n"
     for v in ("diagrama",):
         with open(os.path.join(dest, f"despiece-{v}.latte"), "w", encoding="utf-8") as f:
-            f.write(cab + "{syntax off}" + svg(v) + "{/syntax}\n")
+            f.write(cab + "{syntax off}<style>" + CSS + "</style>" + svg(v) + "<script>" + JS + "</script>{/syntax}\n")
     # Leyenda del diagrama (HTML), para que se lea bien en móvil.
     with open(os.path.join(dest, "despiece-leyenda.latte"), "w", encoding="utf-8") as f:
         f.write(cab + '<ol class="leyenda">\n')

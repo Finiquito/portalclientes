@@ -65,7 +65,6 @@
     --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
     --dur-1: 150ms;
     --dur-2: 220ms;
-    --dur-despiece: 900ms;
 
     /* Grano (ruido fractal en SVG), el mismo de las ilustraciones */
     --grano: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.55'/%3E%3C/svg%3E");
@@ -172,24 +171,11 @@ select.campo { appearance: none; background-image: linear-gradient(45deg, transp
     isolation: isolate; overflow: hidden;
 }
 .lamina::after { content: ""; position: absolute; inset: 0; background-image: var(--grano); mix-blend-mode: overlay; opacity: 0.8; pointer-events: none; z-index: 1; }
-.lamina .despiece { position: relative; z-index: 2; width: 100%; max-width: 25rem; max-height: 36rem; }
 
 .franja { list-style: none; margin: 0 auto; padding-block: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: var(--rule) solid var(--color-rule-strong); }
 .franja li { padding: var(--space-4) var(--space-4) var(--space-4) 0; font-size: var(--text-sm); font-weight: 500; }
 .franja li + li { padding-left: var(--space-4); border-left: 1px solid var(--color-rule); }
 
-/* ---------------------------------------------------------------------------
-   Despiece (ilustración): las capas se separan al entrar en pantalla
-   --------------------------------------------------------------------------- */
-.despiece .sombra ellipse { fill: var(--color-shadow); }
-.despiece .capa { transform: translateY(calc(var(--dy) * 0.42)); transition: transform var(--dur-despiece) var(--ease-out); transition-delay: calc(var(--i) * 45ms); }
-.despiece.abierto .capa { transform: translateY(var(--dy)); }
-.despiece .guia { stroke: var(--color-ink); stroke-width: 1.2; opacity: 0; transition: opacity var(--dur-2) linear; transition-delay: calc(400ms + var(--i) * 60ms); }
-.despiece .marca rect { fill: var(--color-ink); }
-.despiece .marca text { fill: var(--color-on-ink); font: 700 13px var(--font-body); }
-.despiece .marca { opacity: 0; transition: opacity var(--dur-2) linear; transition-delay: calc(450ms + var(--i) * 60ms); }
-.despiece.abierto .guia, .despiece.abierto .marca { opacity: 1; }
-.despiece .capa.activa > g:first-child { filter: url(#grano-diagrama) brightness(1.08); }
 
 /* ---------------------------------------------------------------------------
    Piezas: grilla visible de fondo, texto fijo a la izquierda
@@ -205,7 +191,6 @@ select.campo { appearance: none; background-image: linear-gradient(45deg, transp
 .piezas-texto h2, .cambio h2, .quien-grilla h2, .invitacion h2 { font-size: var(--text-2xl); line-height: 1.08; }
 .piezas-texto > p { margin-top: var(--space-4); color: var(--color-ink-2); max-width: 42ch; }
 .piezas-figura { grid-column: 7 / span 6; margin: 0; }
-.piezas-figura .despiece { width: 100%; max-width: 30rem; margin-inline: auto; }
 
 .leyenda { list-style: none; margin: var(--space-6) 0 0; padding: 0; border-top: var(--rule) solid var(--color-rule-strong); counter-reset: none; }
 .leyenda li { display: grid; grid-template-columns: 2rem minmax(0, 1fr); column-gap: var(--space-3); padding: var(--space-4) 0; border-bottom: 1px solid var(--color-rule); }
@@ -305,10 +290,8 @@ select.campo { appearance: none; background-image: linear-gradient(45deg, transp
     .portada-texto, .portada-figura { grid-column: 1 / -1; }
     .portada-figura { border-left: 0; border-top: var(--rule) solid var(--color-rule-strong); margin-inline: calc(var(--gutter) * -1); }
     .lamina { min-height: 22rem; }
-    .lamina .despiece { max-height: 26rem; }
     .piezas-texto, .piezas-figura { grid-column: 1 / -1; position: static; }
     .piezas-figura { order: -1; margin-bottom: var(--space-6); }
-    .piezas-figura .despiece { max-width: 22rem; }
     .diptico-figura, .diptico-texto, .diptico-invertido .diptico-texto, .diptico-invertido .diptico-figura { grid-column: 1 / -1; grid-row: auto; }
     .diptico-invertido .diptico-figura { order: -1; }
     .quien-grilla h2, .quien-texto { grid-column: 1 / -1; }
@@ -335,8 +318,6 @@ select.campo { appearance: none; background-image: linear-gradient(45deg, transp
 
 @media (prefers-reduced-motion: reduce) {
     html { scroll-behavior: auto; }
-    .despiece .capa { transform: translateY(var(--dy)); transition: none; }
-    .despiece .guia, .despiece .marca { opacity: 1; transition: none; }
     .boton, .campo, .barra-link, .segmentos span { transition: none; }
 }
 

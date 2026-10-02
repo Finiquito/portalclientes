@@ -4,30 +4,6 @@
 
   var reducir = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  /* ---- Despiece: las piezas se separan al entrar en pantalla (una vez) ---- */
-  var ilustraciones = Array.prototype.slice.call(document.querySelectorAll(".despiece"));
-  if (reducir || !("IntersectionObserver" in window)) {
-    ilustraciones.forEach(function (s) { s.classList.add("abierto"); });
-  } else {
-    var io = new IntersectionObserver(function (entradas) {
-      entradas.forEach(function (e) {
-        if (e.isIntersecting) {
-          e.target.classList.add("abierto");
-          io.unobserve(e.target);
-        }
-      });
-    }, { threshold: 0.35 });
-    ilustraciones.forEach(function (s) { io.observe(s); });
-  }
-
-  /* Leyenda del diagrama: al pasar por un ítem se resalta su pieza */
-  document.querySelectorAll(".leyenda li").forEach(function (li) {
-    var capa = document.querySelector(".despiece-diagrama .capa-" + li.getAttribute("data-pieza"));
-    if (!capa) return;
-    li.addEventListener("mouseenter", function () { capa.classList.add("activa"); });
-    li.addEventListener("mouseleave", function () { capa.classList.remove("activa"); });
-  });
-
   /* ---- Invitación ---- */
   var t0 = Date.now();
   document.querySelectorAll("[data-t]").forEach(function (i) { i.value = String(t0); });
