@@ -4,7 +4,7 @@
     Los enlaces de la barra apuntan a /#… para que funcionen desde cualquier página.
 *}
 {var $assets = '/themes/prisma/assets'}
-{var $v = 7}
+{var $v = 8}
 <!DOCTYPE html>
 <html lang="es-CL">
 <head>
@@ -32,6 +32,7 @@
     {if isset($site) && !empty($site->faviconUrl)}<link rel="icon" href="{$site->faviconUrl}">{/if}
     <meta name="theme-color" content="#141c40">
     <link rel="preload" href="{$assets}/fonts/schibsted-grotesk-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+    <script>document.documentElement.classList.add("js")</script>
     <link rel="stylesheet" href="{$assets}/css/prisma.css?v={$v}">
     <script src="{$assets}/js/prisma.js?v={$v}" defer></script>
 </head>

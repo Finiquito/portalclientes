@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """
-Genera las ilustraciones isométricas del landing (el prisma «desarmado» en piezas).
+Genera el diagrama isométrico del landing (el prisma «desarmado» en piezas).
+La ilustración del hero la genera tools/bloques.py.
 
     python3 theme/prisma/tools/despiece.py
 
-Escribe templates/partials/despiece-hero.latte y despiece-diagrama.latte: SVG en línea
+Escribe partials/despiece-diagrama.latte y despiece-leyenda.latte: SVG en línea
 (así cada capa se puede animar con CSS). Cada pieza es un <g class="capa"> con su
 desplazamiento de «despiece» en --dy; el CSS decide cuándo se separan.
 
@@ -163,7 +164,7 @@ def main():
     dest = os.path.join(raiz, "partials")
     os.makedirs(dest, exist_ok=True)
     cab = "{* Generado por tools/despiece.py: no editar a mano. *}\n"
-    for v in ("hero", "diagrama"):
+    for v in ("diagrama",):
         with open(os.path.join(dest, f"despiece-{v}.latte"), "w", encoding="utf-8") as f:
             f.write(cab + "{syntax off}" + svg(v) + "{/syntax}\n")
     # Leyenda del diagrama (HTML), para que se lea bien en móvil.

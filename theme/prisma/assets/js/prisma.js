@@ -20,6 +20,19 @@
     ilustraciones.forEach(function (s) { io.observe(s); });
   }
 
+  /* ---- Hero: los bloques se construyen al cargar (una vez) ---- */
+  var bloques = document.querySelector(".bloques");
+  if (bloques && !reducir) {
+    if ("IntersectionObserver" in window) {
+      var ioB = new IntersectionObserver(function (entradas) {
+        if (entradas[0].isIntersecting) { bloques.classList.add("armar"); ioB.disconnect(); }
+      }, { threshold: 0.2 });
+      ioB.observe(bloques);
+    } else {
+      bloques.classList.add("armar");
+    }
+  }
+
   /* Leyenda del diagrama: al pasar por un ítem se resalta su pieza */
   document.querySelectorAll(".leyenda li").forEach(function (li) {
     var capa = document.querySelector(".despiece-diagrama .capa-" + li.getAttribute("data-pieza"));
