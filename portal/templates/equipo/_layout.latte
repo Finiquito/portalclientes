@@ -79,13 +79,13 @@
                 </nav>
 
                 {if $relojes}
-                    <div class="mt-4 px-3" aria-label="Hora de tus clientes">
+                    <div class="mb-3 mt-4 rounded-2xl bg-surface2 p-3" aria-label="Hora de tus clientes">
                         <p class="text-[0.6875rem] font-bold uppercase tracking-wide text-muted">Hora de tus clientes</p>
-                        <ul class="mt-2 space-y-1.5">
+                        <ul class="mt-2.5 space-y-2">
                             {foreach $relojes as $r}
-                                <li class="flex items-center gap-2 text-sm" title="{$r['clientes']}">
-                                    <span aria-hidden="true">{\TypeDock\Plugin\Portal\Fmt::bandera($r['pais'])}</span>
-                                    <span class="min-w-0 flex-1 truncate">{$r['nombre']}{if $r['agencia']} <span class="text-muted">· tú</span>{/if}</span>
+                                <li class="flex items-center gap-2.5 text-sm" title="{$r['agencia'] ? 'Tu hora' : $r['clientes']}">
+                                    <span class="text-base leading-none" aria-hidden="true">{\TypeDock\Plugin\Portal\Fmt::bandera($r['pais'])}</span>
+                                    <span class="min-w-0 flex-1 truncate {$r['agencia'] ? 'font-semibold' : ''}">{$r['agencia'] ? 'Tú' : $r['nombre']}{if !$r['agencia']} <span class="text-xs text-muted">{$r['dif']}</span>{/if}</span>
                                     <span class="font-bold tabular-nums" data-reloj="{$r['zona']}">{$r['hora']}</span>
                                 </li>
                             {/foreach}

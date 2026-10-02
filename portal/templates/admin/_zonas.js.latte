@@ -1,4 +1,4 @@
-{* Formularios de reunión: la hora se escribe en la del cliente del proyecto y se muestra su equivalente en la hora de la agencia. *}
+{* Formularios de reunión: la hora se escribe en la de la agencia y se muestra su equivalente en la hora del cliente del proyecto. *}
 <script n:syntax="off">
 (function () {
   var sel = document.querySelector('select[data-proyecto-zona]');
@@ -20,19 +20,19 @@
     var op = sel.options[sel.selectedIndex];
     if (!op) return;
     var zonaCli = op.getAttribute('data-zona'), pais = op.getAttribute('data-pais');
-    form.querySelectorAll('[data-hora-pais]').forEach(function (s) { s.textContent = '(' + pais + ')'; });
     form.querySelectorAll('[data-equiv]').forEach(function (p) {
       var k = p.getAttribute('data-equiv');
       var zonaAg = p.getAttribute('data-zona-agencia'), nombreAg = p.getAttribute('data-nombre-agencia');
       var d = form.querySelector('[name="' + k + '_d"]'), h = form.querySelector('[name="' + k + '_t"]');
       if (zonaCli === zonaAg) { p.textContent = ''; return; }
       if (!d || !h || !d.value || !h.value) {
-        p.textContent = 'Escribe la hora del cliente; aquí verás a qué hora es en ' + nombreAg + '.';
+        p.textContent = 'Aquí verás a qué hora es para el cliente (' + pais + ').';
         return;
       }
-      var t = aUtc(d.value, h.value, zonaCli);
-      var txt = new Intl.DateTimeFormat('es', { timeZone: zonaAg, weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(t));
-      p.textContent = '= ' + txt + ' en ' + nombreAg + ' (hora de la agencia)';
+      var t = aUtc(d.value, h.value, zonaAg);
+      if (offset(zonaAg, t) === offset(zonaCli, t)) { p.textContent = 'Para el cliente (' + pais + ') es la misma hora.'; return; }
+      var txt = new Intl.DateTimeFormat('es', { timeZone: zonaCli, weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(t));
+      p.textContent = 'Para el cliente: ' + txt + ' en ' + pais;
     });
   }
   sel.addEventListener('change', actualizar);

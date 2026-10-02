@@ -52,7 +52,7 @@ class ReunionAdminController
 
     /**
      * Une los campos <input type=date> + <input type=time> ('fecha_d' / 'fecha_t'); si no vienen, respeta el valor directo.
-     * La hora se escribe en la del país del cliente del proyecto y se guarda en la de la agencia.
+     * La hora se escribe en la de la agencia (la que se guarda); el formulario muestra su equivalente en la del cliente.
      */
     private function combinar(string $k): string
     {
@@ -64,7 +64,7 @@ class ReunionAdminController
         if ($d === '') {
             return '';
         }
-        return $t !== '' ? Zona::desdePais($d . ' ' . $t, $this->paisDelProyecto((string) ($_POST['proyecto_id'] ?? ''))) : $d;
+        return $t !== '' ? $d . ' ' . $t : $d;
     }
 
     private function paisDelProyecto(string $proyectoId): string
@@ -177,9 +177,7 @@ class ReunionAdminController
         $paisCli = $this->paisDelProyecto((string) $reunion['proyecto_id']);
         $this->ui->view('reuniones/edit.latte', $this->zonasFormulario() + [
             'reunion'    => $reunion,
-            // En el formulario la hora va en la del cliente.
-            'fechaCli'   => Zona::aPais((string) $reunion['fecha'], $paisCli),
-            'proxCli'    => Zona::aPais((string) $reunion['prox_fecha'], $paisCli),
+            'paisCliente' => $paisCli,
             'proyectos'  => $this->proyectos(),
             'propuestas' => $this->service()->propuestas($id),
             'iaActiva'   => $ia->activa(),

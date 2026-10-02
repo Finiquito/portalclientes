@@ -74,6 +74,11 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### v0.13.2
+
+- **Reuniones:** la hora se escribe en la de la agencia, que es la que se guarda. Debajo se ve la del cliente: «Para el cliente: mié 7 oct, 13:00 en Chile 🇨🇱». Si tiene la misma hora, lo dice. El cliente sigue viendo la reunión en su hora.
+- **Hora de tus clientes** (barra del panel): ahora es una tarjeta, con «Tú» arriba y la diferencia horaria de cada país («−5 h»). Solo aparecen los países con una hora distinta a la tuya: España y Francia, por ejemplo, no se muestran.
+
 ### v0.13.1
 
 - Francia (hora de París) en la lista de países, para la agencia y para los clientes.

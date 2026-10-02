@@ -25,7 +25,7 @@
 
         <div class="pa-inline mt-3">
             <div><label class="form-label">Fecha</label><input type="date" name="fecha_d" class="form-input"></div>
-            <div><label class="form-label">Hora <span data-hora-pais>del cliente</span></label><input type="time" name="fecha_t" class="form-input"></div>
+            <div><label class="form-label">Hora ({$nombreAgencia} {\TypeDock\Plugin\Portal\Fmt::bandera($paisAgencia)})</label><input type="time" name="fecha_t" class="form-input"></div>
             <div><label class="form-label">Duración (min)</label><input type="number" name="duracion_min" class="form-input" value="60" min="5" max="600" style="max-width:7rem"></div>
         </div>
         <p class="form-hint mt-1" data-equiv="fecha" data-zona-agencia="{$zonaAgencia}" data-nombre-agencia="{$nombreAgencia}"></p>

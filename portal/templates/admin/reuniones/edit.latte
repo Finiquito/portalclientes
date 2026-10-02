@@ -4,11 +4,11 @@
 
 {block content}
 <link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=2">
-{* Fechas en la hora del cliente (se guardan en la de la agencia) *}
-{var $fecha10 = substr((string) $fechaCli, 0, 10)}
-{var $hora = strlen((string) $fechaCli) > 10 ? substr((string) $fechaCli, 11, 5) : ''}
-{var $pf10 = substr((string) $proxCli, 0, 10)}
-{var $ph = strlen((string) $proxCli) > 10 ? substr((string) $proxCli, 11, 5) : ''}
+{* Fechas en la hora de la agencia; debajo se muestra la del cliente *}
+{var $fecha10 = substr((string) $reunion['fecha'], 0, 10)}
+{var $hora = strlen((string) $reunion['fecha']) > 10 ? substr((string) $reunion['fecha'], 11, 5) : ''}
+{var $pf10 = substr((string) $reunion['prox_fecha'], 0, 10)}
+{var $ph = strlen((string) $reunion['prox_fecha']) > 10 ? substr((string) $reunion['prox_fecha'], 11, 5) : ''}
 
 <div class="page-header">
     <h1>{$reunion['titulo']}</h1>
@@ -37,7 +37,7 @@
         <input type="text" name="titulo" class="form-input" value="{$reunion['titulo']}" required maxlength="255">
         <div class="pa-inline mt-3">
             <div><label class="form-label">Fecha</label><input type="date" name="fecha_d" class="form-input" value="{$fecha10}"></div>
-            <div><label class="form-label">Hora <span data-hora-pais>del cliente</span></label><input type="time" name="fecha_t" class="form-input" value="{$hora}"></div>
+            <div><label class="form-label">Hora ({$nombreAgencia} {\TypeDock\Plugin\Portal\Fmt::bandera($paisAgencia)})</label><input type="time" name="fecha_t" class="form-input" value="{$hora}"></div>
             <div><label class="form-label">Duración (min)</label><input type="number" name="duracion_min" class="form-input" value="{$reunion['duracion_min']}" min="5" max="600" style="max-width:7rem"></div>
         </div>
         <p class="form-hint mt-1" data-equiv="fecha" data-zona-agencia="{$zonaAgencia}" data-nombre-agencia="{$nombreAgencia}"></p>
@@ -139,12 +139,12 @@
     <div class="card">
         <h2 class="pa-h2">5 · Próxima reunión</h2>
         {if $proxima}
-            <p>Ya agendada: <a href="{$admin_url('reuniones/' . $proxima['id'])}">{$proxima['titulo']}</a> · {$fmt->fechaLarga($proxima['fecha'])} {$fmt->hora($proxima['fecha'])} <span class="pa-muted">(hora de {$nombreAgencia})</span></p>
+            <p>Ya agendada: <a href="{$admin_url('reuniones/' . $proxima['id'])}">{$proxima['titulo']}</a> · {$fmt->fechaLarga($proxima['fecha'])} {$fmt->hora($proxima['fecha'])}</p>
             <input type="hidden" name="prox_fecha_d" value="{$pf10}"><input type="hidden" name="prox_fecha_t" value="{$ph}"><input type="hidden" name="prox_titulo" value="{$reunion['prox_titulo']}">
         {else}
             <div class="pa-inline">
                 <div><label class="form-label">Fecha</label><input type="date" name="prox_fecha_d" class="form-input" value="{$pf10}"></div>
-                <div><label class="form-label">Hora <span data-hora-pais>del cliente</span></label><input type="time" name="prox_fecha_t" class="form-input" value="{$ph}"></div>
+                <div><label class="form-label">Hora ({$nombreAgencia} {\TypeDock\Plugin\Portal\Fmt::bandera($paisAgencia)})</label><input type="time" name="prox_fecha_t" class="form-input" value="{$ph}"></div>
                 <div style="flex:1;min-width:14rem"><label class="form-label">Tema</label><input type="text" name="prox_titulo" class="form-input" value="{$reunion['prox_titulo']}" maxlength="255"></div>
             </div>
             <p class="form-hint mt-1" data-equiv="prox_fecha" data-zona-agencia="{$zonaAgencia}" data-nombre-agencia="{$nombreAgencia}"></p>

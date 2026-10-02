@@ -203,26 +203,38 @@ class EquipoController
         } catch (\Throwable) {
             return [];
         }
-        $agencia = SolicitudService::paisAgencia();
+        $ahora = new \DateTimeImmutable('now');
+        $offAg = (new \DateTimeZone(Zona::agencia()))->getOffset($ahora);
         $por = [];
         foreach ($filas as $f) {
             $pais = HorarioHabil::paisValido((string) ($f['pais'] ?? ''));
             $por[$pais][] = (string) $f['nombre'];
         }
-        if (array_keys($por) === [] || array_keys($por) === [$agencia]) {
-            return [];
-        }
+        // Sólo los países que hoy tienen otra hora que la agencia (España y Francia, por ejemplo, comparten hora).
         $out = [];
         foreach ($por as $pais => $nombres) {
             $zona = HorarioHabil::zonaDe($pais);
+            $dif = (int) round(((new \DateTimeZone($zona))->getOffset($ahora) - $offAg) / 3600);
+            if ($dif === 0) {
+                continue;
+            }
             $out[] = [
                 'pais' => $pais, 'nombre' => HorarioHabil::nombreDe($pais), 'zona' => $zona,
-                'hora' => (new \DateTimeImmutable('now', new \DateTimeZone($zona)))->format('H:i'),
+                'hora' => $ahora->setTimezone(new \DateTimeZone($zona))->format('H:i'),
+                'dif' => ($dif > 0 ? '+' : '−') . abs($dif) . ' h',
                 'clientes' => implode(', ', array_slice($nombres, 0, 8)) . (count($nombres) > 8 ? '…' : ''),
-                'agencia' => $pais === $agencia,
+                'agencia' => false,
             ];
         }
-        usort($out, fn($a, $b) => [!$a['agencia'], $a['nombre']] <=> [!$b['agencia'], $b['nombre']]);
+        if ($out === []) {
+            return [];
+        }
+        usort($out, fn($a, $b) => $a['nombre'] <=> $b['nombre']);
+        array_unshift($out, [
+            'pais' => Zona::pais(), 'nombre' => Zona::nombre(), 'zona' => Zona::agencia(),
+            'hora' => $ahora->setTimezone(new \DateTimeZone(Zona::agencia()))->format('H:i'),
+            'dif' => '', 'clientes' => '', 'agencia' => true,
+        ]);
         return $out;
     }
 
