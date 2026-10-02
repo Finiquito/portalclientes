@@ -261,9 +261,9 @@
     <section class="card card-pad reveal border-brand/30" style="--i:3" aria-labelledby="h-decidir">
         <h2 id="h-decidir" class="text-base font-extrabold">¿Qué te parece?</h2>
         {if $x['estado'] === 'aprobado'}
-            <p class="mt-1 text-sm font-semibold text-ok">Lo dejaste aprobado. Puedes cambiar tu decisión hasta enviar la revisión.</p>
+            <p class="mt-1 text-sm font-semibold text-ok">Lo dejaste aprobado. Puedes cambiarlo mientras queden piezas por revisar.</p>
         {elseif $x['estado'] === 'cambios'}
-            <p class="mt-1 text-sm font-semibold text-danger">Pediste cambios. Puedes cambiar tu decisión hasta enviar la revisión.</p>
+            <p class="mt-1 text-sm font-semibold text-danger">Pediste cambios. Puedes cambiarlo mientras queden piezas por revisar.</p>
         {else}
             <p class="mt-1 text-sm text-muted">Si está bien, apruébalo con un toque. Si no, pide cambios y cuéntanos cuáles.</p>
         {/if}

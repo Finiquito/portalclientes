@@ -953,6 +953,43 @@ $_GET = ['cuando' => 'archivadas'];
 check(str_contains($html, 'Reunión vieja') && !str_contains($html, 'Reunión de ayer'), 'el panel tiene el filtro «Archivadas»');
 $_GET = [];
 
+// Revisión de contenidos: se envía sola al decidir la última pieza
+seccion('Revisión que se envía sola');
+final class RevisionPrueba extends P\EntregaPublicController
+{
+    public ?string $redir = null;
+    protected function redirectTo(string $path, array $query = []): void { $this->redir = $this->publicUrl($path, $query); throw new RuntimeException('redirect'); }
+    protected function terminate(): void { throw new RuntimeException('fin'); }
+    public function correr(string $m, array $args, array $post): ?string
+    {
+        $_POST = $post; $this->redir = null; ob_start();
+        try { $this->{$m}(...$args); } catch (RuntimeException) {}
+        ob_end_clean();
+        return $this->redir;
+    }
+}
+$es2 = new P\EntregaService($pdo);
+$cs2 = new P\ContenidoService($pdo);
+$eRev = $es2->create(['proyecto_id' => $p1a, 'titulo' => 'Dos piezas']);
+foreach (['Pieza A', 'Pieza B'] as $tt) { $cs2->crear($es2->find($eRev), ['tipo' => 'grafica', 'titulo' => $tt]); }
+$es2->publicar($eRev);
+$piezas = $pdo->query("SELECT id FROM portal_contenidos WHERE entrega_id = '{$eRev}' ORDER BY orden")->fetchAll(PDO::FETCH_COLUMN);
+unset($_SESSION[P\PortalSession::VISTA]);
+$_SESSION[P\PortalSession::CONTACTO] = $contacto;
+$rp = new RevisionPrueba($ctx);
+$ctx->correos = [];
+$r = $rp->correr('decidir', [$piezas[0]], ['_csrf' => P\PortalSession::csrf(), 'accion' => 'aprobar']);
+check($es2->find($eRev)['estado'] === 'publicada' && $r === '/portal/contenidos/' . $piezas[1] && $ctx->correos === [], 'con piezas pendientes no se envía: sigue a la siguiente');
+$r = $rp->correr('decidir', [$piezas[1]], ['_csrf' => P\PortalSession::csrf(), 'accion' => 'aprobar']);
+check($es2->find($eRev)['estado'] === 'aprobada' && $r === '/portal/entregas/' . $eRev, 'al decidir la última, la revisión se envía sola');
+check(count(array_filter($ctx->correos, fn($c) => str_contains($c['subject'], 'respondió la revisión'))) >= 1, 'y le llega un solo aviso al equipo');
+$eUna = $es2->create(['proyecto_id' => $p1a, 'titulo' => 'Una pieza']);
+$cs2->crear($es2->find($eUna), ['tipo' => 'grafica', 'titulo' => 'Única']);
+$es2->publicar($eUna);
+$unica = (string) $pdo->query("SELECT id FROM portal_contenidos WHERE entrega_id = '{$eUna}'")->fetchColumn();
+$rp->correr('decidir', [$unica], ['_csrf' => P\PortalSession::csrf(), 'accion' => 'cambios', 'cuerpo' => 'Más grande el logo']);
+check($es2->find($eUna)['estado'] === 'respondida', 'con una sola pieza, pedir cambios también la envía al tiro');
+
 $ss->borrarDeProyecto($p3a);
 check($ss->find((string) $ajena['id']) === null, 'al borrar un proyecto se van sus solicitudes');
 

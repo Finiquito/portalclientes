@@ -158,7 +158,7 @@ class EntregaPublicController extends PortalPublicController
         ]);
     }
 
-    /** Aprobar o pedir cambios. Queda como borrador hasta enviar la revisión. */
+    /** Aprobar o pedir cambios. Al decidir la última pieza pendiente, la revisión se envía sola. */
     public function decidir(string $id): void
     {
         $c   = $this->requerirContacto();
@@ -187,7 +187,7 @@ class EntregaPublicController extends PortalPublicController
                 (new ComentarioService($this->pdo()))->crear($cliente, 'contenido', $id, 'contacto', (string) $c['id'], $nombre, $texto, $x['version_id']);
             }
             $this->actividad()->registrar($cliente, $x['proyecto_id'], 'contacto', $nombre, 'aprobo', 'contenido', $id, $x['titulo']);
-            PortalSession::flash('ok', 'Aprobado. Cuando termines con todos, envía tu revisión.');
+            PortalSession::flash('ok', 'Aprobado.');
         } elseif ($accion === 'cambios') {
             $texto = $this->tomarString('cuerpo');
             if ($texto === '') {
@@ -198,10 +198,22 @@ class EntregaPublicController extends PortalPublicController
             (new ComentarioService($this->pdo()))->crear($cliente, 'contenido', $id, 'contacto', (string) $c['id'], $nombre, $texto, $x['version_id']);
             $this->contenidosSvc()->decidir($id, 'cambios', (string) $c['id'], $nombre);
             $this->actividad()->registrar($cliente, $x['proyecto_id'], 'contacto', $nombre, 'pidio_cambios', 'contenido', $id, $x['titulo'], mb_substr($texto, 0, 200));
-            PortalSession::flash('ok', 'Anotado. Cuando termines con todos, envía tu revisión.');
+            PortalSession::flash('ok', 'Anotado.');
         }
 
-        // Tras decidir, seguimos con el siguiente por revisar (o volvemos a la grilla).
+        // Si era la última pieza por revisar, la revisión se envía sola al equipo.
+        $e = $this->entregasSvc()->findDelCliente((string) $x['entrega_id'], $cliente);
+        if ($e !== null && in_array($accion, ['aprobar', 'cambios'], true) && $e['estado'] === 'publicada'
+            && (int) $e['n_total'] > 0 && (int) $e['n_pendientes'] === 0) {
+            $estado = $this->enviarRevision($c, $e);
+            PortalSession::flash('ok', $estado === 'aprobada'
+                ? '¡Todo aprobado! Le avisamos al equipo. Gracias.'
+                : 'Listo: enviamos tu revisión al equipo. Te avisaremos cuando subamos los cambios.');
+            $this->redirectTo('portal/entregas/' . $x['entrega_id']);
+            return;
+        }
+
+        // Si quedan, seguimos con el siguiente por revisar.
         $sig = $this->siguientePendiente((string) $x['entrega_id'], $id);
         $this->redirectTo($sig !== null ? 'portal/contenidos/' . $sig : 'portal/entregas/' . $x['entrega_id']);
     }
@@ -299,14 +311,29 @@ class EntregaPublicController extends PortalPublicController
             return;
         }
 
+        $estado = $this->enviarRevision($c, $e);
+
+        PortalSession::flash('ok', $estado === 'aprobada' ? '¡Todo aprobado! Gracias.' : 'Enviamos tu revisión al equipo. Te avisaremos cuando subamos los cambios.');
+        $this->redirectTo($vol);
+    }
+
+    /**
+     * Cierra la revisión de una entrega (aprobada o con cambios) y le avisa al equipo con un solo correo.
+     * Se llama al apretar «Enviar revisión» o, sola, cuando el cliente decide la última pieza pendiente.
+     *
+     * @param array<string, mixed> $c contacto
+     * @param array<string, mixed> $e entrega (con n_aprobados, n_cambios)
+     */
+    private function enviarRevision(array $c, array $e): string
+    {
         $nombre = (string) $c['nombre'];
-        $estado = $this->entregasSvc()->responder($id, $nombre);
-        $this->actividad()->registrar((string) $c['cliente_id'], $e['proyecto_id'], 'contacto', $nombre, 'respondio', 'entrega', $id, $e['titulo'],
+        $estado = $this->entregasSvc()->responder($e['id'], $nombre);
+        $this->actividad()->registrar((string) $c['cliente_id'], $e['proyecto_id'], 'contacto', $nombre, 'respondio', 'entrega', $e['id'], $e['titulo'],
             $e['n_aprobados'] . ' aprobados · ' . $e['n_cambios'] . ' con cambios');
 
         $lineas = [];
         $cm = new ComentarioService($this->pdo());
-        foreach ($this->contenidosSvc()->listar($id) as $x) {
+        foreach ($this->contenidosSvc()->listar($e['id']) as $x) {
             if ($x['estado'] === 'cambios') {
                 $ult = null;
                 foreach ($cm->listar('contenido', (string) $x['id']) as $k) {
@@ -322,13 +349,12 @@ class EntregaPublicController extends PortalPublicController
             $bloques[] = ['p' => 'Pidió cambios en:'];
             $bloques[] = ['lista' => array_map(fn($l) => ltrim(preg_replace('/^•\s*/u', '', $l) ?? $l), $lineas)];
         }
-        $this->notificador()->alEquipo("{$nombre} respondió la revisión: {$e['titulo']}", '', 'entregas/' . $id, [
+        $this->notificador()->alEquipo("{$nombre} respondió la revisión: {$e['titulo']}", '', 'entregas/' . $e['id'], [
             'etiqueta' => 'Revisión', 'titulo' => "{$nombre} respondió la revisión", 'resaltado' => 'respondió', 'proyecto_id' => (string) $e['proyecto_id'],
             'bloques' => array_merge([['p' => "Terminó de revisar «{$e['titulo']}»."]], $bloques), 'preheader' => "{$e['n_aprobados']} aprobados · {$e['n_cambios']} con cambios",
             'boton' => 'Abrir la entrega',
         ]);
 
-        PortalSession::flash('ok', $estado === 'aprobada' ? '¡Todo aprobado! Gracias.' : 'Enviamos tu revisión al equipo. Te avisaremos cuando subamos los cambios.');
-        $this->redirectTo($vol);
+        return $estado;
     }
 }

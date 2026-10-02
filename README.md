@@ -74,6 +74,10 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### v0.15.1
+
+- **La revisión de contenidos se envía sola:** cuando el cliente aprueba o pide cambios en la última pieza pendiente, la entrega pasa a «Aprobada» o «Respondida» y el equipo recibe un solo aviso con el resumen. Con una pieza pasa de inmediato; con varias, al decidir la última. Mientras queden piezas por revisar, el cliente puede cambiar sus decisiones. El botón «Enviar revisión» se mantiene solo para entregas que hayan quedado completas desde antes.
+
 ### v0.15.0: reuniones pasadas y archivadas
 
 - Una reunión **ya pasó** cuando terminó (fecha más duración) o cuando ya tiene resumen o análisis. Antes contaba solo el día, así que una reunión de las 13:30 seguía como «próxima» toda la tarde.
