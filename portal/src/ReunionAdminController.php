@@ -80,7 +80,7 @@ class ReunionAdminController
         return ['zonaAgencia' => Zona::agencia(), 'paisAgencia' => Zona::pais(), 'nombreAgencia' => Zona::nombre()];
     }
 
-    public const FILTRO_CUANDO = ['proximas' => 'Próximas', 'pasadas' => 'Pasadas', 'todas' => 'Todas'];
+    public const FILTRO_CUANDO = ['proximas' => 'Próximas', 'pasadas' => 'Pasadas', 'archivadas' => 'Archivadas', 'todas' => 'Todas'];
     public const FILTRO_ESTADO = [
         'por_revisar'  => 'Con tareas por revisar',
         'sin_resumen'  => 'Sin resumen',
@@ -113,19 +113,22 @@ class ReunionAdminController
         $todas = $this->ui->filtrar($this->service()->listAll(), 'proyecto_id');
         $base = array_values(array_filter($todas, fn(array $r): bool => ($f->get('proyecto') === '' || $r['proyecto_id'] === $f->get('proyecto'))
             && self::enEstado($r, $f->get('estado'))));
-        $esProx = static fn(array $r): bool => substr((string) $r['fecha'], 0, 10) >= $hoy;
+        // Próxima / pasada / archivada (más de 20 días): la misma regla que ve el cliente.
+        $est = static fn(array $r): string => ReunionService::estado($r);
         $conteos = [
-            'proximas' => count(array_filter($base, $esProx)),
-            'pasadas'  => count(array_filter($base, fn($r) => !$esProx($r))),
-            'todas'    => count($base),
+            'proximas'   => count(array_filter($base, fn($r) => $est($r) === 'proxima')),
+            'pasadas'    => count(array_filter($base, fn($r) => $est($r) === 'pasada')),
+            'archivadas' => count(array_filter($base, fn($r) => $est($r) === 'archivada')),
+            'todas'      => count($base),
         ];
         $lista = array_values(array_filter($base, fn(array $r): bool => match ($f->get('cuando')) {
-            'proximas' => $esProx($r),
-            'pasadas'  => !$esProx($r),
-            default    => true,
+            'proximas'   => $est($r) === 'proxima',
+            'pasadas'    => $est($r) === 'pasada',
+            'archivadas' => $est($r) === 'archivada',
+            default      => true,
         }));
         if ($f->es('cuando', 'proximas')) {
-            $lista = array_reverse($lista);   // la más cercana primero
+            $lista = array_reverse($lista);   // la más cercana primero; las pasadas, la más reciente primero
         }
         $proyectos = $this->proyectos();
         usort($proyectos, fn($a, $b) => [$a['cliente_nombre'], $a['nombre']] <=> [$b['cliente_nombre'], $b['nombre']]);

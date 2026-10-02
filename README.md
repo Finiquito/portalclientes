@@ -74,6 +74,18 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### v0.15.0: reuniones pasadas y archivadas
+
+- Una reunión **ya pasó** cuando terminó (fecha más duración) o cuando ya tiene resumen o análisis. Antes contaba solo el día, así que una reunión de las 13:30 seguía como «próxima» toda la tarde.
+- **Para el cliente:**
+  - Las pasadas se ven apagadas: la fecha con solo el borde de color, sin botón de Meet y con la marca «Ya pasó».
+  - Orden: las próximas de la más cercana a la más lejana; las anteriores de la más reciente a la más antigua.
+  - Las de más de 20 días pasan solas a **«Archivadas»**, plegadas al final.
+  - El detalle de una reunión pasada también se ve apagado.
+- **En el panel y el admin:** filtro nuevo **«Archivadas»** junto a Próximas, Pasadas y Todas, con la misma regla.
+- **Logo del cliente en modo oscuro:** va sobre un fondo claro para que se vea aunque sea oscuro.
+- **Pruebas:** 228 comprobaciones que pasan en SQLite y MariaDB.
+
 ### v0.14.1
 
 - En los primeros pasos, «Entraste a tu portal» se marca solo cuando la persona entró de verdad. Antes aparecía marcado siempre, también en «Ver como cliente».

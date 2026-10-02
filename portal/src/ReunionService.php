@@ -83,6 +83,32 @@ class ReunionService
     }
 
     /** @param array<string, mixed> $p @return array<string, mixed> */
+    /** Días después de los cuales una reunión pasada se archiva (sale de la lista principal). */
+    public const DIAS_ARCHIVO = 20;
+
+    /**
+     * 'proxima', 'pasada' o 'archivada'. Una reunión ya pasó si terminó (fecha + duración) o si ya tiene
+     * resumen o análisis. Las pasadas de más de 20 días se archivan solas. La fecha va en hora de la agencia.
+     *
+     * @param array<string, mixed> $r
+     */
+    public static function estado(array $r, ?\DateTimeImmutable $ahora = null): string
+    {
+        $zona = new \DateTimeZone(Zona::agencia());
+        $ahora ??= new \DateTimeImmutable('now', $zona);
+        $fecha = (string) ($r['fecha'] ?? '');
+        $ini = \DateTimeImmutable::createFromFormat(str_contains($fecha, ':') ? '!Y-m-d H:i' : '!Y-m-d', substr($fecha, 0, str_contains($fecha, ':') ? 16 : 10), $zona);
+        if ($ini === false) {
+            return 'pasada';
+        }
+        $fin = str_contains($fecha, ':') ? $ini->modify('+' . max(5, (int) ($r['duracion_min'] ?? 60)) . ' minutes') : $ini->modify('+1 day');
+        $conResultado = trim((string) ($r['resumen'] ?? '')) !== '' || trim((string) ($r['analisis'] ?? '')) !== '';
+        if ($fin > $ahora && !$conResultado) {
+            return 'proxima';
+        }
+        return $ini < $ahora->modify('-' . self::DIAS_ARCHIVO . ' days') ? 'archivada' : 'pasada';
+    }
+
     public function normalizar(array $p): array
     {
         $enlace = static fn(string $k): string => TiposContenido::enlaceSeguro((string) ($p[$k] ?? ''));

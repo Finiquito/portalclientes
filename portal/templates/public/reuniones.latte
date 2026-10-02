@@ -13,6 +13,23 @@
     ['Anteriores', $anteriores, false, 'Todavía no hay reuniones anteriores.'],
 ]}
 
+{define tarjeta $r, $prox}
+    <li class="card card-pad reveal flex gap-4 {$prox ? '' : 'opacity-90'}">
+        {* Las pasadas: sólo el borde con color, para que se lean como «apagadas» *}
+        <span class="flex size-14 flex-none flex-col items-center justify-center rounded-2xl leading-none {$prox ? 'bg-brand text-brand-fg' : 'border-2 border-brand/60 text-brand-ink'}">
+            <span class="text-xl font-extrabold">{$fmt->dia($r['fecha'])}</span>
+            <span class="mt-1 text-[0.6875rem] font-bold uppercase tracking-wide">{$fmt->mesCorto($r['fecha'])}</span>
+        </span>
+        <div class="min-w-0 flex-1">
+            <h3 class="font-bold leading-snug {$prox ? '' : 'text-ink/80'}"><a href="/portal/reuniones/{$r['id']}" class="hover:underline">{$r['titulo']}</a></h3>
+            <p class="mt-0.5 text-xs text-muted">{$fmt->hora($r['fecha'])}{if $fmt->hora($r['fecha']) !== ''} · {/if}<span class="inline-flex items-center gap-1.5 align-middle"><span aria-hidden="true" style="display:inline-block;width:.6rem;height:.6rem;border-radius:9999px;flex:none;background:{($colorProy[$r['proyecto_id']] ?? '#94a3b8')|noescape}"></span>{$r['proyecto_nombre']}</span>{if !$prox} · <span class="font-semibold">Ya pasó</span>{/if}</p>
+            {if $prox && $r['enlace_meet']}<a href="{$r['enlace_meet']}" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm mt-3"><svg class="size-4"><use href="#i-eye"/></svg> Entrar a Meet</a>{/if}
+            {if $r['resumen_publicado'] && $r['resumen']}<div class="mt-3 line-clamp-3 text-sm leading-relaxed text-ink/85">{$r['resumen']|breakLines}</div>{/if}
+            <a href="/portal/reuniones/{$r['id']}" class="mt-3 inline-flex items-center gap-1 text-xs font-bold text-brand-ink hover:underline">{$prox ? 'Ver detalle' : 'Ver resumen y tareas'} <svg class="size-3.5"><use href="#i-chevron"/></svg></a>
+        </div>
+    </li>
+{/define}
+
 {foreach $bloques as $i => $b}
 <section class="mb-6">
     <h2 class="reveal mb-3 text-sm font-extrabold uppercase tracking-wide text-muted" style="--i:{$i}">{$b[0]}</h2>
@@ -20,23 +37,18 @@
         <div class="card card-pad reveal text-sm text-muted" style="--i:{$i + 1}">{$b[3]}</div>
     {else}
         <ul class="space-y-3">
-            {foreach $b[1] as $j => $r}
-                <li class="card card-pad reveal flex gap-4" style="--i:{$j + 1}">
-                    <span class="flex size-14 flex-none flex-col items-center justify-center rounded-2xl leading-none {$b[2] ? 'bg-brand text-brand-fg' : 'bg-surface2 text-muted'}">
-                        <span class="text-xl font-extrabold">{$fmt->dia($r['fecha'])}</span>
-                        <span class="mt-1 text-[0.6875rem] font-bold uppercase tracking-wide">{$fmt->mesCorto($r['fecha'])}</span>
-                    </span>
-                    <div class="min-w-0 flex-1">
-                        <h3 class="font-bold leading-snug"><a href="/portal/reuniones/{$r['id']}" class="hover:underline">{$r['titulo']}</a></h3>
-                        <p class="mt-0.5 text-xs text-muted">{$fmt->hora($r['fecha'])}{if $fmt->hora($r['fecha']) !== ''} · {/if}<span class="inline-flex items-center gap-1.5 align-middle"><span aria-hidden="true" style="display:inline-block;width:.6rem;height:.6rem;border-radius:9999px;flex:none;background:{($colorProy[$r['proyecto_id']] ?? '#94a3b8')|noescape}"></span>{$r['proyecto_nombre']}</span></p>
-                        {if $b[2] && $r['enlace_meet']}<a href="{$r['enlace_meet']}" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm mt-3"><svg class="size-4"><use href="#i-eye"/></svg> Entrar a Meet</a>{/if}
-                        {if $r['resumen_publicado'] && $r['resumen']}<div class="mt-3 line-clamp-3 text-sm leading-relaxed text-ink/85">{$r['resumen']|breakLines}</div>{/if}
-                        <a href="/portal/reuniones/{$r['id']}" class="mt-3 inline-flex items-center gap-1 text-xs font-bold text-brand-ink hover:underline">{$b[2] ? 'Ver detalle' : 'Ver resumen y tareas'} <svg class="size-3.5"><use href="#i-chevron"/></svg></a>
-                    </div>
-                </li>
-            {/foreach}
+            {foreach $b[1] as $r}{include tarjeta $r, $b[2]}{/foreach}
         </ul>
     {/if}
 </section>
 {/foreach}
+
+{if $archivadas}
+<details class="mb-6">
+    <summary class="mb-3 cursor-pointer text-sm font-extrabold uppercase tracking-wide text-muted">Archivadas ({count($archivadas)}) <span class="font-medium normal-case tracking-normal">· más de {$diasArchivo} días</span></summary>
+    <ul class="space-y-3">
+        {foreach $archivadas as $r}{include tarjeta $r, false}{/foreach}
+    </ul>
+</details>
+{/if}
 {/block}

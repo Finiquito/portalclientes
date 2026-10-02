@@ -931,6 +931,28 @@ check($r === '/equipo/clientes/' . $c1 && empty($_SESSION[P\PortalSession::CONTA
 check(str_contains($html, 'Ver su portal') && str_contains($html, '/equipo/ver-como/'), 'la ficha del cliente tiene «Ver su portal»');
 $_SESSION[P\PortalSession::CONTACTO] = $contacto;
 
+// Reuniones: próxima, pasada o archivada
+seccion('Reuniones pasadas y archivadas');
+$ahoraR = new DateTimeImmutable('2026-10-02 15:00', new DateTimeZone(P\Zona::agencia()));
+check(P\ReunionService::estado(['fecha' => '2026-10-02 13:30', 'duracion_min' => 60], $ahoraR) === 'pasada', 'una reunión de hoy que ya terminó cuenta como pasada');
+check(P\ReunionService::estado(['fecha' => '2026-10-02 14:30', 'duracion_min' => 60], $ahoraR) === 'proxima', 'la que está en curso sigue como próxima');
+check(P\ReunionService::estado(['fecha' => '2026-10-09 10:00', 'resumen' => 'Ya hablamos'], $ahoraR) === 'pasada', 'si ya tiene resumen, se asume pasada');
+check(P\ReunionService::estado(['fecha' => '2026-09-01 10:00'], $ahoraR) === 'archivada', 'más de 20 días: archivada');
+$rPas = $rs->create(['proyecto_id' => $p1a, 'titulo' => 'Reunión vieja', 'fecha' => (new DateTimeImmutable('-30 days'))->format('Y-m-d') . ' 10:00', 'publicada' => '1']);
+$rRec = $rs->create(['proyecto_id' => $p1a, 'titulo' => 'Reunión de ayer', 'fecha' => (new DateTimeImmutable('-1 day'))->format('Y-m-d') . ' 10:00', 'enlace_meet' => 'https://meet.google.com/aaa-bbbb-ccc', 'publicada' => '1']);
+$_SESSION[P\PortalSession::CONTACTO] = $contacto;
+unset($_SESSION[P\PortalSession::VISTA]);
+$sr = new SolicitudPrueba($ctx);
+[$html] = $sr->correr('reuniones');
+$posAyer = strpos($html, 'Reunión de ayer');
+check($posAyer !== false && strpos($html, 'Archivadas (') !== false && strpos($html, 'Reunión vieja') > strpos($html, 'Archivadas ('), 'el cliente ve las viejas en «Archivadas», al final');
+check(!str_contains(substr($html, $posAyer, 900), 'Entrar a Meet') && str_contains(substr($html, $posAyer, 900), 'Ya pasó'), 'las pasadas no muestran el botón de Meet');
+$_SESSION[P\EquipoController::SESION] = $ana;
+$_GET = ['cuando' => 'archivadas'];
+[$html] = $g->hacer('GET', P\ReunionAdminController::class, 'index');
+check(str_contains($html, 'Reunión vieja') && !str_contains($html, 'Reunión de ayer'), 'el panel tiene el filtro «Archivadas»');
+$_GET = [];
+
 $ss->borrarDeProyecto($p3a);
 check($ss->find((string) $ajena['id']) === null, 'al borrar un proyecto se van sus solicitudes');
 
