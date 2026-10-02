@@ -96,6 +96,7 @@ class PortalPlugin implements PluginInterface
         $ctx->registerAdminRoute('POST', 'contactos/@id',             fn(string $id) => $contactos->update($id));
         $ctx->registerAdminRoute('POST', 'contactos/@id/borrar',      fn(string $id) => $contactos->destroy($id));
         $ctx->registerAdminRoute('POST', 'contactos/@id/invitar',     fn(string $id) => $contactos->invitar($id));
+        $ctx->registerAdminRoute('POST', 'contactos/@id/ver-como',    fn(string $id) => $contactos->verComo($id));
 
         $extras = new ActividadAdminController($ctx);
         $ctx->registerAdminRoute('GET',  'actividad', [$extras, 'actividad']);
@@ -150,6 +151,7 @@ class PortalPlugin implements PluginInterface
         \Flight::route('GET /verificar',                      [$publico, 'verifyForm']);
         \Flight::route('POST /verificar',                     [$publico, 'verifyCode']);
         \Flight::route('GET /logout',                         [$publico, 'logout']);
+        \Flight::route('POST /portal/vista-previa/salir',     [$publico, 'salirVistaPrevia']);
         \Flight::route('GET /portal/marca/agencia',           [$publico, 'marcaAgencia']);
         \Flight::route('GET /portal/marca/cliente/@id',       fn(string $id) => $publico->marcaCliente($id));
         \Flight::route('GET /portal/cron/correos',            [$publico, 'cronCorreos']);
@@ -202,6 +204,7 @@ class PortalPlugin implements PluginInterface
         \Flight::route('GET /equipo',                 [$eq, 'inicio']);
         \Flight::route('GET /equipo/clientes',        [$eq, 'clientes']);
         \Flight::route('GET /equipo/clientes/@id',    fn(string $id) => $eq->cliente($id));
+        \Flight::route('POST /equipo/ver-como/@id',   fn(string $id) => $eq->verComo($id));
         \Flight::route('GET /equipo/proyectos/@id',   fn(string $id) => $eq->proyecto($id));
 
         $ctx->addAdminMenuItem('Portal · Clientes', '');
@@ -224,7 +227,7 @@ class PortalPlugin implements PluginInterface
 
     public function getVersion(): string
     {
-        return '0.13.2';
+        return '0.14.0';
     }
 
     public function provides(): array

@@ -74,6 +74,13 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### v0.14.0: ver como cliente
+
+- **«Ver su portal»** en la ficha del cliente del panel (entra como su primer colaborador), un ícono de ojo junto a cada contacto y **«Ver como»** en la lista de contactos (admin y panel). Abre el portal tal como lo ve esa persona, con su marca, sus permisos y su hora.
+- **Solo lectura:** un aviso fijo arriba dice «Vista previa: así ve el portal Josefa Ruiz». Se puede recorrer todo, pero nada se envía ni se guarda: comentarios, archivos, aprobaciones, solicitudes, ajustes y tema quedan bloqueados, y mirar no le marca los primeros pasos al cliente. «Salir de la vista previa» devuelve a la ficha desde donde entraste.
+- Desde el panel solo se puede ver el portal de los clientes asignados.
+- **Pruebas:** 220 comprobaciones que pasan en SQLite y MariaDB.
+
 ### v0.13.2
 
 - **Reuniones:** la hora se escribe en la de la agencia, que es la que se guarda. Debajo se ve la del cliente: «Para el cliente: mié 7 oct, 13:00 en Chile 🇨🇱». Si tiene la misma hora, lo dice. El cliente sigue viendo la reunión en su hora.
@@ -227,5 +234,4 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 - Tareas en tablero (kanban).
 - Archivar también entregas y reuniones antiguas.
 - Vista previa del contenido con los mismos visores que ve el cliente (mockup de Instagram, reel, PDF por páginas).
-- «Ver como cliente»: abrir el portal de un cliente tal como él lo ve.
 - Actividad filtrada por lo asignado.

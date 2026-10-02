@@ -223,6 +223,11 @@ class PortalPublicController
     /** Corta la request si el token CSRF no coincide. */
     protected function exigirCsrf(string $volverA): void
     {
+        if (PortalSession::vistaPrevia() !== null) {
+            PortalSession::flash('error', 'Estás en vista previa: aquí puedes mirar todo, pero no enviar ni cambiar nada.');
+            $this->redirectTo($volverA);
+            return;
+        }
         if (!PortalSession::csrfValido()) {
             PortalSession::flash('error', 'Tu sesión expiró. Vuelve a intentarlo.');
             $this->redirectTo($volverA);
@@ -293,6 +298,7 @@ class PortalPublicController
             )['n'] ?? 0),
             'solicitudesCliente' => (int) ($this->fetchOne("SELECT COUNT(*) AS n FROM portal_solicitudes WHERE cliente_id = ? AND estado = 'cotizada'", [$clienteId])['n'] ?? 0),
             'paisCliente'   => HorarioHabil::paisValido((string) ($cliente['pais'] ?? '')),
+            'vistaPrevia'   => PortalSession::vistaPrevia(),
             'hayRevisiones' => (int) ($this->fetchOne("SELECT COUNT(*) AS n FROM portal_entregas WHERE cliente_id = ? AND estado <> 'borrador'", [$clienteId])['n'] ?? 0) > 0,
             'puedeColaborar' => $this->esColaborador($contacto),
             'maxMb'         => (int) round($this->archivos()->limiteBytes($this->maxMb()) / 1048576),
@@ -414,9 +420,22 @@ class PortalPublicController
         $this->redirectTo('');
     }
 
+    /** Sale de «Ver como cliente» y vuelve a la ficha desde donde se entró. */
+    public function salirVistaPrevia(): void
+    {
+        $v = PortalSession::vistaPrevia();
+        unset($_SESSION[PortalSession::CONTACTO], $_SESSION[PortalSession::VISTA]);
+        $volver = $v !== null && preg_match('#^/(equipo|admin)[A-Za-z0-9/_\-]*$#', $v['volver']) === 1 ? $v['volver'] : '/equipo';
+        $this->redirectTo($volver);
+    }
+
     public function logout(): void
     {
         PortalSession::iniciar();
+        if (PortalSession::vistaPrevia() !== null) {
+            $this->salirVistaPrevia();
+            return;
+        }
         unset($_SESSION[PortalSession::CONTACTO]);
         $this->redirectTo('login');
     }
@@ -913,6 +932,9 @@ class PortalPublicController
     /** Primeros pasos que el contacto va completando (se guardan en sus ajustes). */
     protected function marcarPaso(array $contacto, string $paso): void
     {
+        if (PortalSession::vistaPrevia() !== null) {
+            return;   // mirar como el cliente no le marca sus primeros pasos
+        }
         try {
             $this->ajustes()->set('contacto', (string) $contacto['id'], 'paso_' . $paso, '1');
         } catch (\Throwable) {
@@ -1012,7 +1034,7 @@ class PortalPublicController
     public function temaRapido(): void
     {
         $c = $this->requerirContacto();
-        if (PortalSession::csrfValido()) {
+        if (PortalSession::csrfValido() && PortalSession::vistaPrevia() === null) {
             $tema = (string) ($_POST['tema'] ?? 'auto');
             $this->ajustes()->set('contacto', (string) $c['id'], 'tema', in_array($tema, ['claro', 'oscuro'], true) ? $tema : 'auto');
         }

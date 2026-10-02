@@ -30,8 +30,12 @@
                     {elseif $c['invitado_en']}<span class="pa-chip warn">Invitado</span> <span class="pa-muted">{$fmt->rel($c['invitado_en'])}, aún no entra</span>
                     {else}<a href="{$admin_url('contactos/' . $c['id'])}" class="pa-chip gris">Sin invitar</a>{/if}
                 </td>
-                <td>
-                    <form method="post" action="{$admin_url('contactos/' . $c['id'] . '/borrar')}" onsubmit="return confirm('¿Eliminar este contacto? Ya no podrá entrar al portal.');">
+                <td style="white-space:nowrap">
+                    <form method="post" action="{isset($enPanel) ? '/equipo/ver-como/' . $c['id'] : $admin_url('contactos/' . $c['id'] . '/ver-como')}" style="display:inline">
+                        <input type="hidden" name="{isset($enPanel) ? '_csrf' : '_csrf_token'}" value="{$csrf_token}">
+                        <button type="submit" class="btn btn-sm" title="Abre su portal en modo de sólo lectura">Ver como</button>
+                    </form>
+                    <form method="post" action="{$admin_url('contactos/' . $c['id'] . '/borrar')}" style="display:inline" onsubmit="return confirm('¿Eliminar este contacto? Ya no podrá entrar al portal.');">
                         <input type="hidden" name="_csrf_token" value="{$csrf_token}">
                         <button type="submit" class="btn btn-sm btn-danger">Eliminar</button>
                     </form>

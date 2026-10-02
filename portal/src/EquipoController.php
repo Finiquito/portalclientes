@@ -238,6 +238,21 @@ class EquipoController
         return $out;
     }
 
+    /** «Ver como cliente»: abre el portal de un contacto en modo de sólo lectura. */
+    public function verComo(string $contactoId): void
+    {
+        $u = $this->requerirUsuario();
+        $ct = $this->fetchOne('SELECT id, cliente_id FROM portal_contactos WHERE id = ?', [$contactoId]);
+        $enviado = (string) ($_POST['_csrf'] ?? '');
+        if ($ct === null || $enviado === '' || !hash_equals(PortalSession::csrf(), $enviado) || !$this->acceso($u)->puedeVerCliente((string) $ct['cliente_id'])) {
+            PortalSession::flash('error', 'No puedes ver el portal de ese contacto.');
+            $this->redirectTo('/equipo/clientes');
+            return;
+        }
+        PortalSession::iniciarVistaPrevia($contactoId, (string) $u['nombre'], '/equipo/clientes/' . $ct['cliente_id']);
+        $this->redirectTo('/portal');
+    }
+
     protected function view(string $plantilla, array $datos): void
     {
         $this->ctx->view('templates/equipo/' . $plantilla, $datos);

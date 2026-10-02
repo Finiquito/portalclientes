@@ -75,6 +75,18 @@ class ContactoAdminController
         $this->ui->redirect($this->ui->url('contactos/' . $id), $ok ? 'Invitación enviada.' : 'La invitación no salió: revisa el correo en Portal · Ajustes.', $ok ? 'success' : 'error');
     }
 
+    /** «Ver como cliente» desde el admin de TypeDock (sólo lectura). */
+    public function verComo(string $id): void
+    {
+        $c = $this->service()->find($id);
+        if ($c === null) {
+            $this->ui->redirect($this->ui->url('contactos'), 'Contacto no encontrado.', 'error');
+            return;
+        }
+        PortalSession::iniciarVistaPrevia($id, $this->ui->firma(), $this->ui->url('contactos'));
+        $this->ui->redirect('/portal');
+    }
+
     private function enviarInvitacion(string $id, string $mensaje): bool
     {
         $c = $this->service()->find($id);

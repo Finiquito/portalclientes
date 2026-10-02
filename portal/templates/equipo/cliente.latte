@@ -20,6 +20,13 @@
 <div class="-mt-2 mb-6 flex flex-wrap gap-2">
     <a href="/equipo/proyectos/nuevo?cliente_id={$cliente['id']}" class="btn btn-primary btn-sm"><svg class="size-4"><use href="#i-briefcase"/></svg> Nuevo proyecto</a>
     <a href="/equipo/contactos/nuevo?cliente_id={$cliente['id']}" class="btn btn-soft btn-sm"><svg class="size-4"><use href="#i-users"/></svg> Nuevo contacto</a>
+    {var $verComo = array_values(array_filter($contactos, fn($x) => $x['rol'] === 'aprobador'))[0] ?? ($contactos[0] ?? null)}
+    {if $verComo}
+        <form method="post" action="/equipo/ver-como/{$verComo['id']}">
+            <input type="hidden" name="_csrf" value="{$csrf}">
+            <button type="submit" class="btn btn-ghost btn-sm" title="Abre su portal en modo de sólo lectura"><svg class="size-4"><use href="#i-eye"/></svg> Ver su portal</button>
+        </form>
+    {/if}
     {if $usuario['rol'] === 'coordinador'}<a href="/equipo/clientes/{$cliente['id']}/editar" class="btn btn-ghost btn-sm"><svg class="size-4"><use href="#i-edit"/></svg> Editar cliente y su portal</a>{/if}
 </div>
 
@@ -51,6 +58,10 @@
                                 <a href="/equipo/contactos/{$ct['id']}" class="block text-xs font-semibold {$ct['primer_acceso'] ? 'text-ok' : ($ct['invitado_en'] ? 'text-warn' : 'text-brand-ink')}">{if $ct['primer_acceso']}Entró {$fmt->rel($ct['ultimo_acceso'])}{elseif $ct['invitado_en']}Invitado {$fmt->rel($ct['invitado_en'])} · aún no entra{else}Sin invitar · enviar invitación{/if}</a>
                             </span>
                             <span class="chip {$ct['rol'] === 'aprobador' ? 'chip-brand' : 'chip-muted'}">{$ct['rol'] === 'aprobador' ? 'Aprueba' : 'Lectura'}</span>
+                            <form method="post" action="/equipo/ver-como/{$ct['id']}">
+                                <input type="hidden" name="_csrf" value="{$csrf}">
+                                <button type="submit" class="text-muted hover:text-ink" title="Ver el portal como {$ct['nombre']}" aria-label="Ver el portal como {$ct['nombre']}"><svg class="size-4"><use href="#i-eye"/></svg></button>
+                            </form>
                             <a href="/equipo/contactos/{$ct['id']}" class="text-muted hover:text-ink" aria-label="Editar contacto"><svg class="size-4"><use href="#i-edit"/></svg></a>
                         </li>
                     {/foreach}

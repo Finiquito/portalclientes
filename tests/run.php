@@ -901,6 +901,35 @@ check(P\Zona::pais() === 'MX', 'el país de la agencia se lee de Ajustes');
 P\Zona::desdeAjustes($pdo);
 $_SESSION[P\PortalSession::CONTACTO] = $contacto;
 
+// «Ver como cliente» (sólo lectura)
+seccion('Ver como cliente');
+unset($_SESSION[P\PortalSession::CONTACTO], $_SESSION[P\PortalSession::VISTA]);
+$_SESSION[P\EquipoController::SESION] = $ana;
+$ep = new EquipoPrueba($ctx);
+$_POST = ['_csrf' => P\PortalSession::csrf()];
+[, $r] = $ep->correr(fn() => $ep->verComo($oscarTres));
+check($r === '/equipo/clientes' && empty($_SESSION[P\PortalSession::CONTACTO]), 'no se puede ver el portal de un cliente ajeno');
+$_POST = [];
+[, $r] = $ep->correr(fn() => $ep->verComo($contacto));
+check($r === '/equipo/clientes' && empty($_SESSION[P\PortalSession::CONTACTO]), 'sin token CSRF no entra');
+$_POST = ['_csrf' => P\PortalSession::csrf()];
+[, $r] = $ep->correr(fn() => $ep->verComo($contacto));
+check($r === '/portal' && $_SESSION[P\PortalSession::CONTACTO] === $contacto && P\PortalSession::vistaPrevia()['volver'] === '/equipo/clientes/' . $c1, 'entra al portal del contacto en vista previa');
+$sv2 = new SolicitudPrueba($ctx);
+[$html] = $sv2->correr('dashboard');
+check(str_contains($html, 'Vista previa:') && str_contains($html, 'Clara Cliente') && str_contains($html, 'Salir de la vista previa'), 'el portal muestra el aviso de vista previa');
+$antes = (int) $pdo->query('SELECT COUNT(*) FROM portal_solicitudes')->fetchColumn();
+$sv2->correr('crear', [], ['_csrf' => P\PortalSession::csrf(), 'tipo' => 'pedido', 'proyecto_id' => $p1a, 'titulo' => 'Desde la vista previa', 'urgencia' => 'sin_apuro']);
+check((int) $pdo->query('SELECT COUNT(*) FROM portal_solicitudes')->fetchColumn() === $antes && str_contains((string) json_encode($_SESSION['portal_flash'] ?? '', JSON_UNESCAPED_UNICODE), 'vista previa'), 'en vista previa no se puede enviar nada');
+P\PortalSession::tomarFlash();
+$sv2->correr('ayuda');
+check((new P\AjustesService($pdo))->get('contacto', $contacto, 'paso_ayuda') === '', 'mirar no le marca los primeros pasos al cliente');
+[, $r] = $sv2->correr('salirVistaPrevia');
+check($r === '/equipo/clientes/' . $c1 && empty($_SESSION[P\PortalSession::CONTACTO]) && P\PortalSession::vistaPrevia() === null, 'salir vuelve a la ficha del cliente');
+[$html] = $ep->correr(fn() => $ep->cliente($c1));
+check(str_contains($html, 'Ver su portal') && str_contains($html, '/equipo/ver-como/'), 'la ficha del cliente tiene «Ver su portal»');
+$_SESSION[P\PortalSession::CONTACTO] = $contacto;
+
 $ss->borrarDeProyecto($p3a);
 check($ss->find((string) $ajena['id']) === null, 'al borrar un proyecto se van sus solicitudes');
 

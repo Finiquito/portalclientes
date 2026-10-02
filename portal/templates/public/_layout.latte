@@ -28,6 +28,18 @@
     {var $items = [$items[0], $items[1], ['revisiones', '/portal/entregas', 'i-eye', 'Revisiones'], $items[2], $items[3], $items[4]]}
 {/if}
 
+{if $vistaPrevia}
+    {* «Ver como cliente»: sólo lectura, siempre visible *}
+    <div class="sticky top-0 z-50 border-b border-warn/40 bg-warn/15 backdrop-blur-xl">
+        <div class="mx-auto flex max-w-[1320px] flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2.5 text-sm sm:px-6 lg:px-8">
+            <svg class="size-5 flex-none text-warn"><use href="#i-eye"/></svg>
+            <p class="min-w-0 flex-1 leading-snug"><strong>Vista previa:</strong> así ve el portal {$contacto['nombre']} ({$puedeColaborar ? 'colaborador' : 'sólo lectura'}). Puedes recorrer todo, pero no enviar ni cambiar nada.</p>
+            <form method="post" action="/portal/vista-previa/salir">
+                <button type="submit" class="btn btn-primary btn-sm">Salir de la vista previa</button>
+            </form>
+        </div>
+    </div>
+{/if}
 <a href="#contenido" class="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:rounded-xl focus:bg-surface focus:px-4 focus:py-2 focus:shadow-pop">Saltar al contenido</a>
 
 <div class="mx-auto w-full max-w-[1320px] px-4 sm:px-6 lg:px-8">

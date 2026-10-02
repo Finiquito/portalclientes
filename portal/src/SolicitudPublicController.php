@@ -235,7 +235,7 @@ class SolicitudPublicController extends PortalPublicController
         if (!headers_sent()) {
             header('Content-Type: application/json; charset=utf-8');
         }
-        if ($c === null || !PortalSession::csrfValido()) {
+        if ($c === null || !PortalSession::csrfValido() || PortalSession::vistaPrevia() !== null) {
             if (!headers_sent()) {
                 http_response_code(403);
             }

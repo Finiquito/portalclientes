@@ -8,6 +8,25 @@ final class PortalSession
 {
     public const CONTACTO = 'portal_contacto_id';
 
+    /** «Ver como cliente»: quién del equipo está mirando y adónde vuelve al salir. */
+    public const VISTA = 'portal_vista_previa';
+
+    /** @return array{quien: string, volver: string}|null */
+    public static function vistaPrevia(): ?array
+    {
+        self::iniciar();
+        $v = $_SESSION[self::VISTA] ?? null;
+        return is_array($v) ? $v : null;
+    }
+
+    /** Entra al portal como un contacto, en modo de sólo lectura. */
+    public static function iniciarVistaPrevia(string $contactoId, string $quien, string $volver): void
+    {
+        self::iniciar();
+        $_SESSION[self::CONTACTO] = $contactoId;
+        $_SESSION[self::VISTA] = ['quien' => $quien, 'volver' => $volver];
+    }
+
     public static function iniciar(): void
     {
         typedock_session_start();
