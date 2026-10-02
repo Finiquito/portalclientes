@@ -28,6 +28,12 @@
         <input type="color" name="color_agencia" value="{($cfg['color_agencia'] ?? '') ?: '#6d5df6'}" style="width:4rem;height:2.4rem;padding:2px;border:1px solid #e2e8f0;border-radius:8px">
         <p class="form-hint mt-1">Color de marca del front de agencia (<code>/equipo</code>). El de cada cliente se define en su ficha.</p>
 
+        <label class="form-label mt-3">País de la agencia (zona horaria)</label>
+        <select name="pais_agencia" class="form-input" style="max-width:22rem">
+            {foreach $paises as $cod => $p}<option value="{$cod}" {if $cfg['pais_agencia'] === $cod}selected{/if}>{\TypeDock\Plugin\Portal\Fmt::bandera($cod)} {$p[0]}</option>{/foreach}
+        </select>
+        <p class="form-hint mt-1">Las reuniones se agendan pensando en la hora de cada cliente y, al lado, se muestra la hora de la agencia. Las fechas se guardan en esta zona: si la cambias, revisa las reuniones ya agendadas.</p>
+
         <label class="form-label mt-3">Tamaño máximo por archivo (MB)</label>
         <input type="number" name="max_mb" class="form-input" value="{$cfg['max_mb']}" min="1" max="500" style="max-width:8rem">
         <p class="form-hint mt-1">Tu hosting hoy permite como máximo <strong>{$iniMax} MB</strong> por subida (upload_max_filesize / post_max_size); el menor de los dos valores es el que manda.</p>

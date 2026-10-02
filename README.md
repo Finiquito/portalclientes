@@ -74,6 +74,14 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### v0.13.0: reuniones en la hora del cliente
+
+- **País de la agencia** en Portal · Ajustes. Define la zona horaria de la agencia, que antes estaba fija en Chile. Las reuniones se guardan en esa hora y la usan los «hoy» del sistema y la IA.
+- **Al crear o editar una reunión** (admin y `/equipo`), la hora se escribe en la del país del cliente del proyecto. La etiqueta lo indica, por ejemplo «Hora (España 🇪🇸)», y debajo se ve en vivo la equivalencia: «= mié 7 oct, 11:00 en Chile (hora de la agencia)». Lo mismo para la próxima reunión.
+- **El cliente ve sus reuniones en su hora** en el inicio, en «Reuniones» y en el detalle, y también en el correo de novedades. El archivo de calendario (.ics) ya iba en UTC, así que cada calendario lo muestra bien.
+- Nueva clase `Zona` en reemplazo de las constantes fijas de Chile.
+- **Pruebas:** 212 comprobaciones que pasan en SQLite y MariaDB.
+
 ### v0.12.0: bienvenida del cliente
 
 - **Invitación por correo** a cada contacto. No es automática: al crear el contacto hay una casilla «Enviar invitación ahora», y en su ficha un botón para enviarla o reenviarla, con un **mensaje personal** opcional firmado por quien invita. El correo explica qué es el portal, qué va a encontrar, cómo entrar sin contraseña y, si ya tiene algo pendiente, le destaca su primera tarea. El botón lleva al login con su correo ya escrito.

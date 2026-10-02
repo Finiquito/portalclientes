@@ -50,6 +50,7 @@ class ActividadAdminController
                 'nombre_equipo' => $aj['nombre_equipo'] ?? '',
                 'max_mb'        => $aj['max_mb'] ?? '20',
                 'urgentes_max'  => $aj['urgentes_max'] ?? '1',
+                'pais_agencia'  => HorarioHabil::paisValido($aj['pais_agencia'] ?? HorarioHabil::PAIS_DEFECTO),
             ],
             'ia' => (function () {
                 $ia = new IaService($this->pdo());
@@ -66,6 +67,7 @@ class ActividadAdminController
                     'proveedor' => $ia->proveedor(), 'proveedores' => $provs, 'curl' => function_exists('curl_init')];
             })(),
             'correo'        => $this->datosCorreo(),
+            'paises'        => HorarioHabil::PAISES,
             'iniMax'        => (int) round(min(
                 ArchivoService::iniBytes((string) ini_get('upload_max_filesize')) ?: PHP_INT_MAX,
                 ArchivoService::iniBytes((string) ini_get('post_max_size')) ?: PHP_INT_MAX
@@ -87,6 +89,7 @@ class ActividadAdminController
             'nombre_equipo' => mb_substr(trim((string) ($_POST['nombre_equipo'] ?? '')), 0, 60),
             'max_mb'        => (string) max(1, min(500, (int) ($_POST['max_mb'] ?? 20))),
             'urgentes_max'  => (string) max(0, min(20, (int) ($_POST['urgentes_max'] ?? 1))),
+            'pais_agencia'  => HorarioHabil::paisValido((string) ($_POST['pais_agencia'] ?? HorarioHabil::PAIS_DEFECTO)),
             'color_agencia' => preg_match('/^#[0-9a-f]{6}$/i', (string) ($_POST['color_agencia'] ?? '')) === 1 ? strtolower((string) $_POST['color_agencia']) : '',
         ]);
         // IA (opcional): las claves sólo se cambian si se escribe una nueva; nunca se muestran de vuelta.

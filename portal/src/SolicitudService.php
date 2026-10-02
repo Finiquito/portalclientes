@@ -73,7 +73,7 @@ class SolicitudService
 
     private function ahora(): \DateTimeImmutable
     {
-        return $this->ahora ?? new \DateTimeImmutable('now', new \DateTimeZone(Fmt::ZONA));
+        return $this->ahora ?? new \DateTimeImmutable('now', new \DateTimeZone(Zona::agencia()));
     }
 
     private function marca(): string
@@ -171,18 +171,13 @@ class SolicitudService
             $pais = HorarioHabil::paisValido((string) ($l['pais'] ?? $agencia));
             return ['pais' => $pais, 'zona' => HorarioHabil::zonaDe($pais), 'lista' => array_values(array_filter((array) $l['lista'], 'is_string'))];
         }
-        return ['pais' => $agencia, 'zona' => ReunionService::ZONA, 'lista' => is_array($l) ? array_values(array_filter($l, 'is_string')) : []];
+        return ['pais' => $agencia, 'zona' => Zona::agencia(), 'lista' => is_array($l) ? array_values(array_filter($l, 'is_string')) : []];
     }
 
     /** País de la zona horaria de la agencia (la de las reuniones). */
     public static function paisAgencia(): string
     {
-        foreach (HorarioHabil::PAISES as $cod => [, $zona]) {
-            if ($zona === ReunionService::ZONA) {
-                return $cod;
-            }
-        }
-        return HorarioHabil::PAIS_DEFECTO;
+        return Zona::pais();
     }
 
     /** Pasa 'Y-m-d H:i' de una zona horaria a otra. */

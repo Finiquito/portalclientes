@@ -25,6 +25,7 @@ class PortalPlugin implements PluginInterface
         // Columnas nuevas de portal_tareas (tipo, visible_cliente, completada_en), idempotente.
         try {
             Schema::asegurar($ctx->db()->pdo());
+            Zona::desdeAjustes($ctx->db()->pdo());
         } catch (\Throwable) {
             // Si la BD no está lista no bloqueamos el arranque del resto del sistema.
         }
@@ -223,7 +224,7 @@ class PortalPlugin implements PluginInterface
 
     public function getVersion(): string
     {
-        return '0.12.0';
+        return '0.13.0';
     }
 
     public function provides(): array

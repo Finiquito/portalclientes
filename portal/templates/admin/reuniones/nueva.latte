@@ -14,9 +14,9 @@
         <input type="hidden" name="_csrf_token" value="{$csrf_token}">
 
         <label class="form-label">Proyecto</label>
-        <select name="proyecto_id" class="form-input" required>
+        <select name="proyecto_id" class="form-input" required data-proyecto-zona>
             {foreach $proyectos as $p}
-                <option value="{$p['id']}" {if $proyectoId === $p['id']}selected{/if}>{$p['cliente_nombre']} · {$p['nombre']}</option>
+                 <option value="{$p['id']}" data-zona="{\TypeDock\Plugin\Portal\HorarioHabil::zonaDe((string) ($p['cliente_pais'] ?? ''))}" data-pais="{\TypeDock\Plugin\Portal\HorarioHabil::nombreDe((string) ($p['cliente_pais'] ?? ''))} {\TypeDock\Plugin\Portal\Fmt::bandera(\TypeDock\Plugin\Portal\HorarioHabil::paisValido((string) ($p['cliente_pais'] ?? '')))}" {if $proyectoId === $p['id']}selected{/if}>{$p['cliente_nombre']} · {$p['nombre']}</option>
             {/foreach}
         </select>
 
@@ -25,9 +25,10 @@
 
         <div class="pa-inline mt-3">
             <div><label class="form-label">Fecha</label><input type="date" name="fecha_d" class="form-input"></div>
-            <div><label class="form-label">Hora (Chile)</label><input type="time" name="fecha_t" class="form-input"></div>
+            <div><label class="form-label">Hora <span data-hora-pais>del cliente</span></label><input type="time" name="fecha_t" class="form-input"></div>
             <div><label class="form-label">Duración (min)</label><input type="number" name="duracion_min" class="form-input" value="60" min="5" max="600" style="max-width:7rem"></div>
         </div>
+        <p class="form-hint mt-1" data-equiv="fecha" data-zona-agencia="{$zonaAgencia}" data-nombre-agencia="{$nombreAgencia}"></p>
 
         <label class="form-label mt-3">Link de Google Meet</label>
         <input type="url" name="enlace_meet" class="form-input" maxlength="500" placeholder="https://meet.google.com/…">
@@ -39,4 +40,5 @@
         <p class="form-hint">Después de la reunión, vuelve aquí para pegar la transcripción y preparar el resumen y las tareas.</p>
     </form>
 </div>
+{include '../_zonas.js.latte'}
 {/block}

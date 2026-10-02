@@ -1,0 +1,42 @@
+{* Formularios de reunión: la hora se escribe en la del cliente del proyecto y se muestra su equivalente en la hora de la agencia. *}
+<script n:syntax="off">
+(function () {
+  var sel = document.querySelector('select[data-proyecto-zona]');
+  if (!sel || !window.Intl) return;
+  var form = sel.form;
+  function offset(zona, t) {
+    var p = {};
+    new Intl.DateTimeFormat('en-US', { timeZone: zona, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+      .formatToParts(new Date(t)).forEach(function (x) { p[x.type] = x.value; });
+    return Date.UTC(+p.year, +p.month - 1, +p.day, (+p.hour) % 24, +p.minute) - t;
+  }
+  function aUtc(fecha, hora, zona) {
+    var f = fecha.split('-'), h = hora.split(':');
+    var base = Date.UTC(+f[0], +f[1] - 1, +f[2], +h[0], +h[1]);
+    var t = base - offset(zona, base);
+    return base - offset(zona, t);
+  }
+  function actualizar() {
+    var op = sel.options[sel.selectedIndex];
+    if (!op) return;
+    var zonaCli = op.getAttribute('data-zona'), pais = op.getAttribute('data-pais');
+    form.querySelectorAll('[data-hora-pais]').forEach(function (s) { s.textContent = '(' + pais + ')'; });
+    form.querySelectorAll('[data-equiv]').forEach(function (p) {
+      var k = p.getAttribute('data-equiv');
+      var zonaAg = p.getAttribute('data-zona-agencia'), nombreAg = p.getAttribute('data-nombre-agencia');
+      var d = form.querySelector('[name="' + k + '_d"]'), h = form.querySelector('[name="' + k + '_t"]');
+      if (zonaCli === zonaAg) { p.textContent = ''; return; }
+      if (!d || !h || !d.value || !h.value) {
+        p.textContent = 'Escribe la hora del cliente; aquí verás a qué hora es en ' + nombreAg + '.';
+        return;
+      }
+      var t = aUtc(d.value, h.value, zonaCli);
+      var txt = new Intl.DateTimeFormat('es', { timeZone: zonaAg, weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(t));
+      p.textContent = '= ' + txt + ' en ' + nombreAg + ' (hora de la agencia)';
+    });
+  }
+  sel.addEventListener('change', actualizar);
+  form.addEventListener('input', actualizar);
+  actualizar();
+})();
+</script>

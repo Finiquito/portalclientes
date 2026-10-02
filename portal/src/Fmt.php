@@ -64,7 +64,7 @@ final class Fmt
     /** "martes 29 sep" */
     public function fechaLarga(?string $s = null): string
     {
-        $d = $this->parse($s) ?? $this->ahora->setTimezone(new \DateTimeZone(self::ZONA));
+        $d = $this->parse($s) ?? $this->ahora->setTimezone(new \DateTimeZone(Zona::agencia()));
         return self::DIAS[(int) $d->format('w')] . ' ' . $d->format('j') . ' ' . self::MESES[(int) $d->format('n') - 1];
     }
 
@@ -299,14 +299,14 @@ final class Fmt
 
     public function saludo(): string
     {
-        $h = (int) $this->ahora->setTimezone(new \DateTimeZone(self::ZONA))->format('G');
+        $h = (int) $this->ahora->setTimezone(new \DateTimeZone(Zona::agencia()))->format('G');
         return $h < 6 ? 'Buenas noches' : ($h < 13 ? 'Buenos días' : ($h < 20 ? 'Buenas tardes' : 'Buenas noches'));
     }
 
     /** Día del año en Chile: elige la frase de bienvenida del día. */
     public function diaDelAnio(): int
     {
-        return (int) $this->ahora->setTimezone(new \DateTimeZone(self::ZONA))->format('z');
+        return (int) $this->ahora->setTimezone(new \DateTimeZone(Zona::agencia()))->format('z');
     }
 
     /** Frase de actividad: "Ana comentó en «Logo»". */

@@ -50,7 +50,10 @@ class ReunionAdminController
         return $this->ui->url($ruta);
     }
 
-    /** Une los campos <input type=date> + <input type=time> ('fecha_d' / 'fecha_t'); si no vienen, respeta el valor directo. */
+    /**
+     * Une los campos <input type=date> + <input type=time> ('fecha_d' / 'fecha_t'); si no vienen, respeta el valor directo.
+     * La hora se escribe en la del país del cliente del proyecto y se guarda en la de la agencia.
+     */
     private function combinar(string $k): string
     {
         if (!isset($_POST[$k . '_d'])) {
@@ -58,7 +61,23 @@ class ReunionAdminController
         }
         $d = trim((string) $_POST[$k . '_d']);
         $t = trim((string) ($_POST[$k . '_t'] ?? ''));
-        return $d === '' ? '' : ($t !== '' ? $d . ' ' . $t : $d);
+        if ($d === '') {
+            return '';
+        }
+        return $t !== '' ? Zona::desdePais($d . ' ' . $t, $this->paisDelProyecto((string) ($_POST['proyecto_id'] ?? ''))) : $d;
+    }
+
+    private function paisDelProyecto(string $proyectoId): string
+    {
+        $st = $this->pdo()->prepare('SELECT c.pais FROM portal_proyectos p JOIN portal_clientes c ON c.id = p.cliente_id WHERE p.id = ?');
+        $st->execute([$proyectoId]);
+        return HorarioHabil::paisValido((string) $st->fetchColumn());
+    }
+
+    /** Datos para que el formulario muestre la hora del cliente y la equivalencia en la de la agencia. */
+    private function zonasFormulario(): array
+    {
+        return ['zonaAgencia' => Zona::agencia(), 'paisAgencia' => Zona::pais(), 'nombreAgencia' => Zona::nombre()];
     }
 
     public const FILTRO_CUANDO = ['proximas' => 'Próximas', 'pasadas' => 'Pasadas', 'todas' => 'Todas'];
@@ -90,7 +109,7 @@ class ReunionAdminController
             'estado'   => array_keys(self::FILTRO_ESTADO),
             'proyecto' => 'uuid',
         ]);
-        $hoy = (new \DateTimeImmutable('now', new \DateTimeZone(ReunionService::ZONA)))->format('Y-m-d');
+        $hoy = (new \DateTimeImmutable('now', new \DateTimeZone(Zona::agencia())))->format('Y-m-d');
         $todas = $this->ui->filtrar($this->service()->listAll(), 'proyecto_id');
         $base = array_values(array_filter($todas, fn(array $r): bool => ($f->get('proyecto') === '' || $r['proyecto_id'] === $f->get('proyecto'))
             && self::enEstado($r, $f->get('estado'))));
@@ -132,7 +151,7 @@ class ReunionAdminController
             $this->ui->redirect($this->url('reuniones'), 'Crea un proyecto primero.', 'error');
             return;
         }
-        $this->ui->view('reuniones/nueva.latte', [
+        $this->ui->view('reuniones/nueva.latte', $this->zonasFormulario() + [
             'proyectos' => $proyectos,
             'proyectoId' => (string) ($_GET['proyecto'] ?? $_GET['proyecto_id'] ?? ''),
         ]);
@@ -155,8 +174,12 @@ class ReunionAdminController
             return;
         }
         $ia = $this->ia();
-        $this->ui->view('reuniones/edit.latte', [
+        $paisCli = $this->paisDelProyecto((string) $reunion['proyecto_id']);
+        $this->ui->view('reuniones/edit.latte', $this->zonasFormulario() + [
             'reunion'    => $reunion,
+            // En el formulario la hora va en la del cliente.
+            'fechaCli'   => Zona::aPais((string) $reunion['fecha'], $paisCli),
+            'proxCli'    => Zona::aPais((string) $reunion['prox_fecha'], $paisCli),
             'proyectos'  => $this->proyectos(),
             'propuestas' => $this->service()->propuestas($id),
             'iaActiva'   => $ia->activa(),
@@ -346,9 +369,11 @@ class ReunionAdminController
             $p = $this->service()->find($proxId);
             if ($p !== null) {
                 $f = new Fmt();
+                $paisCli = $this->paisDelProyecto((string) $p['proyecto_id']);
+                $loc = Zona::aPais((string) $p['fecha'], $paisCli);
                 $bloques[] = ['datos' => [
                     ['Próxima reunión', (string) $p['titulo']],
-                    ['Cuándo', $f->fechaLarga((string) $p['fecha']) . ($f->hora((string) $p['fecha']) !== '' ? ' a las ' . $f->hora((string) $p['fecha']) : '')],
+                    ['Cuándo', $f->fechaLarga($loc) . ($f->hora($loc) !== '' ? ' a las ' . $f->hora($loc) . ' (hora de ' . HorarioHabil::nombreDe($paisCli) . ')' : '')],
                 ]];
             }
         }

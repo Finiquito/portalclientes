@@ -149,6 +149,25 @@ class PortalPublicController
         $this->terminate();
     }
 
+    /**
+     * Reuniones en la hora del cliente: se guardan en la de la agencia.
+     *
+     * @param array<int, array<string, mixed>> $filas
+     * @return array<int, array<string, mixed>>
+     */
+    protected function enHoraDelCliente(array $filas, string $clienteId): array
+    {
+        $pais = (new SolicitudService($this->pdo()))->paisCliente($clienteId);
+        foreach ($filas as &$f) {
+            foreach (['fecha', 'prox_fecha'] as $k) {
+                if (isset($f[$k]) && $f[$k] !== null) {
+                    $f[$k] = Zona::aPais((string) $f[$k], $pais);
+                }
+            }
+        }
+        return $filas;
+    }
+
     /** @param array<int, mixed> $params */
     protected function fetchAll(string $sql, array $params = []): array
     {
@@ -270,9 +289,10 @@ class PortalPublicController
             'proximasReuniones' => (int) ($this->fetchOne(
                 'SELECT COUNT(*) AS n FROM portal_reuniones r JOIN portal_proyectos p ON p.id = r.proyecto_id
                  WHERE p.cliente_id = ? AND r.publicada = 1 AND r.fecha >= ?',
-                [$clienteId, (new \DateTimeImmutable('now', new \DateTimeZone(ReunionService::ZONA)))->format('Y-m-d')]
+                [$clienteId, (new \DateTimeImmutable('now', new \DateTimeZone(Zona::agencia())))->format('Y-m-d')]
             )['n'] ?? 0),
             'solicitudesCliente' => (int) ($this->fetchOne("SELECT COUNT(*) AS n FROM portal_solicitudes WHERE cliente_id = ? AND estado = 'cotizada'", [$clienteId])['n'] ?? 0),
+            'paisCliente'   => HorarioHabil::paisValido((string) ($cliente['pais'] ?? '')),
             'hayRevisiones' => (int) ($this->fetchOne("SELECT COUNT(*) AS n FROM portal_entregas WHERE cliente_id = ? AND estado <> 'borrador'", [$clienteId])['n'] ?? 0) > 0,
             'puedeColaborar' => $this->esColaborador($contacto),
             'maxMb'         => (int) round($this->archivos()->limiteBytes($this->maxMb()) / 1048576),
@@ -438,11 +458,11 @@ class PortalPublicController
         $enRevision = array_values(array_filter($tareas, fn($t) => $t['responsable_tipo'] === 'cliente' && $this->turno($t) === 'equipo'));
 
         $hoy = (new \DateTimeImmutable())->format('Y-m-d');
-        $reuniones = $ids === [] ? [] : $this->fetchAll(
+        $reuniones = $this->enHoraDelCliente($ids === [] ? [] : $this->fetchAll(
             'SELECT r.*, p.nombre AS proyecto_nombre FROM portal_reuniones r JOIN portal_proyectos p ON p.id = r.proyecto_id
              WHERE r.proyecto_id IN (' . $this->placeholders($ids) . ') AND r.publicada = 1 AND r.fecha >= ? ORDER BY r.fecha LIMIT 3',
             [...$ids, $hoy]
-        );
+        ), $clienteId);
 
         $nArchivos = (int) ($this->fetchOne(
             "SELECT COUNT(*) AS n FROM portal_archivos a JOIN portal_tareas t ON t.id = a.entidad_id
@@ -830,11 +850,11 @@ class PortalPublicController
     {
         $c   = $this->requerirContacto();
         $hoy = (new \DateTimeImmutable())->format('Y-m-d');
-        $todas = $this->fetchAll(
+        $todas = $this->enHoraDelCliente($this->fetchAll(
             'SELECT r.*, p.nombre AS proyecto_nombre FROM portal_reuniones r
              JOIN portal_proyectos p ON p.id = r.proyecto_id WHERE p.cliente_id = ? AND r.publicada = 1 ORDER BY r.fecha DESC',
             [$c['cliente_id']]
-        );
+        ), (string) $c['cliente_id']);
 
         $this->ctx->view('templates/public/reuniones.latte', $this->contexto($c, 'reuniones') + [
             'proximas'  => array_reverse(array_values(array_filter($todas, fn($r) => substr((string) $r['fecha'], 0, 10) >= $hoy))),
@@ -852,15 +872,18 @@ class PortalPublicController
             $this->redirectTo('portal/reuniones');
             return;
         }
-        $hoy = (new \DateTimeImmutable('now', new \DateTimeZone(ReunionService::ZONA)))->format('Y-m-d');
+        $hoy = (new \DateTimeImmutable('now', new \DateTimeZone(Zona::agencia())))->format('Y-m-d');
+        $proximaR = substr((string) $r['fecha'], 0, 10) >= $hoy;
+        $r = $this->enHoraDelCliente([$r], (string) $c['cliente_id'])[0];
         $verResumen = (int) $r['resumen_publicado'] === 1;
         $this->ctx->view('templates/public/reunion.latte', $this->contexto($c, 'reuniones') + [
             'r'          => $r,
-            'proxima'    => substr((string) $r['fecha'], 0, 10) >= $hoy,
+            'proxima'    => $proximaR,
             'verResumen' => $verResumen,
             'acuerdos'   => $verResumen ? array_values(array_filter(array_map('trim', preg_split('/\R/', (string) $r['acuerdos']) ?: []))) : [],
             'tareas'     => $svc->tareasVisibles($id),
-            'siguiente'  => $r['prox_reunion_id'] ? $svc->findDelCliente((string) $r['prox_reunion_id'], (string) $c['cliente_id']) : null,
+            'siguiente'  => $r['prox_reunion_id'] && ($sg = $svc->findDelCliente((string) $r['prox_reunion_id'], (string) $c['cliente_id'])) !== null
+                ? $this->enHoraDelCliente([$sg], (string) $c['cliente_id'])[0] : null,
             'estadosT'   => TareaService::ESTADOS,
         ]);
     }

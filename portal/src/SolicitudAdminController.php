@@ -44,7 +44,7 @@ class SolicitudAdminController
 
     private static function enGrupo(array $s, string $g): bool
     {
-        $hoy = (new \DateTimeImmutable('now', new \DateTimeZone(Fmt::ZONA)))->format('Y-m-d');
+        $hoy = (new \DateTimeImmutable('now', new \DateTimeZone(Zona::agencia())))->format('Y-m-d');
         $vigente = ($s['estado'] === 'en_curso' && $s['tarea_estado'] !== 'hecha')
             || ($s['estado'] === 'agendada' && substr((string) $s['reunion_fecha'], 0, 10) >= $hoy);
         return match ($g) {
@@ -111,7 +111,7 @@ class SolicitudAdminController
         $yo = $this->ui->autorId();
         // Cada horario en la hora del cliente y en la de la agencia (la que usa la reunión).
         $hz = SolicitudService::horariosZona($s['horarios']);
-        $horarios = array_map(fn(string $h): array => ['local' => $h, 'agencia' => SolicitudService::convertir($h, $hz['zona'], ReunionService::ZONA)], $hz['lista']);
+        $horarios = array_map(fn(string $h): array => ['local' => $h, 'agencia' => SolicitudService::convertir($h, $hz['zona'], Zona::agencia())], $hz['lista']);
 
         $this->ui->view('solicitudes/ver.latte', [
             's'           => $s,

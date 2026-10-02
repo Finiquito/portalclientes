@@ -13,7 +13,7 @@ class ProyectoService
     public function listAll(): array
     {
         $stmt = $this->pdo->query(
-            'SELECT p.*, c.nombre AS cliente_nombre
+            'SELECT p.*, c.nombre AS cliente_nombre, c.pais AS cliente_pais
              FROM ' . self::TABLE . ' p
              JOIN portal_clientes c ON c.id = p.cliente_id
              ORDER BY p.nombre'

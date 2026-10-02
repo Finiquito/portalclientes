@@ -380,7 +380,7 @@ class EquipoController
         $u   = $this->requerirUsuario();
         $acc = $this->acceso($u);
         $fmt = new Fmt();
-        $hoy = (new \DateTimeImmutable('now', new \DateTimeZone(ReunionService::ZONA)))->format('Y-m-d');
+        $hoy = (new \DateTimeImmutable('now', new \DateTimeZone(Zona::agencia())))->format('Y-m-d');
 
         [$wT, $pT] = $acc->filtroProyecto('t.proyecto_id');
         $turno = $this->fetchAll(

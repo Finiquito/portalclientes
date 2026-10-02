@@ -185,7 +185,7 @@ class SolicitudPublicController extends PortalPublicController
             'horarios'    => SolicitudService::horarios($s['horarios']),
             'paisCliente' => HorarioHabil::paisValido((string) $s['cliente_pais']),
             // La reunión se guarda en hora de la agencia: al cliente se le muestra en la suya.
-            'reunionLocal' => $s['reunion_fecha'] ? SolicitudService::convertir((string) $s['reunion_fecha'], ReunionService::ZONA, HorarioHabil::zonaDe((string) $s['cliente_pais'])) : null,
+            'reunionLocal' => $s['reunion_fecha'] ? SolicitudService::convertir((string) $s['reunion_fecha'], Zona::agencia(), HorarioHabil::zonaDe((string) $s['cliente_pais'])) : null,
             'archivosS'   => $this->archivos()->deEntidad('solicitud', $id),
             'comentarios' => $this->comentarios()->listar('solicitud', $id),
             'conversa'    => !in_array($s['estado'], ['en_curso', 'agendada'], true),
@@ -321,11 +321,11 @@ class SolicitudPublicController extends PortalPublicController
         if ($s['tipo'] === 'reunion') {
             $fmt = new Fmt();
             $hz = SolicitudService::horariosZona($s['horarios']);
-            $otra = $hz['zona'] !== ReunionService::ZONA;
+            $otra = $hz['zona'] !== Zona::agencia();
             $hs = array_map(function (string $h) use ($fmt, $hz, $otra): string {
                 $txt = $fmt->fechaCorta($h) . ' ' . substr($h, 11, 5);
                 if ($otra) {
-                    $ag = SolicitudService::convertir($h, $hz['zona'], ReunionService::ZONA);
+                    $ag = SolicitudService::convertir($h, $hz['zona'], Zona::agencia());
                     $txt .= ' (' . substr($ag, 11, 5) . ' en ' . HorarioHabil::nombreDe(SolicitudService::paisAgencia()) . ')';
                 }
                 return $txt;

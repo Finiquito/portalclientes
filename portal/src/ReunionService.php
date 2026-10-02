@@ -311,7 +311,7 @@ class ReunionService
         }
         $hora = str_contains($fecha, ':') ? $fecha : $fecha . ' 09:00';
         try {
-            return (new \DateTimeImmutable(substr(str_replace('T', ' ', $hora), 0, 16), new \DateTimeZone(self::ZONA)))->setTimezone(new \DateTimeZone('UTC'));
+            return (new \DateTimeImmutable(substr(str_replace('T', ' ', $hora), 0, 16), new \DateTimeZone(Zona::agencia())))->setTimezone(new \DateTimeZone('UTC'));
         } catch (\Throwable) {
             return null;
         }

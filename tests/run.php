@@ -875,6 +875,32 @@ check(!str_contains($html, 'Primeros pasos'), '«Ya lo entendí» los oculta');
 $_SESSION[P\PortalSession::CONTACTO] = $contacto;
 $_SESSION[P\EquipoController::SESION] = $ana;
 
+// Reuniones en la hora del cliente (Cliente Dos está en México; la agencia, en Chile)
+seccion('Reuniones en la hora del cliente');
+$_SESSION[P\EquipoController::SESION] = $ana;
+$tok = P\PortalSession::csrf();
+$R = P\ReunionAdminController::class;
+$diaMx = (new DateTimeImmutable('+10 days'))->format('Y-m-d');
+[, $r] = $g->hacer('POST', $R, 'store', [], null, false, ['_csrf_token' => $tok, 'proyecto_id' => $p2a, 'titulo' => 'Reunión hora MX', 'fecha_d' => $diaMx, 'fecha_t' => '10:00', 'publicada' => '1']);
+$rmxId = (string) $pdo->query("SELECT id FROM portal_reuniones WHERE titulo = 'Reunión hora MX'")->fetchColumn();
+$guardada = (string) $rs->find($rmxId)['fecha'];
+check($guardada === P\Zona::desdePais($diaMx . ' 10:00', 'MX') && $guardada !== $diaMx . ' 10:00', 'la hora escrita (México) se guarda en la hora de la agencia');
+[$html] = $g->hacer('GET', $R, 'edit', [$rmxId], 'reunion');
+check(str_contains($html, 'name="fecha_t" class="form-input" value="10:00"') && str_contains($html, 'data-zona="America/Mexico_City"'), 'al editar se ve otra vez en la hora del cliente');
+$_SESSION[P\PortalSession::CONTACTO] = $c2c;
+$sm = new SolicitudPrueba($ctx);
+[$html] = $sm->correr('reunion', [$rmxId]);
+check(str_contains($html, '10:00 (hora de México)'), 'el cliente ve su reunión en su hora');
+P\Zona::configurar('ES');
+check(P\Zona::agencia() === 'Europe/Madrid' && P\Zona::aPais('2026-07-10 12:00', 'CL') === '2026-07-10 06:00', 'con la agencia en España, las horas se convierten desde Madrid');
+P\Zona::configurar('CL');
+(new P\AjustesService($pdo))->set('global', 'portal', 'pais_agencia', 'MX');
+P\Zona::desdeAjustes($pdo);
+check(P\Zona::pais() === 'MX', 'el país de la agencia se lee de Ajustes');
+(new P\AjustesService($pdo))->set('global', 'portal', 'pais_agencia', 'CL');
+P\Zona::desdeAjustes($pdo);
+$_SESSION[P\PortalSession::CONTACTO] = $contacto;
+
 $ss->borrarDeProyecto($p3a);
 check($ss->find((string) $ajena['id']) === null, 'al borrar un proyecto se van sus solicitudes');
 
