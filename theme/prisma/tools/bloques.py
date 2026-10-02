@@ -4,8 +4,7 @@ Genera la ilustración del hero del landing: cubos vistos desde abajo que llenan
 
     python3 theme/prisma/tools/bloques.py
 
-Escribe partials/hero-bloques.latte: SVG en línea para que cada parte se anime con CSS
-(prisma.css, sección «Hero: bloques»). La animación: los cubos suben en tonos claros,
+Escribe partials/hero-bloques.latte: SVG en línea con su propio CSS y JS (ver CSS y JS abajo). La animación: los cubos suben en tonos claros,
 de adelante hacia atrás; nacen las ventanas y el sol sube trayendo todas las sombras.
 
 Proyección en pantalla (no en 3D): cada cubo se define por su arista frontal
@@ -141,12 +140,27 @@ def svg(nombre):
             + "".join(capas) + "</g></svg>")
 
 
+# El CSS y el JS van dentro del partial: la ilustración no depende de que el
+# hosting haya publicado (o refrescado) assets/css y assets/js del tema.
+# Sin JS o con «reducir movimiento» se ve la imagen final.
+CSS = '.lamina-bloques{padding: 0;} .lamina-bloques .bloques{position: absolute; inset: 0; z-index: 2; display: block; width: 100%; height: 100%;} @media (prefers-reduced-motion: no-preference){.js .bloques{--espera: 1200ms;} .js .bloques .sube, .js .bloques .ventanas, .js .bloques .cara-i-sol, .js .bloques .cara-d-sombra{opacity: 0;} .js .bloques .sol{opacity: 0; transform: translateY(60px);} .bloques .ventana .derrame, .bloques .ventana .hondo{transform-box: fill-box; transform-origin: 50% 0;} .js .bloques.armar .sube{animation: bloque-sube 750ms cubic-bezier(.2, .8, .3, 1) both; animation-delay: calc(var(--espera) + var(--i) * 140ms);} .js .bloques.armar .ventanas{animation: bloque-aparece 10ms linear both; animation-delay: calc(var(--espera) + 1900ms);} .js .bloques.armar .ventana .derrame{animation: bloque-aparece 400ms ease both; animation-delay: calc(var(--espera) + 1900ms + (12 - var(--i)) * 45ms);} .js .bloques.armar .ventana .hondo{animation: bloque-hondo 600ms cubic-bezier(.3, .7, .3, 1) both; animation-delay: calc(var(--espera) + 2000ms + (12 - var(--i)) * 45ms);} .js .bloques.armar .sol{animation: bloque-sol 1500ms cubic-bezier(.33, 1, .5, 1) both; animation-delay: calc(var(--espera) + 2300ms);} .js .bloques.armar .cara-i-sol, .js .bloques.armar .cara-d-sombra{animation: bloque-aparece 1500ms cubic-bezier(.33, 1, .5, 1) both; animation-delay: calc(var(--espera) + 2300ms);}}@keyframes bloque-sube{0%{opacity: 0; transform: translateY(calc(var(--h) * .9));} 20%{opacity: 1;} 100%{opacity: 1; transform: none;}}@keyframes bloque-aparece{from{opacity: 0;} to{opacity: 1;}}@keyframes bloque-hondo{from{transform: scaleY(0);} to{transform: none;}}@keyframes bloque-sol{to{opacity: 1; transform: none;}}@media (max-width: 60rem){.lamina-bloques{min-height: 0; aspect-ratio: 4 / 5;} }'
+
+JS = (
+    '(function(){var s=document.currentScript,b=s&&s.previousElementSibling;'
+    'if(!b||!b.classList.contains("bloques"))return;'
+    'if(window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches)return;'
+    'if(!("IntersectionObserver" in window)){b.classList.add("armar");return;}'
+    'var io=new IntersectionObserver(function(e){if(e[0].isIntersecting){b.classList.add("armar");io.disconnect();}},{threshold:.2});'
+    'io.observe(b);})();'
+)
+
+
 def main():
     raiz = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     dest = os.path.join(raiz, "partials", "hero-bloques.latte")
     with open(dest, "w", encoding="utf-8") as fh:
         fh.write("{* Generado por tools/bloques.py: no editar a mano. *}\n")
-        fh.write("{syntax off}" + svg("azul") + "{/syntax}\n")
+        fh.write("{syntax off}<style>" + CSS + "</style>" + svg("azul") + "<script>" + JS + "</script>{/syntax}\n")
     print("ok:", dest)
 
 
