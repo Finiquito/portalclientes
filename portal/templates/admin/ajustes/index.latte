@@ -3,7 +3,7 @@
 {block page_title}Ajustes del portal{/block}
 
 {block content}
-<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=3">
+<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=4">
 
 <div class="page-header">
     <h1>Ajustes del portal</h1>
@@ -12,160 +12,298 @@
 {if $flash_success}<div class="alert alert-success">{$flash_success}</div>{/if}
 {if $flash_error}<div class="alert alert-error">{$flash_error}</div>{/if}
 
-<div class="card">
-    <form method="post" action="{$admin_url('ajustes')}">
-        <input type="hidden" name="_csrf_token" value="{$csrf_token}">
-
-        <label class="form-label">Copia de todos los avisos (opcional)</label>
-        <input type="email" name="email_avisos" class="form-input" value="{$cfg['email_avisos']}" placeholder="tu@correo.com">
-        <p class="form-hint mt-1">Cada persona del equipo recibe lo suyo en su correo y elige en «Mis ajustes» del panel qué y cómo (agrupado o al instante). Aquí puedes poner un correo que reciba una copia de todo, al instante: útil para supervisar. Vacío = sin copia (igual verás todo en «Actividad»).</p>
-
-        <label class="form-label mt-3">Nombre con que firma el equipo</label>
-        <input type="text" name="nombre_equipo" class="form-input" value="{$cfg['nombre_equipo']}" maxlength="60" placeholder="Equipo">
-        <p class="form-hint mt-1">Aparece en tus comentarios y archivos dentro del portal del cliente. Ej.: «Richard · TypeDock».</p>
-
-        <label class="form-label mt-3">Color del panel de equipo</label>
-        <input type="color" name="color_agencia" value="{($cfg['color_agencia'] ?? '') ?: '#6d5df6'}" style="width:4rem;height:2.4rem;padding:2px;border:1px solid #e2e8f0;border-radius:8px">
-        <p class="form-hint mt-1">Color de marca del front de agencia (<code>/equipo</code>). El de cada cliente se define en su ficha.</p>
-
-        <label class="form-label mt-3">País de la agencia (zona horaria)</label>
-        <select name="pais_agencia" class="form-input" style="max-width:22rem">
-            {foreach $paises as $cod => $p}<option value="{$cod}" {if $cfg['pais_agencia'] === $cod}selected{/if}>{\TypeDock\Plugin\Portal\Fmt::bandera($cod)} {$p[0]}</option>{/foreach}
-        </select>
-        <p class="form-hint mt-1">Las reuniones se agendan pensando en la hora de cada cliente y, al lado, se muestra la hora de la agencia. Las fechas se guardan en esta zona: si la cambias, revisa las reuniones ya agendadas.</p>
-
-        <label class="form-label mt-3">Tamaño máximo por archivo (MB)</label>
-        <input type="number" name="max_mb" class="form-input" value="{$cfg['max_mb']}" min="1" max="500" style="max-width:8rem">
-        <p class="form-hint mt-1">Tu hosting hoy permite como máximo <strong>{$iniMax} MB</strong> por subida (upload_max_filesize / post_max_size); el menor de los dos valores es el que manda.</p>
-
-        <label class="form-label mt-3">Solicitudes urgentes abiertas por cliente</label>
-        <input type="number" name="urgentes_max" class="form-input" value="{$cfg['urgentes_max']}" min="0" max="20" style="max-width:8rem">
-        <p class="form-hint mt-1">Para el cliente todo es urgente: con 1, mientras tenga una urgencia abierta las siguientes entran como «Prioritario» (máximo 5 días hábiles) o «Sin apuro». Al marcar urgente se le pide el motivo y se le avisa que puede mover sus otras entregas. Los problemas («algo dejó de funcionar») no cuentan. 0 = sin límite.</p>
-
-        <hr style="margin:1.5rem 0;border:0;border-top:1px solid #e2e8f0">
-        <h2 style="font-size:1.05rem;font-weight:800;margin:0 0 .25rem">IA para reuniones <span class="pa-muted" style="font-weight:500">(opcional)</span></h2>
-        <p class="form-hint">Con una clave de IA, en cada reunión aparece «Analizar con IA»: a partir de la transcripción que pegues propone resumen, acuerdos, tareas y próxima reunión. <strong>Nada se publica solo</strong>: tú lo revisas antes. Sin clave, esa parte no aparece y todo se escribe a mano.</p>
-        {if !$ia['curl']}<p class="form-hint" style="color:#b45309">Este hosting no tiene cURL habilitado, así que la IA no podrá conectarse.</p>{/if}
-
-        <label class="form-label mt-3">Proveedor</label>
-        <select name="ia_proveedor" id="ia-proveedor" class="form-input" style="max-width:26rem">
-            {foreach $ia['proveedores'] as $k => $pv}<option value="{$k}" {if $ia['proveedor'] === $k}selected{/if}>{$pv['nombre']}{if $pv['origen'] !== ''} · clave lista{/if}</option>{/foreach}
-        </select>
-        <p class="form-hint mt-1">Puedes dejar claves de varios y cambiar entre ellos; se usa el proveedor elegido aquí.</p>
-
-        {foreach $ia['proveedores'] as $k => $pv}
-        <div data-ia-prov="{$k}" style="margin-top:.75rem;padding:.75rem 1rem;border:1px solid #e2e8f0;border-radius:.75rem">
-            <label class="form-label">Clave de API de {$pv['nombre']}</label>
-            {if $pv['origen'] === 'entorno'}
-                <p class="form-hint">Se está usando la clave de la variable de entorno <code>{$pv['env']}</code> del servidor ({$pv['pista']}).</p>
-            {else}
-                <input type="password" name="ia_clave{$pv['sufijo']}" class="form-input" autocomplete="off" placeholder="{if $pv['origen'] !== ''}Guardada ({$pv['pista']}) — escribe otra sólo para reemplazarla{else}Pega la clave aquí{/if}">
-                <p class="form-hint mt-1">Se guarda cifrada y no se vuelve a mostrar. Se envía a {$pv['nombre']} únicamente al analizar una reunión. Ojo: la transcripción contiene información de tus clientes; avísales si tu contrato lo exige.</p>
-                {if $pv['origen'] !== ''}<label class="form-hint" style="display:block;margin-top:.5rem"><input type="checkbox" name="ia_quitar{$pv['sufijo']}" value="1"> Quitar la clave guardada</label>{/if}
-            {/if}
-
-            <label class="form-label mt-3">Modelo</label>
-            <select name="ia_modelo{$pv['sufijo']}" class="form-input" style="max-width:26rem">
-                {foreach $pv['modelos'] as $mk => $mn}<option value="{$mk}" {if $pv['modelo'] === $mk}selected{/if}>{$mn}</option>{/foreach}
-            </select>
-            <input type="text" name="ia_modelo_otro{$pv['sufijo']}" class="form-input mt-1" style="max-width:26rem" autocomplete="off" placeholder="{if $pv['personalizado']}En uso: {$pv['modelo']} — escribe otro para cambiarlo{else}¿Otro modelo? Escribe su nombre exacto (opcional){/if}">
-        </div>
-        {/foreach}
-        <script>
-            (function () {
-                var sel = document.getElementById('ia-proveedor');
-                function ver() {
-                    document.querySelectorAll('[data-ia-prov]').forEach(function (d) { d.style.display = d.getAttribute('data-ia-prov') === sel.value ? '' : 'none'; });
-                }
-                sel.addEventListener('change', ver); ver();
-            })();
-        </script>
-
-        <p class="mt-4"><button type="submit" class="btn btn-primary">Guardar</button></p>
-    </form>
-    {if $ia['activa']}
-    <form method="post" action="{$admin_url('ajustes/ia-probar')}" class="mt-2">
-        <input type="hidden" name="_csrf_token" value="{$csrf_token}">
-        <button type="submit" class="btn btn-sm">Probar conexión con la IA</button>
-    </form>
-    {/if}
+<div class="pa-indice" role="navigation" aria-label="Secciones">
+    <a href="#agencia" class="pa-pill">Agencia</a>
+    <a href="#avisos" class="pa-pill">Avisos</a>
+    <a href="#clientes" class="pa-pill">Clientes</a>
+    <a href="#ia" class="pa-pill">IA</a>
+    <a href="#correos" class="pa-pill">Correos</a>
+    <a href="#cron" class="pa-pill">Tarea programada {if $correo['cronUltimo'] === ''}<span class="pa-chip warn">pendiente</span>{/if}</a>
 </div>
 
-<div class="card mt-4" id="correos">
-    <h2 style="font-size:1.05rem;font-weight:800;margin:0 0 .25rem">Correos del sistema</h2>
-    <p class="form-hint">Todos los correos comparten el mismo diseño: cabecera suave con el color del portal de cada cliente y tu logo. Los avisos para ti traen arriba el logo, el nombre del cliente y el proyecto.</p>
+<form method="post" action="{$admin_url('ajustes')}">
+    <input type="hidden" name="_csrf_token" value="{$csrf_token}">
 
-    <form method="post" action="{$admin_url('ajustes/correo')}" enctype="multipart/form-data">
-        <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+    {* ---- Agencia ---- *}
+    <section class="card pa-seccion" id="agencia">
+        <header class="pa-sec-cab">
+            <h2>Tu agencia</h2>
+            <p>Cómo firma y cómo se ve tu equipo.</p>
+        </header>
 
-        <label class="form-label mt-3">Logo de la agencia <span class="form-hint">(correos y panel de equipo <code>/equipo</code>)</span></label>
-        {if $correo['tieneLogo']}
-            <p><img src="/portal/marca/agencia?v={=time()}" alt="Tu logo" style="max-height:48px;max-width:220px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:6px"></p>
-            <label class="pa-check"><input type="checkbox" name="quitar_logo_agencia" value="1"> <span>Quitar el logo actual (se usará el nombre del equipo en texto)</span></label>
-        {/if}
-        <input type="file" name="logo_agencia" class="form-input mt-1" accept=".png,.jpg,.jpeg,.webp">
-        <p class="form-hint mt-1">PNG o JPG con fondo transparente o blanco, unos 300 px de ancho (máx. 2 MB). No SVG: los correos no lo muestran bien.</p>
-
-        <label class="pa-check mt-3"><input type="checkbox" name="horario_respetar" value="1" {if $correo['respetar']}checked{/if}> <span><strong>Enviar avisos al cliente sólo en su horario hábil</strong> (lunes a viernes, según el país de cada cliente)</span></label>
-        <div style="display:flex;gap:.75rem;align-items:center;margin-top:.5rem">
-            <label>Desde las <input type="number" name="horario_ini" class="form-input" value="{$correo['ini']}" min="0" max="22" style="width:5rem;display:inline-block"> h</label>
-            <label>hasta las <input type="number" name="horario_fin" class="form-input" value="{$correo['fin']}" min="1" max="23" style="width:5rem;display:inline-block"> h</label>
+        <div class="pa-fila">
+            <div>
+                <p class="pa-fila-et"><label for="f-nombre">Nombre con que firma el equipo</label></p>
+                <p class="pa-fila-ayuda">Aparece en tus comentarios y archivos dentro del portal del cliente.</p>
+            </div>
+            <div class="pa-fila-campo">
+                <input type="text" id="f-nombre" name="nombre_equipo" class="form-input" value="{$cfg['nombre_equipo']}" maxlength="60" placeholder="Ej.: Richgt Studio">
+            </div>
         </div>
-        <p class="form-hint mt-1">Lo que se genere fuera de ese horario queda en cola y sale solo en la próxima apertura. Los avisos al equipo siguen lo que cada persona eligió en «Mis ajustes»; el código de acceso sale siempre al tiro. No se consideran feriados.</p>
 
-        <h3 style="font-size:.95rem;font-weight:800;margin:1.5rem 0 .25rem">Servidor de correo (SMTP propio) — recomendado</h3>
-        <p class="form-hint">El correo del sistema puede mandar todo como texto plano. Con tu propia casilla los correos salen con el diseño completo (HTML) y desde tu dominio. En Hostinger: servidor <code>smtp.hostinger.com</code>, puerto <code>465</code>, seguridad SSL, usuario y contraseña de la casilla (ej. portal@tudominio.cl).</p>
-        {if $correo['smtp']['ultimoError'] !== ''}<p style="color:#b91c1c;font-size:.9rem">Último error de SMTP: {$correo['smtp']['ultimoError']}</p>{/if}
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(14rem,1fr));gap:.75rem;margin-top:.5rem">
-            <label>Servidor<input type="text" name="smtp_host" class="form-input" value="{$correo['smtp']['host']}" placeholder="smtp.hostinger.com" autocomplete="off"></label>
-            <label>Puerto<input type="number" name="smtp_puerto" class="form-input" value="{$correo['smtp']['puerto']}" min="1" max="65535"></label>
-            <label>Seguridad
-                <select name="smtp_seg" class="form-input">
-                    <option value="ssl" {if $correo['smtp']['seg'] === 'ssl'}selected{/if}>SSL (puerto 465)</option>
-                    <option value="tls" {if $correo['smtp']['seg'] === 'tls'}selected{/if}>STARTTLS (puerto 587)</option>
-                    <option value="ninguna" {if $correo['smtp']['seg'] === 'ninguna'}selected{/if}>Ninguna (no recomendado)</option>
+        <div class="pa-fila">
+            <div>
+                <p class="pa-fila-et"><label for="f-color">Color del panel de equipo</label></p>
+                <p class="pa-fila-ayuda">Se usa en <code>/equipo</code> y en los correos internos. El de cada cliente se define en su ficha.</p>
+            </div>
+            <div class="pa-fila-campo">
+                <input type="color" id="f-color" name="color_agencia" value="{($cfg['color_agencia'] ?? '') ?: '#6d5df6'}" style="width:4rem;height:2.4rem;padding:2px;border:1px solid #e2e8f0;border-radius:8px">
+            </div>
+        </div>
+
+        <div class="pa-fila">
+            <div>
+                <p class="pa-fila-et"><label for="f-pais">País de la agencia</label></p>
+                <p class="pa-fila-ayuda">Define tu zona horaria. Las reuniones se guardan en esta hora: si la cambias, revisa las ya agendadas.</p>
+            </div>
+            <div class="pa-fila-campo">
+                <select id="f-pais" name="pais_agencia" class="form-input" style="max-width:22rem">
+                    {foreach $paises as $cod => $p}<option value="{$cod}" {if $cfg['pais_agencia'] === $cod}selected{/if}>{\TypeDock\Plugin\Portal\Fmt::bandera($cod)} {$p[0]}</option>{/foreach}
                 </select>
-            </label>
-            <label>Usuario<input type="text" name="smtp_user" class="form-input" value="{$correo['smtp']['usuario']}" placeholder="portal@tudominio.cl" autocomplete="off"></label>
-            <label>Contraseña<input type="password" name="smtp_clave" class="form-input" value="" placeholder="{if $correo['smtp']['tieneClave']}Guardada (déjala vacía para mantenerla){else}Contraseña de la casilla{/if}" autocomplete="new-password"></label>
-            <label>Enviar desde<input type="email" name="smtp_desde" class="form-input" value="{$correo['smtp']['desde']}" placeholder="(igual al usuario)"></label>
+            </div>
         </div>
-        {if $correo['smtp']['tieneClave']}<label class="pa-check mt-1"><input type="checkbox" name="smtp_quitar_clave" value="1"> <span>Borrar la contraseña guardada</span></label>{/if}
-        <p class="form-hint mt-1">La contraseña se guarda cifrada. Usa una casilla de tu propio dominio para que los correos no caigan en spam.</p>
 
-        <label class="form-label mt-3">Modo de envío</label>
-        <select name="correo_modo" class="form-input" style="max-width:32rem">
-            <option value="auto" {if $correo['modo'] === 'auto'}selected{/if}>Automático (SMTP propio si está configurado; si no, el correo del sistema)</option>
-            <option value="smtp" {if $correo['modo'] === 'smtp'}selected{/if}>Sólo SMTP propio (HTML con diseño)</option>
-            <option value="html" {if $correo['modo'] === 'html'}selected{/if}>HTML por el envío estándar del sistema (puede llegar como texto)</option>
-            <option value="texto" {if $correo['modo'] === 'texto'}selected{/if}>Sólo texto plano (sin diseño)</option>
-        </select>
-        <p class="form-hint mt-1">Correo del sistema detectado: <code>{$correo['diag']['clase']}</code>{if $correo['diag']['metodos']} · métodos: {implode(', ', $correo['diag']['metodos'])}{/if}.</p>
+        <footer class="pa-sec-pie"><button type="submit" class="btn btn-primary">Guardar ajustes</button></footer>
+    </section>
 
-        <p class="mt-4"><button type="submit" class="btn btn-primary">Guardar correos</button></p>
-    </form>
+    {* ---- Avisos ---- *}
+    <section class="card pa-seccion" id="avisos">
+        <header class="pa-sec-cab">
+            <h2>Avisos</h2>
+            <p>Cada persona del equipo recibe lo suyo en su correo y elige qué y cómo en «Mis ajustes» del panel.</p>
+        </header>
 
-    <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.5rem">
-        <form method="post" action="{$admin_url('ajustes/smtp-probar')}">
-            <input type="hidden" name="_csrf_token" value="{$csrf_token}">
-            <button type="submit" class="btn btn-sm">Probar conexión SMTP (guarda antes)</button>
-        </form>
-        <form method="post" action="{$admin_url('ajustes/correo-prueba')}">
-            <input type="hidden" name="_csrf_token" value="{$csrf_token}">
-            <button type="submit" class="btn btn-sm">Enviar correos de prueba a mi correo de avisos</button>
-        </form>
-    </div>
+        <div class="pa-fila">
+            <div>
+                <p class="pa-fila-et"><label for="f-copia">Copia de todos los avisos</label> <span class="pa-muted">(opcional)</span></p>
+                <p class="pa-fila-ayuda">Un correo que recibe todo, al instante. Útil para supervisar. Vacío = sin copia.</p>
+            </div>
+            <div class="pa-fila-campo">
+                <input type="email" id="f-copia" name="email_avisos" class="form-input" value="{$cfg['email_avisos']}" placeholder="tu@correo.com">
+            </div>
+        </div>
 
-    <h3 style="font-size:.95rem;font-weight:800;margin:1.5rem 0 .25rem">Correos en espera ({count($correo['cola'])})</h3>
+        <footer class="pa-sec-pie"><button type="submit" class="btn btn-primary">Guardar ajustes</button></footer>
+    </section>
+
+    {* ---- Clientes ---- *}
+    <section class="card pa-seccion" id="clientes">
+        <header class="pa-sec-cab">
+            <h2>Clientes</h2>
+            <p>Límites de lo que tus clientes pueden subir y pedir.</p>
+        </header>
+
+        <div class="pa-fila">
+            <div>
+                <p class="pa-fila-et"><label for="f-mb">Tamaño máximo por archivo</label></p>
+                <p class="pa-fila-ayuda">Tu hosting permite hasta <strong>{$iniMax} MB</strong> por subida.</p>
+            </div>
+            <div class="pa-fila-campo">
+                <div class="pa-row"><input type="number" id="f-mb" name="max_mb" class="form-input" value="{$cfg['max_mb']}" min="1" max="500" style="max-width:7rem"> <span class="pa-muted">MB</span></div>
+            </div>
+        </div>
+
+        <div class="pa-fila">
+            <div>
+                <p class="pa-fila-et"><label for="f-urg">Urgencias abiertas por cliente</label></p>
+                <p class="pa-fila-ayuda">Cuántas solicitudes urgentes puede tener abiertas a la vez. 0 = sin límite.</p>
+            </div>
+            <div class="pa-fila-campo">
+                <input type="number" id="f-urg" name="urgentes_max" class="form-input" value="{$cfg['urgentes_max']}" min="0" max="20" style="max-width:7rem">
+                <details class="pa-mas">
+                    <summary>¿Cómo funciona?</summary>
+                    Para el cliente todo es urgente. Con 1, mientras tenga una urgencia abierta, las siguientes entran como «Prioritario» (máximo 5 días hábiles) o «Sin apuro». Al marcar urgente se le pide el motivo y se le avisa que puede mover sus otras entregas. Los problemas («algo dejó de funcionar») no cuentan.
+                </details>
+            </div>
+        </div>
+
+        <footer class="pa-sec-pie"><button type="submit" class="btn btn-primary">Guardar ajustes</button></footer>
+    </section>
+
+    {* ---- IA ---- *}
+    <section class="card pa-seccion" id="ia">
+        <header class="pa-sec-cab">
+            <h2>IA para reuniones <span class="pa-muted" style="font-weight:500">(opcional)</span></h2>
+            <p>Propone resumen, acuerdos y tareas a partir de la transcripción. Nada se publica solo: tú lo revisas antes.</p>
+        </header>
+        {if !$ia['curl']}<p class="pa-lock" style="margin-top:1rem">Este hosting no tiene cURL habilitado, así que la IA no podrá conectarse.</p>{/if}
+
+        <div class="pa-fila">
+            <div>
+                <p class="pa-fila-et"><label for="ia-proveedor">Proveedor</label></p>
+                <p class="pa-fila-ayuda">Puedes dejar claves de varios; se usa el que elijas aquí.</p>
+            </div>
+            <div class="pa-fila-campo">
+                <select name="ia_proveedor" id="ia-proveedor" class="form-input">
+                    {foreach $ia['proveedores'] as $k => $pv}<option value="{$k}" {if $ia['proveedor'] === $k}selected{/if}>{$pv['nombre']}{if $pv['origen'] !== ''} · clave lista{/if}</option>{/foreach}
+                </select>
+            </div>
+        </div>
+
+        {foreach $ia['proveedores'] as $k => $pv}
+        <div data-ia-prov="{$k}">
+            <div class="pa-fila">
+                <div>
+                    <p class="pa-fila-et">Clave de {$pv['nombre']}</p>
+                    <p class="pa-fila-ayuda">Se guarda cifrada y no se vuelve a mostrar.</p>
+                </div>
+                <div class="pa-fila-campo">
+                    {if $pv['origen'] === 'entorno'}
+                        <p class="pa-muted" style="margin:0">Se usa la variable de entorno <code>{$pv['env']}</code> del servidor ({$pv['pista']}).</p>
+                    {else}
+                        <input type="password" name="ia_clave{$pv['sufijo']}" class="form-input" autocomplete="off" aria-label="Clave de {$pv['nombre']}" placeholder="{if $pv['origen'] !== ''}Guardada ({$pv['pista']}) — escribe otra sólo para reemplazarla{else}Pega la clave aquí{/if}">
+                        {if $pv['origen'] !== ''}<label class="pa-check" style="margin-top:.5rem"><input type="checkbox" name="ia_quitar{$pv['sufijo']}" value="1"> <span>Quitar la clave guardada</span></label>{/if}
+                        <details class="pa-mas">
+                            <summary>Privacidad</summary>
+                            La clave sólo se envía a {$pv['nombre']} al analizar una reunión. La transcripción contiene información de tus clientes: avísales si tu contrato lo exige.
+                        </details>
+                    {/if}
+                </div>
+            </div>
+            <div class="pa-fila">
+                <div>
+                    <p class="pa-fila-et">Modelo</p>
+                    <p class="pa-fila-ayuda">El económico alcanza para la mayoría de las reuniones.</p>
+                </div>
+                <div class="pa-fila-campo">
+                    <select name="ia_modelo{$pv['sufijo']}" class="form-input" aria-label="Modelo de {$pv['nombre']}">
+                        {foreach $pv['modelos'] as $mk => $mn}<option value="{$mk}" {if $pv['modelo'] === $mk}selected{/if}>{$mn}</option>{/foreach}
+                    </select>
+                    <input type="text" name="ia_modelo_otro{$pv['sufijo']}" class="form-input" autocomplete="off" aria-label="Otro modelo" placeholder="{if $pv['personalizado']}En uso: {$pv['modelo']} — escribe otro para cambiarlo{else}¿Otro modelo? Escribe su nombre exacto (opcional){/if}">
+                </div>
+            </div>
+        </div>
+        {/foreach}
+
+        <footer class="pa-sec-pie">
+            <button type="submit" class="btn btn-primary">Guardar ajustes</button>
+            {if $ia['activa']}<button type="submit" formaction="{$admin_url('ajustes/ia-probar')}" class="btn">Probar conexión</button><span class="pa-muted">Guarda antes de probar.</span>{/if}
+        </footer>
+    </section>
+</form>
+<script>
+    (function () {
+        var sel = document.getElementById('ia-proveedor');
+        function ver() {
+            document.querySelectorAll('[data-ia-prov]').forEach(function (d) { d.hidden = d.getAttribute('data-ia-prov') !== sel.value; });
+        }
+        sel.addEventListener('change', ver); ver();
+    })();
+</script>
+
+{* ---- Correos ---- *}
+<form method="post" action="{$admin_url('ajustes/correo')}" enctype="multipart/form-data">
+    <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+    <section class="card pa-seccion" id="correos">
+        <header class="pa-sec-cab">
+            <h2>Correos</h2>
+            <p>Logo, horario de envío y servidor de correo. Todos los correos comparten el mismo diseño, con el color del portal de cada cliente.</p>
+        </header>
+        {if $correo['smtp']['ultimoError'] !== ''}<p class="pa-lock" style="margin-top:1rem">Último error de SMTP: {$correo['smtp']['ultimoError']}</p>{/if}
+
+        <div class="pa-fila">
+            <div>
+                <p class="pa-fila-et">Logo de la agencia</p>
+                <p class="pa-fila-ayuda">En los correos y en el panel de equipo. PNG o JPG de unos 300 px de ancho, fondo transparente o blanco (máx. 2 MB).</p>
+            </div>
+            <div class="pa-fila-campo">
+                {if $correo['tieneLogo']}
+                    <img src="/portal/marca/agencia?v={=time()}" alt="Tu logo" style="display:block;max-height:48px;max-width:220px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:6px">
+                    <label class="pa-check"><input type="checkbox" name="quitar_logo_agencia" value="1"> <span>Quitar el logo (se usa el nombre en texto)</span></label>
+                {/if}
+                <input type="file" name="logo_agencia" class="form-input" accept=".png,.jpg,.jpeg,.webp" aria-label="Subir logo">
+            </div>
+        </div>
+
+        <div class="pa-fila">
+            <div>
+                <p class="pa-fila-et">Horario hábil del cliente</p>
+                <p class="pa-fila-ayuda">Los avisos al cliente salen de lunes a viernes en este horario de su país. Lo de fuera espera en cola.</p>
+            </div>
+            <div class="pa-fila-campo">
+                <label class="pa-check" style="margin-top:0"><input type="checkbox" name="horario_respetar" value="1" {if $correo['respetar']}checked{/if}> <span>Respetar el horario hábil</span></label>
+                <div class="pa-row">
+                    <label class="pa-row">Desde las <input type="number" name="horario_ini" class="form-input" value="{$correo['ini']}" min="0" max="22" style="width:5rem"> h</label>
+                    <label class="pa-row">hasta las <input type="number" name="horario_fin" class="form-input" value="{$correo['fin']}" min="1" max="23" style="width:5rem"> h</label>
+                </div>
+                <details class="pa-mas">
+                    <summary>Excepciones</summary>
+                    Los avisos al equipo siguen lo que cada persona eligió en «Mis ajustes»; el código de acceso y las invitaciones a reuniones de las próximas 36 horas salen siempre al tiro. No se consideran feriados.
+                </details>
+            </div>
+        </div>
+
+        <div class="pa-fila">
+            <div>
+                <p class="pa-fila-et">Servidor de correo (SMTP) <span class="pa-chip ok">recomendado</span></p>
+                <p class="pa-fila-ayuda">Con tu propia casilla los correos salen con el diseño completo, desde tu dominio y sin caer en spam.</p>
+            </div>
+            <div class="pa-fila-campo">
+                <div class="pa-campos-3">
+                    <label>Servidor<input type="text" name="smtp_host" class="form-input" value="{$correo['smtp']['host']}" placeholder="smtp.hostinger.com" autocomplete="off"></label>
+                    <label>Puerto<input type="number" name="smtp_puerto" class="form-input" value="{$correo['smtp']['puerto']}" min="1" max="65535"></label>
+                    <label>Seguridad
+                        <select name="smtp_seg" class="form-input">
+                            <option value="ssl" {if $correo['smtp']['seg'] === 'ssl'}selected{/if}>SSL (puerto 465)</option>
+                            <option value="tls" {if $correo['smtp']['seg'] === 'tls'}selected{/if}>STARTTLS (puerto 587)</option>
+                            <option value="ninguna" {if $correo['smtp']['seg'] === 'ninguna'}selected{/if}>Ninguna (no recomendado)</option>
+                        </select>
+                    </label>
+                    <label>Usuario<input type="text" name="smtp_user" class="form-input" value="{$correo['smtp']['usuario']}" placeholder="portal@tudominio.cl" autocomplete="off"></label>
+                    <label>Contraseña<input type="password" name="smtp_clave" class="form-input" value="" placeholder="{if $correo['smtp']['tieneClave']}Guardada (vacía = mantener){else}Contraseña de la casilla{/if}" autocomplete="new-password"></label>
+                    <label>Enviar desde<input type="email" name="smtp_desde" class="form-input" value="{$correo['smtp']['desde']}" placeholder="(igual al usuario)"></label>
+                </div>
+                {if $correo['smtp']['tieneClave']}<label class="pa-check"><input type="checkbox" name="smtp_quitar_clave" value="1"> <span>Borrar la contraseña guardada</span></label>{/if}
+                <details class="pa-mas">
+                    <summary>Datos para Hostinger</summary>
+                    Servidor <code>smtp.hostinger.com</code>, puerto <code>465</code>, seguridad SSL, y el usuario y la contraseña de la casilla (ej. portal@tudominio.cl). La contraseña se guarda cifrada.
+                </details>
+            </div>
+        </div>
+
+        <div class="pa-fila">
+            <div>
+                <p class="pa-fila-et"><label for="f-modo">Modo de envío</label></p>
+                <p class="pa-fila-ayuda">Automático usa tu SMTP si está configurado; si no, el correo del sistema.</p>
+            </div>
+            <div class="pa-fila-campo">
+                <select id="f-modo" name="correo_modo" class="form-input">
+                    <option value="auto" {if $correo['modo'] === 'auto'}selected{/if}>Automático</option>
+                    <option value="smtp" {if $correo['modo'] === 'smtp'}selected{/if}>Sólo SMTP propio (HTML con diseño)</option>
+                    <option value="html" {if $correo['modo'] === 'html'}selected{/if}>HTML por el envío del sistema (puede llegar como texto)</option>
+                    <option value="texto" {if $correo['modo'] === 'texto'}selected{/if}>Sólo texto plano (sin diseño)</option>
+                </select>
+                <details class="pa-mas">
+                    <summary>Diagnóstico</summary>
+                    Correo del sistema detectado: <code>{$correo['diag']['clase']}</code>{if $correo['diag']['metodos']} · métodos: {implode(', ', $correo['diag']['metodos'])}{/if}.
+                </details>
+            </div>
+        </div>
+
+        <footer class="pa-sec-pie">
+            <button type="submit" class="btn btn-primary">Guardar correos</button>
+            <button type="submit" formaction="{$admin_url('ajustes/smtp-probar')}" class="btn">Probar conexión SMTP</button>
+            <button type="submit" formaction="{$admin_url('ajustes/correo-prueba')}" class="btn">Enviarme correos de prueba</button>
+            <span class="pa-muted">Guarda antes de probar. La prueba llega a la copia de avisos.</span>
+        </footer>
+    </section>
+</form>
+
+{* ---- Cola ---- *}
+<section class="card pa-seccion" id="cola">
+    <header class="pa-sec-cab">
+        <h2>Correos en espera <span class="pa-muted" style="font-weight:500">({count($correo['cola'])})</span></h2>
+        <p>Los que esperan el horario hábil de su cliente, o los que no se pudieron enviar.</p>
+    </header>
     {if $correo['cola']}
-        <div style="overflow-x:auto"><table class="pa-prop">
+        <div style="overflow-x:auto;margin-top:.75rem"><table class="pa-prop">
             <thead><tr><th>Para</th><th>Asunto</th><th>Sale</th><th></th></tr></thead>
             <tbody>
             {foreach $correo['cola'] as $f}
                 <tr>
                     <td>{$f['destino']}{if $f['cliente_nombre']}<br><span class="pa-muted">{$f['cliente_nombre']}</span>{/if}</td>
                     <td>{$f['asunto']}{if $f['estado'] === 'error'}<br><span style="color:#b91c1c">{$f['error']}</span>{/if}</td>
-                    <td>{if $f['estado'] === 'error'}<span class="pa-chip">Con error</span>{else}{$f['sale']}{/if}</td>
+                    <td>{if $f['estado'] === 'error'}<span class="pa-chip danger">Con error</span>{else}{$f['sale']}{/if}</td>
                     <td style="white-space:nowrap">
                         <form method="post" action="{$admin_url('ajustes/cola/' . $f['id'] . '/enviar')}" style="display:inline"><input type="hidden" name="_csrf_token" value="{$csrf_token}"><button type="submit" class="btn btn-sm">Enviar ahora</button></form>
                         <form method="post" action="{$admin_url('ajustes/cola/' . $f['id'] . '/cancelar')}" style="display:inline"><input type="hidden" name="_csrf_token" value="{$csrf_token}"><button type="submit" class="btn btn-sm">Cancelar</button></form>
@@ -175,19 +313,40 @@
             </tbody>
         </table></div>
     {else}
-        <p class="form-hint">No hay correos esperando su horario.</p>
+        <p class="pa-muted" style="margin:1rem 0 0">No hay correos esperando.</p>
     {/if}
+</section>
 
-    <h3 style="font-size:.95rem;font-weight:800;margin:1.5rem 0 .25rem">Tarea programada (cron)</h3>
-    <p>
-        {if $correo['cronUltimo'] !== ''}<span class="pa-chip ok">Última vez que corrió: {$correo['cronUltimo']}</span>
-        {else}<span class="pa-chip warn">Todavía no corre</span>{/if}
-    </p>
-    <p class="form-hint">El <strong>resumen de la mañana</strong>, los <strong>avisos agrupados</strong>, los avisos de <strong>vencimiento</strong> y los <strong>recordatorios de reunión</strong> necesitan que esta tarea corra cada 15 minutos. Sin ella, todo eso sale sólo cuando alguien entra al portal o al panel, y el resumen puede no llegar a tiempo. En Hostinger: hPanel → Avanzado → Cron Jobs, una tarea cada 15 minutos con este comando:</p>
-    <p><code style="word-break:break-all">*/15 * * * * curl -s "{$correo['cronUrl']}" &gt; /dev/null</code></p>
-    <form method="post" action="{$admin_url('ajustes/cron-clave')}">
-        <input type="hidden" name="_csrf_token" value="{$csrf_token}">
-        <button type="submit" class="btn btn-sm">Generar clave nueva</button>
-    </form>
-</div>
+{* ---- Cron ---- *}
+<section class="card pa-seccion" id="cron">
+    <header class="pa-sec-cab">
+        <h2>Tarea programada (cron)</h2>
+        <p>Necesaria para el resumen de la mañana, los avisos agrupados, los vencimientos y los recordatorios de reunión.</p>
+    </header>
+
+    <div class="pa-fila">
+        <div>
+            <p class="pa-fila-et">Estado</p>
+            <p class="pa-fila-ayuda">Sin ella, todo eso sale sólo cuando alguien entra al portal o al panel.</p>
+        </div>
+        <div class="pa-fila-campo">
+            {if $correo['cronUltimo'] !== ''}<span class="pa-chip ok">Última vez que corrió: {$correo['cronUltimo']}</span>
+            {else}<span class="pa-chip warn">Todavía no corre</span>{/if}
+        </div>
+    </div>
+
+    <div class="pa-fila">
+        <div>
+            <p class="pa-fila-et">Comando</p>
+            <p class="pa-fila-ayuda">En Hostinger: hPanel → Avanzado → Cron Jobs, cada 15 minutos.</p>
+        </div>
+        <div class="pa-fila-campo">
+            <code style="display:block;white-space:pre-wrap;word-break:break-all;padding:.75rem;border-radius:.6rem;background:color-mix(in srgb, currentColor 6%, transparent)">*/15 * * * * curl -s "{$correo['cronUrl']}" &gt; /dev/null</code>
+            <form method="post" action="{$admin_url('ajustes/cron-clave')}" onsubmit="return confirm('La clave actual deja de funcionar: tendrás que actualizar el comando en Hostinger. ¿Seguir?');">
+                <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+                <button type="submit" class="btn btn-sm">Generar clave nueva</button>
+            </form>
+        </div>
+    </div>
+</section>
 {/block}

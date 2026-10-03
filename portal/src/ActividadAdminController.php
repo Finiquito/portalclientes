@@ -239,7 +239,7 @@ class ActividadAdminController
     {
         $to = trim($this->ajustes()->get('global', 'portal', 'email_avisos'));
         if ($to === '' || !filter_var($to, FILTER_VALIDATE_EMAIL)) {
-            $this->ui->redirect($this->ui->url('ajustes') . '#correos', 'Primero escribe «Tu correo para avisos» arriba y guarda.', 'error');
+            $this->ui->redirect($this->ui->url('ajustes') . '#correos', 'Primero escribe un correo en «Copia de todos los avisos» y guarda.', 'error');
             return;
         }
         $n = $this->notificador();
