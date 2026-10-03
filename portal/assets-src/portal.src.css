@@ -161,6 +161,14 @@
   .nota-pegada.nota-b { transform: rotate(.8deg); }
   .nota-pegada.nota-c { transform: rotate(-.3deg); }
   .nota-pegada .nota-k { font-size: .6875rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--brand-ink); }
+  /* En oscuro el papel se ilumina un poco más que el fondo (sigue siendo un papel pegado)
+     y la cinta es blanca translúcida, como cinta de verdad. */
+  .dark .nota-pegada {
+    background: color-mix(in oklab, var(--brand) 24%, var(--surface-2));
+    border-color: color-mix(in oklab, var(--brand) 40%, transparent);
+    box-shadow: 0 16px 30px -14px rgb(0 0 0 / .7), 0 0 0 1px rgb(255 255 255 / .04) inset;
+  }
+  .dark .nota-pegada::before { background: rgb(255 255 255 / .28); box-shadow: 0 1px 3px rgb(0 0 0 / .35); }
   .nota-pegada .nota-t { margin-top: .55rem; padding-top: .55rem; border-top: 1px dashed color-mix(in oklab, var(--brand) 35%, transparent); font-weight: 700; }
 
   .chip {
