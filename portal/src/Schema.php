@@ -42,6 +42,7 @@ final class Schema
             'prox_reunion_id'  => 'VARCHAR(36)',
             'ia_generado_en'   => 'VARCHAR(32)',
             'ia_modelo'        => 'VARCHAR(64)',
+            'ics_seq'          => 'INTEGER NOT NULL DEFAULT 0',   // versión de la invitación de calendario
         ],
         'portal_clientes' => [
             'pais' => "VARCHAR(2) NOT NULL DEFAULT 'CL'",
@@ -87,6 +88,7 @@ final class Schema
         self::tablaCola($pdo);
         self::tablasEquipo($pdo);
         self::tablaSolicitudes($pdo);
+        self::tablasAvisos($pdo);
         self::ampliarTextos($pdo);
     }
 
@@ -187,6 +189,25 @@ final class Schema
             return;
         }
         $sql = (string) @file_get_contents(dirname(__DIR__) . '/migrations/0007_equipo_agencia.sql');
+        $sql = preg_replace('/^\s*--.*$/m', '', $sql) ?? '';
+        foreach (array_filter(array_map('trim', explode(';', $sql))) as $stmt) {
+            $pdo->exec($stmt);
+        }
+    }
+
+    /** Buzón de avisos agrupados, marcas de «ya avisado» y convocados de reuniones (migración 0009). */
+    private static function tablasAvisos(\PDO $pdo): void
+    {
+        // Invitación de calendario adjunta a un correo que espera en la cola.
+        if (self::existe($pdo, 'portal_correos_cola', 'id') && !self::existe($pdo, 'portal_correos_cola', 'ics')) {
+            $pdo->exec('ALTER TABLE portal_correos_cola ADD COLUMN ics TEXT');
+        }
+        if (self::existe($pdo, 'portal_avisos_buzon', 'id, usuario_id, clave, enviado_en')
+            && self::existe($pdo, 'portal_avisos_marcas', 'clave')
+            && self::existe($pdo, 'portal_reunion_asistentes', 'reunion_id, asistente_tipo, asistente_usuario_id, asistente_contacto_id')) {
+            return;
+        }
+        $sql = (string) @file_get_contents(dirname(__DIR__) . '/migrations/0009_avisos.sql');
         $sql = preg_replace('/^\s*--.*$/m', '', $sql) ?? '';
         foreach (array_filter(array_map('trim', explode(';', $sql))) as $stmt) {
             $pdo->exec($stmt);

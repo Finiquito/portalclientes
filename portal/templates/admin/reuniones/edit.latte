@@ -30,7 +30,7 @@
         <label class="form-label">Proyecto</label>
         <select name="proyecto_id" class="form-input" required data-proyecto-zona>
             {foreach $proyectos as $p}
-                 <option value="{$p['id']}" data-zona="{\TypeDock\Plugin\Portal\HorarioHabil::zonaDe((string) ($p['cliente_pais'] ?? ''))}" data-pais="{\TypeDock\Plugin\Portal\HorarioHabil::nombreDe((string) ($p['cliente_pais'] ?? ''))} {\TypeDock\Plugin\Portal\Fmt::bandera(\TypeDock\Plugin\Portal\HorarioHabil::paisValido((string) ($p['cliente_pais'] ?? '')))}" {if $reunion['proyecto_id'] === $p['id']}selected{/if}>{$p['cliente_nombre']} · {$p['nombre']}</option>
+                 <option value="{$p['id']}" data-cliente="{$p['cliente_id']}" data-zona="{\TypeDock\Plugin\Portal\HorarioHabil::zonaDe((string) ($p['cliente_pais'] ?? ''))}" data-pais="{\TypeDock\Plugin\Portal\HorarioHabil::nombreDe((string) ($p['cliente_pais'] ?? ''))} {\TypeDock\Plugin\Portal\Fmt::bandera(\TypeDock\Plugin\Portal\HorarioHabil::paisValido((string) ($p['cliente_pais'] ?? '')))}" {if $reunion['proyecto_id'] === $p['id']}selected{/if}>{$p['cliente_nombre']} · {$p['nombre']}</option>
             {/foreach}
         </select>
         <label class="form-label mt-3">Título</label>
@@ -50,6 +50,8 @@
         <label class="form-label mt-3">Grabación (opcional)</label>
         <input type="url" name="enlace_grabacion" class="form-input" value="{$reunion['enlace_grabacion']}" maxlength="500" placeholder="https://drive.google.com/…">
         <label class="pa-check"><input type="checkbox" name="publicada" value="1" {if $reunion['publicada']}checked{/if}> Visible para el cliente en «Reuniones»</label>
+
+        {include '_convocados.latte', nueva: false}
     </div>
 
     {* 2. Transcripción *}
@@ -148,7 +150,7 @@
                 <div style="flex:1;min-width:14rem"><label class="form-label">Tema</label><input type="text" name="prox_titulo" class="form-input" value="{$reunion['prox_titulo']}" maxlength="255"></div>
             </div>
             <p class="form-hint mt-1" data-equiv="prox_fecha" data-zona-agencia="{$zonaAgencia}" data-nombre-agencia="{$nombreAgencia}"></p>
-            <label class="pa-check"><input type="checkbox" name="agendar_prox" value="1"> Agendarla ahora como reunión de este proyecto (después le pones el link de Meet)</label>
+            <label class="pa-check"><input type="checkbox" name="agendar_prox" value="1"> Agendarla ahora como reunión de este proyecto, con los mismos convocados (después le pones el link de Meet)</label>
             <label class="pa-check" style="margin-top:.35rem"><input type="checkbox" name="prox_publicar" value="1"> Mostrársela al cliente</label>
         {/if}
     </div>

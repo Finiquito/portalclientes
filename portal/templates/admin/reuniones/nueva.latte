@@ -16,7 +16,7 @@
         <label class="form-label">Proyecto</label>
         <select name="proyecto_id" class="form-input" required data-proyecto-zona>
             {foreach $proyectos as $p}
-                 <option value="{$p['id']}" data-zona="{\TypeDock\Plugin\Portal\HorarioHabil::zonaDe((string) ($p['cliente_pais'] ?? ''))}" data-pais="{\TypeDock\Plugin\Portal\HorarioHabil::nombreDe((string) ($p['cliente_pais'] ?? ''))} {\TypeDock\Plugin\Portal\Fmt::bandera(\TypeDock\Plugin\Portal\HorarioHabil::paisValido((string) ($p['cliente_pais'] ?? '')))}" {if $proyectoId === $p['id']}selected{/if}>{$p['cliente_nombre']} · {$p['nombre']}</option>
+                 <option value="{$p['id']}" data-cliente="{$p['cliente_id']}" data-zona="{\TypeDock\Plugin\Portal\HorarioHabil::zonaDe((string) ($p['cliente_pais'] ?? ''))}" data-pais="{\TypeDock\Plugin\Portal\HorarioHabil::nombreDe((string) ($p['cliente_pais'] ?? ''))} {\TypeDock\Plugin\Portal\Fmt::bandera(\TypeDock\Plugin\Portal\HorarioHabil::paisValido((string) ($p['cliente_pais'] ?? '')))}" {if $proyectoId === $p['id']}selected{/if}>{$p['cliente_nombre']} · {$p['nombre']}</option>
             {/foreach}
         </select>
 
@@ -35,6 +35,8 @@
         <p class="form-hint mt-1">¿Aún no lo tienes? Crea la reunión en <a href="https://meet.google.com/new" target="_blank" rel="noopener noreferrer">meet.google.com/new</a> y pega el link aquí. Después podrás abrir Google Calendar con el evento ya rellenado.</p>
 
         <label class="pa-check"><input type="checkbox" name="publicada" value="1" checked> Mostrarla al cliente en «Reuniones» (con link de Meet y opción de agregarla a su calendario)</label>
+
+        {include '_convocados.latte', nueva: true}
 
         <p class="mt-4"><button type="submit" class="btn btn-primary">Crear reunión</button></p>
         <p class="form-hint">Después de la reunión, vuelve aquí para pegar la transcripción y preparar el resumen y las tareas.</p>

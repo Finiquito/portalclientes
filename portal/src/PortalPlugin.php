@@ -183,6 +183,7 @@ class PortalPlugin implements PluginInterface
         \Flight::route('GET /portal/reuniones',               [$publico, 'reuniones']);
         \Flight::route('GET /portal/reuniones/@id',           fn(string $id) => $publico->reunion($id));
         \Flight::route('GET /portal/reuniones/@id/calendario.ics', fn(string $id) => $publico->reunionIcs($id));
+        \Flight::route('GET /portal/reuniones/@id/invitacion.ics', fn(string $id) => $publico->reunionIcsFirmado($id));
         $sol = new SolicitudPublicController($ctx);
         \Flight::route('GET /portal/solicitudes',                 [$sol, 'lista']);
         \Flight::route('GET /portal/solicitudes/nueva',           [$sol, 'nueva']);

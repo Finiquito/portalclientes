@@ -152,6 +152,7 @@ class EquipoController
     {
         try {
             (new Notifier($this->ctx, $this->pdo()))->vaciarCola();
+            (new Avisos($this->ctx, $this->pdo()))->correrSiToca();
         } catch (\Throwable) {
             // nunca romper una página por un correo
         }
@@ -481,7 +482,7 @@ class EquipoController
         $u    = $this->requerirUsuario();
         $pref = $this->ajustes()->todos('equipo', (string) $u['id']);
         $this->view('ajustes.latte', $this->contexto($u, 'ajustes', [
-            'avisos'   => ($pref['avisos'] ?? '1') !== '0',
+            'prefAvisos' => Avisos::preferencias($this->ajustes(), (string) $u['id']),
             'temaPref' => in_array($pref['tema'] ?? '', ['claro', 'oscuro'], true) ? $pref['tema'] : 'auto',
             'asignados' => $this->acceso($u)->todo() ? null : $this->fetchAll(
                 'SELECT a.proyecto_id, c.nombre AS cliente_nombre, p.nombre AS proyecto_nombre
@@ -502,9 +503,13 @@ class EquipoController
             return;
         }
         $tema = (string) ($_POST['tema'] ?? 'auto');
+        $que = (string) ($_POST['avisos_que'] ?? 'mio');
+        $como = (string) ($_POST['avisos_como'] ?? 'agrupado');
         $this->ajustes()->setMuchos('equipo', (string) $u['id'], [
-            'avisos' => !empty($_POST['avisos']) ? '1' : '0',
-            'tema'   => in_array($tema, ['claro', 'oscuro'], true) ? $tema : 'auto',
+            'avisos_que'     => in_array($que, ['mio', 'todo', 'nada'], true) ? $que : 'mio',
+            'avisos_como'    => in_array($como, ['agrupado', 'instante'], true) ? $como : 'agrupado',
+            'resumen_diario' => !empty($_POST['resumen_diario']) ? '1' : '0',
+            'tema'           => in_array($tema, ['claro', 'oscuro'], true) ? $tema : 'auto',
         ]);
         PortalSession::flash('ok', 'Ajustes guardados.');
         $this->redirectTo('/equipo/ajustes');

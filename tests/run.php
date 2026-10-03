@@ -475,6 +475,7 @@ $_SESSION[P\EquipoController::SESION] = $ana;
 $ctx->correos = [];
 (new P\AjustesService($pdo))->set('global', 'portal', 'email_avisos', 'jefe@agencia.cl');
 $n = new P\Notifier($ctx, $pdo);
+(new P\AjustesService($pdo))->set('equipo', $ana, 'avisos_como', 'instante');
 $n->alEquipo('María comentó', '', 'tareas/' . $tMia, ['proyecto_id' => $p1a]);
 $para = array_column($ctx->correos, 'to');
 check(in_array('jefe@agencia.cl', $para, true) && in_array('ana@agencia.cl', $para, true), 'aviso al correo de Ajustes y a la persona asignada');
@@ -491,9 +492,12 @@ check(!in_array('ana@agencia.cl', array_column($ctx->correos, 'to'), true), 'no 
 
 // Mis ajustes
 $_SERVER['REQUEST_METHOD'] = 'POST';
-$_POST = ['_csrf' => $tok, 'tema' => 'claro'];
+$_POST = ['_csrf' => $tok, 'tema' => 'claro', 'avisos_que' => 'nada', 'avisos_como' => 'instante'];
 $ctl->correr(fn() => $ctl->guardarAjustes());
-check((new P\AjustesService($pdo))->get('equipo', $ana, 'avisos') === '0', 'Mis ajustes: desmarcar avisos los apaga');
+$prefAna = P\Avisos::preferencias(new P\AjustesService($pdo), $ana);
+check($prefAna['que'] === 'nada' && $prefAna['como'] === 'instante' && !$prefAna['resumen'], 'Mis ajustes: guarda qué, cómo y el resumen de la mañana');
+$_POST = ['_csrf' => $tok, 'tema' => 'claro', 'avisos_que' => 'mio', 'avisos_como' => 'instante', 'resumen_diario' => '1'];
+$ctl->correr(fn() => $ctl->guardarAjustes());
 $_SERVER['REQUEST_METHOD'] = 'GET';
 
 // Admin de TypeDock: sigue viendo todo y firmando como equipo
@@ -1312,6 +1316,170 @@ $_SESSION[P\EquipoController::SESION] = $ana;
 [$html] = $panel($g, 'inicio');
 check(!str_contains($html, 'Carga del equipo'), 'el resto del equipo no la ve');
 check((new P\Fmt())->iconoActividad('estado') === 'i-check' && (new P\Fmt())->iconoActividad('reunion') === 'i-calendar', 'íconos de actividad coherentes con el menú');
+
+// ---------------------------------------------------------------------------
+seccion('Avisos por persona: agrupados, resumen de la mañana, vencimientos y reuniones con convocados');
+
+$aj = new P\AjustesService($pdo);
+$enAgencia = fn(string $local): DateTimeImmutable => (new DateTimeImmutable($local, new DateTimeZone(P\Zona::agencia())))->setTimezone(new DateTimeZone('UTC'));
+$para = fn(string $email): array => array_values(array_filter($ctx->correos, fn($c) => $c['to'] === $email));
+$aj->set('global', 'portal', 'email_avisos', '');
+$c5 = $cs->create(['nombre' => 'Cliente Cinco', 'pais' => 'CL']);
+$p5 = $ps->create(['cliente_id' => $c5, 'nombre' => 'Cinco A']);
+$luz = (new P\ContactoService($pdo))->create(['cliente_id' => $c5, 'nombre' => 'Luz Cinco', 'email' => 'luz@cinco.cl', 'rol' => 'aprobador']);
+$eq->asignar($ana, $c5);
+foreach ([$ana, $coord, $beto['id']] as $uid) {
+    $aj->setMuchos('equipo', $uid, ['avisos_que' => 'mio', 'avisos_como' => 'agrupado', 'resumen_diario' => '1']);
+}
+$av = new P\Avisos($ctx, $pdo);
+$pdo->exec('DELETE FROM portal_avisos_buzon');   // lo que dejaron las pruebas anteriores
+
+// Reglas de «qué me llega»
+check(P\Avisos::leToca('mio', 'a', 'a', true, true, false) && !P\Avisos::leToca('mio', 'b', 'a', true, true, false), 'lo que tiene responsable le llega sólo a esa persona');
+check(P\Avisos::leToca('mio', 'b', null, true, true, false) && !P\Avisos::leToca('mio', 'c', null, false, true, true), 'lo que no tiene responsable, a quienes tienen asignado el cliente');
+check(P\Avisos::leToca('mio', 'c', null, false, false, true), 'si nadie tiene asignado el cliente, le llega a Coordinación');
+check(P\Avisos::leToca('todo', 'b', 'a', false, true, false) && !P\Avisos::leToca('nada', 'a', 'a', true, true, false), '«todo» recibe todo y «nada» nada');
+$dest = array_column($av->destinatarios($p5, null, []), 'id');
+check(in_array($ana, $dest, true) && !in_array($coord, $dest, true) && !in_array($beto['id'], $dest, true), 'sin responsable: a quien tiene asignado el cliente (Coordinación con «solo lo mío» no)');
+$aj->set('equipo', $coord, 'avisos_que', 'todo');
+check(in_array($coord, array_column($av->destinatarios($p5, null, []), 'id'), true), 'Coordinación con «todo» lo recibe');
+$aj->set('equipo', $coord, 'avisos_que', 'mio');
+check(array_column($av->destinatarios($p5, null, ['responsable' => $beto['id']]), 'id') === [], 'con responsable que no lo ve ni lo tiene asignado, los demás no reciben');
+check(array_column($av->destinatarios($p5, null, ['responsable' => $beto['id'], 'solo_responsable' => true]), 'id') === [$beto['id']], '«te asignaron»: sólo a esa persona');
+check(array_column($av->destinatarios($p5, null, ['actor' => $ana]), 'id') === [], 'a quien lo hizo no se le avisa');
+
+// Agrupados
+P\Notifier::$ahora = $enAgencia('2026-10-07 10:00');   // miércoles
+$ctx->correos = [];
+$n = new P\Notifier($ctx, $pdo);
+for ($i = 1; $i <= 3; $i++) {
+    P\Notifier::$ahora = $enAgencia('2026-10-07 09:5' . $i);
+    $n->alEquipo("Luz comentó ({$i})", 'Texto', 'tareas/t-uno', ['proyecto_id' => $p5, 'clave' => 'tareas/t-uno']);
+}
+$n->alEquipo('Luz subió archivos', '', 'tareas/t-dos', ['proyecto_id' => $p5]);
+check($para('ana@agencia.cl') === [] && count($av->pendientes($ana)) === 4, 'agrupado: los avisos esperan en el buzón');
+check($av->barrer() === 0, 'con 4 avisos y menos de 3 horas, todavía no sale');
+$n->alEquipo('[URGENTE] Se cayó la web', '', 'solicitudes/s1', ['proyecto_id' => $p5, 'urgente' => true]);
+check(count($para('ana@agencia.cl')) === 1 && count($av->pendientes($ana)) === 4, 'las urgencias salen al tiro');
+$n->alEquipo('Luz aprobó', '', 'tareas/t-tres', ['proyecto_id' => $p5]);
+$ctx->correos = [];
+check($av->barrer() === 1 && count($av->pendientes($ana)) === 0, 'con 5 avisos sale un solo correo agrupado');
+$cuerpo = $para('ana@agencia.cl')[0]['body'] ?? '';
+check(str_contains($cuerpo, 'CLIENTE CINCO · CINCO A') && str_contains($cuerpo, 'Luz comentó (3)') && str_contains($cuerpo, 'y 2 novedades más') && !str_contains($cuerpo, 'Luz comentó (1)'), 'ordenado por proyecto y con lo repetido junto');
+$n->alEquipo('Uno solo', '', 'tareas/t-uno', ['proyecto_id' => $p5]);
+P\Notifier::$ahora = $enAgencia('2026-10-07 13:05');
+$ctx->correos = [];
+check($av->barrer() === 1, 'a las 3 horas sale aunque sea uno');
+$n->alEquipo('De noche', '', 'tareas/t-uno', ['proyecto_id' => $p5]);
+P\Notifier::$ahora = $enAgencia('2026-10-07 23:30');
+check($av->barrer() === 0, 'de noche no se barre');
+
+// Resumen de la mañana
+$rs5 = $rs->create(['proyecto_id' => $p5, 'titulo' => 'Revisión con Luz', 'fecha' => '2026-10-08 11:00', 'duracion_min' => 45, 'publicada' => 1, 'enlace_meet' => 'https://meet.google.com/xyz']);
+(new P\Convocados($ctx, $pdo))->agregar($rs5, 'equipo', $ana);
+$tVence = $ts->create(['proyecto_id' => $p5, 'titulo' => 'Entregar logo', 'asignado' => 'equipo', 'responsable_usuario_id' => $ana, 'fecha_vencimiento' => '2026-10-08']);
+P\Notifier::$ahora = $enAgencia('2026-10-08 07:30');
+check($av->barrer() === 0 && count($av->pendientes($ana)) === 1, 'antes de las 8:30 lo de la noche espera al resumen');
+P\Notifier::$ahora = $enAgencia('2026-10-08 08:40');
+$ctx->correos = [];
+$av->resumenes();
+$res = $para('ana@agencia.cl')[0] ?? ['subject' => '', 'body' => ''];
+check(str_starts_with($res['subject'], 'Tu día: 1 reunión, 1 tarea por cerrar'), 'resumen de la mañana con lo del día');
+check(str_contains($res['body'], 'Revisión con Luz') && str_contains($res['body'], 'Entregar logo') && str_contains($res['body'], 'De noche'), 'trae reuniones, lo que vence y lo que llegó en la noche');
+check(count($av->pendientes($ana)) === 0, 'lo de la noche queda enviado con el resumen');
+$ctx->correos = [];
+$av->resumenes();
+check($para('ana@agencia.cl') === [], 'el resumen sale una sola vez al día');
+check($para('beto@agencia.cl') === [], 'si no hay nada, no hay resumen');
+$aj->set('contacto', $luz, 'resumen_diario', '1');
+$tCli = $ts->create(['proyecto_id' => $p5, 'titulo' => 'Enviar textos', 'asignado' => 'cliente', 'visible_cliente' => 1]);
+P\Notifier::$ahora = $enAgencia('2026-10-09 08:40');
+$ctx->correos = [];
+$av->resumenes();
+check(str_contains(($para('luz@cinco.cl')[0]['body'] ?? ''), 'Enviar textos'), 'el contacto que lo pidió recibe su resumen con lo que le toca');
+
+// Vencimientos
+$aj->set('equipo', $ana, 'avisos_como', 'instante');
+$ts->create(['proyecto_id' => $p5, 'titulo' => 'Mañana sin falta', 'asignado' => 'equipo', 'responsable_usuario_id' => $ana, 'fecha_vencimiento' => '2026-10-10']);
+$ctx->correos = [];
+$av->vencimientos();
+$av->vencimientos();
+check(count(array_filter($para('ana@agencia.cl'), fn($c) => str_contains($c['subject'], 'Vence mañana: «Mañana sin falta»'))) === 1, 'vence mañana: un aviso, una sola vez');
+check(count(array_filter($para('ana@agencia.cl'), fn($c) => str_contains($c['subject'], 'Se atrasó: «Entregar logo»'))) === 1, 'atrasada: un aviso');
+
+// Te asignaron una tarea
+$_SESSION[P\EquipoController::SESION] = $coord;
+$tok = P\PortalSession::csrf();
+$ctx->correos = [];
+$aj->set('equipo', $beto['id'], 'avisos_como', 'instante');
+$eq->asignar($beto['id'], $c5);
+$g->hacer('POST', $T, 'store', [], null, false, ['_csrf_token' => $tok, 'titulo' => 'Diseñar banner', 'proyecto_id' => $p5, 'asignado' => 'equipo', 'responsable_usuario_id' => $beto['id']]);
+check(count(array_filter($para('beto@agencia.cl'), fn($c) => str_contains($c['subject'], 'Te asignaron: «Diseñar banner»'))) === 1, 'a quien le asignan una tarea le llega el aviso');
+check($para('ana@agencia.cl') === [], 'a los demás no');
+
+// Reuniones con convocados
+P\Notifier::$ahora = $enAgencia('2026-10-09 10:00');
+$ctx->correos = [];
+[, $r] = $g->hacer('POST', $R, 'store', [], null, false, ['_csrf_token' => $tok, 'proyecto_id' => $p5, 'titulo' => 'Kickoff Cinco', 'fecha_d' => '2026-10-20', 'fecha_t' => '10:00',
+    'duracion_min' => '60', 'enlace_meet' => 'https://meet.google.com/kick', 'publicada' => '1', 'convocados_form' => '1', 'conv_equipo' => [$ana, $coord], 'conv_contacto' => [$luz, $contacto], 'invitar' => '1']);
+$rk = (string) $pdo->query("SELECT id FROM portal_reuniones WHERE titulo = 'Kickoff Cinco'")->fetchColumn();
+$conv = new P\Convocados($ctx, $pdo);
+check($conv->ids($rk) === ['equipo' => [$ana, $coord], 'contacto' => [$luz]] || ($conv->ids($rk)['contacto'] === [$luz] && count($conv->ids($rk)['equipo']) === 2), 'se guardan los convocados (y no un contacto de otro cliente)');
+$invAna = $para('ana@agencia.cl')[0] ?? ['subject' => '', 'body' => ''];
+check(str_starts_with($invAna['subject'], 'Invitación: Kickoff Cinco') && str_contains($invAna['body'], 'calendar.google.com') && str_contains($invAna['body'], '/portal/reuniones/' . $rk . '/invitacion.ics?t='), 'invitación al equipo con Google Calendar y el .ics');
+check(count($para('coord@agencia.cl')) === 1, 'a cada convocado del equipo le llega la suya (aunque la haya creado)');
+$enCola = (int) $pdo->query("SELECT COUNT(*) FROM portal_correos_cola WHERE destino = 'luz@cinco.cl' AND asunto LIKE 'Invitación: Kickoff Cinco%' AND ics LIKE '%METHOD:REQUEST%'")->fetchColumn();
+check(count($para('luz@cinco.cl')) + $enCola === 1, 'al contacto convocado le llega (en su horario hábil) con la invitación de calendario');
+check($conv->tokenValido($rk, $conv->token($rk)) && !$conv->tokenValido($rk, 'falso'), 'el enlace del .ics va firmado');
+$ctx->correos = [];
+$pdo->exec("DELETE FROM portal_correos_cola");
+$g->hacer('POST', $R, 'update', [$rk], 'reunion', false, ['_csrf_token' => $tok, 'proyecto_id' => $p5, 'titulo' => 'Kickoff Cinco', 'fecha_d' => '2026-10-21', 'fecha_t' => '10:00',
+    'duracion_min' => '60', 'enlace_meet' => 'https://meet.google.com/kick', 'publicada' => '1', 'convocados_form' => '1', 'conv_equipo' => [$ana], 'conv_contacto' => [$luz], 'invitar' => '1', 'accion' => 'guardar']);
+check(str_starts_with(($para('ana@agencia.cl')[0]['subject'] ?? ''), 'Cambió la reunión: Kickoff Cinco'), 'cambiar la fecha manda la versión nueva a los convocados');
+check(str_starts_with(($para('coord@agencia.cl')[0]['subject'] ?? ''), 'Se canceló la reunión'), 'a quien se quita le llega la cancelación');
+check((int) $rs->find($rk)['ics_seq'] === 1, 'la invitación sube de versión (el calendario la reemplaza)');
+$ics = $rs->ics($rs->find($rk) + ['ics_seq' => 1], '', ['metodo' => 'REQUEST', 'organizador' => 'hola@agencia.cl', 'nombre_org' => 'Agencia', 'para' => 'luz@cinco.cl', 'nombre_para' => 'Luz']);
+$ics = str_replace("\r\n ", '', $ics);   // las líneas largas vienen plegadas
+check(str_contains($ics, 'METHOD:REQUEST') && str_contains($ics, 'SEQUENCE:1') && str_contains($ics, 'ORGANIZER;CN="Agencia":mailto:hola@agencia.cl') && str_contains($ics, 'mailto:luz@cinco.cl'), 'invitación .ics con organizador, invitado y versión');
+$ctx->correos = [];
+$g->hacer('POST', $R, 'update', [$rk], 'reunion', false, ['_csrf_token' => $tok, 'proyecto_id' => $p5, 'titulo' => 'Kickoff Cinco', 'fecha_d' => '2026-10-21', 'fecha_t' => '10:00',
+    'duracion_min' => '60', 'enlace_meet' => 'https://meet.google.com/kick', 'publicada' => '1', 'convocados_form' => '1', 'conv_equipo' => [$ana], 'conv_contacto' => [$luz], 'invitar' => '1', 'accion' => 'guardar']);
+check($ctx->correos === [], 'guardar sin cambios no reenvía nada');
+
+// Recordatorio del día anterior
+P\Notifier::$ahora = $enAgencia('2026-10-20 09:00');
+$pdo->exec("DELETE FROM portal_avisos_marcas WHERE clave LIKE 'inv:%'");
+$ctx->correos = [];
+$pdo->exec("DELETE FROM portal_correos_cola");
+$av->recordatorios();
+$av->recordatorios();
+$recCola = (int) $pdo->query("SELECT COUNT(*) FROM portal_correos_cola WHERE destino = 'luz@cinco.cl' AND asunto LIKE 'Mañana: Kickoff Cinco%'")->fetchColumn();
+check(count(array_filter($para('ana@agencia.cl'), fn($c) => str_starts_with($c['subject'], 'Mañana: Kickoff Cinco'))) === 1 && count($para('luz@cinco.cl')) + $recCola === 1, 'recordatorio el día anterior, una sola vez, a cada convocado');
+
+// Borrar la reunión cancela
+$ctx->correos = [];
+P\Notifier::$ahora = $enAgencia('2026-10-09 10:00');
+$g->hacer('POST', $R, 'destroy', [$rk], 'reunion', false, ['_csrf_token' => $tok]);
+check(str_starts_with(($para('ana@agencia.cl')[0]['subject'] ?? ''), 'Se canceló la reunión: Kickoff Cinco'), 'borrar la reunión manda la cancelación');
+
+// Correo con invitación por SMTP: alternativa text/calendar y adjunto
+$smtp = new P\SmtpCliente('localhost', 25, '', '', '');
+$m = (new ReflectionMethod($smtp, 'mensaje'));
+$m->setAccessible(true);
+$mime = (string) $m->invoke($smtp, 'a@b.cl', 'Agencia', 'c@d.cl', 'Invitación', '<p>x</p>', 'x', null, "BEGIN:VCALENDAR\r\nMETHOD:REQUEST\r\nEND:VCALENDAR\r\n");
+check(str_contains($mime, 'multipart/mixed') && str_contains($mime, 'text/calendar; charset=UTF-8; method=REQUEST') && str_contains($mime, 'filename="invitacion.ics"'), 'por SMTP la invitación va como calendario y como adjunto');
+$mime = (string) $m->invoke($smtp, 'a@b.cl', 'Agencia', 'c@d.cl', 'Hola', '<p>x</p>', 'x', null, null);
+check(str_contains($mime, 'multipart/alternative') && !str_contains($mime, 'multipart/mixed'), 'sin invitación, el correo queda igual que antes');
+
+// Respaldo sin cron
+$aj->set('global', 'portal', 'cron_ultimo', P\Notifier::$ahora->format('Y-m-d H:i:s'));
+$aj->set('global', 'portal', 'avisos_ultimo', '');
+$av->correrSiToca();
+check($aj->get('global', 'portal', 'avisos_ultimo') === '', 'si el cron anda, las visitas no corren los avisos');
+$aj->set('global', 'portal', 'cron_ultimo', '');
+$av->correrSiToca();
+check($aj->get('global', 'portal', 'avisos_ultimo') !== '', 'sin cron, las visitas los corren (como mucho cada 5 minutos)');
+P\Notifier::$ahora = null;
 
 // ---------------------------------------------------------------------------
 echo "\n\n" . $GLOBALS['ok'] . ' comprobaciones OK, ' . count($GLOBALS['fallas']) . " fallas ({$motor}).\n";

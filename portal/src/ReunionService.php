@@ -343,24 +343,35 @@ class ReunionService
         }
     }
 
-    /** Evento .ics con el link de Meet incluido. */
-    public function ics(array $r, string $urlPortal = ''): string
+    /**
+     * Evento .ics con el link de Meet incluido.
+     *
+     * Para descargar: METHOD:PUBLISH. Para una invitación por correo: REQUEST (nueva o cambiada,
+     * con SEQUENCE creciente) o CANCEL, con organizador y la persona invitada, como lo esperan
+     * Gmail y Outlook para mostrar «Agregar al calendario».
+     *
+     * @param array{metodo?: string, organizador?: string, nombre_org?: string, para?: string, nombre_para?: string} $inv
+     */
+    public function ics(array $r, string $urlPortal = '', array $inv = []): string
     {
         $ini = self::aUtc((string) $r['fecha']);
         if ($ini === null) {
             return '';
         }
+        $metodo = in_array($inv['metodo'] ?? '', ['REQUEST', 'CANCEL'], true) ? $inv['metodo'] : 'PUBLISH';
         $fin = $ini->modify('+' . max(5, (int) $r['duracion_min']) . ' minutes');
         $esc = static fn(string $t): string => str_replace(["\\", ';', ',', "\r", "\n"], ['\\\\', '\\;', '\\,', '', '\\n'], $t);
-        $desc = ($r['enlace_meet'] ? 'Unirse: ' . $r['enlace_meet'] : '') . ($urlPortal !== '' ? ($r['enlace_meet'] ? "\n" : '') . 'Detalle en el portal: ' . $urlPortal : '');
+        $desc = ($r['enlace_meet'] ? 'Unirse: ' . $r['enlace_meet'] : '') . ($urlPortal !== '' ? ($r['enlace_meet'] ? "\n" : '') . 'Detalle: ' . $urlPortal : '');
         $lineas = [
-            'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Portal de Clientes//ES', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH',
+            'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Portal de Clientes//ES', 'CALSCALE:GREGORIAN', 'METHOD:' . $metodo,
             'BEGIN:VEVENT',
             'UID:' . $r['id'] . '@portal',
             'DTSTAMP:' . gmdate('Ymd\THis\Z'),
             'DTSTART:' . $ini->format('Ymd\THis\Z'),
             'DTEND:' . $fin->format('Ymd\THis\Z'),
             'SUMMARY:' . $esc((string) $r['titulo']),
+            'SEQUENCE:' . (int) ($r['ics_seq'] ?? 0),
+            'STATUS:' . ($metodo === 'CANCEL' ? 'CANCELLED' : 'CONFIRMED'),
         ];
         if ($desc !== '') {
             $lineas[] = 'DESCRIPTION:' . $esc($desc);
@@ -369,9 +380,35 @@ class ReunionService
             $lineas[] = 'LOCATION:' . $esc((string) $r['enlace_meet']);
             $lineas[] = 'URL:' . $r['enlace_meet'];
         }
+        if ($metodo !== 'PUBLISH' && ($inv['organizador'] ?? '') !== '') {
+            $lineas[] = 'ORGANIZER;CN="' . str_replace('"', '', (string) ($inv['nombre_org'] ?? '')) . '":mailto:' . $inv['organizador'];
+            if (($inv['para'] ?? '') !== '') {
+                $lineas[] = 'ATTENDEE;CN="' . str_replace('"', '', (string) ($inv['nombre_para'] ?? '')) . '";ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=FALSE:mailto:' . $inv['para'];
+            }
+        }
+        if ($metodo === 'REQUEST') {
+            $lineas[] = 'BEGIN:VALARM';
+            $lineas[] = 'ACTION:DISPLAY';
+            $lineas[] = 'DESCRIPTION:' . $esc((string) $r['titulo']);
+            $lineas[] = 'TRIGGER:-PT10M';
+            $lineas[] = 'END:VALARM';
+        }
         $lineas[] = 'END:VEVENT';
         $lineas[] = 'END:VCALENDAR';
-        return implode("\r\n", $lineas) . "\r\n";
+        // Líneas de más de 75 octetos se pliegan (RFC 5545).
+        $plegar = static function (string $l): string {
+            $out = '';
+            while (strlen($l) > 75) {
+                $corte = 75;
+                while ($corte > 0 && (ord($l[$corte]) & 0xC0) === 0x80) {
+                    $corte--;   // no partir un carácter UTF-8
+                }
+                $out .= substr($l, 0, $corte) . "\r\n ";
+                $l = substr($l, $corte);
+            }
+            return $out . $l;
+        };
+        return implode("\r\n", array_map($plegar, $lineas)) . "\r\n";
     }
 
     /** Enlace a Google Calendar con el evento ya rellenado (para crear la reunión con Meet en un clic). */
@@ -386,7 +423,8 @@ class ReunionService
             'action'  => 'TEMPLATE',
             'text'    => (string) $r['titulo'],
             'dates'   => $ini->format('Ymd\THis\Z') . '/' . $fin->format('Ymd\THis\Z'),
-            'details' => 'Proyecto: ' . ($r['proyecto_nombre'] ?? ''),
+            'details' => trim('Proyecto: ' . ($r['proyecto_nombre'] ?? '') . ($r['enlace_meet'] ? "\nUnirse: " . $r['enlace_meet'] : '')),
+            'location' => (string) ($r['enlace_meet'] ?? ''),
         ], '', '&', PHP_QUERY_RFC3986);
     }
 }

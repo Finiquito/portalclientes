@@ -282,6 +282,10 @@ class TareaAdminController
             }
         }
 
+        if ($t !== null) {
+            $this->avisarAsignacion($t, null);
+        }
+
         // Directo a la edición: ahí se adjuntan los archivos y se conversa.
         $this->ui->redirect($this->urlTarea($id), 'Tarea creada. Ahora puedes adjuntar archivos o dejar un comentario.');
     }
@@ -325,7 +329,41 @@ class TareaAdminController
             }
         }
 
+        if ($t !== null) {
+            $this->avisarAsignacion($t, $antes);
+        }
         $this->ui->redirect($this->urlTarea($id), 'Tarea actualizada.');
+    }
+
+    /**
+     * «Te asignaron una tarea»: sólo a la persona del equipo que queda como responsable (si no se la
+     * asignó ella misma). Si vence hoy o ya venció, no espera al correo agrupado.
+     *
+     * @param array<string, mixed> $t
+     * @param array<string, mixed>|null $antes
+     */
+    private function avisarAsignacion(array $t, ?array $antes): void
+    {
+        $resp = (string) ($t['responsable_usuario_id'] ?? '');
+        if ($t['responsable_tipo'] !== 'equipo' || $resp === '' || $resp === $this->ui->autorId()
+            || ($antes !== null && $antes['responsable_tipo'] === 'equipo' && (string) $antes['responsable_usuario_id'] === $resp)) {
+            return;
+        }
+        $fmt = new Fmt();
+        $vence = (string) ($t['fecha_vencimiento'] ?? '');
+        $hoy = (new \DateTimeImmutable('now', new \DateTimeZone(Zona::agencia())))->format('Y-m-d');
+        $detalle = $t['proyecto_nombre'] . ($vence !== '' ? ' · para el ' . $fmt->fechaCorta($vence) : '');
+        $bloques = [['tarjetas' => [['titulo' => (string) $t['titulo'], 'detalle' => $detalle]]]];
+        if (trim((string) ($t['descripcion'] ?? '')) !== '') {
+            $bloques[] = ['cita' => mb_substr(trim((string) $t['descripcion']), 0, 600)];
+        }
+        $quien = $this->ui->firma();
+        (new Notifier($this->ctx, $this->pdo()))->alEquipo('Te asignaron: «' . $t['titulo'] . '»', '', 'tareas/' . $t['id'], [
+            'proyecto_id' => (string) $t['proyecto_id'], 'responsable' => $resp, 'solo_responsable' => true, 'actor' => $this->ui->autorId(),
+            'urgente' => $vence !== '' && substr($vence, 0, 10) <= $hoy,
+            'etiqueta' => 'Tarea', 'titulo' => 'Te asignaron una tarea', 'resaltado' => 'asignaron', 'bloques' => $bloques, 'boton' => 'Abrir la tarea',
+            'preheader' => ($quien !== '' ? $quien . ' te asignó: ' : '') . $t['titulo'], 'clave' => 'tareas/' . $t['id'], 'detalle' => $detalle,
+        ]);
     }
 
     public function destroy(string $id): void

@@ -12,11 +12,32 @@
     <form method="post" action="/equipo/ajustes" class="card card-pad reveal" data-once>
         <input type="hidden" name="_csrf" value="{$csrf}">
         <h2 class="text-lg font-extrabold tracking-tight">Avisos por correo</h2>
-        <label class="mt-4 flex items-start gap-3">
-            <input type="checkbox" name="avisos" value="1" class="mt-1 size-4 accent-[var(--brand)]" {if $avisos}checked{/if}>
+
+        <p class="mt-4 font-semibold">Qué me llega</p>
+        <div class="mt-2 grid grid-cols-3 gap-2">
+            {foreach ['mio' => 'Solo lo mío', 'todo' => 'Todo', 'nada' => 'Nada'] as $k => $txt}
+                <label class="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-line px-3 py-2.5 text-center text-sm font-semibold has-[:checked]:border-brand has-[:checked]:bg-brand-soft has-[:checked]:text-brand-ink">
+                    <input type="radio" name="avisos_que" value="{$k}" class="sr-only" {if $prefAvisos['que'] === $k}checked{/if}>{$txt}
+                </label>
+            {/foreach}
+        </div>
+        <p class="hint mt-2"><strong>Solo lo mío</strong>: lo de las tareas que tienes a tu nombre y, de lo que no tiene responsable, lo de tus clientes. <strong>Todo</strong>: todo lo de tus clientes.</p>
+
+        <p class="mt-5 font-semibold">Cómo me llega</p>
+        <div class="mt-2 grid grid-cols-2 gap-2">
+            {foreach ['agrupado' => 'Agrupados', 'instante' => 'Al instante'] as $k => $txt}
+                <label class="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-line px-3 py-2.5 text-sm font-semibold has-[:checked]:border-brand has-[:checked]:bg-brand-soft has-[:checked]:text-brand-ink">
+                    <input type="radio" name="avisos_como" value="{$k}" class="sr-only" {if $prefAvisos['como'] === $k}checked{/if}>{$txt}
+                </label>
+            {/foreach}
+        </div>
+        <p class="hint mt-2"><strong>Agrupados</strong>: un solo correo, ordenado por proyecto, cuando se juntan {\TypeDock\Plugin\Portal\Avisos::JUNTOS} avisos o cada {\TypeDock\Plugin\Portal\Avisos::HORAS} horas. Las urgencias y las invitaciones a reuniones llegan siempre al tiro.</p>
+
+        <label class="mt-5 flex items-start gap-3">
+            <input type="checkbox" name="resumen_diario" value="1" class="mt-1 size-4 accent-[var(--brand)]" {if $prefAvisos['resumen']}checked{/if}>
             <span>
-                <span class="block font-semibold">Avisarme cuando un cliente mío haga algo</span>
-                <span class="hint">Comentarios, archivos entregados, aprobaciones, cambios pedidos y revisiones enviadas, de los clientes y proyectos que tienes asignados.</span>
+                <span class="block font-semibold">Resumen de la mañana</span>
+                <span class="hint">De lunes a viernes a las {\TypeDock\Plugin\Portal\Avisos::HORA_RESUMEN}: tus reuniones del día, lo que vence, lo atrasado, lo que espera tu respuesta y lo que llegó en la noche. Si no hay nada, no te escribimos.</span>
             </span>
         </label>
 

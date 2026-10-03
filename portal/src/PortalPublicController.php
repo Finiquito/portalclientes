@@ -134,7 +134,10 @@ class PortalPublicController
         $this->terminate();
     }
 
-    /** Tarea programada (cron): GET /portal/cron/correos?k=CLAVE envía lo que ya llegó a su horario. */
+    /**
+     * Tarea programada (cron, cada 15 minutos): GET /portal/cron/correos?k=CLAVE envía lo que ya llegó a su
+     * horario, los avisos agrupados, el resumen de la mañana, los vencimientos y los recordatorios.
+     */
     public function cronCorreos(): void
     {
         $esperada = (string) $this->ajustes()->get('global', 'portal', 'cron_token');
@@ -144,7 +147,11 @@ class PortalPublicController
             http_response_code(403);
             echo 'Clave incorrecta.';
         } else {
-            echo 'ok ' . $this->notificador()->vaciarCola(50);
+            $aj = $this->ajustes();
+            $aj->set('global', 'portal', 'cron_ultimo', (new \DateTimeImmutable('now', new \DateTimeZone('UTC')))->format('Y-m-d H:i:s'));
+            $r = (new Avisos($this->ctx, $this->pdo(), $this->notificador()))->correr();
+            echo 'ok ' . $this->notificador()->vaciarCola(50)
+                . ' · agrupados ' . $r['barrer'] . ' · resúmenes ' . $r['resumenes'] . ' · vencimientos ' . $r['vencimientos'] . ' · recordatorios ' . $r['recordatorios'];
         }
         $this->terminate();
     }
@@ -253,6 +260,7 @@ class PortalPublicController
         // Aprovecha la visita para enviar los correos que ya llegaron a su horario hábil.
         try {
             $this->notificador()->vaciarCola();
+            (new Avisos($this->ctx, $this->pdo(), $this->notificador()))->correrSiToca();
         } catch (\Throwable) {
             // nunca romper una página por un correo
         }
@@ -932,6 +940,29 @@ class PortalPublicController
         $this->terminate();
     }
 
+    /**
+     * Descarga .ics desde el enlace de una invitación por correo (firmado, sin iniciar sesión):
+     * sirve para Outlook, Apple y cualquier calendario.
+     */
+    public function reunionIcsFirmado(string $id): void
+    {
+        $conv = new Convocados($this->ctx, $this->pdo());
+        $svc = new ReunionService($this->pdo());
+        $r = $conv->tokenValido($id, (string) ($_GET['t'] ?? '')) ? $svc->find($id) : null;
+        $ics = $r !== null ? $svc->ics($r, Notifier::baseUrl() . '/portal/reuniones/' . $id) : '';
+        if ($ics === '') {
+            http_response_code(404);
+            echo 'La reunión ya no existe o el enlace no es válido.';
+            $this->terminate();
+            return;
+        }
+        header('Content-Type: text/calendar; charset=utf-8');
+        header('Content-Disposition: attachment; filename="reunion.ics"');
+        header('X-Content-Type-Options: nosniff');
+        echo $ics;
+        $this->terminate();
+    }
+
     // ---------------------------------------------------------------------
     // Bienvenida: «¿Cómo funciona?» y primeros pasos
     // ---------------------------------------------------------------------
@@ -1016,6 +1047,7 @@ class PortalPublicController
                 'apodo'        => $pref['apodo'] ?? '',
                 'frase_propia' => $pref['frase_propia'] ?? '',
                 'avisos_email' => ($pref['avisos_email'] ?? '1') !== '0',
+                'resumen_diario' => ($pref['resumen_diario'] ?? '0') === '1',
             ],
         ]);
     }
@@ -1031,6 +1063,7 @@ class PortalPublicController
             'apodo'        => $this->tomarString('apodo', 40),
             'frase_propia' => $this->tomarString('frase_propia', 140),
             'avisos_email' => !empty($_POST['avisos_email']) ? '1' : '0',
+            'resumen_diario' => !empty($_POST['resumen_diario']) ? '1' : '0',
             'paso_avisos'  => '1',
         ]);
 
@@ -1063,6 +1096,9 @@ class PortalPublicController
         $this->notificador()->alEquipo($asunto, '', 'tareas/' . $t['id'], [
             'etiqueta' => 'Del cliente', 'titulo' => $asunto, 'resaltado' => $quien, 'proyecto_id' => (string) $t['proyecto_id'],
             'bloques' => $bloques, 'preheader' => $detalle !== '' ? mb_substr($detalle, 0, 110) : $asunto, 'boton' => 'Abrir la tarea',
+            // A quien es responsable de la tarea; si no tiene, a quienes tienen asignado el proyecto.
+            'responsable' => ($t['responsable_tipo'] ?? '') === 'equipo' ? ($t['responsable_usuario_id'] ?? null) : null,
+            'clave' => 'tareas/' . $t['id'], 'detalle' => $detalle !== '' ? mb_substr($detalle, 0, 160) : (string) $t['titulo'],
         ]);
     }
 }

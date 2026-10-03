@@ -180,6 +180,12 @@ class ActividadAdminController
         }
         $marca = new MarcaService($this->pdo());
         $dias = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
+        $ultimo = $aj->get('global', 'portal', 'cron_ultimo');
+        $cronUltimo = '';
+        if ($ultimo !== '') {
+            $u = (new \DateTimeImmutable($ultimo, new \DateTimeZone('UTC')))->setTimezone(new \DateTimeZone(Zona::agencia()));
+            $cronUltimo = $dias[(int) $u->format('w')] . ' ' . $u->format('d/m H:i');
+        }
         $cola = [];
         foreach ($n->cola() as $f) {
             $pais = $f['cliente_id'] ? $n->paisDe((string) $f['cliente_id']) : HorarioHabil::PAIS_DEFECTO;
@@ -188,7 +194,7 @@ class ActividadAdminController
             $cola[] = $f;
         }
         return [
-            'modo' => $n->modo(), 'respetar' => $respetar, 'ini' => $ini, 'fin' => $fin,
+            'modo' => $n->modo(), 'respetar' => $respetar, 'ini' => $ini, 'fin' => $fin, 'cronUltimo' => $cronUltimo,
             'tieneLogo' => $marca->rutaLogoAgencia() !== null, 'diag' => $n->diagnostico(),
             'cronUrl' => Notifier::baseUrl() . '/portal/cron/correos?k=' . $token, 'cola' => $cola,
             'metodoHtml' => $n->diagnostico()['metodos'], 'smtp' => $n->smtpVista(),

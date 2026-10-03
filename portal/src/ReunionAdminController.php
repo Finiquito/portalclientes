@@ -74,6 +74,58 @@ class ReunionAdminController
         return HorarioHabil::paisValido((string) $st->fetchColumn());
     }
 
+    private function convocados(): Convocados
+    {
+        return new Convocados($this->ctx, $this->pdo());
+    }
+
+    /**
+     * Personas que se pueden convocar: el equipo activo y los contactos de los clientes de los proyectos
+     * del formulario (el formulario muestra sólo los del cliente del proyecto elegido).
+     *
+     * @param array<int, array<string, mixed>> $proyectos
+     * @param array{equipo: array<int, string>, contacto: array<int, string>} $marcados
+     */
+    private function datosConvocados(array $proyectos, array $marcados): array
+    {
+        $clientes = array_values(array_unique(array_map(fn($p) => (string) $p['cliente_id'], $proyectos)));
+        $contactos = [];
+        if ($clientes !== []) {
+            $st = $this->pdo()->prepare('SELECT id, nombre, email, cliente_id FROM portal_contactos WHERE cliente_id IN (' . implode(',', array_fill(0, count($clientes), '?')) . ') ORDER BY nombre');
+            $st->execute($clientes);
+            $contactos = $st->fetchAll();
+        }
+        $equipo = $this->pdo()->query("SELECT id, nombre, cargo, rol FROM portal_equipo WHERE activo = 1 ORDER BY nombre");
+        return [
+            'convEquipo'    => $equipo ? $equipo->fetchAll() : [],
+            'convContactos' => $contactos,
+            'convMarcados'  => $marcados,
+        ];
+    }
+
+    /**
+     * Guarda los convocados del formulario y, si se pidió, manda invitaciones, cambios y cancelaciones.
+     *
+     * @param array<string, mixed>|null $antes
+     * @return int invitaciones enviadas
+     */
+    private function guardarConvocados(string $id, ?array $antes): int
+    {
+        $r = $this->service()->find($id);
+        if ($r === null) {
+            return 0;
+        }
+        $cambios = ['nuevos' => [], 'quitados' => []];
+        if (!empty($_POST['convocados_form'])) {
+            $cambios = $this->convocados()->guardar($id, (string) $r['cliente_id'],
+                array_map('strval', (array) ($_POST['conv_equipo'] ?? [])), array_map('strval', (array) ($_POST['conv_contacto'] ?? [])));
+        }
+        if (empty($_POST['invitar'])) {
+            return 0;
+        }
+        return $this->convocados()->sincronizar($antes, $r, $cambios);
+    }
+
     /** Datos para que el formulario muestre la hora del cliente y la equivalencia en la de la agencia. */
     private function zonasFormulario(): array
     {
@@ -154,7 +206,8 @@ class ReunionAdminController
             $this->ui->redirect($this->url('reuniones'), 'Crea un proyecto primero.', 'error');
             return;
         }
-        $this->ui->view('reuniones/nueva.latte', $this->zonasFormulario() + [
+        $yo = $this->ui->autorId();
+        $this->ui->view('reuniones/nueva.latte', $this->zonasFormulario() + $this->datosConvocados($proyectos, ['equipo' => $yo !== null ? [$yo] : [], 'contacto' => []]) + [
             'proyectos' => $proyectos,
             'proyectoId' => (string) ($_GET['proyecto'] ?? $_GET['proyecto_id'] ?? ''),
         ]);
@@ -166,7 +219,8 @@ class ReunionAdminController
         $_POST['publicada'] = $_POST['publicada'] ?? '';
         $_POST['resumen_publicado'] = '';
         $id = $this->service()->create($_POST);
-        $this->ui->redirect($this->url('reuniones/' . $id), 'Reunión creada. Aquí puedes pegar la transcripción cuando termine.');
+        $n = $this->guardarConvocados($id, null);
+        $this->ui->redirect($this->url('reuniones/' . $id), 'Reunión creada' . ($n > 0 ? ' e invitaciones enviadas (' . $n . ')' : '') . '. Aquí puedes pegar la transcripción cuando termine.');
     }
 
     public function edit(string $id): void
@@ -178,10 +232,11 @@ class ReunionAdminController
         }
         $ia = $this->ia();
         $paisCli = $this->paisDelProyecto((string) $reunion['proyecto_id']);
-        $this->ui->view('reuniones/edit.latte', $this->zonasFormulario() + [
+        $proyectos = $this->proyectos();
+        $this->ui->view('reuniones/edit.latte', $this->zonasFormulario() + $this->datosConvocados($proyectos, $this->convocados()->ids($id)) + [
             'reunion'    => $reunion,
             'paisCliente' => $paisCli,
-            'proyectos'  => $this->proyectos(),
+            'proyectos'  => $proyectos,
             'propuestas' => $this->service()->propuestas($id),
             'iaActiva'   => $ia->activa(),
             'gcal'       => $this->service()->enlaceGoogleCalendar($reunion),
@@ -211,6 +266,7 @@ class ReunionAdminController
         $_POST['fecha'] = $this->combinar('fecha');
         $_POST['prox_fecha'] = $this->combinar('prox_fecha');
         $svc->update($id, $_POST);
+        $invitaciones = $this->guardarConvocados($id, $antes);
 
         // Tarea nueva escrita a mano en la fila final de la tabla.
         if (is_array($_POST['nueva'] ?? null) && trim((string) ($_POST['nueva']['titulo'] ?? '')) !== '') {
@@ -237,7 +293,8 @@ class ReunionAdminController
             }
         }
 
-        $msg = 'Reunión guardada.' . ($quitadas > 0 ? ' Propuestas quitadas: ' . $quitadas . '.' : '');
+        $msg = 'Reunión guardada.' . ($quitadas > 0 ? ' Propuestas quitadas: ' . $quitadas . '.' : '')
+            . ($invitaciones > 0 ? ' Invitaciones o cambios enviados a los convocados: ' . $invitaciones . '.' : '');
         $tipo = 'success';
 
         // Cualquier fallo inesperado se muestra como aviso (y queda en el log) en vez de un error 500 mudo.
@@ -309,6 +366,20 @@ class ReunionAdminController
         $proxId = null;
         if (!empty($_POST['agendar_prox'])) {
             $proxId = $svc->agendarProxima($id, !empty($_POST['prox_publicar']));
+            if ($proxId !== null) {
+                // La próxima reunión hereda los convocados y, si se pidió, les llega la invitación.
+                $conv = $this->convocados();
+                $nuevos = [];
+                foreach ($conv->ids($id) as $tipo => $ids) {
+                    foreach ($ids as $pid) {
+                        $conv->agregar($proxId, $tipo, $pid);
+                        $nuevos[] = ['tipo' => $tipo, 'id' => $pid];
+                    }
+                }
+                if (!empty($_POST['invitar']) && ($prox = $svc->find($proxId)) !== null) {
+                    $conv->sincronizar(null, $prox, ['nuevos' => $nuevos, 'quitados' => []]);
+                }
+            }
         }
         $ahora = $svc->find($id) ?? $antes;
         $proxPublicada = $proxId !== null && !empty($_POST['prox_publicar']);
@@ -378,9 +449,10 @@ class ReunionAdminController
                 ]];
             }
         }
+        $convContactos = $this->convocados()->ids((string) $ahora['id'])['contacto'];
         (new Notifier($this->ctx, $this->pdo()))->alCliente(
             (string) $ahora['cliente_id'], null, 'Novedades de la reunión «' . $ahora['titulo'] . '»', '', '/portal/reuniones/' . $ahora['id'],
-            ['etiqueta' => 'Reunión', 'titulo' => 'Novedades de la reunión', 'resaltado' => 'reunión', 'boton' => 'Ver el detalle', 'bloques' => $bloques,
+            ($convContactos !== [] ? ['contactos' => $convContactos] : []) + ['etiqueta' => 'Reunión', 'titulo' => 'Novedades de la reunión', 'resaltado' => 'reunión', 'boton' => 'Ver el detalle', 'bloques' => $bloques,
              'preheader' => 'Resumen, acuerdos y próximos pasos de «' . $ahora['titulo'] . '»']
         );
     }
@@ -396,6 +468,11 @@ class ReunionAdminController
 
     public function destroy(string $id): void
     {
+        $r = $this->service()->find($id);
+        if ($r !== null) {
+            $this->convocados()->cancelarTodo($r);
+            $this->pdo()->prepare('DELETE FROM ' . Convocados::TABLA . ' WHERE reunion_id = ?')->execute([$id]);
+        }
         $this->service()->delete($id);
         $this->ui->redirect($this->url('reuniones'), 'Reunión eliminada.');
     }

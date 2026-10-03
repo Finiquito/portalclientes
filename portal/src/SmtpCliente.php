@@ -41,14 +41,14 @@ final class SmtpCliente
     }
 
     /** @throws \RuntimeException con un mensaje legible */
-    public function enviar(string $desde, string $nombreDesde, string $para, string $asunto, string $html, string $texto, ?string $responderA = null): void
+    public function enviar(string $desde, string $nombreDesde, string $para, string $asunto, string $html, string $texto, ?string $responderA = null, ?string $ics = null): void
     {
         try {
             $this->conectar();
             $this->cmd('MAIL FROM:<' . $this->limpio($desde) . '>', [250]);
             $this->cmd('RCPT TO:<' . $this->limpio($para) . '>', [250, 251]);
             $this->cmd('DATA', [354]);
-            $msg = $this->mensaje($desde, $nombreDesde, $para, $asunto, $html, $texto, $responderA);
+            $msg = $this->mensaje($desde, $nombreDesde, $para, $asunto, $html, $texto, $responderA, $ics);
             // Dot-stuffing: una línea que empieza con «.» se duplica.
             $msg = preg_replace('/^\./m', '..', $msg) ?? $msg;
             $this->escribir($msg . "\r\n.\r\n");
@@ -168,7 +168,12 @@ final class SmtpCliente
         return rtrim(chunk_split(base64_encode($s), 76, "\r\n"));
     }
 
-    private function mensaje(string $desde, string $nombreDesde, string $para, string $asunto, string $html, string $texto, ?string $responderA): string
+    /**
+     * Texto + HTML como alternativas. Con invitación de calendario ($ics), además va como tercera
+     * alternativa (text/calendar; así Gmail y Outlook muestran «Agregar al calendario») y como
+     * adjunto invitacion.ics para los demás programas.
+     */
+    private function mensaje(string $desde, string $nombreDesde, string $para, string $asunto, string $html, string $texto, ?string $responderA, ?string $ics = null): string
     {
         $borde = 'b_' . bin2hex(random_bytes(12));
         $dominio = substr(strrchr($desde, '@') ?: '@localhost', 1);
@@ -180,16 +185,27 @@ final class SmtpCliente
             'Message-ID: <' . bin2hex(random_bytes(12)) . '@' . $this->limpio($dominio) . '>',
             'MIME-Version: 1.0',
             'Auto-Submitted: auto-generated',
-            'Content-Type: multipart/alternative; boundary="' . $borde . '"',
         ];
         if ($responderA !== null && $responderA !== '') {
             $h[] = 'Reply-To: <' . $this->limpio($responderA) . '>';
         }
         $texto = str_replace(["\r\n", "\r"], "\n", $texto);
         $html  = str_replace(["\r\n", "\r"], "\n", $html);
+        $alternativas = '--' . $borde . "\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n" . $this->b64($texto) . "\r\n"
+            . '--' . $borde . "\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n" . $this->b64($html) . "\r\n";
+        if ($ics === null || $ics === '') {
+            $h[] = 'Content-Type: multipart/alternative; boundary="' . $borde . '"';
+            return implode("\r\n", $h) . "\r\n\r\n" . $alternativas . '--' . $borde . '--';
+        }
+        $metodo = preg_match('/^METHOD:(\w+)/m', $ics, $m) === 1 ? strtoupper($m[1]) : 'REQUEST';
+        $mixto = 'm_' . bin2hex(random_bytes(12));
+        $h[] = 'Content-Type: multipart/mixed; boundary="' . $mixto . '"';
         return implode("\r\n", $h) . "\r\n\r\n"
-            . '--' . $borde . "\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n" . $this->b64($texto) . "\r\n"
-            . '--' . $borde . "\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n" . $this->b64($html) . "\r\n"
-            . '--' . $borde . '--';
+            . '--' . $mixto . "\r\nContent-Type: multipart/alternative; boundary=\"" . $borde . "\"\r\n\r\n"
+            . $alternativas
+            . '--' . $borde . "\r\nContent-Type: text/calendar; charset=UTF-8; method=" . $metodo . "\r\nContent-Transfer-Encoding: base64\r\n\r\n" . $this->b64($ics) . "\r\n"
+            . '--' . $borde . "--\r\n"
+            . '--' . $mixto . "\r\nContent-Type: application/ics; name=\"invitacion.ics\"\r\nContent-Disposition: attachment; filename=\"invitacion.ics\"\r\nContent-Transfer-Encoding: base64\r\n\r\n" . $this->b64($ics) . "\r\n"
+            . '--' . $mixto . '--';
     }
 }

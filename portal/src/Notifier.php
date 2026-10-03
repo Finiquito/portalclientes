@@ -14,7 +14,7 @@ use TypeDock\Core\PluginContext;
  *   (por defecto 07:00–19:00, hora local). Fuera de eso quedan en cola (portal_correos_cola)
  *   y salen solos en la próxima apertura: al vaciar la cola en cada visita al portal/admin
  *   y, opcionalmente, con una tarea programada (cron) del hosting.
- * - Los avisos al EQUIPO salen al tiro (son para ti, no dependen del huso del cliente).
+ * - Los avisos al EQUIPO van a cada persona según sus preferencias: al tiro o agrupados (ver Avisos).
  * - El código de acceso también sale al tiro: es una acción que la persona está esperando.
  *
  * Hostinger limita los envíos por hora: sólo se manda correo cuando pasa algo que requiere
@@ -53,7 +53,7 @@ class Notifier
         return (self::$ahora ?? new \DateTimeImmutable('now', new \DateTimeZone('UTC')))->setTimezone(new \DateTimeZone('UTC'));
     }
 
-    private function absoluta(string $ruta): string
+    public function absoluta(string $ruta): string
     {
         return str_starts_with($ruta, 'http') ? $ruta : self::baseUrl() . $ruta;
     }
@@ -100,7 +100,8 @@ class Notifier
         $base = self::baseUrl();
         return [
             'agencia' => ['nombre' => $m->nombreEquipo(), 'logo' => $m->urlLogoAgencia($base)],
-            'color'   => $clienteId !== null && $clienteId !== '' ? $m->colorCliente($clienteId) : AjustesService::colorValido(''),
+            'color'   => $clienteId !== null && $clienteId !== '' ? $m->colorCliente($clienteId)
+                : AjustesService::colorValido($this->ajustes()->get('global', 'portal', 'color_agencia')),   // correos internos: color de la agencia
         ];
     }
 
@@ -128,22 +129,73 @@ class Notifier
     // ---- Envíos --------------------------------------------------------------------
 
     /**
-     * Aviso al equipo (correo configurado en Portal · Ajustes), al tiro. Con 'proyecto_id' o 'cliente_id'
-     * en $op el correo trae arriba el logo, el nombre del cliente y el proyecto.
+     * Aviso al equipo por algo que pasó en un cliente o proyecto.
+     *
+     *  - El correo de copia de Ajustes (opcional) recibe todo, al tiro, con enlace al admin.
+     *  - Cada persona del equipo recibe lo que le toca según sus preferencias (Avisos::leToca):
+     *    al instante o agrupado (Avisos::BUZON). Las urgencias salen siempre al tiro.
+     *
+     * $op además de lo de componer():
+     *   proyecto_id / cliente_id   de qué cliente es (arma el encabezado y define a quién le toca)
+     *   responsable                id del equipo de quien es el asunto (p. ej. responsable de la tarea)
+     *   solo_responsable           true: sólo a esa persona (p. ej. «te asignaron una tarea»)
+     *   actor                      id del equipo que lo hizo (no se le avisa a sí mismo)
+     *   urgente                    true: no espera al agrupado
+     *   clave                      para agrupar varias novedades de lo mismo (por defecto, la ruta)
+     *   detalle                    una línea para el correo agrupado
      *
      * @param array<string, mixed> $op
      */
     public function alEquipo(string $asunto, string $cuerpo, ?string $rutaAdmin = null, array $op = []): void
     {
+        [$cid, $pid, $contexto] = $this->contextoAviso($op);
+        $pie = ['Aviso interno: el cliente no ve este correo.'];
+
+        // Copia de todos los avisos (Ajustes): enlace al admin de TypeDock.
         $to = trim($this->ajustes()->get('global', 'portal', 'email_avisos'));
-        if (!filter_var($to, FILTER_VALIDATE_EMAIL)) {
+        if (filter_var($to, FILTER_VALIDATE_EMAIL)) {
+            $url = $rutaAdmin !== null ? $this->absoluta($this->ctx->adminUrl($rutaAdmin)) : '';
+            [$html, $texto] = $this->componer($asunto, $cuerpo, $op + ['boton' => 'Abrir en el admin'], null, $url, $cid, $pie, $contexto);
+            $this->enviarCorreo($to, $asunto, $html, $texto);
+        } else {
             $to = '';
         }
+
+        // Personas del equipo: a cada una lo suyo.
+        $avisos = new Avisos($this->ctx, $this->pdo, $this);
+        $enviados = [strtolower($to)];
+        $url = $this->absoluta('/equipo' . ($rutaAdmin !== null ? '/' . ltrim($rutaAdmin, '/') : ''));
+        foreach ($avisos->destinatarios($pid, $cid, $op) as $u) {
+            $mail = strtolower((string) $u['email']);
+            if (in_array($mail, $enviados, true)) {
+                continue;
+            }
+            $enviados[] = $mail;
+            if ($u['como'] === 'agrupado' && empty($op['urgente'])) {
+                $avisos->guardar((string) $u['id'], $cid, $pid, (string) ($op['clave'] ?? $rutaAdmin ?? $asunto), $asunto,
+                    (string) ($op['detalle'] ?? mb_substr(trim(preg_replace('/\s+/u', ' ', $cuerpo) ?? ''), 0, 160)), $rutaAdmin);
+                continue;
+            }
+            $pieEq = array_merge($pie, [Avisos::pieMotivo($u)]);
+            [$html, $texto] = $this->componer($asunto, $cuerpo, $op + ['boton' => 'Abrir en el panel'], null, $url, $cid, $pieEq, $contexto);
+            $this->enviarCorreo($mail, $asunto, $html, $texto);
+        }
+    }
+
+    /**
+     * Cliente, proyecto y encabezado (logo + nombres) de un aviso interno.
+     *
+     * @param array<string, mixed> $op
+     * @return array{0: ?string, 1: ?string, 2: ?array<string, string>} [clienteId, proyectoId, contexto]
+     */
+    public function contextoAviso(array $op): array
+    {
         $clienteId = (string) ($op['cliente_id'] ?? '');
+        $proyectoId = (string) ($op['proyecto_id'] ?? '');
         $proyecto = '';
-        if (!empty($op['proyecto_id'])) {
+        if ($proyectoId !== '') {
             $st = $this->pdo->prepare('SELECT nombre, cliente_id FROM portal_proyectos WHERE id = ?');
-            $st->execute([(string) $op['proyecto_id']]);
+            $st->execute([$proyectoId]);
             $p = $st->fetch();
             if ($p !== false) {
                 $proyecto = (string) $p['nombre'];
@@ -163,29 +215,7 @@ class Notifier
                 ];
             }
         }
-        $cid = $clienteId !== '' ? $clienteId : null;
-        $pie = ['Aviso interno: el cliente no ve este correo.'];
-
-        // Correo de avisos de Ajustes: enlace al admin de TypeDock.
-        if ($to !== '') {
-            $url = $rutaAdmin !== null ? $this->absoluta($this->ctx->adminUrl($rutaAdmin)) : '';
-            [$html, $texto] = $this->componer($asunto, $cuerpo, $op + ['boton' => 'Abrir en el admin'], null, $url, $cid, $pie, $contexto);
-            $this->enviarCorreo($to, $asunto, $html, $texto);
-        }
-
-        // Personas de la agencia asignadas a ese proyecto/cliente: enlace al panel de equipo.
-        $enviados = [strtolower($to)];
-        $url = $rutaAdmin !== null ? $this->absoluta('/equipo/' . ltrim($rutaAdmin, '/')) : $this->absoluta('/equipo');
-        $pieEq = array_merge($pie, ['Te llega porque tienes asignado este cliente. Puedes desactivar estos avisos en «Mis ajustes» del panel.']);
-        foreach ((new EquipoService($this->pdo))->destinatariosAvisos((string) ($op['proyecto_id'] ?? ''), $cid) as $u) {
-            $mail = strtolower((string) $u['email']);
-            if (in_array($mail, $enviados, true)) {
-                continue;
-            }
-            $enviados[] = $mail;
-            [$html, $texto] = $this->componer($asunto, $cuerpo, $op + ['boton' => 'Abrir en el panel'], null, $url, $cid, $pieEq, $contexto);
-            $this->enviarCorreo($mail, $asunto, $html, $texto);
-        }
+        return [$clienteId !== '' ? $clienteId : null, $proyectoId !== '' ? $proyectoId : null, $contexto];
     }
 
     /**
@@ -209,8 +239,10 @@ class Notifier
             return;
         }
 
-        $cuando = $this->cuandoEnviar($clienteId, !empty($op['inmediato']));
-        $ahora  = $this->ahoraUtc();
+        // Sólo algunos contactos (p. ej. los convocados a una reunión).
+        if (isset($op['contactos']) && is_array($op['contactos'])) {
+            $contactos = array_values(array_filter($contactos, fn($c) => in_array((string) $c['id'], $op['contactos'], true)));
+        }
         foreach ($contactos as $c) {
             if ($this->ajustes()->get('contacto', (string) $c['id'], 'avisos_email', '1') === '0') {
                 continue;
@@ -219,11 +251,7 @@ class Notifier
                 $asunto, $cuerpo, $op, 'Hola ' . $this->primerNombre((string) $c['nombre']) . ',', $this->absoluta($ruta), $clienteId,
                 ['Puedes desactivar estos avisos en Ajustes dentro del portal.']
             );
-            if ($cuando <= $ahora) {
-                $this->enviarCorreo((string) $c['email'], $asunto, $html, $texto);
-            } else {
-                $this->encolar($clienteId, (string) $c['id'], (string) $c['email'], $asunto, $texto, $html, $cuando);
-            }
+            $this->aContacto($c, $clienteId, $asunto, $html, $texto, !empty($op['inmediato']));
         }
     }
 
@@ -326,7 +354,7 @@ class Notifier
         $this->enviarCorreo((string) $usuario['email'], 'Tu código para el panel de equipo: ' . $codigo, $html, $texto, true);
     }
 
-    private function primerNombre(string $n): string
+    public function primerNombre(string $n): string
     {
         $p = preg_split('/\s+/u', trim($n)) ?: [];
         return $p[0] ?? $n;
@@ -368,13 +396,29 @@ class Notifier
 
     // ---- Cola ----------------------------------------------------------------------------
 
-    private function encolar(string $clienteId, string $contactoId, string $to, string $asunto, string $texto, string $html, \DateTimeImmutable $cuando): void
+    private function encolar(string $clienteId, string $contactoId, string $to, string $asunto, string $texto, string $html, \DateTimeImmutable $cuando, ?string $ics = null): void
     {
         Schema::asegurar($this->pdo);
         $this->pdo->prepare(
-            'INSERT INTO ' . self::COLA . ' (id, cliente_id, contacto_id, destino, asunto, texto, html, enviar_desde, estado, intentos, created_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)'
-        )->execute([typedock_uuid7(), $clienteId, $contactoId, $to, mb_substr($asunto, 0, 500), $texto, $html, $cuando->format('Y-m-d H:i:s'), 'pendiente', $this->ahoraUtc()->format('Y-m-d H:i:s')]);
+            'INSERT INTO ' . self::COLA . ' (id, cliente_id, contacto_id, destino, asunto, texto, html, ics, enviar_desde, estado, intentos, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)'
+        )->execute([typedock_uuid7(), $clienteId, $contactoId, $to, mb_substr($asunto, 0, 500), $texto, $html, $ics, $cuando->format('Y-m-d H:i:s'), 'pendiente', $this->ahoraUtc()->format('Y-m-d H:i:s')]);
+    }
+
+    /**
+     * Un correo ya armado para un contacto del cliente: sale ahora si está en su horario hábil
+     * (o si es inmediato); si no, espera en la cola.
+     *
+     * @param array<string, mixed> $contacto id, email
+     */
+    public function aContacto(array $contacto, string $clienteId, string $asunto, string $html, string $texto, bool $inmediato = false, ?string $ics = null): void
+    {
+        $cuando = $this->cuandoEnviar($clienteId, $inmediato);
+        if ($cuando <= $this->ahoraUtc()) {
+            $this->enviarCorreo((string) $contacto['email'], $asunto, $html, $texto, true, $ics);
+        } else {
+            $this->encolar($clienteId, (string) $contacto['id'], (string) $contacto['email'], $asunto, $texto, $html, $cuando, $ics);
+        }
     }
 
     /**
@@ -414,7 +458,7 @@ class Notifier
         if ($claim->rowCount() !== 1) {
             return false;   // otra request se lo llevó
         }
-        $ok = $this->enviarCorreo((string) $f['destino'], (string) $f['asunto'], (string) $f['html'], (string) $f['texto'], true);
+        $ok = $this->enviarCorreo((string) $f['destino'], (string) $f['asunto'], (string) $f['html'], (string) $f['texto'], true, ($f['ics'] ?? '') !== '' ? (string) $f['ics'] : null);
         if ($ok) {
             $this->pdo->prepare('UPDATE ' . self::COLA . " SET estado = 'enviado', enviado_en = ?, error = NULL WHERE id = ?")->execute([$ahora->format('Y-m-d H:i:s'), $f['id']]);
             return true;
@@ -577,12 +621,12 @@ class Notifier
      *  2. Modo html: HTML por el envío estándar del núcleo.  Modo auto: método HTML del núcleo si existe.
      *  3. Texto plano por el correo del núcleo.
      */
-    public function enviarCorreo(string $to, string $asunto, string $html, string $texto, bool $silencioso = true): bool
+    public function enviarCorreo(string $to, string $asunto, string $html, string $texto, bool $silencioso = true, ?string $ics = null): bool
     {
         $modo = $this->modo();
         if (in_array($modo, ['auto', 'smtp'], true) && ($cfg = $this->smtpConfig()) !== null && $cfg['desde'] !== '') {
             try {
-                $this->clienteSmtp($cfg)->enviar($cfg['desde'], $this->marca()->nombreEquipo(), $to, $asunto, $html, $texto, trim($this->ajustes()->get('global', 'portal', 'email_avisos')) ?: null);
+                $this->clienteSmtp($cfg)->enviar($cfg['desde'], $this->marca()->nombreEquipo(), $to, $asunto, $html, $texto, trim($this->ajustes()->get('global', 'portal', 'email_avisos')) ?: null, $ics);
                 return true;
             } catch (\Throwable $e) {
                 $this->ajustes()->set('global', 'portal', 'smtp_ultimo_error', mb_substr($e->getMessage(), 0, 250) . ' (' . date('d/m H:i') . ')');
@@ -602,6 +646,14 @@ class Notifier
         } catch (\Throwable) {
             return false;
         }
+    }
+
+    /** Correo que firma las invitaciones de calendario (el remitente SMTP o, si no hay, el de copia de avisos). */
+    public function correoOrganizador(): string
+    {
+        $cfg = $this->smtpConfig();
+        $c = $cfg !== null && $cfg['desde'] !== '' ? $cfg['desde'] : trim($this->ajustes()->get('global', 'portal', 'email_avisos'));
+        return filter_var($c, FILTER_VALIDATE_EMAIL) ? $c : 'no-responder@' . preg_replace('/:\d+$/', '', (string) ($_SERVER['HTTP_HOST'] ?? 'localhost'));
     }
 
     /** Para el panel: cómo es el correo del núcleo (clase y métodos públicos). @return array{clase: string, metodos: array<string>} */

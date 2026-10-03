@@ -1,0 +1,46 @@
+{*
+    Convocados de una reunión. Parámetros: $convEquipo, $convContactos (con cliente_id), $convMarcados [equipo, contacto], $nueva (bool).
+    Los contactos se filtran por el cliente del proyecto elegido en el <select data-proyecto-zona>.
+*}
+<input type="hidden" name="convocados_form" value="1">
+<label class="form-label mt-3">Convocados</label>
+<div class="pa-grid-2" data-convocados>
+    <div>
+        <p class="pa-muted" style="margin:0">Equipo</p>
+        {foreach $convEquipo as $e}
+            <label class="pa-check" style="margin-top:.4rem"><input type="checkbox" name="conv_equipo[]" value="{$e['id']}" {if in_array($e['id'], $convMarcados['equipo'], true)}checked{/if}> <span>{$e['nombre']}{if $e['cargo']} <span class="pa-muted">· {$e['cargo']}</span>{/if}</span></label>
+        {else}
+            <p class="pa-muted">Aún no hay personas en el equipo.</p>
+        {/foreach}
+    </div>
+    <div>
+        <p class="pa-muted" style="margin:0">Cliente</p>
+        {foreach $convContactos as $c}
+            <label class="pa-check" style="margin-top:.4rem" data-cliente="{$c['cliente_id']}"><input type="checkbox" name="conv_contacto[]" value="{$c['id']}" {if in_array($c['id'], $convMarcados['contacto'], true)}checked{/if}> <span>{$c['nombre']} <span class="pa-muted">· {$c['email']}</span></span></label>
+        {/foreach}
+        <p class="pa-muted" data-sin-contactos hidden>Este cliente aún no tiene contactos.</p>
+    </div>
+</div>
+<label class="pa-check"><input type="checkbox" name="invitar" value="1" checked> <span>{if $nueva}Enviar la invitación de calendario a los convocados{else}Enviar la invitación a quien sumes y los cambios a todos si cambias fecha, hora, duración o Meet{/if}</span></label>
+<p class="form-hint mt-1">Les llega un correo para agregarla a Google Calendar, Outlook o Apple. Al cliente sólo si la reunión es visible para él, en su hora.</p>
+<script n:syntax="off">
+(function () {
+  var sel = document.querySelector('select[data-proyecto-zona]');
+  var box = document.querySelector('[data-convocados]');
+  if (!sel || !box) return;
+  function filtrar() {
+    var op = sel.options[sel.selectedIndex];
+    var cli = op ? op.getAttribute('data-cliente') : '';
+    var hay = false;
+    box.querySelectorAll('[data-cliente]').forEach(function (l) {
+      var ok = l.getAttribute('data-cliente') === cli;
+      l.hidden = !ok;
+      if (!ok) l.querySelector('input').checked = false;
+      hay = hay || ok;
+    });
+    box.querySelector('[data-sin-contactos]').hidden = hay;
+  }
+  sel.addEventListener('change', filtrar);
+  filtrar();
+})();
+</script>

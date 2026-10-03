@@ -189,6 +189,24 @@ class SolicitudAdminController
         $r = (new ReunionService($this->pdo()))->find($reunionId);
         $fmt = new Fmt();
         $this->registrar($s, 'atendio', 'Reunión agendada');
+
+        // Convocados: quien la pidió y quien la agenda. A quien la pidió le llega la invitación de calendario.
+        $conv = new Convocados($this->ctx, $this->pdo());
+        $conv->inmediato = true;   // el cliente está esperando la confirmación
+        $nuevos = [];
+        if (($s['contacto_id'] ?? '') !== '' && (new ContactoService($this->pdo()))->find((string) $s['contacto_id']) !== null) {
+            $conv->agregar($reunionId, 'contacto', (string) $s['contacto_id']);
+            $nuevos[] = ['tipo' => 'contacto', 'id' => (string) $s['contacto_id']];
+        }
+        if (($yo = $this->ui->autorId()) !== null) {
+            $conv->agregar($reunionId, 'equipo', $yo);
+            $nuevos[] = ['tipo' => 'equipo', 'id' => $yo];
+        }
+        if ($nuevos !== [] && $nuevos[0]['tipo'] === 'contacto' && $conv->invitable($r) && $conv->sincronizar(null, $r, ['nuevos' => $nuevos, 'quitados' => []]) > 0) {
+            $this->comentarDesdePost($s);
+            $this->ui->redirect($this->url('reuniones/' . $reunionId), 'Reunión agendada: le llegó la invitación de calendario a ' . $s['contacto_nombre'] . '.');
+            return;
+        }
         $this->avisarCliente($s, 'Reunión confirmada: ' . $fmt->fecha((string) $r['fecha']) . ' ' . $fmt->hora((string) $r['fecha']), [
             'etiqueta' => 'Reunión', 'titulo' => 'Tu reunión quedó confirmada', 'resaltado' => 'confirmada',
             'bloques' => [['tarjetas' => [['titulo' => (string) $r['titulo'], 'detalle' => $fmt->fechaLarga((string) $r['fecha']) . ' · ' . $fmt->hora((string) $r['fecha'])]]],

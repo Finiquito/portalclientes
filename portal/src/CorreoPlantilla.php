@@ -20,7 +20,9 @@ namespace TypeDock\Plugin\Portal;
  *   titulo, resaltado (fragmento del título que se destaca)
  *   preheader texto que muestran las bandejas junto al asunto
  *   saludo    «Hola Ana,»
- *   bloques   [['p' => ..], ['lista' => [..]], ['tarjetas' => [['titulo','detalle','chip']]], ['cita' => ..], ['datos' => [[etiqueta, valor]]]]
+ *   bloques   [['p' => ..], ['lista' => [..]], ['tarjetas' => [['titulo','detalle','chip','url']]], ['cita' => ..], ['datos' => [[etiqueta, valor]]],
+ *              ['seccion' => ['titulo' => .., 'color' => '#rrggbb']] (subtítulo con punto de color, p. ej. un proyecto),
+ *              ['enlaces' => [['texto' => .., 'url' => ..]]] (botones secundarios, p. ej. «Agregar a Google Calendar»)]
  *   boton     ['texto' => .., 'url' => ..]
  *   contexto  ['cliente' => .., 'logo' => url|'', 'proyecto' => ..]
  *   pie       [líneas]
@@ -166,10 +168,27 @@ final class CorreoPlantilla
                         ? '<td align="right" valign="top" style="padding:14px 16px 0 0;white-space:nowrap;"><span style="display:inline-block;padding:3px 10px;border-radius:99px;background:' . $tinte . ';font:700 11px/1.5 ' . $f . ';color:' . $acento . ';">' . self::e((string) $t['chip']) . '</span></td>' : '';
                     $det = (string) ($t['detalle'] ?? '') !== ''
                         ? '<div style="margin-top:3px;font:400 13px/1.5 ' . $f . ';color:' . self::SUAVE . ';">' . self::parrafo((string) $t['detalle']) . '</div>' : '';
+                    $tit = self::e((string) ($t['titulo'] ?? ''));
+                    if ((string) ($t['url'] ?? '') !== '') {
+                        $tit = '<a href="' . self::e((string) $t['url']) . '" style="color:' . self::TINTA . ';text-decoration:none;">' . $tit . '</a>';
+                    }
                     $cuerpo .= '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 10px;border:1px solid ' . self::LINEA . ';border-radius:12px;background:#ffffff;"><tr>'
-                        . '<td style="padding:13px 16px;"><div style="font:700 15px/1.4 ' . $f . ';color:' . self::TINTA . ';">' . self::e((string) ($t['titulo'] ?? '')) . '</div>' . $det . '</td>' . $chip . '</tr></table>';
+                        . '<td style="padding:13px 16px;"><div style="font:700 15px/1.4 ' . $f . ';color:' . self::TINTA . ';">' . $tit . '</div>' . $det . '</td>' . $chip . '</tr></table>';
                 }
                 $cuerpo .= '<div style="height:4px;line-height:4px;">&nbsp;</div>';
+            } elseif (isset($b['seccion'])) {
+                $sc = (array) $b['seccion'];
+                $punto = AjustesService::colorValido((string) ($sc['color'] ?? ''), self::SUAVE);
+                $cuerpo .= '<div style="margin:18px 0 10px;font:800 13px/1.4 ' . $f . ';letter-spacing:.04em;text-transform:uppercase;color:' . self::SUAVE . ';">'
+                    . '<span style="display:inline-block;width:9px;height:9px;margin-right:8px;border-radius:99px;background:' . $punto . ';vertical-align:1px;"></span>'
+                    . self::e((string) ($sc['titulo'] ?? '')) . '</div>';
+            } elseif (isset($b['enlaces'])) {
+                $celdas = '';
+                foreach ((array) $b['enlaces'] as $en) {
+                    $celdas .= '<td style="padding:0 8px 8px 0;"><a href="' . self::e((string) ($en['url'] ?? '')) . '" style="display:inline-block;padding:10px 16px;border:1px solid ' . self::LINEA
+                        . ';border-radius:10px;font:700 13px/1 ' . $f . ';color:' . $acento . ';text-decoration:none;background:#ffffff;">' . self::e((string) ($en['texto'] ?? '')) . '</a></td>';
+                }
+                $cuerpo .= '<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 10px;"><tr>' . $celdas . '</tr></table>';
             } elseif (isset($b['codigo'])) {
                 $cuerpo .= '<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:6px 0 18px;"><tr><td style="padding:16px 30px;border-radius:14px;background:' . $tinte . ';border:1px solid ' . self::mezclar($color, '#ffffff', 0.7)
                     . ';font:800 34px/1 \'SFMono-Regular\',Consolas,Menlo,monospace;letter-spacing:.32em;color:' . self::TINTA . ';">' . self::e((string) $b['codigo']) . '</td></tr></table>';
@@ -241,7 +260,14 @@ final class CorreoPlantilla
                 }
             } elseif (isset($b['tarjetas'])) {
                 foreach ((array) $b['tarjetas'] as $t) {
-                    $o[] = '• ' . ($t['titulo'] ?? '') . ((string) ($t['chip'] ?? '') !== '' ? ' [' . $t['chip'] . ']' : '') . ((string) ($t['detalle'] ?? '') !== '' ? ' — ' . $t['detalle'] : '');
+                    $o[] = '• ' . ($t['titulo'] ?? '') . ((string) ($t['chip'] ?? '') !== '' ? ' [' . $t['chip'] . ']' : '') . ((string) ($t['detalle'] ?? '') !== '' ? ' — ' . $t['detalle'] : '')
+                        . ((string) ($t['url'] ?? '') !== '' ? ' → ' . $t['url'] : '');
+                }
+            } elseif (isset($b['seccion'])) {
+                $o[] = mb_strtoupper((string) ($b['seccion']['titulo'] ?? ''));
+            } elseif (isset($b['enlaces'])) {
+                foreach ((array) $b['enlaces'] as $en) {
+                    $o[] = ($en['texto'] ?? '') . ': ' . ($en['url'] ?? '');
                 }
             } elseif (isset($b['codigo'])) {
                 $o[] = '    ' . $b['codigo'];

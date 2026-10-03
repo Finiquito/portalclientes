@@ -16,9 +16,9 @@
     <form method="post" action="{$admin_url('ajustes')}">
         <input type="hidden" name="_csrf_token" value="{$csrf_token}">
 
-        <label class="form-label">Tu correo para avisos</label>
+        <label class="form-label">Copia de todos los avisos (opcional)</label>
         <input type="email" name="email_avisos" class="form-input" value="{$cfg['email_avisos']}" placeholder="tu@correo.com">
-        <p class="form-hint mt-1">Te escribimos cuando un cliente comenta, entrega archivos, completa o aprueba algo. Vacío = sin avisos (igual verás todo en «Actividad»).</p>
+        <p class="form-hint mt-1">Cada persona del equipo recibe lo suyo en su correo y elige en «Mis ajustes» del panel qué y cómo (agrupado o al instante). Aquí puedes poner un correo que reciba una copia de todo, al instante: útil para supervisar. Vacío = sin copia (igual verás todo en «Actividad»).</p>
 
         <label class="form-label mt-3">Nombre con que firma el equipo</label>
         <input type="text" name="nombre_equipo" class="form-input" value="{$cfg['nombre_equipo']}" maxlength="60" placeholder="Equipo">
@@ -111,7 +111,7 @@
             <label>Desde las <input type="number" name="horario_ini" class="form-input" value="{$correo['ini']}" min="0" max="22" style="width:5rem;display:inline-block"> h</label>
             <label>hasta las <input type="number" name="horario_fin" class="form-input" value="{$correo['fin']}" min="1" max="23" style="width:5rem;display:inline-block"> h</label>
         </div>
-        <p class="form-hint mt-1">Lo que se genere fuera de ese horario queda en cola y sale solo en la próxima apertura. Los avisos para ti y el código de acceso salen siempre al tiro. No se consideran feriados.</p>
+        <p class="form-hint mt-1">Lo que se genere fuera de ese horario queda en cola y sale solo en la próxima apertura. Los avisos al equipo siguen lo que cada persona eligió en «Mis ajustes»; el código de acceso sale siempre al tiro. No se consideran feriados.</p>
 
         <h3 style="font-size:.95rem;font-weight:800;margin:1.5rem 0 .25rem">Servidor de correo (SMTP propio) — recomendado</h3>
         <p class="form-hint">El correo del sistema puede mandar todo como texto plano. Con tu propia casilla los correos salen con el diseño completo (HTML) y desde tu dominio. En Hostinger: servidor <code>smtp.hostinger.com</code>, puerto <code>465</code>, seguridad SSL, usuario y contraseña de la casilla (ej. portal@tudominio.cl).</p>
@@ -178,8 +178,12 @@
         <p class="form-hint">No hay correos esperando su horario.</p>
     {/if}
 
-    <h3 style="font-size:.95rem;font-weight:800;margin:1.5rem 0 .25rem">Envío automático con tarea programada (opcional)</h3>
-    <p class="form-hint">Sin esto, los correos en espera salen cuando alguien entra al portal o al admin después de su horario de apertura. Para que salgan a la hora exacta aunque nadie entre, crea en Hostinger (hPanel → Avanzado → Cron Jobs) una tarea cada 15 minutos con este comando:</p>
+    <h3 style="font-size:.95rem;font-weight:800;margin:1.5rem 0 .25rem">Tarea programada (cron)</h3>
+    <p>
+        {if $correo['cronUltimo'] !== ''}<span class="pa-chip ok">Última vez que corrió: {$correo['cronUltimo']}</span>
+        {else}<span class="pa-chip warn">Todavía no corre</span>{/if}
+    </p>
+    <p class="form-hint">El <strong>resumen de la mañana</strong>, los <strong>avisos agrupados</strong>, los avisos de <strong>vencimiento</strong> y los <strong>recordatorios de reunión</strong> necesitan que esta tarea corra cada 15 minutos. Sin ella, todo eso sale sólo cuando alguien entra al portal o al panel, y el resumen puede no llegar a tiempo. En Hostinger: hPanel → Avanzado → Cron Jobs, una tarea cada 15 minutos con este comando:</p>
     <p><code style="word-break:break-all">*/15 * * * * curl -s "{$correo['cronUrl']}" &gt; /dev/null</code></p>
     <form method="post" action="{$admin_url('ajustes/cron-clave')}">
         <input type="hidden" name="_csrf_token" value="{$csrf_token}">
