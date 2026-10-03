@@ -3,7 +3,7 @@
 {block page_title}{$c['titulo']}{/block}
 
 {block content}
-<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=2">
+<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=3">
 
 <div class="page-header">
     <h1>{$c['titulo']}</h1>
@@ -17,7 +17,7 @@
 {var $ct = ['muted' => '', 'ok' => 'ok', 'warn' => 'warn', 'danger' => 'danger', 'info' => 'info'][$cs[1]] ?? ''}
 
 <div class="card">
-    <p class="pa-row"><span class="pa-chip brand">{$tipos[$c['tipo']][0] ?? $c['tipo']}</span> <span class="pa-chip {$ct}">{$cs[0]}</span> <span class="pa-muted">Entrega: {$c['entrega_titulo']} · versión vigente v{$c['version_actual']}</span></p>
+    <p class="pa-row"><span class="pa-chip brand">{$tipos[$c['tipo']][0] ?? $c['tipo']}</span>{var $etq = \TypeDock\Plugin\Portal\TiposContenido::etiqueta($c)}{if $etq !== ''} <span class="pa-muted">El cliente ve: «{$etq}»</span>{/if} <span class="pa-chip {$ct}">{$cs[0]}</span> <span class="pa-muted">Entrega: {$c['entrega_titulo']} · versión vigente v{$c['version_actual']}</span></p>
     <form method="post" action="{$admin_url('contenidos/' . $c['id'])}">
         <input type="hidden" name="_csrf_token" value="{$csrf_token}">
         <div class="pa-grid-2">
@@ -45,6 +45,8 @@
         <label class="form-label mt-3">Link (versión vigente)</label>
         <p class="pa-muted" style="margin:0 0 .4rem">Se ve dentro del portal: YouTube, Vimeo, Loom, Google Drive (video), Google Slides, Canva y Figma. Para video, lo más limpio es subir el mp4. Presentaciones: sube el PDF exportado o pega el link.</p>
         <input type="url" name="enlace" class="form-input" value="{$c['enlace']}" maxlength="500" placeholder="https://…">
+        <h3 class="pa-h2 mt-4" style="font-size:1rem">Brief de la pieza</h3>
+        {include '_brief.latte', c: $c}
         <p class="mt-4"><button type="submit" class="btn btn-primary">Guardar</button></p>
     </form>
 </div>
@@ -115,12 +117,28 @@
 
 <div class="card mt-4" id="conversacion">
     <h2 class="pa-h2">Conversación <span class="pa-chip">{count($comentarios)}</span></h2>
+    {var $conPines = array_filter($imgVigente, fn($a) => count(array_filter($pines, fn($p) => $p['archivo'] === $a['id'])) > 0)}
+    {if $conPines}
+    <p class="pa-muted">Puntos que marcó el cliente en la versión vigente (el número es el de su comentario):</p>
+    <div class="pa-pines">
+        {foreach $conPines as $a}
+        <figure class="pa-pin-img">
+            <div style="position:relative">
+                <img src="{$admin_url('archivos/' . $a['id'])}?i=1" alt="Imagen {$posImagen[$a['id']]}" loading="lazy">
+                {foreach $pines as $pin}{if $pin['archivo'] === $a['id']}<span class="pa-pin" style="left:{(float) $pin['x']|noescape}%;top:{(float) $pin['y']|noescape}%">{$pin['n']}</span>{/if}{/foreach}
+            </div>
+            <figcaption class="pa-muted">Imagen {$posImagen[$a['id']]}</figcaption>
+        </figure>
+        {/foreach}
+    </div>
+    {/if}
     {if $comentarios}
     <ul class="pa-thread">
         {foreach $comentarios as $m}
         <li class="pa-msg {$m['autor_tipo'] === 'equipo' ? 'equipo' : 'cliente'}">
             <header>
-                <span><strong>{$m['autor_nombre']}</strong>{if $m['autor_tipo'] !== 'equipo'} (cliente){/if} · {$fmt->rel($m['created_at'])}{if $m['ubicacion']} · página {substr((string) $m['ubicacion'], 1)}{/if}</span>
+                {var $pin = $pines[$m['id']] ?? null}
+                <span><strong>{$m['autor_nombre']}</strong>{if $m['autor_tipo'] !== 'equipo'} (cliente){/if} · {$fmt->rel($m['created_at'])}{if $pin} · <span class="pa-pin pa-pin-mini">{$pin['n']}</span> {\TypeDock\Plugin\Portal\Ubicacion::etiqueta($m['ubicacion'], $pin['n'], $pin['imagen'])}{elseif $m['ubicacion']} · {\TypeDock\Plugin\Portal\Ubicacion::etiqueta($m['ubicacion'])}{/if}</span>
                 <form method="post" action="{$admin_url('contenidos/' . $c['id'] . '/comentarios/' . $m['id'] . '/borrar')}" onsubmit="return confirm('¿Eliminar este comentario?');">
                     <input type="hidden" name="_csrf_token" value="{$csrf_token}">
                     <button type="submit" class="btn btn-sm btn-danger">Eliminar</button>

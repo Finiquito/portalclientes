@@ -84,6 +84,12 @@ class EquipoGestion extends EquipoController
         $r('POST', 'entregas/@id/borrador',         EntregaAdminController::class, 'borrador', 'entrega');
         $r('POST', 'entregas/@id/contenidos',       EntregaAdminController::class, 'agregarContenido', 'entrega');
         $r('POST', 'entregas/@id/masivo',           EntregaAdminController::class, 'subidaMasiva', 'entrega');
+        $r('POST', 'entregas/@id/grilla',           GrillaAdminController::class, 'subir', 'entrega');
+        $r('GET',  'entregas/@id/grilla/@token',    GrillaAdminController::class, 'ver', 'entrega');
+        $r('POST', 'entregas/@id/grilla/@token/tanda/@n', GrillaAdminController::class, 'tanda', 'entrega');
+        $r('POST', 'entregas/@id/grilla/@token/crear', GrillaAdminController::class, 'crear', 'entrega');
+        $r('POST', 'entregas/@id/grilla/@token/descartar', GrillaAdminController::class, 'descartar', 'entrega');
+        $r('POST', 'entregas/@id/imagenes',         GrillaAdminController::class, 'imagenes', 'entrega');
         $r('GET',  'contenidos/@id',                EntregaAdminController::class, 'editContenido', 'contenido');
         $r('POST', 'contenidos/@id',                EntregaAdminController::class, 'updateContenido', 'contenido');
         $r('POST', 'contenidos/@id/borrar',         EntregaAdminController::class, 'borrarContenido', 'contenido');

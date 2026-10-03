@@ -19,7 +19,22 @@
         <span class="chip chip-muted">{$e['proyecto_nombre']}</span>
     </div>
     <h1 class="mt-3 text-2xl font-extrabold leading-tight tracking-tight sm:text-3xl">{$e['titulo']}</h1>
-    {if $e['mensaje']}<div class="mt-3 max-w-prose text-[0.9375rem] leading-relaxed text-ink/85">{$e['mensaje']|breakLines}</div>{/if}
+    {if $e['mensaje']}
+        {var $msj = trim((string) $e['mensaje'])}
+        {if mb_strlen($msj) <= 420}
+            <div class="mt-3 max-w-prose text-[0.9375rem] leading-relaxed text-ink/85">{$msj|breakLines}</div>
+        {else}
+            {* Indicaciones largas (p. ej. las generales de una grilla): plegadas para no tapar los contenidos. *}
+            <details class="group mt-3 max-w-prose text-[0.9375rem] leading-relaxed text-ink/85">
+                <summary class="cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+                    <span class="group-open:hidden">{mb_strimwidth(preg_replace('/\s+/u', ' ', $msj), 0, 300, '…')}</span>
+                    <span class="mt-1 inline-flex items-center gap-1 text-sm font-semibold text-brand-ink group-open:hidden">Leer las indicaciones completas <svg class="size-4"><use href="#i-chevron"/></svg></span>
+                    <span class="hidden text-sm font-semibold text-brand-ink group-open:inline-flex">Ocultar indicaciones</span>
+                </summary>
+                <div class="mt-2">{$msj|breakLines}</div>
+            </details>
+        {/if}
+    {/if}
 
     <div class="mt-5">
         <div class="flex items-center justify-between text-xs font-semibold text-muted"><span>{$decididos} de {$e['n_total']} revisados</span><span>{$pct}%</span></div>
@@ -49,7 +64,7 @@
                         </span>
                     {/if}
                     <span class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/35 to-transparent px-3 pb-3 pt-10 text-white">
-                        <span class="block text-[0.6875rem] font-semibold uppercase tracking-wide opacity-80">{$tipos[$c['tipo']][0] ?? ''}{if $c['version_actual'] > 1} · v{$c['version_actual']}{/if}</span>
+                        <span class="block text-[0.6875rem] font-semibold uppercase tracking-wide opacity-80">{$etiquetas[$c['id']] ?? ''}{if $c['version_actual'] > 1}{if ($etiquetas[$c['id']] ?? '') !== ''} · {/if}v{$c['version_actual']}{/if}</span>
                         <span class="block truncate text-sm font-bold">{$c['titulo']}</span>
                     </span>
                     <span class="absolute left-2 top-2 chip chip-{$cs[1]} bg-surface! shadow-soft">

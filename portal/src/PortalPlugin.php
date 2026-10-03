@@ -131,6 +131,13 @@ class PortalPlugin implements PluginInterface
         $ctx->registerAdminRoute('POST', 'entregas/@id/borrador',           fn(string $id) => $entregas->borrador($id));
         $ctx->registerAdminRoute('POST', 'entregas/@id/contenidos',         fn(string $id) => $entregas->agregarContenido($id));
         $ctx->registerAdminRoute('POST', 'entregas/@id/masivo',             fn(string $id) => $entregas->subidaMasiva($id));
+        $grilla = new GrillaAdminController($ctx);
+        $ctx->registerAdminRoute('POST', 'entregas/@id/grilla',             fn(string $id) => $grilla->subir($id));
+        $ctx->registerAdminRoute('GET',  'entregas/@id/grilla/@token',      fn(string $id, string $token) => $grilla->ver($id, $token));
+        $ctx->registerAdminRoute('POST', 'entregas/@id/grilla/@token/tanda/@n', fn(string $id, string $token, string $n) => $grilla->tanda($id, $token, $n));
+        $ctx->registerAdminRoute('POST', 'entregas/@id/grilla/@token/crear', fn(string $id, string $token) => $grilla->crear($id, $token));
+        $ctx->registerAdminRoute('POST', 'entregas/@id/grilla/@token/descartar', fn(string $id, string $token) => $grilla->descartar($id, $token));
+        $ctx->registerAdminRoute('POST', 'entregas/@id/imagenes',           fn(string $id) => $grilla->imagenes($id));
         $ctx->registerAdminRoute('GET',  'contenidos/@id',                  fn(string $id) => $entregas->editContenido($id));
         $ctx->registerAdminRoute('POST', 'contenidos/@id',                  fn(string $id) => $entregas->updateContenido($id));
         $ctx->registerAdminRoute('POST', 'contenidos/@id/borrar',           fn(string $id) => $entregas->borrarContenido($id));

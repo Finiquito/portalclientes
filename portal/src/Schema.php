@@ -51,6 +51,14 @@ final class Schema
             'primer_acceso' => 'VARCHAR(32)',
             'ultimo_acceso' => 'VARCHAR(32)',
         ],
+        // Brief de cada pieza (grillas): lo que el cliente ve junto al contenido.
+        'portal_contenidos' => [
+            'etiqueta' => 'VARCHAR(80)',
+            'pilar'    => 'VARCHAR(120)',
+            'objetivo' => 'TEXT',
+            'laminas'  => 'TEXT',
+            'notas'    => 'TEXT',
+        ],
         'portal_comentarios' => [
             'version_id' => 'VARCHAR(36)',
             'ubicacion'  => 'VARCHAR(64)',

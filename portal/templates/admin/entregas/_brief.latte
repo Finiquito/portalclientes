@@ -1,0 +1,20 @@
+{* Brief de la pieza: lo que el cliente ve junto al contenido. Se usa al agregar y al editar. *}
+{var $c = $c ?? []}
+<div class="pa-grid-2">
+    <div>
+        <label class="form-label mt-3">Pilar (opcional)</label>
+        <input type="text" name="pilar" class="form-input" maxlength="120" value="{$c['pilar'] ?? ''}" placeholder="Ej.: Segunda vivienda">
+    </div>
+    <div>
+        <label class="form-label mt-3">Etiqueta para el cliente (opcional)</label>
+        <input type="text" name="etiqueta" class="form-input" maxlength="80" value="{$c['etiqueta'] ?? ''}" placeholder="Automática: Post, Carrusel · 7 láminas, Reel…">
+    </div>
+</div>
+<label class="form-label mt-3">Objetivo</label>
+<textarea name="objetivo" class="form-input" rows="2" maxlength="2000" placeholder="Para qué es esta pieza. El cliente lo ve arriba, antes de revisar.">{$c['objetivo'] ?? ''}</textarea>
+<label class="form-label mt-3">Láminas / guion (una por línea)</label>
+<textarea name="laminas" class="form-input" rows="5" placeholder="foto F11 pensando | ¿Cuánto tiempo llevas acostumbrándote?&#10;ilustración de almohada | Duermes mal y ya lo das por normal">{\TypeDock\Plugin\Portal\TiposContenido::laminasATexto($c['laminas'] ?? null)}</textarea>
+<p class="form-hint mt-1">Idea de la lámina y, después de « | », el texto que va en la imagen. Mientras no haya imágenes, el cliente las ve como notas pegadas sobre cada lámina.</p>
+<label class="form-label mt-3">Notas del equipo (visibles para el cliente)</label>
+<textarea name="notas" class="form-input" rows="2" maxlength="4000" placeholder="Ej.: los tiempos son orientativos; valida la explicación técnica antes de publicar.">{$c['notas'] ?? ''}</textarea>
+<p class="form-hint mt-1">Van en una caja aparte, no en la conversación de la revisión.</p>

@@ -27,18 +27,15 @@ class EntregaPublicController extends PortalPublicController
     }
 
     /** Primera imagen de la versión vigente, para la portada de la grilla. */
-    private function portada(array $c): ?string
+    /** @return array{0: ?string, 1: int} primera imagen de la versión vigente y cuántas imágenes tiene */
+    private function portada(array $c): array
     {
         if ($c['version_id'] === null) {
-            return null;
+            return [null, 0];
         }
         $fmt = new Fmt();
-        foreach ($this->contenidosSvc()->archivos((string) $c['version_id']) as $a) {
-            if ($fmt->esImagen($a['mime'])) {
-                return (string) $a['id'];
-            }
-        }
-        return null;
+        $imgs = array_values(array_filter($this->contenidosSvc()->archivos((string) $c['version_id']), fn($a) => $fmt->esImagen($a['mime'])));
+        return [$imgs !== [] ? (string) $imgs[0]['id'] : null, count($imgs)];
     }
 
     public function entregas(): void
@@ -62,11 +59,13 @@ class EntregaPublicController extends PortalPublicController
         $lista = $this->contenidosSvc()->listar($id);
         $portadas = [];
         $reacc = [];
+        $etiquetas = [];
         foreach ($lista as $x) {
-            $p = $this->portada($x);
+            [$p, $nImg] = $this->portada($x);
             if ($p !== null) {
                 $portadas[$x['id']] = $p;
             }
+            $etiquetas[$x['id']] = TiposContenido::etiqueta($x, $nImg);
             if ($x['version_id'] !== null) {
                 $reacc[$x['id']] = $this->contenidosSvc()->reacciones((string) $x['version_id'], (string) $c['id']);
             }
@@ -78,6 +77,7 @@ class EntregaPublicController extends PortalPublicController
             'e'          => $e,
             'contenidos' => $lista,
             'portadas'   => $portadas,
+            'etiquetas'  => $etiquetas,
             'reacc'      => $reacc,
             'tipos'      => TiposContenido::TIPOS,
             'estadosC'   => TiposContenido::ESTADOS_CONTENIDO,
@@ -129,6 +129,13 @@ class EntregaPublicController extends PortalPublicController
 
         $abierta = $x['entrega_estado'] === 'publicada';
         $enlace = $ver !== null ? (string) $ver['enlace'] : '';
+        $comentarios = (new ComentarioService($this->pdo()))->listar('contenido', $id);
+        $posImagen = [];
+        foreach ($imagenes as $k => $a) {
+            $posImagen[(string) $a['id']] = $k + 1;
+        }
+        $pines = Ubicacion::pines($comentarios, $ver !== null ? (string) $ver['id'] : null, $posImagen);
+        $pinesPdf = array_filter($pines, fn($p) => $p['tipo'] === 'pagina');
 
         $this->ctx->view('templates/public/contenido.latte', $this->contexto($c, 'revisiones') + [
             'x'          => $x,
@@ -136,7 +143,8 @@ class EntregaPublicController extends PortalPublicController
             'versiones'  => $versiones,
             'esVigente'  => $esVigente,
             'visor'      => TiposContenido::visor((string) $x['tipo']),
-            'tipoNombre' => TiposContenido::nombre((string) $x['tipo']),
+            'etiqueta'   => TiposContenido::etiqueta($x, count($imagenes)),
+            'laminas'    => TiposContenido::laminas($x['laminas'] ?? null),
             'imagenes'   => $imagenes,
             'videos'     => $videos,
             'docs'       => $docs,
@@ -144,7 +152,13 @@ class EntregaPublicController extends PortalPublicController
             'enlace'     => $enlace,
             'enlaceHost' => $enlace !== '' ? (string) parse_url($enlace, PHP_URL_HOST) : '',
             'embed'      => $enlace !== '' ? TiposContenido::embed($enlace) : null,
-            'comentarios' => (new ComentarioService($this->pdo()))->listar('contenido', $id),
+            'comentarios' => $comentarios,
+            'pines'      => $pines,
+            'posImagen'  => $posImagen,
+            'pinesPdf'   => array_values(array_map(
+                fn($cid, $p) => ['id' => $cid, 'n' => $p['n'], 'p' => $p['pagina'], 'x' => $p['x'], 'y' => $p['y']],
+                array_keys($pinesPdf), $pinesPdf
+            )),
             'numeros'    => $numeros,
             'reacc'      => $ver !== null ? $this->contenidosSvc()->reacciones((string) $ver['id'], (string) $c['id']) : ['conteo' => [], 'mia' => '', 'total' => 0],
             'reaccionesDef' => TiposContenido::REACCIONES,
@@ -184,7 +198,7 @@ class EntregaPublicController extends PortalPublicController
             $this->contenidosSvc()->decidir($id, 'aprobado', (string) $c['id'], $nombre);
             $texto = $this->tomarString('cuerpo');
             if ($texto !== '') {
-                (new ComentarioService($this->pdo()))->crear($cliente, 'contenido', $id, 'contacto', (string) $c['id'], $nombre, $texto, $x['version_id']);
+                (new ComentarioService($this->pdo()))->crear($cliente, 'contenido', $id, 'contacto', (string) $c['id'], $nombre, $texto, $x['version_id'], $this->ubicacion($x));
             }
             $this->actividad()->registrar($cliente, $x['proyecto_id'], 'contacto', $nombre, 'aprobo', 'contenido', $id, $x['titulo']);
             PortalSession::flash('ok', 'Aprobado.');
@@ -195,8 +209,10 @@ class EntregaPublicController extends PortalPublicController
                 $this->redirectTo($vol);
                 return;
             }
-            (new ComentarioService($this->pdo()))->crear($cliente, 'contenido', $id, 'contacto', (string) $c['id'], $nombre, $texto, $x['version_id']);
+            $ub = $this->ubicacion($x);
+            (new ComentarioService($this->pdo()))->crear($cliente, 'contenido', $id, 'contacto', (string) $c['id'], $nombre, $texto, $x['version_id'], $ub);
             $this->contenidosSvc()->decidir($id, 'cambios', (string) $c['id'], $nombre);
+            $texto = ($ub !== null ? '[' . Ubicacion::etiqueta($ub) . '] ' : '') . $texto;
             $this->actividad()->registrar($cliente, $x['proyecto_id'], 'contacto', $nombre, 'pidio_cambios', 'contenido', $id, $x['titulo'], mb_substr($texto, 0, 200));
             PortalSession::flash('ok', 'Anotado.');
         }
@@ -216,6 +232,23 @@ class EntregaPublicController extends PortalPublicController
         // Si quedan, seguimos con el siguiente por revisar.
         $sig = $this->siguientePendiente((string) $x['entrega_id'], $id);
         $this->redirectTo($sig !== null ? 'portal/contenidos/' . $sig : 'portal/entregas/' . $x['entrega_id']);
+    }
+
+    /** Ubicación (página o pin) que manda el formulario, validada contra la versión vigente. */
+    private function ubicacion(array $x): ?string
+    {
+        $ub = $this->tomarString('ubicacion');
+        if ($ub === '' || $x['version_id'] === null) {
+            return null;
+        }
+        $fmt = new Fmt();
+        $ids = [];
+        foreach ($this->contenidosSvc()->archivos((string) $x['version_id']) as $a) {
+            if ($fmt->esImagen($a['mime'])) {
+                $ids[] = (string) $a['id'];
+            }
+        }
+        return Ubicacion::validar($ub, $ids);
     }
 
     private function siguientePendiente(string $entregaId, string $actual): ?string
@@ -271,10 +304,9 @@ class EntregaPublicController extends PortalPublicController
             $this->redirectTo($vol . '#conversacion');
             return;
         }
-        $ub = $this->tomarString('ubicacion');
-        $ub = preg_match('/^p\d{1,4}$/', $ub) === 1 ? $ub : null;
+        $ub = $this->ubicacion($x);
         (new ComentarioService($this->pdo()))->crear((string) $c['cliente_id'], 'contenido', $id, 'contacto', (string) $c['id'], (string) $c['nombre'], $texto, $x['version_id'], $ub);
-        $pref = $ub !== null ? '[Página ' . substr($ub, 1) . '] ' : '';
+        $pref = $ub !== null ? '[' . Ubicacion::etiqueta($ub) . '] ' : '';
         $this->actividad()->registrar((string) $c['cliente_id'], $x['proyecto_id'], 'contacto', (string) $c['nombre'], 'comento', 'contenido', $id, $x['titulo'], mb_substr($pref . $texto, 0, 200));
 
         // Durante la revisión activa no se manda correo por comentario: llega todo junto al enviar.

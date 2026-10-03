@@ -994,6 +994,211 @@ $ss->borrarDeProyecto($p3a);
 check($ss->find((string) $ajena['id']) === null, 'al borrar un proyecto se van sus solicitudes');
 
 // ---------------------------------------------------------------------------
+seccion('Brief de cada pieza: objetivo, láminas, notas y etiqueta');
+$eBr = $es2->create(['proyecto_id' => $p1a, 'titulo' => 'Grilla con brief']);
+[$cBr] = $cs2->crear($es2->find($eBr), [
+    'tipo' => 'post', 'titulo' => 'Post 1 · Señales', 'copy' => 'Respirar bien…',
+    'objetivo' => 'Que el paciente se reconozca en los síntomas.', 'pilar' => 'Funcional',
+    'laminas' => "Lámina 1 (portada): foto F17. Texto: «5 señales de que tu nariz no está trabajando bien»\nilustración de fosas | Siempre se te tapa del mismo lado",
+    'notas' => 'Daniella debe validar la explicación técnica.',
+]);
+$xBr = $cs2->find($cBr);
+$lams = P\TiposContenido::laminas($xBr['laminas']);
+check(count($lams) === 2 && $lams[0]['texto'] === '5 señales de que tu nariz no está trabajando bien' && $lams[1]['idea'] === 'ilustración de fosas', 'las láminas se guardan con idea y texto en imagen');
+check(P\TiposContenido::etiqueta($xBr) === 'Carrusel · 2 láminas' && P\TiposContenido::etiqueta($xBr, 1) === 'Post', 'etiqueta automática: carrusel según láminas o imágenes');
+check(P\TiposContenido::etiqueta(['tipo' => 'brandbook']) === 'Documento' && P\TiposContenido::etiqueta(['tipo' => 'brandbook', 'etiqueta' => 'Informe mensual']) === 'Informe mensual', 'un PDF ya no se presenta como «Brandbook»; la etiqueta propia manda');
+$cs2->actualizar($cBr, ['titulo' => 'Post 1 · Señales', 'tipo' => 'post']);
+check($cs2->find($cBr)['objetivo'] === 'Que el paciente se reconozca en los síntomas.', 'editar sin los campos del brief no los borra');
+[$cDoc] = $cs2->crear($es2->find($eBr), ['tipo' => 'brandbook', 'titulo' => 'Informe']);
+$es2->publicar($eBr);
+$_SESSION[P\PortalSession::CONTACTO] = $contacto;
+ob_start();
+try { $rp->contenido($cBr); } catch (RuntimeException) {}
+$htmlC = (string) ob_get_clean();
+check(str_contains($htmlC, 'Objetivo') && str_contains($htmlC, 'Que el paciente se reconozca') && str_contains($htmlC, 'Pilar: Funcional'), 'el cliente ve el objetivo y el pilar');
+check(str_contains($htmlC, 'nota-pegada') && str_contains($htmlC, 'Lámina 1 de 2') && str_contains($htmlC, '«Siempre se te tapa del mismo lado»'), 'sin imágenes, cada lámina se ve como nota pegada sobre su placeholder');
+check(str_contains($htmlC, 'Notas del equipo') && str_contains($htmlC, 'Daniella debe validar'), 'las notas del equipo van en su propia caja');
+check(str_contains($htmlC, 'Carrusel · 2 láminas'), 'el cliente ve la etiqueta automática');
+ob_start();
+try { $rp->contenido($cDoc); } catch (RuntimeException) {}
+check(!str_contains((string) ob_get_clean(), 'Brandbook'), 'un documento no dice «Brandbook»');
+
+$csv = tempnam(sys_get_temp_dir(), 'csv');
+file_put_contents($csv, "titulo;objetivo;instrucciones_imagen;texto_en_imagen;comentarios\nPost 1;Vender;\"1. Foto. 2. Cifras. 3. Cierre.\";\"Slide 1: Hola\nSlide 3: Chao\";Ojo con las cifras\n");
+$fila = P\ImportadorContenidos::leer($csv)['filas'][0] ?? [];
+unlink($csv);
+check(($fila['objetivo'] ?? '') === 'Vender' && ($fila['notas'] ?? '') === 'Ojo con las cifras' && count($fila['laminas'] ?? []) === 3 && ($fila['laminas'][2]['texto'] ?? '') === 'Chao' && ($fila['laminas'][1]['texto'] ?? 'x') === '', 'la planilla CSV ahora carga objetivo, láminas (con su texto) y notas');
+
+// ---------------------------------------------------------------------------
+seccion('Importar grilla (Word o texto)');
+// Un .docx mínimo: título, lista numerada de Word y una tabla.
+$docx = tempnam(sys_get_temp_dir(), 'dx') . '.docx';
+$zip = new ZipArchive();
+$zip->open($docx, ZipArchive::CREATE);
+$w = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"';
+$par = fn(string $t, string $num = '') => '<w:p>' . ($num !== '' ? '<w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="' . $num . '"/></w:numPr></w:pPr>' : '') . '<w:r><w:t xml:space="preserve">' . htmlspecialchars($t) . '</w:t></w:r></w:p>';
+$zip->addFromString('word/document.xml', '<?xml version="1.0" encoding="UTF-8"?><w:document ' . $w . '><w:body>'
+    . $par('POST 1') . $par('Tipo: Carrusel (2 láminas)') . $par('Instrucciones:') . $par('Foto del parque', '5') . $par('Detalle del pasto', '5')
+    . '<w:tbl><w:tr><w:tc>' . $par('Copy:') . '</w:tc><w:tc>' . $par('Hola Chiloé') . '</w:tc></w:tr></w:tbl>'
+    . '<w:p><w:r><w:t>Uno</w:t><w:br/><w:t>Dos</w:t></w:r></w:p></w:body></w:document>');
+$zip->addFromString('word/numbering.xml', '<?xml version="1.0" encoding="UTF-8"?><w:numbering ' . $w . '><w:abstractNum w:abstractNumId="1"><w:lvl w:ilvl="0"><w:numFmt w:val="decimal"/></w:lvl></w:abstractNum><w:num w:numId="5"><w:abstractNumId w:val="1"/></w:num></w:numbering>');
+$zip->close();
+$txtDocx = P\LectorDocx::texto($docx);
+unlink($docx);
+check(str_contains($txtDocx, "1. Foto del parque\n2. Detalle del pasto"), 'el .docx se lee con su lista numerada de Word');
+check(str_contains($txtDocx, "Copy:\nHola Chiloé") && str_contains($txtDocx, "Uno\nDos"), 'tablas y saltos de línea del .docx');
+$falso = tempnam(sys_get_temp_dir(), 'no');
+file_put_contents($falso, 'no soy un zip');
+$err = '';
+try { P\LectorDocx::texto($falso); } catch (RuntimeException $ex) { $err = $ex->getMessage(); }
+unlink($falso);
+check(str_contains($err, 'no es un .docx válido'), 'un archivo que no es .docx da un mensaje claro');
+
+$grilla = "Grilla de prueba\nConsideraciones: no mencionar precios.\n\nPOST 1 · Carrusel (2 fotos)\nPilar: Segunda vivienda\nObjetivo: Instalar la idea de desconexión.\nInstrucciones de imagen:\n1. Foto panorámica.\n2. Detalle de pasto.\nTexto sugerido en la imagen:\nSlide 2: “Aquí puedes construir”\nCopy:\nHay lugares para el fin de semana.\n\nDesconectarte para conectar.\nHashtags: #AltoRilan #Chiloe\n\nPILAR 2 — DÓNDE INVERTIR\nPOST 2 · Reel (sin texto)\nObjetivo: Reel sensorial.\nGuion de video:\nPlano 1 (3 seg): Viento en el pasto.\nPlano 2 (3 seg): Vista al canal.\nAudio: sonido ambiente real.\nCopy:\nSin filtro, sin efectos.\nPOST 3\nTipo: Post único\nObjetivo: Prueba social. La estrella es el paciente.\nIdea en simple:\n• Fondo liso, cita en grande.\n• Texto sobreimpreso: «Gracias por todo»\nCopy:\nEstas palabras no son mías.\nNota: siempre con consentimiento por escrito.\nOrden sugerido de la grilla\nFila 1: Post 1 - Post 2\n";
+$dv = P\GrillaImport::dividir($grilla);
+check(count($dv['bloques']) === 3 && str_contains($dv['general'], 'no mencionar precios') && !str_contains($dv['bloques'][0], 'PILAR 2'), 'se divide en una pieza por encabezado; lo de arriba son indicaciones generales');
+$l1 = P\GrillaImport::leer($dv['bloques'][0], 1);
+check($l1['tipo'] === 'post' && $l1['pilar'] === 'Segunda vivienda' && count($l1['laminas']) === 2 && $l1['laminas'][1]['texto'] === 'Aquí puedes construir' && $l1['laminas'][0]['texto'] === '', 'sin IA: pilar, láminas y el texto de la «Slide 2» en la lámina 2');
+check(str_ends_with($l1['copy'], "Desconectarte para conectar.\n\n#AltoRilan #Chiloe"), 'sin IA: el copy queda tal cual y los hashtags al final');
+$l2 = P\GrillaImport::leer($dv['bloques'][1], 2);
+check($l2['tipo'] === 'reel' && count($l2['laminas']) === 2 && $l2['laminas'][0]['idea'] === 'Viento en el pasto' && $l2['notas'] === 'Audio: sonido ambiente real.', 'sin IA: un reel con su guion por planos y el audio como nota');
+$l3 = P\GrillaImport::leer($dv['bloques'][2], 3);
+check(count($l3['laminas']) === 1 && $l3['laminas'][0]['texto'] === 'Gracias por todo' && $l3['notas'] === 'Siempre con consentimiento por escrito.' && str_contains($l3['anexo'], 'Orden sugerido'), 'sin IA: post único en una lámina; lo que sigue a la nota es del documento, no de la pieza');
+check(P\GrillaImport::tipoDesde('Carrusel storytelling (5 fotos)') === 'post' && P\GrillaImport::tipoDesde('Story') === 'story', '«storytelling» no se confunde con una story');
+check(P\GrillaImport::esLiteral("Hay lugares para el fin de semana.\n\n#Otra", $grilla) && !P\GrillaImport::esLiteral('Hay lugares para el finde.', $grilla), 'se detecta si el copy no aparece tal cual en el documento');
+
+final class IaGrillaFalsa extends P\IaService
+{
+    public array $enviado = [];
+    public bool $falla = false;
+    public function activa(): bool { return true; }
+    protected function llamar(array $cuerpo): array
+    {
+        $this->enviado = $cuerpo;
+        if ($this->falla) {
+            throw new RuntimeException('La IA está con problemas por ahora.');
+        }
+        preg_match_all('/<pieza n="(\d+)">/', (string) ($cuerpo['messages'][0]['content'] ?? ''), $m);
+        $piezas = [];
+        foreach ($m[1] as $n) {
+            $piezas[] = ['n' => (int) $n, 'tipo' => $n === '2' ? 'reel' : 'post', 'titulo' => 'Post ' . $n . ' · IA', 'objetivo' => 'Objetivo ' . $n,
+                'laminas' => [['idea' => 'Foto ' . $n, 'texto' => 'Texto ' . $n]], 'copy' => $n === '1' ? 'Hay lugares para el finde.' : 'Sin filtro, sin efectos.',
+                'notas' => '', 'fecha' => null, 'anexo' => $n === '3' ? 'Orden sugerido de la grilla' : ''];
+        }
+        return ['content' => [['type' => 'tool_use', 'name' => 'registrar_piezas', 'input' => ['piezas' => $piezas]]]];
+    }
+}
+class GrillaPrueba extends P\GrillaAdminController
+{
+    public static ?IaGrillaFalsa $ia = null;
+    protected function ia(): P\IaService { return self::$ia ??= new IaGrillaFalsa($this->pdo()); }
+    protected function terminate(): void { throw new RuntimeException('fin'); }
+    protected function limpiarSalida(): void {}
+}
+$_SESSION[P\EquipoController::SESION] = $coord;
+$tok = P\PortalSession::csrf();
+$G = GrillaPrueba::class;
+$eGr = $es2->create(['proyecto_id' => $p1a, 'titulo' => 'Grilla Word']);
+[, $r] = $g->hacer('POST', $G, 'subir', [$eGr], 'entrega', false, ['_csrf_token' => $tok, 'texto' => $grilla, 'cuenta' => '@altorilan']);
+check(preg_match('#^/equipo/entregas/' . $eGr . '/grilla/([a-f0-9]{32})$#', (string) $r, $mt) === 1, 'subir la grilla lleva a la vista previa');
+$tokG = $mt[1] ?? '';
+[$html] = $g->hacer('GET', $G, 'ver', [$eGr, $tokG], 'entrega');
+check(str_contains($html, 'Leyendo la grilla con IA') && str_contains($html, 'data-pendientes="0"'), 'con IA, la vista previa procesa las tandas');
+[$json] = $g->hacer('POST', $G, 'tanda', [$eGr, $tokG, '0'], 'entrega', false, ['_csrf_token' => $tok]);
+$j = json_decode($json, true);
+check(($j['ok'] ?? false) === true && ($j['hechas'] ?? 0) === 1 && str_contains(json_encode(GrillaPrueba::$ia->enviado, JSON_UNESCAPED_UNICODE), 'COPIA LITERAL'), 'una tanda se procesa con IA y se le pide copiar literal');
+[$html] = $g->hacer('GET', $G, 'ver', [$eGr, $tokG], 'entrega');
+check(str_contains($html, 'Post 2 · IA') && str_contains($html, 'Crear contenidos') && str_contains($html, 'Revisa el copy: no calza'), 'vista previa editable; avisa cuando la IA cambió el copy');
+check(str_contains($html, 'no mencionar precios') && str_contains($html, 'Orden sugerido de la grilla'), 'las indicaciones generales (y lo que sobraba al final) se ofrecen para el mensaje de la entrega');
+[, $r] = $g->hacer('POST', $G, 'crear', [$eGr, $tokG], 'entrega', false, ['_csrf_token' => $tok, 'cuenta' => '@altorilan', 'general' => 'No mencionar precios.', 'usar_general' => '1', 'p' => [
+    0 => ['incluir' => '1', 'tipo' => 'post', 'titulo' => 'Post 1 · Desconexión', 'objetivo' => 'Instalar la idea', 'pilar' => 'Segunda vivienda', 'laminas' => "Foto panorámica\nDetalle | Aquí puedes construir", 'copy' => "Hay lugares.\n\n#AltoRilan", 'notas' => '', 'fecha' => '2026-10-20'],
+    1 => ['incluir' => '1', 'tipo' => 'reel', 'titulo' => 'Post 2 · Reel', 'objetivo' => '', 'laminas' => 'Viento', 'copy' => 'Sin filtro', 'notas' => 'Audio: ambiente', 'fecha' => ''],
+    2 => ['titulo' => 'Post 3 · no va', 'copy' => 'x'],
+]]);
+$creados = $cs2->listar($eGr);
+check(count($creados) === 2 && $creados[0]['titulo'] === 'Post 1 · Desconexión' && $creados[0]['cuenta'] === '@altorilan' && str_starts_with((string) $creados[0]['fecha_publicacion'], '2026-10-20'), 'se crean solo las piezas marcadas, en orden y con la cuenta');
+check($creados[0]['pilar'] === 'Segunda vivienda' && count(P\TiposContenido::laminas($creados[0]['laminas'])) === 2 && $creados[0]['copy'] === "Hay lugares.\n\n#AltoRilan" && $creados[1]['notas'] === 'Audio: ambiente' && $creados[1]['tipo'] === 'reel', 'cada pieza con su pilar, láminas, copy, notas y tipo');
+check(str_contains((string) $es2->find($eGr)['mensaje'], 'No mencionar precios.') && str_contains((string) $r, '#imagenes'), 'las indicaciones generales pasan al mensaje; luego toca subir imágenes');
+[, $r] = $g->hacer('GET', $G, 'ver', [$eGr, $tokG], 'entrega');
+check($r === '/equipo/entregas/' . $eGr, 'una importación ya creada no se puede repetir');
+
+GrillaPrueba::$ia = new IaGrillaFalsa($pdo);
+GrillaPrueba::$ia->falla = true;
+[, $r] = $g->hacer('POST', $G, 'subir', [$eGr], 'entrega', false, ['_csrf_token' => $tok, 'texto' => $grilla]);
+preg_match('#/grilla/([a-f0-9]{32})$#', (string) $r, $mt);
+[$json] = $g->hacer('POST', $G, 'tanda', [$eGr, $mt[1] ?? '', '0'], 'entrega', false, ['_csrf_token' => $tok]);
+$j = json_decode($json, true);
+[$html] = $g->hacer('GET', $G, 'ver', [$eGr, $mt[1] ?? ''], 'entrega');
+check(str_contains((string) ($j['aviso'] ?? ''), 'se leyeron sin IA') && str_contains($html, 'Leída sin IA') && str_contains($html, 'Segunda vivienda'), 'si la IA falla, la tanda se lee sin IA y se avisa');
+[, $r] = $g->hacer('POST', $G, 'subir', [$eGr], 'entrega', false, ['_csrf_token' => $tok, 'texto' => $grilla, 'modo' => 'simple']);
+preg_match('#/grilla/([a-f0-9]{32})$#', (string) $r, $mt);
+[$html] = $g->hacer('GET', $G, 'ver', [$eGr, $mt[1] ?? ''], 'entrega');
+check(!str_contains($html, 'Leyendo la grilla') && str_contains($html, 'sin IA (por etiquetas)'), '«Leer sin IA» muestra la vista previa al instante');
+[, $r] = $g->hacer('POST', $G, 'subir', [$entAjena], 'entrega', false, ['_csrf_token' => $tok, 'texto' => $grilla]);
+$_SESSION[P\EquipoController::SESION] = $ana;
+[, $r] = $g->hacer('POST', $G, 'subir', [$entAjena], 'entrega', false, ['_csrf_token' => $tok, 'texto' => $grilla]);
+check($r === '/equipo', 'no se puede importar en una entrega ajena');
+$_SESSION[P\EquipoController::SESION] = $coord;
+
+// Imágenes por número
+$png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==');
+P\ArchivoService::$mover = fn(string $a, string $b) => copy($a, $b);
+$subir = [];
+foreach (['post-1-2.png', 'post-1-1.png', '2.png', 'foto-sin-numero.png', '9.png'] as $nom) {
+    $tmp = tempnam(sys_get_temp_dir(), 'im');
+    file_put_contents($tmp, $png);
+    $subir['name'][] = $nom; $subir['type'][] = 'image/png'; $subir['tmp_name'][] = $tmp; $subir['error'][] = UPLOAD_ERR_OK; $subir['size'][] = strlen($png);
+}
+$_FILES = ['imagenes' => $subir];
+[, $r] = $g->hacer('POST', $G, 'imagenes', [$eGr], 'entrega', false, ['_csrf_token' => $tok]);
+$_FILES = [];
+$a1 = $cs2->archivos((string) $creados[0]['version_id']);
+$a2 = $cs2->archivos((string) $creados[1]['version_id']);
+check(count($a1) === 2 && $a1[0]['nombre_original'] === 'post-1-1.png' && $a1[1]['nombre_original'] === 'post-1-2.png' && count($a2) === 1, 'las imágenes van a su pieza y en el orden de sus láminas');
+$flash = json_encode(P\PortalSession::tomarFlash(), JSON_UNESCAPED_UNICODE);
+check(str_contains($flash, 'foto-sin-numero.png') && str_contains($flash, '9.png') && str_contains($flash, '3 imagen(es) repartidas en 2 pieza(s)'), 'las que no calzan con ninguna pieza se informan');
+P\ArchivoService::$mover = null;
+
+// ---------------------------------------------------------------------------
+seccion('Pines sobre imágenes y páginas');
+$eP = $es2->create(['proyecto_id' => $p1a, 'titulo' => 'Con pines']);
+[$cP, $vP] = $cs2->crear($es2->find($eP), ['tipo' => 'post', 'titulo' => 'Post con foto']);
+P\ArchivoService::$mover = fn(string $a, string $b) => copy($a, $b);
+$imgs = [];
+foreach (['a.png', 'b.png'] as $nom) {
+    $tmp = tempnam(sys_get_temp_dir(), 'im');
+    file_put_contents($tmp, $png);
+    $imgs[] = ['name' => $nom, 'type' => 'image/png', 'tmp_name' => $tmp, 'error' => UPLOAD_ERR_OK, 'size' => strlen($png)];
+}
+$subidas = (new P\ArchivoService($pdo))->guardarVarios($imgs, (string) $es2->find($eP)['cliente_id'], $p1a, 'version', $vP, ['tipo' => 'equipo', 'id' => null, 'nombre' => 'Equipo'])['ok'];
+P\ArchivoService::$mover = null;
+$img2 = (string) $subidas[1]['id'];
+$es2->publicar($eP);
+$_SESSION[P\PortalSession::CONTACTO] = $contacto;
+$csrfC = P\PortalSession::csrf();
+$rp->correr('comentar', [$cP], ['_csrf' => $csrfC, 'cuerpo' => 'Este logo más chico', 'ubicacion' => 'i' . $img2 . '@40.5,62']);
+$rp->correr('comentar', [$cP], ['_csrf' => $csrfC, 'cuerpo' => 'Pin falso', 'ubicacion' => 'i' . typedock_uuid7() . '@10,10']);
+$rp->correr('comentar', [$cP], ['_csrf' => $csrfC, 'cuerpo' => 'Fuera de rango', 'ubicacion' => 'p2@140,10']);
+$rp->correr('comentar', [$cP], ['_csrf' => $csrfC, 'cuerpo' => 'En la página', 'ubicacion' => 'p2@10,20']);
+$ubs = $pdo->query("SELECT cuerpo, ubicacion FROM portal_comentarios WHERE entidad_id = '{$cP}' ORDER BY created_at, id")->fetchAll(PDO::FETCH_KEY_PAIR);
+check(($ubs['Este logo más chico'] ?? '') === 'i' . $img2 . '@40.5,62' && ($ubs['En la página'] ?? '') === 'p2@10,20', 'se guarda el punto marcado en una imagen o en una página');
+check(array_key_exists('Pin falso', $ubs) && $ubs['Pin falso'] === null && $ubs['Fuera de rango'] === null, 'un pin en una imagen ajena o fuera de la imagen se descarta (el comentario queda)');
+ob_start();
+try { $rp->contenido($cP); } catch (RuntimeException) {}
+$htmlP = (string) ob_get_clean();
+check(str_contains($htmlP, 'data-pinable data-archivo="' . $img2 . '"') && preg_match('/class="pin" data-pin="[^"]+" data-x="40.5" data-y="62"[^>]*>\d</', $htmlP) === 1, 'el pin aparece sobre su imagen, numerado');
+check(str_contains($htmlP, 'data-goto-pin=') && str_contains($htmlP, 'Imagen 2') && str_contains($htmlP, 'Marcar un punto en la imagen'), 'la nota muestra a qué imagen apunta y hay botón para marcar');
+check(str_contains($htmlP, 'data-pag-input') && substr_count($htmlP, 'name="ubicacion"') === 2, 'el punto viaja con la nota o con el pedido de cambios');
+$rp->correr('decidir', [$cP], ['_csrf' => $csrfC, 'accion' => 'cambios', 'cuerpo' => 'Mover el texto', 'ubicacion' => 'i' . $img2 . '@10,90']);
+$ubC = $pdo->query("SELECT ubicacion FROM portal_comentarios WHERE entidad_id = '{$cP}' AND cuerpo = 'Mover el texto'")->fetchColumn();
+check($ubC === 'i' . $img2 . '@10,90', 'pedir cambios también guarda el punto');
+$pinsAdm = P\Ubicacion::pines((new P\ComentarioService($pdo))->listar('contenido', $cP), $vP, [(string) $subidas[0]['id'] => 1, $img2 => 2]);
+check(count($pinsAdm) === 3 && array_column($pinsAdm, 'n') === [1, 2, 3], 'los pines se numeran en orden de llegada');
+$_SESSION[P\EquipoController::SESION] = $coord;
+[$htmlA] = $g->hacer('GET', P\EntregaAdminController::class, 'editContenido', [$cP], 'contenido');
+check(str_contains($htmlA, 'class="pa-pin" style="left:40.5%;top:62%"') && str_contains($htmlA, 'Imagen 2 · punto ') && str_contains($htmlA, 'Página 2 · punto '), 'el equipo ve los puntos sobre la imagen y en cada comentario');
+
+// ---------------------------------------------------------------------------
 echo "\n\n" . $GLOBALS['ok'] . ' comprobaciones OK, ' . count($GLOBALS['fallas']) . " fallas ({$motor}).\n";
 foreach ($GLOBALS['fallas'] as $f) {
     echo "  ✗ {$f}\n";

@@ -1,0 +1,143 @@
+{layout $plugin_ui_layout}
+
+{block page_title}Importar grilla · {$entrega['titulo']}{/block}
+
+{block content}
+<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=3">
+
+<div class="page-header">
+    <h1>Importar grilla</h1>
+    <a href="{$admin_url('entregas/' . $entrega['id'])}" class="btn">Volver a la entrega</a>
+</div>
+
+{if $flash_success}<div class="alert alert-success">{$flash_success}</div>{/if}
+{if $flash_error}<div class="alert alert-error">{$flash_error}</div>{/if}
+
+{if $pendientes}
+{* Mientras la IA lee la grilla por tandas: la página se recarga sola al terminar. *}
+<div class="card pa-ia" data-grilla-tandas data-base="{$admin_url('entregas/' . $entrega['id'] . '/grilla/' . $token . '/tanda/')}" data-csrf="{$csrf_token}" data-pendientes="{implode(',', $pendientes)}" data-total="{count($t['tandas'])}">
+    <h2 class="pa-h2" style="margin-top:0">Leyendo la grilla con IA…</h2>
+    <p class="pa-muted">{count($t['bloques'])} piezas{if $t['archivo']} en «{$t['archivo']}»{/if}. Se leen de a pocas para no pasar el tiempo máximo del hosting. No cierres esta página.</p>
+    <progress data-barra max="{count($t['tandas'])}" value="{count($t['hechas'])}" style="width:100%;height:.6rem"></progress>
+    <p class="pa-muted mt-2" data-estado>Tanda {count($t['hechas']) + 1} de {count($t['tandas'])}…</p>
+    <p class="pa-lock mt-2" data-aviso hidden></p>
+    <noscript><p class="pa-lock">Esta pantalla necesita JavaScript para leer la grilla con IA. Vuelve atrás y usa «Leer sin IA».</p></noscript>
+</div>
+<script>
+(function () {
+  var box = document.querySelector('[data-grilla-tandas]');
+  var pend = box.getAttribute('data-pendientes').split(',').filter(Boolean);
+  var total = +box.getAttribute('data-total');
+  var barra = box.querySelector('[data-barra]'), estado = box.querySelector('[data-estado]'), aviso = box.querySelector('[data-aviso]');
+  function siguiente() {
+    if (!pend.length) { estado.textContent = 'Listo. Cargando la vista previa…'; location.reload(); return; }
+    var n = pend.shift();
+    var fd = new FormData(); fd.append('_csrf_token', box.getAttribute('data-csrf')); fd.append('_csrf', box.getAttribute('data-csrf'));
+    fetch(box.getAttribute('data-base') + n, { method: 'POST', body: fd, credentials: 'same-origin' })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        if (j.error) throw new Error(j.error);
+        barra.value = j.hechas;
+        estado.textContent = j.hechas < total ? 'Tanda ' + (j.hechas + 1) + ' de ' + total + '…' : 'Listo.';
+        if (j.aviso) { aviso.hidden = false; aviso.textContent = j.aviso; }
+        siguiente();
+      })
+      .catch(function (e) {
+        aviso.hidden = false;
+        aviso.textContent = 'Se cortó la conexión con el servidor (' + e.message + '). Recarga la página para seguir donde quedó.';
+      });
+  }
+  siguiente();
+})();
+</script>
+{else}
+
+<form method="post" action="{$admin_url('entregas/' . $entrega['id'] . '/grilla/' . $token . '/crear')}">
+    <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+
+    <div class="card">
+        <p class="pa-muted" style="margin-top:0">
+            {count($piezas)} piezas{if $t['archivo']} de «{$t['archivo']}»{/if}, leídas {$t['ia'] ? 'con IA' : 'sin IA (por etiquetas)'}.
+            Revisa y corrige lo que haga falta: nada se crea hasta que apretes <strong>Crear contenidos</strong>.
+            Las imágenes se suben después, todas juntas, con «Imágenes por número».
+        </p>
+        {foreach $t['avisos'] as $a}<p class="pa-lock">{$a}</p>{/foreach}
+        <div class="pa-grid-2">
+            <div>
+                <label class="form-label mt-3">Cuenta (redes) para todas</label>
+                <input type="text" name="cuenta" class="form-input" maxlength="120" value="{$t['cuenta']}" placeholder="@tumarca">
+            </div>
+        </div>
+        {if $general}
+        <label class="form-label mt-3">Indicaciones generales del documento</label>
+        <textarea name="general" class="form-input" rows="6">{$general}</textarea>
+        <label class="pa-check"><input type="checkbox" name="usar_general" value="1" {if trim((string) $entrega['mensaje']) === ''}checked{/if}> <span>Agregarlas al mensaje de la entrega (el cliente las lee arriba, antes de revisar)</span></label>
+        {/if}
+    </div>
+
+    {foreach $piezas as $i => $p}
+    <div class="card mt-4" id="pieza-{$i}">
+        <div class="pa-row" style="justify-content:space-between">
+            <label class="pa-check" style="margin:0"><input type="checkbox" name="p[{$i}][incluir]" value="1" {if $p['incluir']}checked{/if}> <strong>Crear esta pieza</strong></label>
+            <span>
+                {if !$p['literal']}<span class="pa-chip danger" title="Alguna línea del copy no aparece tal cual en el documento">Revisa el copy: no calza con el documento</span>{/if}
+                {if !empty($p['aviso'])}<span class="pa-chip warn">{$p['aviso']}</span>{/if}
+                <span class="pa-chip">{count($p['laminas'])} lámina(s)</span>
+            </span>
+        </div>
+        <div class="pa-grid-2">
+            <div>
+                <label class="form-label mt-3">Título</label>
+                <input type="text" name="p[{$i}][titulo]" class="form-input" maxlength="255" value="{$p['titulo']}">
+            </div>
+            <div class="pa-grid-2">
+                <div>
+                    <label class="form-label mt-3">Tipo</label>
+                    <select name="p[{$i}][tipo]" class="form-input">
+                        {foreach $tipos as $k => $tp}<option value="{$k}" {if $p['tipo'] === $k}selected{/if}>{$tp[0]}</option>{/foreach}
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label mt-3">Publicación</label>
+                    <input type="date" name="p[{$i}][fecha]" class="form-input" value="{$p['fecha']}">
+                </div>
+            </div>
+            <div>
+                <label class="form-label mt-3">Pilar</label>
+                <input type="text" name="p[{$i}][pilar]" class="form-input" maxlength="120" value="{$p['pilar']}">
+            </div>
+            <div>
+                <label class="form-label mt-3">Objetivo</label>
+                <textarea name="p[{$i}][objetivo]" class="form-input" rows="3">{$p['objetivo']}</textarea>
+            </div>
+        </div>
+        <div class="pa-grid-2">
+            <div>
+                <label class="form-label mt-3">Láminas (idea | texto en imagen)</label>
+                <textarea name="p[{$i}][laminas]" class="form-input" rows="{max(3, min(9, count($p['laminas']) + 1))}">{\TypeDock\Plugin\Portal\TiposContenido::laminasATexto($p['laminas'])}</textarea>
+            </div>
+            <div>
+                <label class="form-label mt-3">Copy (con hashtags)</label>
+                <textarea name="p[{$i}][copy]" class="form-input" rows="{max(4, min(12, substr_count($p['copy'], "\n") + 2))}">{$p['copy']}</textarea>
+            </div>
+        </div>
+        <label class="form-label mt-3">Notas del equipo (las ve el cliente, aparte de la conversación)</label>
+        <textarea name="p[{$i}][notas]" class="form-input" rows="2">{$p['notas']}</textarea>
+        <details class="mt-3">
+            <summary class="pa-muted" style="cursor:pointer">Ver el texto original de esta pieza</summary>
+            <pre style="white-space:pre-wrap;font:inherit;font-size:.85rem;margin:.5rem 0 0;padding:.75rem;border-radius:.6rem;background:color-mix(in srgb, currentColor 6%, transparent)">{$p['fuente']}</pre>
+        </details>
+    </div>
+    {/foreach}
+
+    <div class="card mt-4 pa-row">
+        <button type="submit" class="btn btn-primary">Crear contenidos</button>
+        <span class="pa-muted">Se agregan a esta entrega en este orden; puedes moverlos después.</span>
+    </div>
+</form>
+<form method="post" action="{$admin_url('entregas/' . $entrega['id'] . '/grilla/' . $token . '/descartar')}" class="mt-3" onsubmit="return confirm('¿Descartar esta importación?');">
+    <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+    <button type="submit" class="btn btn-sm">Descartar importación</button>
+</form>
+{/if}
+{/block}

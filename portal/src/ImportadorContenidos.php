@@ -8,9 +8,8 @@ namespace TypeDock\Plugin\Portal;
  *
  * Columnas reconocidas (el orden da lo mismo, mayúsculas y tildes también):
  *   tipo, titulo, cuenta, fecha_publicacion, copy, enlace
- * Columnas de contexto, reservadas para cuando el contenido guarde su «propósito»
- * (se aceptan y se ignoran hoy, así la planilla no cambia después):
- *   pilar, objetivo, instrucciones_imagen, texto_en_imagen
+ * Brief de la pieza (lo ve el cliente junto al contenido):
+ *   pilar, objetivo, instrucciones_imagen + texto_en_imagen (→ láminas), notas
  *
  * El separador (; , o tab), la codificación (UTF-8 o Windows-1252) y las comillas
  * con saltos de línea adentro se detectan solos.
@@ -20,7 +19,7 @@ final class ImportadorContenidos
     public const MAX_FILAS = 200;
     public const MAX_BYTES = 1048576;
 
-    public const COLUMNAS = ['tipo', 'titulo', 'cuenta', 'fecha_publicacion', 'copy', 'enlace', 'pilar', 'objetivo', 'instrucciones_imagen', 'texto_en_imagen'];
+    public const COLUMNAS = ['tipo', 'titulo', 'cuenta', 'fecha_publicacion', 'copy', 'enlace', 'pilar', 'objetivo', 'instrucciones_imagen', 'texto_en_imagen', 'notas'];
 
     private const ALIAS = [
         'titulo' => ['titulo', 'nombre', 'post', 'pieza'],
@@ -33,6 +32,7 @@ final class ImportadorContenidos
         'objetivo' => ['objetivo', 'proposito'],
         'instrucciones_imagen' => ['instrucciones_imagen', 'instrucciones', 'instrucciones_de_imagen', 'instrucciones_de_imagen_carrusel'],
         'texto_en_imagen' => ['texto_en_imagen', 'texto_imagen', 'texto_sugerido_en_la_imagen'],
+        'notas' => ['notas', 'nota', 'comentarios', 'comentario', 'observaciones'],
     ];
 
     /** Palabras sueltas que la gente escribe en la columna «tipo». */
@@ -135,6 +135,7 @@ final class ImportadorContenidos
                 }
                 $f['fecha_publicacion'] = $fecha ?? '';
             }
+            $f['laminas'] = self::laminas($f['instrucciones_imagen'], $f['texto_en_imagen']);
             $filas[] = $f;
         }
         fclose($fh);
@@ -143,6 +144,72 @@ final class ImportadorContenidos
             $errores[] = 'La planilla no tiene filas con contenido.';
         }
         return ['filas' => $filas, 'errores' => $errores];
+    }
+
+    /**
+     * Instrucciones de imagen + texto en imagen → láminas.
+     * «1. Foto. 2. Cifras.» en una sola celda también se separa. El texto en imagen
+     * se asigna por número («Slide 3: …») o, si no trae números, en orden.
+     * @return array<int, array{idea: string, texto: string}>
+     */
+    public static function laminas(string $instrucciones, string $textoImagen): array
+    {
+        $partir = function (string $t): array {
+            $t = trim(str_replace("\r\n", "\n", $t));
+            if ($t === '') {
+                return [];
+            }
+            if (!str_contains($t, "\n") && preg_match_all('/(?:^|\s)\d+[.)]\s/u', $t) >= 2) {
+                $t = preg_replace('/\s+(?=\d+[.)]\s)/u', "\n", $t) ?? $t;
+            }
+            if (!str_contains($t, "\n") && preg_match_all('/(?:slide|l[aá]mina)\s*\d+\s*:/iu', $t) >= 2) {
+                $t = preg_replace('/\s+(?=(?:slide|l[aá]mina)\s*\d+\s*:)/iu', "\n", $t) ?? $t;
+            }
+            return array_values(array_filter(array_map('trim', preg_split('/\R/u', $t) ?: [])));
+        };
+        $out = [];
+        foreach ($partir($instrucciones) as $linea) {
+            $out[] = ['idea' => preg_replace('/^\d+[.)]\s*/u', '', $linea) ?? $linea, 'texto' => ''];
+        }
+        foreach (self::textosPorLamina($textoImagen) as $i => $txt) {
+            while (count($out) <= $i) {
+                $out[] = ['idea' => '', 'texto' => ''];
+            }
+            $out[$i]['texto'] = $txt;
+        }
+        return TiposContenido::laminas($out);
+    }
+
+    /**
+     * «Slide 1: …», «Lámina 3: …» o líneas sueltas (en orden) → [índice de lámina => texto].
+     * @return array<int, string>
+     */
+    public static function textosPorLamina(string $t): array
+    {
+        $t = trim(str_replace("\r\n", "\n", $t));
+        if ($t === '') {
+            return [];
+        }
+        if (!str_contains($t, "\n") && preg_match_all('/(?:slide|l[aá]mina)\s*\d+\s*:/iu', $t) >= 2) {
+            $t = preg_replace('/\s+(?=(?:slide|l[aá]mina)\s*\d+\s*:)/iu', "\n", $t) ?? $t;
+        }
+        $out = [];
+        $sueltos = 0;
+        foreach (preg_split('/\R/u', $t) ?: [] as $linea) {
+            $linea = trim(preg_replace('/^[•·\-–*]\s+/u', '', trim($linea)) ?? $linea);
+            if ($linea === '') {
+                continue;
+            }
+            if (preg_match('/^(?:slide|l[aá]mina)?\s*(\d+)\s*[:.)]\s*(.+)$/iu', $linea, $m) === 1) {
+                $i = max(0, (int) $m[1] - 1);
+                $txt = $m[2];
+            } else {
+                $i = $sueltos++;
+                $txt = $linea;
+            }
+            $out[$i] = trim(preg_replace('/^[\s«"“]+|[\s»"”]+$/u', '', $txt) ?? $txt);
+        }
+        return $out;
     }
 
     private static function separador(string $texto): string
@@ -179,7 +246,7 @@ final class ImportadorContenidos
     {
         $filas = [
             self::COLUMNAS,
-            ['post', 'Post 1 · Ejemplo de carrusel', '@tumarca', '2026-10-15', "Texto del post.\n\n👉 Llamado a la acción.\n\n#hashtag1 #hashtag2", '', 'Pilar del contenido', 'Para qué existe este post', '1. Foto. 2. Cifras. 3. Cierre.', 'Texto que va dentro de la imagen'],
+            ['post', 'Post 1 · Ejemplo de carrusel', '@tumarca', '2026-10-15', "Texto del post.\n\n👉 Llamado a la acción.\n\n#hashtag1 #hashtag2", '', 'Pilar del contenido', 'Para qué existe este post', "1. Foto del equipo.\n2. Cifras del año.\n3. Cierre con logo.", "Slide 1: Un año juntos\nSlide 3: Gracias", 'Nota visible para el cliente (ej.: los datos están por confirmar)'],
         ];
         $fh = fopen('php://memory', 'r+');
         foreach ($filas as $f) {

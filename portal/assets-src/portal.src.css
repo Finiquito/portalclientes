@@ -120,6 +120,52 @@
   .btn-sm { min-height: 2.25rem; padding: 0 .8rem; border-radius: .7rem; font-size: .8125rem; }
 
   /* Chips de estado */
+  /* Pines: un punto numerado sobre la imagen o la página que comenta el cliente.
+     data-x / data-y son % de la imagen completa; portal.js los ubica según el recorte en pantalla.
+     La punta (abajo) es el punto exacto. */
+  .pin {
+    position: absolute; left: 0; top: 0; z-index: 3; display: flex; align-items: center; justify-content: center;
+    width: 1.75rem; height: 1.75rem; margin: -2.2rem 0 0 -.875rem;
+    border-radius: 999px; background: var(--brand); color: var(--brand-fg); border: 2px solid #fff;
+    font-size: .75rem; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums;
+    box-shadow: 0 4px 12px -2px rgb(0 0 0 / .45); pointer-events: none;
+  }
+  .pin::after {
+    content: ""; position: absolute; left: 50%; top: 100%; margin-left: -.3rem;
+    border: .3rem solid transparent; border-top: .42rem solid #fff;
+  }
+  .pin[data-pin] { visibility: hidden; }
+  .pin[data-pin].ubicado { visibility: visible; }
+  .pin.activo { background: var(--warn); animation: pin-salto .6s ease 2; }
+  .pin.pin-nuevo { background: var(--warn); color: #fff; visibility: visible; }
+  .pin.pin-mini { position: static; margin: 0; width: 1.15rem; height: 1.15rem; font-size: .625rem; border-width: 1.5px; box-shadow: none; visibility: visible; }
+  .pin.pin-mini::after { content: none; }
+  @keyframes pin-salto { 50% { scale: 1.3; } }
+  .modo-pin [data-pinable] { cursor: crosshair; outline: 3px dashed var(--warn); outline-offset: -3px; }
+  .modo-pin [data-pinable] img { cursor: crosshair; }
+
+  /* Notas pegadas: el brief de cada lámina sobre su placeholder y las notas del equipo.
+     Papel amarillo con cinta; mismo color en claro y oscuro (es un papel, no la interfaz). */
+  .nota-pegada {
+    position: relative; width: 100%; max-width: 19rem; padding: 1rem 1.05rem .95rem;
+    background: #fff1a8; color: #3b3200; border-radius: .2rem .2rem .2rem 1.1rem;
+    box-shadow: 0 14px 28px -16px rgb(40 30 0 / .55), 0 2px 5px rgb(40 30 0 / .12);
+    transform: rotate(-1.4deg);
+  }
+  .nota-pegada::before {
+    content: ""; position: absolute; top: -.6rem; left: 50%; width: 4rem; height: 1.15rem;
+    transform: translateX(-50%) rotate(2.5deg); background: rgb(255 255 255 / .6);
+    box-shadow: 0 1px 2px rgb(0 0 0 / .12);
+  }
+  .nota-pegada.nota-b { transform: rotate(1.2deg); background: #ffe58f; }
+  .nota-pegada.nota-c { transform: rotate(-.4deg); background: #fff5c2; }
+  .nota-pegada .nota-k { font-size: .6875rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; opacity: .65; }
+  .nota-pegada .nota-t { margin-top: .55rem; padding-top: .55rem; border-top: 1px dashed rgb(59 50 0 / .25); font-weight: 700; }
+  @media (prefers-reduced-motion: no-preference) {
+    .nota-pegada { transition: transform .25s ease; }
+    .nota-pegada:hover { transform: rotate(0deg) scale(1.01); }
+  }
+
   .chip {
     display: inline-flex; align-items: center; gap: .3rem;
     padding: .2rem .6rem; border-radius: 999px;

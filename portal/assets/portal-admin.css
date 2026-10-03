@@ -92,3 +92,12 @@
 .pa-lote { display: flex; gap: .6rem; flex-wrap: wrap; align-items: center; padding: .6rem .75rem; margin: 0 0 .75rem; border-radius: .75rem; background: color-mix(in srgb, #6d5df6 10%, transparent); font-size: .875rem; }
 .pa-lote[hidden] { display: none; }
 .pa-archivada td { opacity: .6; }
+
+/* Pines del cliente sobre las imágenes (x/y en % de la imagen completa; la punta es el punto). */
+.pa-pines { display: flex; flex-wrap: wrap; gap: 1rem; margin: .5rem 0 1rem; }
+.pa-pin-img { margin: 0; width: min(100%, 22rem); }
+.pa-pin-img img { display: block; width: 100%; height: auto; border-radius: .6rem; }
+.pa-pin { position: absolute; display: inline-flex; align-items: center; justify-content: center; width: 1.6rem; height: 1.6rem; margin: -2rem 0 0 -.8rem; border-radius: 999px; background: #e8590c; color: #fff; border: 2px solid #fff; font-size: .72rem; font-weight: 800; box-shadow: 0 3px 10px -2px rgb(0 0 0 / .45); }
+.pa-pin::after { content: ""; position: absolute; left: 50%; top: 100%; margin-left: -.28rem; border: .28rem solid transparent; border-top: .4rem solid #fff; }
+.pa-pin.pa-pin-mini { position: static; width: 1.15rem; height: 1.15rem; margin: 0; font-size: .6rem; border-width: 1.5px; box-shadow: none; vertical-align: middle; }
+.pa-pin.pa-pin-mini::after { content: none; }

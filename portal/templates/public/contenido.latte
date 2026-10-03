@@ -2,8 +2,25 @@
 
 {block title}{$x['titulo']}{/block}
 
+{define nota-lamina, $l, $n, $total, $palabra}
+    <div class="nota-pegada {['', 'nota-b', 'nota-c'][$n % 3]}">
+        <p class="nota-k">{$palabra} {$n}{if $total > 1} de {$total}{/if}</p>
+        {if $l['idea']}<p class="mt-1 text-sm leading-snug">{$l['idea']}</p>{/if}
+        {if $l['texto']}<p class="nota-t text-sm leading-snug">«{$l['texto']}»</p>{/if}
+    </div>
+{/define}
+
+{define pines-de, $aid}
+    {foreach $pines as $cid => $pin}
+        {if $pin['tipo'] === 'imagen' && $pin['archivo'] === $aid}
+            <span class="pin" data-pin="{$cid}" data-x="{$pin['x']}" data-y="{$pin['y']}" aria-label="Punto {$pin['n']}">{$pin['n']}</span>
+        {/if}
+    {/foreach}
+{/define}
+
 {block content}
 {var $cs = $estadosC[$x['estado']] ?? ['—', 'muted']}
+{var $palabra = $visor === 'reel' ? 'Plano' : 'Lámina'}
 {var $cuenta = $x['cuenta'] ?: $marca['titulo']}
 {var $hayMedia = count($imagenes) + count($videos) > 0}
 
@@ -30,7 +47,7 @@
             {else}<span class="avatar size-9! bg-brand! text-brand-fg!">{$fmt->iniciales($cuenta)}</span>{/if}
             <div class="min-w-0 flex-1 leading-tight">
                 <p class="truncate text-sm font-bold">{$cuenta}</p>
-                <p class="text-xs text-muted">{$tipoNombre}</p>
+                {if $etiqueta}<p class="text-xs text-muted">{$etiqueta}</p>{/if}
             </div>
             <span class="text-xl leading-none text-muted" aria-hidden="true">···</span>
         </header>
@@ -39,9 +56,10 @@
         <div data-carousel class="relative">
             <div data-track class="scroll-x flex snap-x snap-mandatory">
                 {foreach $imagenes as $a}
-                    <a href="/portal/archivo/{$a['id']}?i=1" data-zoom data-zoom-group="post" data-zoom-alt="{$x['titulo']} {$iterator->counter}"
-                       class="group relative block aspect-[4/5] w-full flex-none snap-center bg-surface2" aria-label="Ampliar imagen {$iterator->counter}">
+                    <a href="/portal/archivo/{$a['id']}?i=1" data-zoom data-zoom-group="post" data-zoom-alt="{$x['titulo']} {$iterator->counter}" data-pinable data-archivo="{$a['id']}" data-img-n="{$iterator->counter}"
+                       class="group relative block aspect-[4/5] w-full flex-none snap-center overflow-hidden bg-surface2" aria-label="Ampliar imagen {$iterator->counter}">
                         <img src="/portal/archivo/{$a['id']}?i=1" alt="{$x['titulo']}" loading="{$iterator->first ? 'eager' : 'lazy'}" class="size-full object-cover">
+                        {include pines-de, $a['id']}
                         <span class="absolute right-2.5 top-2.5 flex size-8 items-center justify-center rounded-full bg-black/55 text-white opacity-80 transition group-hover:opacity-100"><svg class="size-4"><use href="#i-zoom"/></svg></span>
                     </a>
                 {/foreach}
@@ -59,6 +77,27 @@
         {/if}
         {elseif count($videos) > 0}
             <video controls playsinline preload="metadata" class="aspect-[4/5] w-full bg-black object-contain" src="/portal/archivo/{$videos[0]['id']}?i=1"></video>
+        {elseif count($laminas) > 0}
+        <div data-carousel class="relative">
+            <div data-track class="scroll-x flex snap-x snap-mandatory">
+                {foreach $laminas as $l}
+                    <div class="relative flex aspect-[4/5] w-full flex-none snap-center flex-col items-center justify-center gap-5 bg-gradient-to-br from-brand-soft to-surface2 px-8 pb-10 pt-12">
+                        <span class="absolute left-1/2 top-4 -translate-x-1/2 text-[0.6875rem] font-bold uppercase tracking-wide text-brand-ink/60">Imagen pendiente</span>
+                        {include nota-lamina, $l, $iterator->counter, count($laminas), $palabra}
+                    </div>
+                {/foreach}
+            </div>
+            {if count($laminas) > 1}
+                <span data-counter class="absolute left-2.5 top-2.5 rounded-full bg-black/55 px-2.5 py-1 text-xs font-bold text-white">1/{count($laminas)}</span>
+                <button type="button" data-prev class="absolute left-2 top-1/2 hidden size-9 -translate-y-1/2 items-center justify-center rounded-full bg-surface/90 shadow-soft sm:flex" aria-label="Lámina anterior"><svg class="size-4"><use href="#i-back"/></svg></button>
+                <button type="button" data-next class="absolute right-2 top-1/2 hidden size-9 -translate-y-1/2 items-center justify-center rounded-full bg-surface/90 shadow-soft sm:flex" aria-label="Lámina siguiente"><svg class="size-4"><use href="#i-chevron"/></svg></button>
+            {/if}
+        </div>
+        {if count($laminas) > 1}
+            <div class="flex justify-center gap-1.5 pt-3" aria-hidden="true">
+                {foreach $laminas as $l}<span data-dot class="size-1.5 rounded-full bg-ink/20 transition data-[on]:bg-brand"></span>{/foreach}
+            </div>
+        {/if}
         {else}
             <div class="flex aspect-[4/5] w-full flex-col items-center justify-center gap-3 bg-gradient-to-br from-brand-soft to-surface2 p-8 text-center">
                 <svg class="size-10 text-brand-ink/60"><use href="#i-image"/></svg>
@@ -94,15 +133,25 @@
             {elseif count($videos) > 0}
                 <video controls playsinline preload="metadata" class="size-full object-cover" src="/portal/archivo/{$videos[0]['id']}?i=1"></video>
             {elseif count($imagenes) > 0}
-                <a href="/portal/archivo/{$imagenes[0]['id']}?i=1" data-zoom data-zoom-alt="{$x['titulo']}" class="block size-full" aria-label="Ampliar">
+                <a href="/portal/archivo/{$imagenes[0]['id']}?i=1" data-zoom data-zoom-alt="{$x['titulo']}" data-pinable data-archivo="{$imagenes[0]['id']}" data-img-n="1" class="relative block size-full" aria-label="Ampliar">
                     <img src="/portal/archivo/{$imagenes[0]['id']}?i=1" alt="{$x['titulo']}" class="size-full object-cover">
+                    {include pines-de, $imagenes[0]['id']}
                 </a>
             {else}
+                {if count($laminas) > 0 && !$enlace}
+                <div class="size-full overflow-y-auto bg-gradient-to-b from-brand to-ink px-5 pb-8 pt-14">
+                    <p class="text-center text-xs font-bold uppercase tracking-wide text-brand-fg/80">Video pendiente · guion</p>
+                    <div class="mt-6 flex flex-col items-center gap-6">
+                        {foreach $laminas as $l}{include nota-lamina, $l, $iterator->counter, count($laminas), $palabra}{/foreach}
+                    </div>
+                </div>
+                {else}
                 <div class="flex size-full flex-col items-center justify-center gap-3 bg-gradient-to-br from-brand to-ink p-6 text-center text-brand-fg">
                     <svg class="size-10 opacity-80"><use href="#i-eye"/></svg>
                     <p class="text-base font-extrabold leading-snug">{$x['titulo']}</p>
                     {if $enlace}<a href="{$enlace}" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-sm">Ver video</a>{else}<p class="text-xs opacity-80">Video pendiente</p>{/if}
                 </div>
+                {/if}
             {/if}
             {if $visor === 'story'}
                 <span class="pointer-events-none absolute inset-x-3 top-3 h-1 rounded-full bg-white/40"><span class="block h-full w-1/3 rounded-full bg-white"></span></span>
@@ -120,13 +169,18 @@
     <div class="space-y-4">
         {foreach $imagenes as $a}
             <a href="/portal/archivo/{$a['id']}?i=1" data-zoom data-zoom-group="pieza" data-zoom-alt="{$x['titulo']}" class="group relative block overflow-hidden rounded-2xl border border-line bg-surface2 shadow-soft" aria-label="Ampliar">
-                <img src="/portal/archivo/{$a['id']}?i=1" alt="{$x['titulo']}" loading="{$iterator->first ? 'eager' : 'lazy'}" class="mx-auto max-h-[78vh] w-auto max-w-full">
+                <span class="relative mx-auto block w-fit" data-pinable data-archivo="{$a['id']}" data-img-n="{$iterator->counter}">
+                    <img src="/portal/archivo/{$a['id']}?i=1" alt="{$x['titulo']}" loading="{$iterator->first ? 'eager' : 'lazy'}" class="block max-h-[78vh] w-auto max-w-full">
+                    {include pines-de, $a['id']}
+                </span>
                 <span class="absolute right-3 top-3 flex items-center gap-1.5 rounded-full bg-black/55 px-3 py-1.5 text-xs font-bold text-white opacity-90"><svg class="size-4"><use href="#i-zoom"/></svg> Ampliar</span>
             </a>
         {/foreach}
     </div>
     {else}
+        {if count($laminas) > 0}<div class="flex flex-col items-center gap-6 rounded-2xl border border-dashed border-line bg-surface2 px-6 pb-8 pt-10"><p class="text-xs font-bold uppercase tracking-wide text-muted">Vista previa pendiente</p>{foreach $laminas as $l}{include nota-lamina, $l, $iterator->counter, count($laminas), $palabra}{/foreach}</div>{else}
         <div class="flex aspect-[4/3] flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-line bg-surface2 p-8 text-center text-muted"><svg class="size-10"><use href="#i-image"/></svg><p class="text-sm font-semibold">Vista previa pendiente</p></div>
+        {/if}
     {/if}
     {if $ver && $ver['copy']}<p class="mt-4 whitespace-pre-line text-sm leading-relaxed text-ink/85">{$ver['copy']}</p>{/if}
 
@@ -138,7 +192,14 @@
                 <div class="grid grid-cols-1 sm:grid-cols-3">
                     {foreach [['Fondo claro', 'bg-white'], ['Fondo oscuro', 'bg-[#101218]'], ['Color de marca', 'bg-brand']] as $f}
                     <a href="/portal/archivo/{$a['id']}?i=1" data-zoom data-zoom-group="logo" data-zoom-alt="{$x['titulo']}" class="group relative flex h-44 items-center justify-center {$f[1]} p-8" aria-label="Ampliar sobre {$f[0]}">
+                        {if $iterator->first}
+                        <span class="relative block h-full w-full" data-pinable data-archivo="{$a['id']}" data-img-n="{$iterator->parent->counter}">
+                            <img src="/portal/archivo/{$a['id']}?i=1" alt="{$x['titulo']}" loading="lazy" class="size-full object-contain">
+                            {include pines-de, $a['id']}
+                        </span>
+                        {else}
                         <img src="/portal/archivo/{$a['id']}?i=1" alt="{$x['titulo']}" loading="lazy" class="max-h-full max-w-full object-contain">
+                        {/if}
                         <span class="absolute bottom-2 left-3 rounded-full bg-black/45 px-2 py-0.5 text-[0.625rem] font-bold uppercase tracking-wide text-white">{$f[0]}</span>
                     </a>
                     {/foreach}
@@ -147,7 +208,9 @@
         {/foreach}
     </div>
     {else}
+        {if count($laminas) > 0}<div class="flex flex-col items-center gap-6 rounded-2xl border border-dashed border-line bg-surface2 px-6 pb-8 pt-10"><p class="text-xs font-bold uppercase tracking-wide text-muted">Vista previa pendiente</p>{foreach $laminas as $l}{include nota-lamina, $l, $iterator->counter, count($laminas), $palabra}{/foreach}</div>{else}
         <div class="flex aspect-[4/3] flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-line bg-surface2 p-8 text-center text-muted"><svg class="size-10"><use href="#i-sparkles"/></svg><p class="text-sm font-semibold">Vista previa pendiente</p></div>
+        {/if}
     {/if}
     {if $ver && $ver['copy']}<p class="mt-4 whitespace-pre-line text-sm leading-relaxed text-ink/85">{$ver['copy']}</p>{/if}
 
@@ -160,8 +223,9 @@
         {if count($imagenes) > 0}
             <div class="max-h-[75vh] overflow-y-auto">
                 {foreach $imagenes as $a}
-                    <a href="/portal/archivo/{$a['id']}?i=1" data-zoom data-zoom-group="sitio" data-zoom-alt="{$x['titulo']}" class="block" aria-label="Ampliar captura {$iterator->counter}">
+                    <a href="/portal/archivo/{$a['id']}?i=1" data-zoom data-zoom-group="sitio" data-zoom-alt="{$x['titulo']}" data-pinable data-archivo="{$a['id']}" data-img-n="{$iterator->counter}" class="relative block" aria-label="Ampliar captura {$iterator->counter}">
                         <img src="/portal/archivo/{$a['id']}?i=1" alt="{$x['titulo']}" loading="{$iterator->first ? 'eager' : 'lazy'}" class="w-full">
+                        {include pines-de, $a['id']}
                     </a>
                 {/foreach}
             </div>
@@ -177,8 +241,9 @@
     {if count($imagenes) > 0}
     <div class="grid grid-cols-1 gap-3 {count($imagenes) > 1 ? 'sm:grid-cols-2' : ''}">
         {foreach $imagenes as $a}
-            <a href="/portal/archivo/{$a['id']}?i=1" data-zoom data-zoom-group="galeria" data-zoom-alt="{$x['titulo']} {$iterator->counter}" class="group relative block overflow-hidden rounded-2xl border border-line bg-surface2 shadow-soft" aria-label="Ampliar imagen {$iterator->counter}">
+            <a href="/portal/archivo/{$a['id']}?i=1" data-zoom data-zoom-group="galeria" data-zoom-alt="{$x['titulo']} {$iterator->counter}" data-pinable data-archivo="{$a['id']}" data-img-n="{$iterator->counter}" class="group relative block overflow-hidden rounded-2xl border border-line bg-surface2 shadow-soft" aria-label="Ampliar imagen {$iterator->counter}">
                 <img src="/portal/archivo/{$a['id']}?i=1" alt="{$x['titulo']}" loading="{$iterator->first ? 'eager' : 'lazy'}" class="w-full object-cover">
+                {include pines-de, $a['id']}
                 <span class="absolute right-2.5 top-2.5 flex size-8 items-center justify-center rounded-full bg-black/55 text-white opacity-80 transition group-hover:opacity-100"><svg class="size-4"><use href="#i-zoom"/></svg></span>
             </a>
         {/foreach}
@@ -193,7 +258,7 @@
     {var $primerPdf = true}
     {foreach $docs as $a}
         {var $esPdf = $a['mime'] === 'application/pdf'}
-        <div class="card mt-3 overflow-hidden" {if $esPdf}data-pdf data-src="/portal/archivo/{$a['id']}?i=1" {if $primerPdf}data-comments{/if}{/if}>
+        <div class="card mt-3 overflow-hidden" {if $esPdf}data-pdf data-src="/portal/archivo/{$a['id']}?i=1" {if $primerPdf}data-comments data-pines="{json_encode($pinesPdf)}"{/if}{/if}>
             <div class="flex items-center gap-3 p-4">
                 <span class="flex size-11 flex-none items-center justify-center rounded-xl bg-brand-soft text-brand-ink"><svg class="size-5"><use href="#i-file"/></svg></span>
                 <span class="min-w-0 flex-1"><span class="block truncate text-sm font-bold">{$a['nombre_original']}</span><span class="text-xs text-muted">{$fmt->extension($a['nombre_original'])|upper} · {$fmt->tamano($a['tamano'])}</span></span>
@@ -209,12 +274,20 @@
         </div>
     {/foreach}
     {if !$hayMedia && $docs === [] && !$embed}
+        {if count($laminas) > 0}<div class="flex flex-col items-center gap-6 rounded-2xl border border-dashed border-line bg-surface2 px-6 pb-8 pt-10"><p class="text-xs font-bold uppercase tracking-wide text-muted">Vista previa pendiente</p>{foreach $laminas as $l}{include nota-lamina, $l, $iterator->counter, count($laminas), $palabra}{/foreach}</div>{else}
         <div class="flex aspect-[4/3] flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-line bg-surface2 p-8 text-center text-muted"><svg class="size-10"><use href="#i-file"/></svg><p class="text-sm font-semibold">Vista previa pendiente</p></div>
+        {/if}
     {/if}
     {if $enlace && !$embed}<a href="{$enlace}" target="_blank" rel="noopener noreferrer" class="btn btn-primary mt-4 w-full sm:w-auto"><svg class="size-5"><use href="#i-eye"/></svg> Abrir link{if $enlaceHost} ({$enlaceHost}){/if}</a>{/if}
     {if $ver && $ver['copy']}<p class="mt-4 whitespace-pre-line text-sm leading-relaxed text-ink/85">{$ver['copy']}</p>{/if}
 {/if}
 
+{if count($imagenes) > 0 && $esVigente}
+    <div class="mt-4 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-sm" data-pin-barra>
+        <button type="button" data-pin-modo class="btn btn-soft btn-sm"><svg class="size-4"><use href="#i-pin"/></svg> <span data-pin-modo-txt>Marcar un punto en la imagen</span></button>
+        <span class="text-muted" data-pin-ayuda>Para señalar algo exacto: marca el punto y escribe tu nota o tu cambio.</span>
+    </div>
+{/if}
 </section>
 
 {* ================= PANEL DE REVISIÓN ================= *}
@@ -222,11 +295,34 @@
 
     <section class="card card-pad reveal" style="--i:1">
         <div class="flex flex-wrap items-center gap-2">
-            <span class="chip chip-brand">{$tipoNombre}</span>
+            {if $etiqueta}<span class="chip chip-brand">{$etiqueta}</span>{/if}
             <span class="chip chip-{$cs[1]}">{$cs[0]}</span>
         </div>
         <h1 class="mt-3 text-xl font-extrabold leading-tight tracking-tight">{$x['titulo']}</h1>
         {if $x['fecha_publicacion']}<p class="mt-1 text-sm text-muted">Publica el {$fmt->fechaLarga($x['fecha_publicacion'])}</p>{/if}
+        {if $x['objetivo'] || $x['pilar']}
+            <div class="mt-4 rounded-xl border border-line bg-surface2 px-3.5 py-3">
+                <p class="flex flex-wrap items-center gap-2 text-[0.6875rem] font-bold uppercase tracking-wide text-muted">
+                    <svg class="size-3.5"><use href="#i-flag"/></svg> Objetivo
+                    {if $x['pilar']}<span class="chip chip-muted normal-case tracking-normal">Pilar: {$x['pilar']}</span>{/if}
+                </p>
+                {if $x['objetivo']}<p class="mt-1.5 whitespace-pre-line text-sm leading-relaxed">{$x['objetivo']}</p>{/if}
+            </div>
+        {/if}
+        {if count($laminas) > 0 && (count($imagenes) > 0 || count($videos) > 0 || $enlace)}
+            <details class="group mt-3 rounded-xl border border-line px-3.5 py-2.5">
+                <summary class="flex cursor-pointer list-none items-center justify-between text-sm font-semibold [&::-webkit-details-marker]:hidden">
+                    <span>{$visor === 'reel' ? 'Guion' : 'Idea de cada lámina'} <span class="text-muted">({count($laminas)})</span></span>
+                    <svg class="size-4 transition group-open:rotate-90"><use href="#i-chevron"/></svg>
+                </summary>
+                <ol class="mt-3 space-y-2.5 text-sm">
+                    {foreach $laminas as $l}
+                        <li class="flex gap-2.5"><span class="flex size-6 flex-none items-center justify-center rounded-full bg-surface2 text-xs font-bold">{$iterator->counter}</span>
+                            <span class="min-w-0">{$l['idea']}{if $l['texto']}<span class="mt-0.5 block font-semibold">«{$l['texto']}»</span>{/if}</span></li>
+                    {/foreach}
+                </ol>
+            </details>
+        {/if}
         {if $ver && $ver['nota']}<p class="mt-3 rounded-xl bg-brand-soft px-3.5 py-2.5 text-sm text-brand-ink"><strong>Qué cambió:</strong> {$ver['nota']}</p>{/if}
 
         {if count($versiones) > 1}
@@ -238,6 +334,16 @@
             {if !$esVigente}<p class="mt-3 flex items-start gap-2 rounded-xl bg-surface2 px-3.5 py-2.5 text-xs text-muted"><svg class="mt-0.5 size-4 flex-none"><use href="#i-clock"/></svg><span>Estás viendo una versión anterior, sólo de consulta. <a href="/portal/contenidos/{$x['id']}" class="font-semibold text-brand-ink underline">Ver la vigente</a></span></p>{/if}
         {/if}
     </section>
+
+    {* Notas del equipo (vienen de la grilla): aparte de la conversación de la revisión *}
+    {if $x['notas']}
+    <section class="reveal flex justify-center px-2 pt-2" style="--i:2" aria-labelledby="h-notas">
+        <div class="nota-pegada nota-b max-w-none">
+            <h2 id="h-notas" class="nota-k">Notas del equipo</h2>
+            <p class="mt-1.5 whitespace-pre-line text-sm leading-relaxed">{$x['notas']}</p>
+        </div>
+    </section>
+    {/if}
 
     {* Reacciones *}
     {if $ver}
@@ -275,6 +381,8 @@
             <summary class="btn btn-ghost w-full cursor-pointer list-none [&::-webkit-details-marker]:hidden group-open:hidden"><svg class="size-5"><use href="#i-edit"/></svg> Pedir cambios</summary>
             <form method="post" action="/portal/contenidos/{$x['id']}/decidir" data-once class="rounded-2xl border border-line bg-surface2 p-3.5">
                 <input type="hidden" name="_csrf" value="{$csrf}">
+                <input type="hidden" name="ubicacion" value="" data-pag-input>
+                <p data-pag-tag hidden class="mb-2 flex items-center gap-2 text-sm"><span class="chip chip-brand" data-pag-txt></span> <button type="button" data-pag-clear class="text-xs text-muted underline">quitar</button></p>
                 <label for="rev-cuerpo" class="label">¿Qué deberíamos cambiar?</label>
                 <textarea id="rev-cuerpo" name="cuerpo" rows="3" maxlength="4000" required data-autogrow class="field" placeholder="Ej.: subir el tamaño del título, cambiar la foto de fondo…"></textarea>
                 <div class="mt-3 flex flex-col gap-2.5 sm:flex-row">
@@ -309,11 +417,13 @@
                 {foreach $comentarios as $m}
                     {var $mio = $m['autor_tipo'] === 'contacto' && $m['autor_id'] === $contacto['id']}
                     {var $delCliente = $m['autor_tipo'] === 'contacto'}
-                    {var $pag = $m['ubicacion'] && str_starts_with((string) $m['ubicacion'], 'p') ? (int) substr((string) $m['ubicacion'], 1) : 0}
-                    <li class="flex gap-2.5 {$delCliente ? 'flex-row-reverse' : ''}" {if $pag > 0}data-pag="{$pag}"{/if}>
+                    {var $ub = \TypeDock\Plugin\Portal\Ubicacion::leer($m['ubicacion'])}
+                    {var $pag = $ub && $ub['tipo'] === 'pagina' ? $ub['pagina'] : 0}
+                    {var $pin = $pines[$m['id']] ?? null}
+                    <li class="flex gap-2.5 {$delCliente ? 'flex-row-reverse' : ''}" {if $pag > 0}data-pag="{$pag}"{/if} id="c-{$m['id']}">
                         <span class="avatar size-8! {$delCliente ? '' : 'avatar-team'}">{$fmt->iniciales($m['autor_nombre'])}</span>
                         <div class="max-w-[88%] min-w-0 {$delCliente ? 'text-right' : ''}">
-                            <p class="mb-1 text-xs text-muted"><span class="font-semibold text-ink">{$mio ? 'Tú' : $m['autor_nombre']}</span>{if !$delCliente} · Equipo{/if} · {$fmt->rel($m['created_at'])}{if count($versiones) > 1 && isset($numeros[$m['version_id']])} · v{$numeros[$m['version_id']]}{/if}{if $pag > 0} · <button type="button" data-goto-pag="{$pag}" class="font-bold text-brand-ink underline decoration-dotted underline-offset-2">Página {$pag}</button>{/if}</p>
+                            <p class="mb-1 text-xs text-muted"><span class="font-semibold text-ink">{$mio ? 'Tú' : $m['autor_nombre']}</span>{if !$delCliente} · Equipo{/if} · {$fmt->rel($m['created_at'])}{if count($versiones) > 1 && isset($numeros[$m['version_id']])} · v{$numeros[$m['version_id']]}{/if}{if $pin} · <button type="button" data-goto-pin="{$m['id']}" {if $pin['tipo'] === 'pagina'}data-goto-pag="{$pag}"{/if} class="inline-flex items-center gap-1 font-bold text-brand-ink underline decoration-dotted underline-offset-2"><span class="pin pin-mini" aria-hidden="true">{$pin['n']}</span>{$pin['tipo'] === 'pagina' ? 'Página ' . $pag : 'Imagen ' . ($pin['imagen'] ?: '')}</button>{elseif $ub && $ub['x'] !== null} · {\TypeDock\Plugin\Portal\Ubicacion::etiqueta($m['ubicacion'], null, $posImagen[$ub['archivo']] ?? 0)} (otra versión){elseif $pag > 0} · <button type="button" data-goto-pag="{$pag}" class="font-bold text-brand-ink underline decoration-dotted underline-offset-2">Página {$pag}</button>{/if}</p>
                             <div class="bubble inline-block text-left {$delCliente ? 'rounded-tr-md bg-brand-soft text-ink' : 'rounded-tl-md bg-surface2'}">{$m['cuerpo']|breakLines}</div>
                         </div>
                     </li>
@@ -323,7 +433,7 @@
         <form method="post" action="/portal/contenidos/{$x['id']}/comentarios" data-once class="mt-5 border-t border-line pt-5">
             <input type="hidden" name="_csrf" value="{$csrf}">
             <input type="hidden" name="ubicacion" value="" data-pag-input>
-            <p data-pag-tag hidden class="mb-2 flex items-center gap-2 text-sm"><span class="chip chip-brand">Sobre la página <b data-pag-n class="ml-1"></b></span> <button type="button" data-pag-clear class="text-xs text-muted underline">quitar</button></p>
+            <p data-pag-tag hidden class="mb-2 flex items-center gap-2 text-sm"><span class="chip chip-brand" data-pag-txt></span> <button type="button" data-pag-clear class="text-xs text-muted underline">quitar</button></p>
             <label for="nuevo-comentario" class="label">Deja una nota o pregunta</label>
             <textarea id="nuevo-comentario" name="cuerpo" rows="2" maxlength="4000" required data-autogrow class="field" placeholder="Una duda, una idea… (no cambia tu decisión)"></textarea>
             <div class="mt-3 flex justify-end">
@@ -334,7 +444,7 @@
 </aside>
 </div>
 
-{if $hayPdf}<script type="module" src="/plugins/portal/assets/pdfviewer.js?v=1"></script>{/if}
+{if $hayPdf}<script type="module" src="/plugins/portal/assets/pdfviewer.js?v=2"></script>{/if}
 
 {* Zoom (lo maneja portal.js) *}
 <div data-lightbox hidden class="fixed inset-0 z-50 flex flex-col bg-black/92" role="dialog" aria-modal="true" aria-label="Imagen ampliada">

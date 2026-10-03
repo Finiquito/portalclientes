@@ -88,15 +88,19 @@ class ContenidoService
         $orden = (int) $mx->fetchColumn() + 1;
 
         $id = typedock_uuid7();
+        $b = self::brief($d);
         $this->pdo->prepare(
-            'INSERT INTO ' . self::TABLE . ' (id, entrega_id, cliente_id, proyecto_id, tipo, titulo, cuenta, fecha_publicacion, orden, estado, version_actual, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+            'INSERT INTO ' . self::TABLE . ' (id, entrega_id, cliente_id, proyecto_id, tipo, titulo, cuenta, fecha_publicacion, orden, estado, version_actual,
+                etiqueta, pilar, objetivo, laminas, notas, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         )->execute([
             $id, $entrega['id'], $entrega['cliente_id'], $entrega['proyecto_id'], $tipo,
             mb_substr(trim((string) ($d['titulo'] ?? '')) ?: TiposContenido::nombre($tipo), 0, 255),
             mb_substr(trim((string) ($d['cuenta'] ?? '')), 0, 120),
             self::fecha((string) ($d['fecha_publicacion'] ?? '')),
-            $orden, 'pendiente', 1, self::ahora(), self::ahora(),
+            $orden, 'pendiente', 1,
+            $b['etiqueta'], $b['pilar'], $b['objetivo'], $b['laminas'], $b['notas'],
+            self::ahora(), self::ahora(),
         ]);
         $vid = $this->crearVersion($id, 1, $d);
         return [$id, $vid];
@@ -153,6 +157,12 @@ class ContenidoService
                 self::fecha((string) ($d['fecha_publicacion'] ?? '')),
                 self::ahora(), $id,
             ]);
+        // El brief sólo se toca si el formulario lo trae (así otros formularios no lo borran).
+        if (array_key_exists('objetivo', $d) || array_key_exists('laminas', $d) || array_key_exists('notas', $d)) {
+            $b = self::brief($d);
+            $this->pdo->prepare('UPDATE ' . self::TABLE . ' SET etiqueta = ?, pilar = ?, objetivo = ?, laminas = ?, notas = ? WHERE id = ?')
+                ->execute([$b['etiqueta'], $b['pilar'], $b['objetivo'], $b['laminas'], $b['notas'], $id]);
+        }
         if ($c['version_id'] !== null && (isset($d['copy']) || isset($d['enlace']))) {
             $this->pdo->prepare('UPDATE portal_versiones SET copy = ?, enlace = ? WHERE id = ?')->execute([
                 mb_substr(trim(str_replace("\r\n", "\n", (string) ($d['copy'] ?? ''))), 0, 4000),
@@ -160,6 +170,24 @@ class ContenidoService
                 $c['version_id'],
             ]);
         }
+    }
+
+    /**
+     * Brief de la pieza: etiqueta para el cliente, pilar, objetivo, láminas (JSON) y notas del equipo.
+     * @param array<string, mixed> $d
+     * @return array{etiqueta: ?string, pilar: ?string, objetivo: ?string, laminas: ?string, notas: ?string}
+     */
+    public static function brief(array $d): array
+    {
+        $txt = fn(string $k, int $max) => ($v = mb_substr(trim(str_replace("\r\n", "\n", (string) ($d[$k] ?? ''))), 0, $max)) !== '' ? $v : null;
+        $laminas = TiposContenido::laminas($d['laminas'] ?? null);
+        return [
+            'etiqueta' => $txt('etiqueta', 80),
+            'pilar'    => $txt('pilar', 120),
+            'objetivo' => $txt('objetivo', 2000),
+            'laminas'  => $laminas !== [] ? json_encode($laminas, JSON_UNESCAPED_UNICODE) : null,
+            'notas'    => $txt('notas', 4000),
+        ];
     }
 
     private static function fecha(string $f): ?string

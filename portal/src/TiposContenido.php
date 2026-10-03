@@ -20,10 +20,21 @@ final class TiposContenido
         'grafica'      => ['Pieza gráfica',   'imagen',    'Afiche, flyer, banner… Una imagen con zoom.', 'i-image'],
         'logo'         => ['Logo / identidad', 'identidad', 'Variantes del logo: se muestran sobre fondo claro, oscuro y de color.', 'i-sparkles'],
         'mockup'       => ['Mockup',          'galeria',   'Una o varias imágenes en galería.', 'i-image'],
-        'brandbook'    => ['Brandbook / documento', 'documento', 'Sube el PDF. Se puede abrir y descargar.', 'i-file'],
+        'brandbook'    => ['Documento PDF',   'documento', 'Sube el PDF (brandbook, informe, manual…). Se ve por páginas y se puede descargar.', 'i-file'],
         'presentacion' => ['Presentación / propuesta', 'documento', 'Sube el PDF o pega un link.', 'i-file'],
         'web'          => ['Sitio web / landing', 'sitio', 'Link al sitio (o a un prototipo) y, si quieres, capturas.', 'i-eye'],
         'otro'         => ['Otro',            'generico',  'Archivos y/o un link.', 'i-file'],
+    ];
+
+    /**
+     * Lo que ve el cliente como «tipo» (nunca el nombre interno, que puede no calzar:
+     * un PDF no siempre es un brandbook). El post se calcula: «Post» o «Carrusel · N láminas».
+     * Si el contenido tiene una etiqueta propia, manda esa.
+     */
+    public const PARA_CLIENTE = [
+        'reel' => 'Reel', 'story' => 'Story', 'grafica' => 'Pieza gráfica', 'logo' => 'Logo',
+        'mockup' => 'Mockup', 'brandbook' => 'Documento', 'presentacion' => 'Presentación',
+        'web' => 'Sitio web', 'otro' => '',
     ];
 
     public const REACCIONES = [
@@ -53,6 +64,93 @@ final class TiposContenido
     public static function nombre(string $tipo): string
     {
         return self::TIPOS[$tipo][0] ?? 'Contenido';
+    }
+
+    /**
+     * Etiqueta que ve el cliente.
+     * @param array<string, mixed> $c contenido (tipo, etiqueta, laminas)
+     * @param int $nImagenes imágenes de la versión que se muestra (0 si aún no hay)
+     */
+    public static function etiqueta(array $c, int $nImagenes = 0): string
+    {
+        $propia = trim((string) ($c['etiqueta'] ?? ''));
+        if ($propia !== '') {
+            return $propia;
+        }
+        $tipo = (string) ($c['tipo'] ?? '');
+        if ($tipo === 'post') {
+            $n = $nImagenes > 0 ? $nImagenes : count(self::laminas($c['laminas'] ?? null));
+            return $n > 1 ? 'Carrusel · ' . $n . ' láminas' : 'Post';
+        }
+        return self::PARA_CLIENTE[$tipo] ?? '';
+    }
+
+    /**
+     * Láminas del brief (idea de cada lámina y el texto que va en la imagen).
+     * Se guardan como JSON; acepta también el texto del formulario (ver laminasDesdeTexto).
+     * @return array<int, array{idea: string, texto: string}>
+     */
+    public static function laminas(mixed $valor): array
+    {
+        if (is_string($valor)) {
+            $valor = trim($valor);
+            if ($valor === '') {
+                return [];
+            }
+            $json = json_decode($valor, true);
+            $valor = is_array($json) ? $json : self::laminasDesdeTexto($valor);
+        }
+        if (!is_array($valor)) {
+            return [];
+        }
+        $out = [];
+        foreach ($valor as $l) {
+            if (is_string($l)) {
+                $l = ['idea' => $l, 'texto' => ''];
+            }
+            if (!is_array($l)) {
+                continue;
+            }
+            $idea  = mb_substr(trim((string) ($l['idea'] ?? '')), 0, 1000);
+            $texto = mb_substr(trim((string) ($l['texto'] ?? '')), 0, 1000);
+            if ($idea !== '' || $texto !== '') {
+                $out[] = ['idea' => $idea, 'texto' => $texto];
+            }
+            if (count($out) >= 20) {
+                break;
+            }
+        }
+        return $out;
+    }
+
+    /**
+     * Texto del formulario → láminas. Una lámina por línea; el texto en imagen va
+     * después de « | » o de «Texto:». Se toleran «Lámina 2:», «Slide 2:» o «2.» al inicio.
+     * @return array<int, array{idea: string, texto: string}>
+     */
+    public static function laminasDesdeTexto(string $txt): array
+    {
+        $out = [];
+        foreach (preg_split('/\R/u', $txt) ?: [] as $linea) {
+            $linea = trim($linea);
+            if ($linea === '') {
+                continue;
+            }
+            $linea = preg_replace('/^(?:l[aá]mina|slide|plano)\s*\d+\s*(?:\([^)]*\))?\s*[:.\-–]\s*|^\d+\s*[.)\-–]\s+/iu', '', $linea) ?? $linea;
+            $partes = preg_split('/\s+\|\s+|\s*\btexto\s*:\s*/iu', $linea, 2) ?: [$linea];
+            $texto = preg_replace('/^[\s«"“]+|[\s»"”]+$/u', '', $partes[1] ?? '') ?? '';
+            $out[] = ['idea' => rtrim(trim($partes[0]), '.'), 'texto' => $texto];
+        }
+        return self::laminas($out);
+    }
+
+    /** Láminas → texto editable del formulario (inverso de laminasDesdeTexto). */
+    public static function laminasATexto(mixed $valor): string
+    {
+        return implode("\n", array_map(
+            fn($l) => $l['idea'] . ($l['texto'] !== '' ? ' | ' . $l['texto'] : ''),
+            self::laminas($valor)
+        ));
     }
 
     public static function visor(string $tipo): string

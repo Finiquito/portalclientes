@@ -3,7 +3,7 @@
 {block page_title}{if $entrega}{$entrega['titulo']}{else}Nueva entrega{/if}{/block}
 
 {block content}
-<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=2">
+<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=3">
 
 <div class="page-header">
     <h1>{if $entrega}Entrega: {$entrega['titulo']}{else}Nueva entrega{/if}</h1>
@@ -117,6 +117,34 @@
 </div>
 
 <div class="pa-grid-2 mt-4">
+    <div class="card" id="importar">
+        <h2 class="pa-h2">Importar grilla (Word o texto)</h2>
+        <p class="pa-muted">Sube la grilla en <strong>.docx</strong> (de Google Docs: Archivo → Descargar → Word) o pega su texto. {if $iaActiva}La IA separa cada pieza en tipo, objetivo, láminas, copy y notas, sin reescribir el copy.{else}Se separa por etiquetas (POST 1, Tipo:, Objetivo:, Copy:, Lámina 2:, Hashtags:, Nota:…). Con IA configurada en Ajustes entiende cualquier formato.{/if} Antes de crear nada ves una vista previa para corregir.</p>
+        <form method="post" action="{$admin_url('entregas/' . $entrega['id'] . '/grilla')}" enctype="multipart/form-data">
+            <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+            <label class="form-label mt-3">Archivo .docx</label>
+            <input type="file" name="grilla" accept=".docx,.txt,.md" class="form-input">
+            <label class="form-label mt-3">…o pega el texto</label>
+            <textarea name="texto" class="form-input" rows="4" placeholder="POST 1&#10;Tipo: Carrusel (7 láminas)&#10;Objetivo: …&#10;Copy: …"></textarea>
+            <label class="form-label mt-3">Cuenta (redes)</label>
+            <input type="text" name="cuenta" class="form-input" maxlength="120" placeholder="@tumarca">
+            {if $iaActiva}<label class="pa-check"><input type="checkbox" name="modo" value="simple"> <span>Leer sin IA (solo por etiquetas, al instante)</span></label>{/if}
+            <p class="mt-3"><button type="submit" class="btn btn-primary">Leer la grilla</button></p>
+        </form>
+    </div>
+    <div class="card" id="imagenes">
+        <h2 class="pa-h2">Imágenes por número</h2>
+        <p class="pa-muted">Sube todas las imágenes juntas y cada una va a su pieza según el nombre del archivo: <code>3.jpg</code> o <code>post-3.jpg</code> → pieza 3; <code>3-2.jpg</code> o <code>post3_lamina2.png</code> → pieza 3, lámina 2. La pieza se busca por el número de su título («Post 3 · …») y, si no, por su lugar en la lista.</p>
+        <form method="post" action="{$admin_url('entregas/' . $entrega['id'] . '/imagenes')}" enctype="multipart/form-data">
+            <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+            <label class="form-label mt-3">Imágenes (hasta 80, {$maxMb} MB c/u)</label>
+            <input type="file" name="imagenes[]" multiple accept="image/*,video/mp4,application/pdf" class="form-input" required>
+            <p class="mt-3"><button type="submit" class="btn btn-primary">Repartir en las piezas</button></p>
+        </form>
+    </div>
+</div>
+
+<div class="pa-grid-2 mt-4">
     <div class="card">
         <h2 class="pa-h2">Agregar un contenido</h2>
         <form method="post" action="{$admin_url('entregas/' . $entrega['id'] . '/contenidos')}" enctype="multipart/form-data">
@@ -136,6 +164,10 @@
             <textarea name="copy" class="form-input" rows="4" placeholder="El texto del post, con hashtags."></textarea>
             <label class="form-label mt-3">Link (video, prototipo, sitio)</label>
             <input type="url" name="enlace" class="form-input" maxlength="500" placeholder="https://…">
+            <details class="mt-3">
+                <summary class="form-label" style="cursor:pointer">Brief de la pieza: objetivo, láminas y notas</summary>
+                {include '_brief.latte'}
+            </details>
             <label class="form-label mt-3">Archivos (hasta 10, {$maxMb} MB c/u)</label>
             <input type="file" name="archivos[]" multiple class="form-input">
             <p class="form-hint mt-1">Para un carrusel, sube todas las láminas juntas: se muestran en el orden en que las elijas. Una planilla .csv no va aquí: usa «Subir archivos o planilla».</p>

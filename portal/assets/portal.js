@@ -405,6 +405,116 @@
     pintar();
   });
 
+  /* ---- Ubicación de un comentario (página o pin): la comparten la nota y «Pedir cambios» ---- */
+  window.portalMarcar = function (valor, texto) {
+    $$('[data-pag-input]').forEach(function (i) { i.value = valor || ''; });
+    $$('[data-pag-tag]').forEach(function (t) { t.hidden = !valor; });
+    $$('[data-pag-txt]').forEach(function (t) { t.textContent = texto || ''; });
+    if (!valor) { $$('.pin-nuevo').forEach(function (p) { p.remove(); }); return; }
+    var cambios = $('#rev-cuerpo');
+    var det = cambios ? cambios.closest('details') : null;
+    var ta = det && det.open ? cambios : $('#nuevo-comentario');
+    var sec = ta ? ta.closest('section, details') : null;
+    if (sec) sec.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (ta) setTimeout(function () { ta.focus({ preventScroll: true }); }, 380);
+  };
+  document.addEventListener('click', function (e) {
+    if (e.target.closest('[data-pag-clear]')) window.portalMarcar('', '');
+  });
+
+  /* ---- Pines sobre las imágenes ----
+     data-x / data-y son % de la imagen completa; aquí se calcula dónde cae ese punto según
+     cómo se dibuja la imagen (object-fit cover recorta, contain deja bordes). */
+  (function () {
+    var cajas = $$('[data-pinable]');
+    if (!cajas.length) return;
+
+    function dibujo(caja) {
+      var img = $('img', caja);
+      if (!img || !img.naturalWidth) return null;
+      var rc = caja.getBoundingClientRect(), ri = img.getBoundingClientRect();
+      var fit = window.getComputedStyle(img).objectFit;
+      var w = ri.width, h = ri.height, x = ri.left - rc.left, y = ri.top - rc.top;
+      var vis = { x: x, y: y, w: w, h: h };
+      if (fit === 'cover' || fit === 'contain') {
+        var s = fit === 'cover' ? Math.max(w / img.naturalWidth, h / img.naturalHeight) : Math.min(w / img.naturalWidth, h / img.naturalHeight);
+        var cw = img.naturalWidth * s, ch = img.naturalHeight * s;
+        return { x: x + (w - cw) / 2, y: y + (h - ch) / 2, w: cw, h: ch, vis: vis };
+      }
+      return { x: x, y: y, w: w, h: h, vis: vis };
+    }
+    function ubicar(caja) {
+      var d = dibujo(caja);
+      if (!d) return;
+      $$('.pin', caja).forEach(function (p) {
+        if (p.dataset.x === undefined) return;
+        var px = d.x + (+p.dataset.x / 100) * d.w, py = d.y + (+p.dataset.y / 100) * d.h;
+        var v = d.vis, dentro = px >= v.x - 1 && px <= v.x + v.w + 1 && py >= v.y - 1 && py <= v.y + v.h + 1;
+        p.style.left = px + 'px';
+        p.style.top = py + 'px';
+        p.classList.toggle('ubicado', dentro);
+      });
+    }
+    cajas.forEach(function (caja) {
+      var img = $('img', caja);
+      if (!img) return;
+      if (img.complete) ubicar(caja);
+      img.addEventListener('load', function () { ubicar(caja); });
+    });
+    var rt = null;
+    window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(function () { cajas.forEach(ubicar); }, 120); });
+
+    // Modo «marcar un punto»: un toque en la imagen deja el pin y lleva al formulario.
+    var btn = $('[data-pin-modo]'), txt = $('[data-pin-modo-txt]');
+    var activo = false;
+    function modo(on) {
+      activo = on;
+      document.body.classList.toggle('modo-pin', on);
+      if (btn) btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+      if (txt) txt.textContent = on ? 'Toca el punto en la imagen · cancelar' : 'Marcar un punto en la imagen';
+      // Que la imagen quede a la vista para poder tocarla.
+      var visor = on ? $('section[aria-label="Vista previa"]') : null;
+      if (visor && visor.getBoundingClientRect().top < 0) visor.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    if (btn) btn.addEventListener('click', function () { modo(!activo); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && activo) modo(false); });
+    document.addEventListener('click', function (e) {
+      if (!activo) return;
+      var caja = e.target.closest('[data-pinable]');
+      if (!caja) return;
+      e.preventDefault();
+      e.stopPropagation();   // que no abra el zoom
+      var d = dibujo(caja);
+      if (!d) return;
+      var rc = caja.getBoundingClientRect();
+      var x = (e.clientX - rc.left - d.x) / d.w * 100, y = (e.clientY - rc.top - d.y) / d.h * 100;
+      if (x < 0 || x > 100 || y < 0 || y > 100) return;
+      x = Math.round(x * 10) / 10; y = Math.round(y * 10) / 10;
+      $$('.pin-nuevo').forEach(function (p) { p.remove(); });
+      var p = document.createElement('span');
+      p.className = 'pin pin-nuevo';
+      p.setAttribute('aria-hidden', 'true');
+      p.textContent = '+';
+      p.dataset.x = x; p.dataset.y = y;
+      caja.appendChild(p);
+      ubicar(caja);
+      modo(false);
+      window.portalMarcar('i' + caja.dataset.archivo + '@' + x + ',' + y, 'Punto en la imagen ' + caja.dataset.imgN);
+    }, true);
+
+    // Desde la conversación: ir al pin (pasa a su lámina del carrusel) y hacerlo saltar.
+    document.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-goto-pin]');
+      if (!b || b.hasAttribute('data-goto-pag')) return;
+      var p = $('.pin[data-pin="' + b.getAttribute('data-goto-pin') + '"]');
+      if (!p) return;
+      var caja = p.closest('[data-pinable]'), slide = p.closest('[data-track] > *'), track = p.closest('[data-track]');
+      if (track && slide) track.scrollTo({ left: slide.offsetLeft - track.firstElementChild.offsetLeft, behavior: 'smooth' });
+      (track || caja).scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setTimeout(function () { ubicar(caja); p.classList.remove('activo'); void p.offsetWidth; p.classList.add('activo'); }, 420);
+    });
+  })();
+
   /* ---- Zoom de imágenes (lightbox): grupo con flechas, clic para acercar ---- */
   (function () {
     var lb = $('[data-lightbox]');

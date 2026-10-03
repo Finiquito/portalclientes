@@ -168,6 +168,7 @@ class EntregaAdminController
             'estados' => TiposContenido::ESTADOS_ENTREGA, 'tipos' => TiposContenido::TIPOS,
             'estadosContenido' => TiposContenido::ESTADOS_CONTENIDO, 'reacciones' => TiposContenido::REACCIONES,
             'portadas' => $portadas, 'resumenReacc' => $resumen, 'maxMb' => $this->maxMb(),
+            'iaActiva' => (new IaService($this->pdo()))->activa(),
         ] + $this->flashes());
     }
 
@@ -395,10 +396,25 @@ class EntregaAdminController
             $v['reacciones']  = $this->contenidos()->reacciones((string) $v['id']);
             $versiones[] = $v;
         }
+        // Pines del cliente sobre la versión vigente, numerados igual que en el portal.
+        $comentarios = (new ComentarioService($this->pdo()))->listar('contenido', $id);
+        $fmt = new Fmt();
+        $imgVigente = [];
+        foreach ($versiones as $v) {
+            if ((int) $v['numero'] === (int) $c['version_actual']) {
+                $imgVigente = array_values(array_filter($v['archivos'], fn($a) => $fmt->esImagen($a['mime'])));
+            }
+        }
+        $posImagen = [];
+        foreach ($imgVigente as $k => $a) {
+            $posImagen[(string) $a['id']] = $k + 1;
+        }
         $this->ui->view('entregas/contenido.latte', [
             'c' => $c, 'versiones' => $versiones, 'tipos' => TiposContenido::TIPOS,
             'reacciones' => TiposContenido::REACCIONES, 'estadosContenido' => TiposContenido::ESTADOS_CONTENIDO,
-            'comentarios' => (new ComentarioService($this->pdo()))->listar('contenido', $id),
+            'comentarios' => $comentarios,
+            'pines' => Ubicacion::pines($comentarios, $c['version_id'] !== null ? (string) $c['version_id'] : null, $posImagen),
+            'imgVigente' => $imgVigente, 'posImagen' => $posImagen,
             'fmt' => new Fmt(), 'firma' => $this->firma(), 'maxMb' => $this->maxMb(),
         ] + $this->flashes());
     }
