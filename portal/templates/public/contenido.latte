@@ -337,11 +337,9 @@
 
     {* Notas del equipo (vienen de la grilla): aparte de la conversación de la revisión *}
     {if $x['notas']}
-    <section class="reveal flex justify-center px-2 pt-2" style="--i:2" aria-labelledby="h-notas">
-        <div class="nota-pegada nota-b max-w-none">
-            <h2 id="h-notas" class="nota-k">Notas del equipo</h2>
-            <p class="mt-1.5 whitespace-pre-line text-sm leading-relaxed">{$x['notas']}</p>
-        </div>
+    <section class="card card-pad reveal border-dashed border-brand/40" style="--i:2" aria-labelledby="h-notas">
+        <h2 id="h-notas" class="flex items-center gap-2 text-sm font-extrabold"><svg class="size-4 text-brand-ink"><use href="#i-edit"/></svg> Notas del equipo</h2>
+        <p class="mt-2 whitespace-pre-line text-sm leading-relaxed text-ink/85">{$x['notas']}</p>
     </section>
     {/if}
 

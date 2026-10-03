@@ -144,27 +144,24 @@
   .modo-pin [data-pinable] { cursor: crosshair; outline: 3px dashed var(--warn); outline-offset: -3px; }
   .modo-pin [data-pinable] img { cursor: crosshair; }
 
-  /* Notas pegadas: el brief de cada lámina sobre su placeholder y las notas del equipo.
-     Papel amarillo con cinta; mismo color en claro y oscuro (es un papel, no la interfaz). */
+  /* Nota pegada: el brief de cada lámina sobre su placeholder. Papel en el color de la
+     marca del cliente al 10 %, así combina con su portal en claro y en oscuro. */
   .nota-pegada {
     position: relative; width: 100%; max-width: 19rem; padding: 1rem 1.05rem .95rem;
-    background: #fff1a8; color: #3b3200; border-radius: .2rem .2rem .2rem 1.1rem;
-    box-shadow: 0 14px 28px -16px rgb(40 30 0 / .55), 0 2px 5px rgb(40 30 0 / .12);
-    transform: rotate(-1.4deg);
+    background: color-mix(in oklab, var(--brand) 10%, var(--surface)); color: var(--ink);
+    border: 1px solid color-mix(in oklab, var(--brand) 16%, transparent); border-radius: .35rem .35rem .35rem 1rem;
+    box-shadow: 0 12px 24px -16px rgb(0 0 0 / .35);
+    transform: rotate(-1deg);
   }
   .nota-pegada::before {
-    content: ""; position: absolute; top: -.6rem; left: 50%; width: 4rem; height: 1.15rem;
-    transform: translateX(-50%) rotate(2.5deg); background: rgb(255 255 255 / .6);
-    box-shadow: 0 1px 2px rgb(0 0 0 / .12);
+    content: ""; position: absolute; top: -.55rem; left: 50%; width: 3.5rem; height: 1rem;
+    transform: translateX(-50%) rotate(2deg); background: color-mix(in oklab, var(--surface) 65%, transparent);
+    box-shadow: 0 1px 2px rgb(0 0 0 / .1);
   }
-  .nota-pegada.nota-b { transform: rotate(1.2deg); background: #ffe58f; }
-  .nota-pegada.nota-c { transform: rotate(-.4deg); background: #fff5c2; }
-  .nota-pegada .nota-k { font-size: .6875rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; opacity: .65; }
-  .nota-pegada .nota-t { margin-top: .55rem; padding-top: .55rem; border-top: 1px dashed rgb(59 50 0 / .25); font-weight: 700; }
-  @media (prefers-reduced-motion: no-preference) {
-    .nota-pegada { transition: transform .25s ease; }
-    .nota-pegada:hover { transform: rotate(0deg) scale(1.01); }
-  }
+  .nota-pegada.nota-b { transform: rotate(.8deg); }
+  .nota-pegada.nota-c { transform: rotate(-.3deg); }
+  .nota-pegada .nota-k { font-size: .6875rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--brand-ink); }
+  .nota-pegada .nota-t { margin-top: .55rem; padding-top: .55rem; border-top: 1px dashed color-mix(in oklab, var(--brand) 35%, transparent); font-weight: 700; }
 
   .chip {
     display: inline-flex; align-items: center; gap: .3rem;
