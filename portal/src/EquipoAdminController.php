@@ -5,10 +5,18 @@ namespace TypeDock\Plugin\Portal;
 
 use TypeDock\Core\PluginContext;
 
-/** Admin de TypeDock → Portal · Equipo: usuarios de agencia y qué clientes/proyectos ven. */
+/**
+ * Personas de la agencia y qué clientes/proyectos ven. Sirve al admin de TypeDock
+ * (Portal · Equipo) y al panel de equipo (/equipo/personas, solo Coordinación).
+ */
 class EquipoAdminController
 {
-    public function __construct(private readonly PluginContext $ctx) {}
+    protected readonly Pantalla $ui;
+
+    public function __construct(private readonly PluginContext $ctx, ?Pantalla $ui = null)
+    {
+        $this->ui = $ui ?? new PantallaAdmin($ctx);
+    }
 
     private function pdo(): \PDO
     {
@@ -33,11 +41,13 @@ class EquipoAdminController
 
     public function index(): void
     {
-        $this->ctx->view('templates/admin/equipo/index.latte', [
+        $this->ui->view('equipo/index.latte', [
             'usuarios'      => $this->service()->listAll(),
+            've'            => $this->service()->resumenAsignaciones(),
+            'fmt'           => new Fmt(),
             'roles'         => EquipoService::ROLES,
-            'flash_success' => $this->ctx->getFlash('success'),
-            'flash_error'   => $this->ctx->getFlash('error'),
+            'flash_success' => $this->ui->flash('success'),
+            'flash_error'   => $this->ui->flash('error'),
         ]);
     }
 
@@ -50,7 +60,7 @@ class EquipoAdminController
     {
         $u = $this->service()->find($id);
         if ($u === null) {
-            $this->ctx->redirect($this->ctx->adminUrl('equipo'), 'Usuario no encontrado.', 'error');
+            $this->ui->redirect($this->ui->url('equipo'), 'Usuario no encontrado.', 'error');
             return;
         }
         $this->form($u);
@@ -60,14 +70,14 @@ class EquipoAdminController
     private function form(?array $u): void
     {
         $asig = $u !== null ? $this->service()->asignaciones((string) $u['id']) : [];
-        $this->ctx->view('templates/admin/equipo/edit.latte', [
-            'usuario'      => $u,
+        $this->ui->view('equipo/edit.latte', [
+            'persona'      => $u,
             'roles'        => EquipoService::ROLES,
             'arbol'        => $this->arbol(),
             'clientesFull' => array_values(array_map(fn($a) => $a['cliente_id'], array_filter($asig, fn($a) => $a['proyecto_id'] === null))),
             'proyAsig'     => array_values(array_filter(array_map(fn($a) => $a['proyecto_id'], $asig))),
-            'flash_success' => $this->ctx->getFlash('success'),
-            'flash_error'   => $this->ctx->getFlash('error'),
+            'flash_success' => $this->ui->flash('success'),
+            'flash_error'   => $this->ui->flash('error'),
         ]);
     }
 
@@ -83,47 +93,56 @@ class EquipoAdminController
     {
         $datos = $_POST + ['activo' => 1];
         if (($err = $this->service()->error($datos)) !== null) {
-            $this->ctx->redirect($this->ctx->adminUrl('equipo/nuevo'), $err, 'error');
+            $this->ui->redirect($this->ui->url('equipo/nuevo'), $err, 'error');
             return;
         }
         $id = $this->service()->create($datos);
         [$c, $p] = $this->asignacionesPost();
         $this->service()->guardarAsignaciones($id, $c, $p);
-        $msg = 'Usuario creado.';
+        $msg = 'Listo: ' . trim((string) ($datos['nombre'] ?? '')) . ' ya es parte del equipo.';
         if (!empty($_POST['invitar'])) {
             $msg .= $this->invitar($id) ? ' Le enviamos la invitación por correo.' : ' No se pudo enviar la invitación (revisa el correo en Ajustes).';
         }
-        $this->ctx->redirect($this->ctx->adminUrl('equipo/' . $id), $msg);
+        $this->ui->redirect($this->ui->url('equipo/' . $id), $msg);
     }
 
     public function update(string $id): void
     {
         if ($this->service()->find($id) === null) {
-            $this->ctx->redirect($this->ctx->adminUrl('equipo'), 'Usuario no encontrado.', 'error');
+            $this->ui->redirect($this->ui->url('equipo'), 'Usuario no encontrado.', 'error');
             return;
         }
         if (($err = $this->service()->error($_POST, $id)) !== null) {
-            $this->ctx->redirect($this->ctx->adminUrl('equipo/' . $id), $err, 'error');
+            $this->ui->redirect($this->ui->url('equipo/' . $id), $err, 'error');
+            return;
+        }
+        // Nadie se deja fuera a sí mismo (perdería el acceso a esta misma pantalla).
+        if ($id === $this->ui->autorId() && (($_POST['rol'] ?? '') !== 'coordinador' || empty($_POST['activo']))) {
+            $this->ui->redirect($this->ui->url('equipo/' . $id), 'No puedes quitarte Coordinación ni desactivarte a ti misma/o. Pídeselo a otra persona de Coordinación.', 'error');
             return;
         }
         $this->service()->update($id, $_POST);
         [$c, $p] = $this->asignacionesPost();
         $this->service()->guardarAsignaciones($id, $c, $p);
-        $this->ctx->redirect($this->ctx->adminUrl('equipo/' . $id), 'Cambios guardados.');
+        $this->ui->redirect($this->ui->url('equipo/' . $id), 'Cambios guardados.');
     }
 
     public function destroy(string $id): void
     {
+        if ($id === $this->ui->autorId()) {
+            $this->ui->redirect($this->ui->url('equipo/' . $id), 'No puedes eliminarte a ti misma/o.', 'error');
+            return;
+        }
         (new AjustesService($this->pdo()))->borrarDeDueno('equipo', $id);
         $this->service()->delete($id);
-        $this->ctx->redirect($this->ctx->adminUrl('equipo'), 'Usuario eliminado. Sus comentarios y tareas se conservan.');
+        $this->ui->redirect($this->ui->url('equipo'), 'Usuario eliminado. Sus comentarios y tareas se conservan.');
     }
 
     public function invitarPost(string $id): void
     {
         $ok = $this->invitar($id);
-        $this->ctx->redirect(
-            $this->ctx->adminUrl('equipo/' . $id),
+        $this->ui->redirect(
+            $this->ui->url('equipo/' . $id),
             $ok ? 'Invitación enviada.' : 'No se pudo enviar la invitación (revisa el correo en Ajustes).',
             $ok ? 'success' : 'error'
         );

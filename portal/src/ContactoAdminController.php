@@ -72,7 +72,10 @@ class ContactoAdminController
             return;
         }
         $ok = $this->enviarInvitacion($id, (string) ($_POST['mensaje'] ?? ''));
-        $this->ui->redirect($this->ui->url('contactos/' . $id), $ok ? 'Invitación enviada.' : 'La invitación no salió: revisa el correo en Portal · Ajustes.', $ok ? 'success' : 'error');
+        // Desde la ficha del cliente en el panel se vuelve a la ficha.
+        $volver = (string) ($_POST['volver'] ?? '');
+        $volver = preg_match('#^/equipo/clientes/[0-9a-f-]{36}$#', $volver) === 1 ? $volver : $this->ui->url('contactos/' . $id);
+        $this->ui->redirect($volver, $ok ? 'Invitación enviada.' : 'La invitación no salió: revisa el correo en Portal · Ajustes.', $ok ? 'success' : 'error');
     }
 
     /** «Ver como cliente» desde el admin de TypeDock (sólo lectura). */

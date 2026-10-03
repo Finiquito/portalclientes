@@ -1,71 +1,68 @@
 {layout $plugin_ui_layout}
 
-{block page_title}{if $usuario}Editar usuario de agencia{else}Nuevo usuario de agencia{/if}{/block}
+{block page_title}{if $persona}{$persona['nombre']}{else}Nueva persona{/if}{/block}
 
 {block content}
+<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=3">
+
 <div class="page-header">
-    <h1>{if $usuario}{$usuario['nombre']}{else}Nuevo usuario de agencia{/if}</h1>
+    <h1>{if $persona}{$persona['nombre']}{else}Nueva persona del equipo{/if}</h1>
     <a href="{$admin_url('equipo')}" class="btn">Volver</a>
 </div>
 
 {if $flash_success}<div class="alert alert-success">{$flash_success}</div>{/if}
 {if $flash_error}<div class="alert alert-error">{$flash_error}</div>{/if}
 
-<form method="post" action="{if $usuario}{$admin_url('equipo/' . $usuario['id'])}{else}{$admin_url('equipo')}{/if}" id="form-equipo">
+<form method="post" action="{if $persona}{$admin_url('equipo/' . $persona['id'])}{else}{$admin_url('equipo')}{/if}" id="form-equipo">
 <input type="hidden" name="_csrf_token" value="{$csrf_token}">
 <div class="card">
-    <label class="form-label">Nombre</label>
-    <input type="text" name="nombre" class="form-input" value="{$usuario['nombre'] ?? ''}" required maxlength="255">
-
-    <label class="form-label mt-3">Email (con esto entra al panel)</label>
-    <input type="email" name="email" class="form-input" value="{$usuario['email'] ?? ''}" required>
-
-    <label class="form-label mt-3">Cargo <span class="form-hint">(opcional)</span></label>
-    <input type="text" name="cargo" class="form-input" value="{$usuario['cargo'] ?? ''}" maxlength="120" placeholder="Ej.: Diseñadora, Community manager">
-
-    <label class="form-label mt-3">Rol</label>
-    {var $rolActual = $usuario['rol'] ?? 'equipo'}
-    <select name="rol" class="form-input" id="rol">
-        {foreach $roles as $k => $txt}
-            <option value="{$k}" {if $rolActual === $k}selected{/if}>{$txt}</option>
-        {/foreach}
-    </select>
-
-    <label class="mt-3" style="display:flex;gap:.5rem;align-items:center">
-        <input type="checkbox" name="activo" value="1" {if !$usuario || (int) $usuario['activo']}checked{/if}>
-        Activo (puede entrar)
-    </label>
-    {if !$usuario}
-    <label class="mt-2" style="display:flex;gap:.5rem;align-items:center">
-        <input type="checkbox" name="invitar" value="1" checked>
-        Enviarle un correo con el acceso al panel
-    </label>
+    <div class="pa-grid-2">
+        <div>
+            <label class="form-label">Nombre</label>
+            <input type="text" name="nombre" class="form-input" value="{$persona['nombre'] ?? ''}" required maxlength="255">
+        </div>
+        <div>
+            <label class="form-label">Correo (con esto entra al panel)</label>
+            <input type="email" name="email" class="form-input" value="{$persona['email'] ?? ''}" required>
+        </div>
+        <div>
+            <label class="form-label">Cargo <span class="pa-muted">(opcional)</span></label>
+            <input type="text" name="cargo" class="form-input" value="{$persona['cargo'] ?? ''}" maxlength="120" placeholder="Ej.: Diseñadora, Community manager">
+        </div>
+        <div>
+            <label class="form-label">Rol</label>
+            {var $rolActual = $persona['rol'] ?? 'equipo'}
+            <select name="rol" class="form-input" id="rol">
+                {foreach $roles as $k => $txt}
+                    <option value="{$k}" {if $rolActual === $k}selected{/if}>{$txt}</option>
+                {/foreach}
+            </select>
+        </div>
+    </div>
+    <label class="pa-check"><input type="checkbox" name="activo" value="1" {if !$persona || (int) $persona['activo']}checked{/if}> <span>Activa (puede entrar al panel). Si la desactivas, sus comentarios y tareas se conservan.</span></label>
+    {if !$persona}
+    <label class="pa-check"><input type="checkbox" name="invitar" value="1" checked> <span>Enviarle ahora un correo con el acceso al panel</span></label>
     {/if}
 </div>
 
-<div class="card mt-3" id="asignaciones">
-    <h2 style="font-size:1.05rem;font-weight:800;margin:0 0 .25rem">Clientes y proyectos asignados</h2>
-    <p class="form-hint" id="hint-coord" style="margin:0 0 .75rem">Marca el cliente completo (incluye los proyectos que se creen después) o sólo algunos proyectos.</p>
+<div class="card mt-4" id="asignaciones">
+    <h2 class="pa-h2">Clientes y proyectos que ve</h2>
+    <p class="pa-muted" id="hint-coord">Marca el cliente completo (incluye los proyectos que se creen después) o solo algunos proyectos.</p>
     {if empty($arbol)}
-        <p class="text-slate-500">Todavía no hay clientes.</p>
+        <p class="pa-muted">Todavía no hay clientes.</p>
     {else}
-    <div style="display:grid;gap:.75rem;grid-template-columns:repeat(auto-fill,minmax(260px,1fr))">
+    <div class="pa-grid-2 mt-3">
         {foreach $arbol as $c}
         {var $full = in_array($c['id'], $clientesFull, true)}
-        <div style="border:1px solid #e2e8f0;border-radius:10px;padding:.75rem" data-cliente>
-            <label style="display:flex;gap:.5rem;align-items:center;font-weight:700">
-                <input type="checkbox" name="clientes[]" value="{$c['id']}" {if $full}checked{/if} data-full>
-                {$c['nombre']}
-            </label>
-            <div style="font-size:.8rem;color:#64748b;margin:.15rem 0 .4rem 1.5rem">Cliente completo</div>
-            {foreach $c['proyectos'] as $p}
-            <label style="display:flex;gap:.5rem;align-items:center;margin-left:1.5rem;font-size:.9rem">
-                <input type="checkbox" name="proyectos[]" value="{$p['id']}" {if $full || in_array($p['id'], $proyAsig, true)}checked{/if} data-proy>
-                {$p['nombre']}{if $p['estado'] !== 'activo'} <small class="text-slate-500">({$p['estado']})</small>{/if}
-            </label>
-            {else}
-            <div style="font-size:.85rem;color:#94a3b8;margin-left:1.5rem">Sin proyectos</div>
-            {/foreach}
+        <div class="pa-file" data-cliente>
+            <div class="pa-meta">
+                <label class="pa-check" style="margin-top:0"><input type="checkbox" name="clientes[]" value="{$c['id']}" {if $full}checked{/if} data-full> <span><strong>{$c['nombre']}</strong> <span class="pa-muted">· cliente completo</span></span></label>
+                {foreach $c['proyectos'] as $p}
+                <label class="pa-check" style="margin:.35rem 0 0 1.6rem"><input type="checkbox" name="proyectos[]" value="{$p['id']}" {if $full || in_array($p['id'], $proyAsig, true)}checked{/if} data-proy> <span>{$p['nombre']}{if $p['estado'] !== 'activo'} <span class="pa-muted">({$p['estado']})</span>{/if}</span></label>
+                {else}
+                <p class="pa-muted" style="margin:.35rem 0 0 1.6rem">Sin proyectos</p>
+                {/foreach}
+            </div>
         </div>
         {/foreach}
     </div>
@@ -75,12 +72,19 @@
 <p class="mt-4"><button type="submit" class="btn btn-primary">Guardar</button></p>
 </form>
 
-{if $usuario}
-<div class="card mt-3">
-    <form method="post" action="{$admin_url('equipo/' . $usuario['id'] . '/invitar')}" style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap">
+{if $persona}
+<div class="card mt-4">
+    <div class="pa-row">
+        <form method="post" action="{$admin_url('equipo/' . $persona['id'] . '/invitar')}">
+            <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+            <button type="submit" class="btn">Reenviar invitación</button>
+        </form>
+        <span class="pa-muted">Le llega un correo con el enlace al panel. Para entrar siempre pide un código a su correo.</span>
+    </div>
+    <hr class="pa-hr">
+    <form method="post" action="{$admin_url('equipo/' . $persona['id'] . '/borrar')}" onsubmit="return confirm('¿Eliminar a {$persona['nombre']}? Ya no podrá entrar. Sus comentarios y tareas se conservan. Si solo quieres quitarle el acceso por un tiempo, desactívala.');">
         <input type="hidden" name="_csrf_token" value="{$csrf_token}">
-        <button type="submit" class="btn">Reenviar invitación</button>
-        <span class="form-hint">Le llega un correo con el enlace al panel. Para entrar siempre pide un código a su correo.</span>
+        <button type="submit" class="btn btn-danger">Eliminar del equipo</button>
     </form>
 </div>
 {/if}
@@ -93,7 +97,7 @@
     caja.style.opacity = coord ? '.5' : '';
     document.getElementById('hint-coord').textContent = coord
       ? 'Coordinación ve todos los clientes: las asignaciones no aplican mientras tenga este rol.'
-      : 'Marca el cliente completo (incluye los proyectos que se creen después) o sólo algunos proyectos.';
+      : 'Marca el cliente completo (incluye los proyectos que se creen después) o solo algunos proyectos.';
     document.querySelectorAll('[data-cliente]').forEach(function (c) {
       var full = c.querySelector('[data-full]').checked;
       c.querySelectorAll('[data-proy]').forEach(function (p) { if (full) p.checked = true; p.disabled = full; });
@@ -104,3 +108,4 @@
   sync();
 })();
 </script>
+{/block}

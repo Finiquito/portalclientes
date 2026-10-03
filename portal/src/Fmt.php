@@ -329,6 +329,7 @@ final class Fmt
             'atendio'       => $vistaAdmin ? 'atendió la solicitud' : 'respondió tu solicitud',
             'cotizo'        => $vistaAdmin ? 'envió la cotización' : 'te envió la cotización de',
             'decidio'       => 'respondió la cotización de',
+            'estado'        => 'cambió el estado de',
             default         => 'actualizó',
         };
         return $quien . ' ' . $que;
@@ -337,19 +338,19 @@ final class Fmt
     /** Ícono (id del sprite) según la acción. */
     public function iconoActividad(string $accion): string
     {
+        // Mismo ícono que la sección del menú cuando la acción es «de» esa sección.
         return match ($accion) {
-            'comento'       => 'i-chat',
-            'subio_archivo' => 'i-clip',
-            'entrego'       => 'i-send',
-            'completo', 'aprobo' => 'i-check',
-            'pidio_cambios' => 'i-edit',
-            'asigno'        => 'i-tasks',
-            'publico', 'subio_version' => 'i-image',
-            'respondio'     => 'i-send',
-            'reunion'       => 'i-chat',
-            'solicito'      => 'i-plus',
-            'atendio', 'cotizo', 'decidio' => 'i-inbox',
-            default         => 'i-dot',
+            'comento'                  => 'i-chat',      // conversación
+            'subio_archivo', 'entrego' => 'i-clip',      // archivos
+            'completo', 'aprobo', 'estado', 'decidio' => 'i-check', // algo quedó listo o resuelto
+            'pidio_cambios'            => 'i-edit',      // hay que corregir
+            'asigno'                   => 'i-tasks',     // Tareas
+            'publico', 'subio_version' => 'i-eye',       // Contenidos
+            'respondio'                => 'i-send',      // el cliente envió su revisión
+            'reunion'                  => 'i-calendar',  // Reuniones
+            'solicito'                 => 'i-plus',      // Solicitudes
+            'atendio', 'cotizo'        => 'i-inbox',     // respuesta a una solicitud
+            default                    => 'i-edit',
         };
     }
 

@@ -44,15 +44,77 @@ class ClienteAdminController
     public function create(): void
     {
         $this->ui->view('clientes/edit.latte', [
-            'cliente' => null,
+            'cliente'  => null,
+            // Personas que pueden quedar a cargo desde el alta (Coordinación ya ve todo).
+            'personas' => array_values(array_filter((new EquipoService($this->pdo()))->activos(), fn($p) => $p['rol'] !== 'coordinador')),
         ]);
     }
 
+    /**
+     * Alta en un paso: el cliente y, si se completan, su primer proyecto, su primer contacto
+     * (con invitación ahora o más tarde) y las personas del equipo que lo llevan.
+     */
     public function store(): void
     {
+        $contactoEmail = trim(strtolower((string) ($_POST['contacto_email'] ?? '')));
+        if ($contactoEmail !== '' && filter_var($contactoEmail, FILTER_VALIDATE_EMAIL) === false) {
+            $this->ui->redirect($this->ui->url('clientes/nuevo'), 'El correo del contacto no es válido.', 'error');
+            return;
+        }
+        if ($contactoEmail !== '' && (new ContactoService($this->pdo()))->findByEmail($contactoEmail) !== null) {
+            $this->ui->redirect($this->ui->url('clientes/nuevo'), 'Ya existe un contacto con el correo ' . $contactoEmail . '. Usa otro o agrégalo después desde el cliente.', 'error');
+            return;
+        }
         $id = $this->service()->create($_POST);
-        // A la edición, donde está la personalización del portal de este cliente.
-        $this->ui->redirect($this->ui->url('clientes/' . $id), 'Cliente creado. Puedes personalizar su portal aquí abajo.');
+        $hechos = [];
+
+        $proyecto = trim((string) ($_POST['proyecto_nombre'] ?? ''));
+        if ($proyecto !== '') {
+            (new ProyectoService($this->pdo()))->create(['cliente_id' => $id, 'nombre' => $proyecto, 'estado' => 'activo']);
+            $hechos[] = 'el proyecto «' . $proyecto . '»';
+        }
+
+        $aviso = '';
+        if ($contactoEmail !== '') {
+            $cs = new ContactoService($this->pdo());
+            $cid = $cs->create([
+                'cliente_id' => $id,
+                'nombre'     => trim((string) ($_POST['contacto_nombre'] ?? '')) ?: $contactoEmail,
+                'email'      => $contactoEmail,
+                'rol'        => ($_POST['contacto_rol'] ?? '') === 'viewer' ? 'viewer' : 'aprobador',
+            ]);
+            $hechos[] = 'el contacto ' . $contactoEmail;
+            if (($_POST['invitar'] ?? '') === 'ahora') {
+                try {
+                    $ok = (new Notifier($this->ctx, $this->pdo()))->invitacionCliente((array) $cs->find($cid), '', $this->ui->firma());
+                } catch (\Throwable) {
+                    $ok = false;
+                }
+                if ($ok) {
+                    $cs->marcarInvitado($cid);
+                    $hechos[] = 'la invitación ya va en camino';
+                } else {
+                    $aviso = ' La invitación no salió: revisa el correo en los ajustes.';
+                }
+            }
+        }
+
+        $eq = new EquipoService($this->pdo());
+        $nombres = [];
+        foreach ((array) ($_POST['personas'] ?? []) as $pid) {
+            $p = $eq->find((string) $pid);
+            if ($p !== null && (int) $p['activo'] === 1) {
+                $eq->asignar((string) $p['id'], $id);
+                $nombres[] = (string) $p['nombre'];
+            }
+        }
+        if ($nombres !== []) {
+            $hechos[] = 'a cargo de ' . implode(' y ', $nombres);
+        }
+
+        $msg = 'Cliente creado' . ($hechos !== [] ? ' con ' . implode(', ', $hechos) : '') . '.' . $aviso;
+        // En el panel se va a la ficha del cliente; en el admin, a su edición (ahí se personaliza el portal).
+        $this->ui->redirect($this->ui->url('clientes') . '/' . $id, $msg, $aviso === '' ? 'success' : 'error');
     }
 
     public function edit(string $id): void

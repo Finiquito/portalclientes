@@ -51,6 +51,12 @@ Flight::route('GET /landing', function () use ($ctx) {
     echo $ctx->latte()->renderToString(dirname(__DIR__, 2) . '/theme/prisma/layouts/home.latte', []);
 });
 Flight::route('GET /admin', fn() => Flight::redirect('/admin/portal'));
+// Desarrollo: deja el error completo en storage/errores.log.
+Flight::map('error', function (Throwable $e) {
+    file_put_contents(dirname(__DIR__) . '/storage/errores.log', date('c') . ' ' . $e . "\n\n", FILE_APPEND);
+    http_response_code(500);
+    echo '<h1>500 Internal Server Error</h1><pre>' . htmlspecialchars($e->getMessage()) . '</pre>';
+});
 try {
     Flight::start();
 } catch (TypeDock\Core\RedirectException) {

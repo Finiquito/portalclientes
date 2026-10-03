@@ -14,14 +14,36 @@
     {else}Sin novedades de clientes desde tu última visita.{/if}
 </p>
 
-{if empty($items)}
-    <div class="card"><p class="pa-muted">Todavía no hay actividad.</p></div>
+{var $base = $admin_url('actividad')}
+<div class="pa-filtros">
+    <div class="pa-pills" role="navigation" aria-label="Quién">
+        {foreach ['' => 'Todo', 'cliente' => 'De clientes', 'equipo' => 'Del equipo'] as $k => $txt}
+            <a href="{$base}{if http_build_query(array_filter(['cliente' => $fCliente, 'quien' => $k])) !== ''}?{http_build_query(array_filter(['cliente' => $fCliente, 'quien' => $k]))}{/if}" class="pa-pill" {if $fQuien === $k}aria-current="true"{/if}>{$txt} <span class="pa-n">{$conteos[$k]}</span></a>
+        {/foreach}
+    </div>
+    {if count($clientes) > 1}
+    <form method="get" action="{$base}" class="pa-selects" data-auto>
+        {if $fQuien !== ''}<input type="hidden" name="quien" value="{$fQuien}">{/if}
+        <label for="f-cliente">Cliente</label>
+        <select id="f-cliente" name="cliente" class="form-input" style="width:auto">
+            <option value="">Todos los clientes</option>
+            {foreach $clientes as $id => $nombre}
+                <option value="{$id}" {if $fCliente === (string) $id}selected{/if}>{$nombre}</option>
+            {/foreach}
+        </select>
+        <noscript><button type="submit" class="btn btn-sm">Filtrar</button></noscript>
+    </form>
+    {/if}
+</div>
+
+{if empty($filas)}
+    <div class="card"><p class="pa-muted">{if $fCliente !== '' || $fQuien !== ''}No hay actividad con estos filtros.{else}Todavía no hay actividad.{/if}</p></div>
 {else}
 <div class="card" style="overflow-x:auto">
     <table class="table">
         <thead><tr><th>Cuándo</th><th>Cliente</th><th>Qué pasó</th><th>Detalle</th></tr></thead>
         <tbody>
-        {foreach $items as $a}
+        {foreach $filas as $a}
             <tr {if $a['actor_tipo'] === 'contacto' && $vistaAnterior !== '' && $a['created_at'] > $vistaAnterior}class="pa-new"{/if}>
                 <td class="pa-muted" title="{$a['created_at']}">{$fmt->rel($a['created_at'])}</td>
                 <td>{$a['cliente_nombre']}</td>
@@ -36,4 +58,5 @@
     </table>
 </div>
 {/if}
+{include '../_filtros.js.latte'}
 {/block}

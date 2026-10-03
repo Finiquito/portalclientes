@@ -50,5 +50,18 @@
         {/if}
         <a href="/equipo/salir" class="btn btn-ghost btn-sm mt-6"><svg class="size-4"><use href="#i-logout"/></svg> Salir del panel</a>
     </section>
+
+    {* En el celular la barra de abajo no alcanza para todo: el resto de las secciones queda aquí. *}
+    <section class="card card-pad reveal lg:hidden" style="--i:3" aria-labelledby="h-mas">
+        <h2 id="h-mas" class="text-lg font-extrabold tracking-tight">Más secciones</h2>
+        <nav class="mt-3 space-y-1">
+            <a href="/equipo/proyectos" class="nav-item"><svg class="size-5 flex-none"><use href="#i-briefcase"/></svg><span class="flex-1">Proyectos</span></a>
+            <a href="/equipo/actividad" class="nav-item"><svg class="size-5 flex-none"><use href="#i-bolt"/></svg><span class="flex-1">Actividad</span></a>
+            {if $usuario['rol'] === 'coordinador'}
+                <a href="/equipo/personas" class="nav-item"><svg class="size-5 flex-none"><use href="#i-team"/></svg><span class="flex-1">Equipo</span></a>
+                <a href="/equipo/agencia" class="nav-item"><svg class="size-5 flex-none"><use href="#i-cog"/></svg><span class="flex-1">Ajustes de la agencia</span></a>
+            {/if}
+        </nav>
+    </section>
 </div>
 {/block}

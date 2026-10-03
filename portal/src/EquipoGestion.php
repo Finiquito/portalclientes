@@ -108,6 +108,27 @@ class EquipoGestion extends EquipoController
         $r('POST', 'solicitudes/@id/comentarios',   SolicitudAdminController::class, 'comentar', 'solicitud');
         $r('POST', 'solicitudes/@id/borrar',        SolicitudAdminController::class, 'destroy', 'solicitud', true);
 
+        // Personas del equipo y sus asignaciones (solo Coordinación).
+        $r('GET',  'personas',                      EquipoAdminController::class, 'index', null, true);
+        $r('GET',  'personas/nuevo',                EquipoAdminController::class, 'create', null, true);
+        $r('POST', 'personas',                      EquipoAdminController::class, 'store', null, true);
+        $r('GET',  'personas/@id',                  EquipoAdminController::class, 'edit', null, true);
+        $r('POST', 'personas/@id',                  EquipoAdminController::class, 'update', null, true);
+        $r('POST', 'personas/@id/borrar',           EquipoAdminController::class, 'destroy', null, true);
+        $r('POST', 'personas/@id/invitar',          EquipoAdminController::class, 'invitarPost', null, true);
+
+        // Actividad (cada quien ve la de sus clientes) y ajustes de la agencia (Coordinación).
+        $r('GET',  'actividad',                     ActividadAdminController::class, 'actividad');
+        $r('GET',  'agencia',                       ActividadAdminController::class, 'ajustesForm', null, true);
+        $r('POST', 'agencia',                       ActividadAdminController::class, 'ajustesGuardar', null, true);
+        $r('POST', 'agencia/ia-probar',             ActividadAdminController::class, 'iaProbar', null, true);
+        $r('POST', 'agencia/correo',                ActividadAdminController::class, 'correoGuardar', null, true);
+        $r('POST', 'agencia/correo-prueba',         ActividadAdminController::class, 'correoPrueba', null, true);
+        $r('POST', 'agencia/smtp-probar',           ActividadAdminController::class, 'smtpProbar', null, true);
+        $r('POST', 'agencia/cola/@id/enviar',       ActividadAdminController::class, 'colaEnviar', null, true);
+        $r('POST', 'agencia/cola/@id/cancelar',     ActividadAdminController::class, 'colaCancelar', null, true);
+        $r('POST', 'agencia/cron-clave',            ActividadAdminController::class, 'cronRegenerar', null, true);
+
         $r('GET',  'reuniones',                     ReunionAdminController::class, 'index');
         $r('GET',  'reuniones/nuevo',               ReunionAdminController::class, 'create');
         $r('POST', 'reuniones',                     ReunionAdminController::class, 'store');
@@ -222,6 +243,10 @@ class EquipoGestion extends EquipoController
             'entregas'  => 'contenidos',
             'reuniones' => 'reuniones',
             'solicitudes' => 'solicitudes',
+            'proyectos' => 'proyectos',
+            'equipo'    => 'personas',
+            'ajustes'   => 'agencia',
+            'actividad' => 'actividad',
             default     => 'clientes',
         };
     }

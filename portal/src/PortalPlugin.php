@@ -212,6 +212,11 @@ class PortalPlugin implements PluginInterface
         \Flight::route('GET /equipo/clientes',        [$eq, 'clientes']);
         \Flight::route('GET /equipo/clientes/@id',    fn(string $id) => $eq->cliente($id));
         \Flight::route('POST /equipo/ver-como/@id',   fn(string $id) => $eq->verComo($id));
+        \Flight::route('GET /equipo/proyectos',       [$eq, 'proyectos']);
+        \Flight::route('POST /equipo/clientes/@id/equipo',  fn(string $id) => $eq->asignarCliente($id));
+        \Flight::route('POST /equipo/clientes/@id/equipo/@pid/quitar',  fn(string $id, string $pid) => $eq->quitarCliente($id, $pid));
+        \Flight::route('POST /equipo/proyectos/@id/equipo', fn(string $id) => $eq->asignarProyecto($id));
+        \Flight::route('POST /equipo/proyectos/@id/equipo/@pid/quitar', fn(string $id, string $pid) => $eq->quitarProyecto($id, $pid));
         \Flight::route('GET /equipo/proyectos/@id',   fn(string $id) => $eq->proyecto($id));
 
         $ctx->addAdminMenuItem('Portal · Clientes', '');

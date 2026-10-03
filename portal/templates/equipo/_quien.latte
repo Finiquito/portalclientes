@@ -1,0 +1,41 @@
+{*
+    «Quién trabaja aquí» en la ficha de un cliente o de un proyecto.
+    Parámetros: $gente [id, nombre, cargo, nota, quitable], $disponibles [id, nombre],
+    $base (URL de la acción: …/equipo), $puede (Coordinación), $csrf, $fmt.
+*}
+<section class="card card-pad" id="equipo-asignado" aria-labelledby="h-quien">
+    <h2 id="h-quien" class="text-base font-extrabold tracking-tight">Quién trabaja aquí</h2>
+    {if empty($gente)}
+        <p class="mt-3 text-sm text-muted">Nadie del equipo asignado todavía{if $puede}. Coordinación lo ve igual.{else}.{/if}</p>
+    {else}
+        <ul class="mt-4 space-y-3">
+            {foreach $gente as $g}
+                <li class="flex items-center gap-3">
+                    <span class="avatar avatar-team flex-none">{$fmt->iniciales($g['nombre'])}</span>
+                    <span class="min-w-0 flex-1 leading-snug">
+                        <span class="block truncate text-sm font-semibold">{$g['nombre']}</span>
+                        <span class="block truncate text-xs text-muted">{$g['cargo'] ? $g['cargo'] . ' · ' : ''}{$g['nota']}</span>
+                    </span>
+                    {if $puede && $g['quitable']}
+                        <form method="post" action="{$base}/{$g['id']}/quitar" onsubmit="return confirm('¿Quitar a {$g['nombre']} de aquí? Dejará de verlo en su panel.');">
+                            <input type="hidden" name="_csrf" value="{$csrf}">
+                            <button type="submit" class="text-muted hover:text-danger" title="Quitar" aria-label="Quitar a {$g['nombre']}"><svg class="size-4"><use href="#i-x"/></svg></button>
+                        </form>
+                    {/if}
+                </li>
+            {/foreach}
+        </ul>
+    {/if}
+    {if $puede && $disponibles}
+        <form method="post" action="{$base}" class="mt-4 flex gap-2 border-t border-line pt-4">
+            <input type="hidden" name="_csrf" value="{$csrf}">
+            <label for="q-persona" class="sr-only">Persona del equipo</label>
+            <select id="q-persona" name="persona_id" class="field min-w-0 flex-1 py-2! text-sm" required>
+                <option value="">Agregar a alguien…</option>
+                {foreach $disponibles as $d}<option value="{$d['id']}">{$d['nombre']}</option>{/foreach}
+            </select>
+            <button type="submit" class="btn btn-soft btn-sm">Asignar</button>
+        </form>
+    {/if}
+    {if $puede}<p class="mt-3 text-xs text-muted"><a href="/equipo/personas" class="font-semibold text-brand-ink hover:underline">Ver todo el equipo</a></p>{/if}
+</section>

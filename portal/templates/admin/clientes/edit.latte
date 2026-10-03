@@ -34,8 +34,47 @@
         </select>
         <p class="form-hint mt-1">Define su huso horario: los correos del sistema sólo le llegan de lunes a viernes en horario hábil de su país (por defecto 07:00–19:00). Lo que se genere fuera de ese horario queda en cola y sale en la próxima apertura.</p>
 
+        {if !$cliente}
+        <hr class="pa-hr">
+        <h2 class="pa-h2">Para empezar <span class="pa-muted">(opcional)</span></h2>
+        <p class="pa-muted">Si lo completas, el cliente queda listo de una vez. Todo se puede agregar o cambiar después.</p>
+
+        <label class="form-label mt-3">Primer proyecto</label>
+        <input type="text" name="proyecto_nombre" class="form-input" maxlength="255" placeholder="Ej.: Redes octubre, Sitio web">
+
+        <div class="pa-grid-2 mt-3">
+            <div>
+                <label class="form-label">Nombre del contacto</label>
+                <input type="text" name="contacto_nombre" class="form-input" maxlength="255" placeholder="Quien revisa y aprueba">
+            </div>
+            <div>
+                <label class="form-label">Correo del contacto</label>
+                <input type="email" name="contacto_email" class="form-input" placeholder="nombre@cliente.cl">
+            </div>
+        </div>
+        <label class="form-label mt-3">Qué puede hacer</label>
+        <select name="contacto_rol" class="form-input">
+            <option value="aprobador">Colaborador: sube archivos, completa tareas y aprueba</option>
+            <option value="viewer">Sólo lectura: ve el avance y comenta</option>
+        </select>
+        <div class="mt-2" role="radiogroup" aria-label="Invitación al portal">
+            <label class="pa-check"><input type="radio" name="invitar" value="despues" checked> <span><strong>Invitar más tarde</strong> · recomendado: primero armas el proyecto y le envías la invitación cuando haya algo que mostrar.</span></label>
+            <label class="pa-check"><input type="radio" name="invitar" value="ahora"> <span><strong>Invitar ahora</strong> · le llega el correo con el acceso a su portal.</span></label>
+        </div>
+
+        {if !empty($personas)}
+        <label class="form-label mt-4">Quién del equipo lo lleva</label>
+        <div class="pa-inline">
+            {foreach $personas as $pe}
+                <label class="pa-check" style="margin-top:0"><input type="checkbox" name="personas[]" value="{$pe['id']}"> <span>{$pe['nombre']}{if $pe['cargo']} <span class="pa-muted">· {$pe['cargo']}</span>{/if}</span></label>
+            {/foreach}
+        </div>
+        <p class="form-hint mt-1">Verán este cliente y todos sus proyectos en su panel. Coordinación lo ve siempre.</p>
+        {/if}
+        {/if}
+
         <p class="mt-4">
-            <button type="submit" class="btn btn-primary">Guardar</button>
+            <button type="submit" class="btn btn-primary">{if $cliente}Guardar{else}Crear cliente{/if}</button>
         </p>
     </form>
 </div>

@@ -122,6 +122,7 @@
 </div>
 
 <aside class="mt-5 min-w-0 space-y-5 xl:mt-0">
+    {if $quien}{include '_quien.latte', gente: $quien['gente'], disponibles: $quien['disponibles'], base: '/equipo/proyectos/' . $proyecto['id'] . '/equipo', puede: true, csrf: $csrf, fmt: $fmt}{/if}
     <section class="card card-pad" id="entregas">
         <h2 class="text-base font-extrabold tracking-tight">Contenidos</h2>
         {if empty($entregas)}

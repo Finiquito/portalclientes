@@ -29,14 +29,21 @@ final class PantallaEquipo implements Pantalla
     public function url(string $ruta = ''): string
     {
         $ruta = trim($ruta, '/');
-        if ($ruta === '' || $ruta === 'clientes' || $ruta === 'proyectos') {
+        if ($ruta === '' || $ruta === 'clientes') {
             return '/equipo/clientes';
+        }
+        if ($ruta === 'proyectos') {
+            return '/equipo/proyectos';
         }
         if (preg_match('#^(clientes|proyectos)/([0-9a-f-]{36})$#i', $ruta, $m) === 1) {
             return '/equipo/' . $m[1] . '/' . $m[2] . '/editar';
         }
-        if (str_starts_with($ruta, 'ajustes') || str_starts_with($ruta, 'equipo') || $ruta === 'actividad') {
-            return '/equipo';
+        // Las personas del equipo viven en /equipo/personas (/equipo ya es el inicio del panel).
+        if ($ruta === 'equipo' || str_starts_with($ruta, 'equipo/')) {
+            return '/equipo/personas' . substr($ruta, 6);
+        }
+        if (str_starts_with($ruta, 'ajustes')) {
+            return '/equipo/agencia' . substr($ruta, 7);
         }
         return '/equipo/' . $ruta;
     }

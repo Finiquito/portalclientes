@@ -253,6 +253,118 @@ class EquipoController
         $this->redirectTo('/portal');
     }
 
+    // ---------------------------------------------------------------------
+    // Quién trabaja en un cliente o proyecto (Coordinación asigna desde la ficha)
+    // ---------------------------------------------------------------------
+
+    /**
+     * @return array{gente: array<int, array<string, mixed>>, disponibles: array<int, array<string, mixed>>}
+     */
+    protected function quien(string $clienteId, ?string $proyectoId = null): array
+    {
+        $svc = new EquipoService($this->pdo());
+        $gente = [];
+        foreach ($svc->delCliente($clienteId) as $g) {
+            if ($proyectoId === null) {
+                $nota = $g['completo'] ? 'Todo el cliente' : 'Solo ' . implode(', ', $g['proyectos']);
+                $gente[] = ['id' => $g['id'], 'nombre' => $g['nombre'], 'cargo' => $g['cargo'], 'nota' => $nota, 'quitable' => true];
+            } elseif ($g['completo']) {
+                $gente[] = ['id' => $g['id'], 'nombre' => $g['nombre'], 'cargo' => $g['cargo'], 'nota' => 'Por todo el cliente', 'quitable' => false];
+            } elseif (in_array($proyectoId, $g['proyecto_ids'], true)) {
+                $gente[] = ['id' => $g['id'], 'nombre' => $g['nombre'], 'cargo' => $g['cargo'], 'nota' => 'Este proyecto', 'quitable' => true];
+            }
+        }
+        $ids = array_column($gente, 'id');
+        $disponibles = array_values(array_filter(
+            $svc->activos(),
+            fn($p) => $p['rol'] !== 'coordinador' && !in_array((string) $p['id'], $ids, true)
+        ));
+        return ['gente' => $gente, 'disponibles' => $disponibles];
+    }
+
+    /** Coordinación + CSRF válido; si no, vuelve con un aviso. */
+    private function puedeAsignar(array $u, string $volver): bool
+    {
+        $enviado = (string) ($_POST['_csrf'] ?? '');
+        if ($u['rol'] !== 'coordinador' || $enviado === '' || !hash_equals(PortalSession::csrf(), $enviado)) {
+            PortalSession::flash('error', 'Solo Coordinación asigna personas del equipo.');
+            $this->redirectTo($volver);
+            return false;
+        }
+        return true;
+    }
+
+    /** @return array<string, mixed>|null persona activa del equipo */
+    private function personaPost(): ?array
+    {
+        $p = (new EquipoService($this->pdo()))->find((string) ($_POST['persona_id'] ?? ''));
+        return $p !== null && (int) $p['activo'] === 1 ? $p : null;
+    }
+
+    public function asignarCliente(string $id): void
+    {
+        $u = $this->requerirUsuario();
+        $volver = '/equipo/clientes/' . $id . '#equipo-asignado';
+        $c = $this->fetchOne('SELECT id FROM portal_clientes WHERE id = ?', [$id]);
+        $p = $this->personaPost();
+        if ($c === null || !$this->puedeAsignar($u, $volver)) {
+            if ($c === null) {
+                $this->redirectTo('/equipo/clientes');
+            }
+            return;
+        }
+        if ($p !== null) {
+            (new EquipoService($this->pdo()))->asignar((string) $p['id'], $id);
+            PortalSession::flash('ok', $p['nombre'] . ' ahora ve este cliente y todos sus proyectos.');
+        }
+        $this->redirectTo($volver);
+    }
+
+    public function quitarCliente(string $id, string $personaId): void
+    {
+        $u = $this->requerirUsuario();
+        $volver = '/equipo/clientes/' . $id . '#equipo-asignado';
+        if (!$this->puedeAsignar($u, $volver)) {
+            return;
+        }
+        (new EquipoService($this->pdo()))->desasignar($personaId, $id);
+        PortalSession::flash('ok', 'Listo: ya no ve este cliente.');
+        $this->redirectTo($volver);
+    }
+
+    public function asignarProyecto(string $id): void
+    {
+        $u = $this->requerirUsuario();
+        $volver = '/equipo/proyectos/' . $id . '#equipo-asignado';
+        $pr = $this->fetchOne('SELECT id, cliente_id FROM portal_proyectos WHERE id = ?', [$id]);
+        if ($pr === null) {
+            $this->redirectTo('/equipo/proyectos');
+            return;
+        }
+        if (!$this->puedeAsignar($u, $volver)) {
+            return;
+        }
+        $p = $this->personaPost();
+        if ($p !== null) {
+            (new EquipoService($this->pdo()))->asignar((string) $p['id'], (string) $pr['cliente_id'], $id);
+            PortalSession::flash('ok', $p['nombre'] . ' ahora ve este proyecto.');
+        }
+        $this->redirectTo($volver);
+    }
+
+    public function quitarProyecto(string $id, string $personaId): void
+    {
+        $u = $this->requerirUsuario();
+        $volver = '/equipo/proyectos/' . $id . '#equipo-asignado';
+        $pr = $this->fetchOne('SELECT id, cliente_id FROM portal_proyectos WHERE id = ?', [$id]);
+        if ($pr === null || !$this->puedeAsignar($u, $volver)) {
+            return;
+        }
+        (new EquipoService($this->pdo()))->desasignar($personaId, (string) $pr['cliente_id'], $id);
+        PortalSession::flash('ok', 'Listo: ya no ve este proyecto.');
+        $this->redirectTo($volver);
+    }
+
     protected function view(string $plantilla, array $datos): void
     {
         $this->ctx->view('templates/equipo/' . $plantilla, $datos);
@@ -464,7 +576,28 @@ class EquipoController
         [$wP, $pP] = $acc->filtroProyecto('p.id');
         $nProyectos = (int) ($this->fetchOne("SELECT COUNT(*) AS n FROM portal_proyectos p WHERE p.estado = 'activo' AND {$wP}", $pP)['n'] ?? 0);
 
+        // Coordinación: cuánto tiene cada persona (tareas abiertas a su nombre y atrasadas).
+        $carga = null;
+        if ($acc->todo()) {
+            $carga = $this->fetchAll(
+                "SELECT eq.id, eq.nombre, eq.cargo,
+                        COUNT(t.id) AS abiertas,
+                        COALESCE(SUM(CASE WHEN t.fecha_vencimiento IS NOT NULL AND SUBSTR(t.fecha_vencimiento, 1, 10) < ? THEN 1 ELSE 0 END), 0) AS atrasadas
+                 FROM portal_equipo eq
+                 LEFT JOIN portal_tareas t ON t.responsable_usuario_id = eq.id AND t.responsable_tipo = 'equipo'
+                      AND t.estado IN ('pendiente', 'en_progreso') AND COALESCE(t.archivada, 0) = 0
+                 WHERE eq.activo = 1
+                 GROUP BY eq.id, eq.nombre, eq.cargo
+                 ORDER BY atrasadas DESC, abiertas DESC, eq.nombre",
+                [$hoy]
+            );
+        }
+        $sinResponsable = $carga === null ? 0 : count(array_filter($turno, fn($t) =>
+            $t['responsable_tipo'] === 'equipo' && in_array($t['estado'], ['pendiente', 'en_progreso'], true) && empty($t['responsable_usuario_id'])));
+
         $this->view('inicio.latte', $this->contexto($u, 'inicio', [
+            'carga'        => $carga,
+            'sinResponsable' => $sinResponsable,
             'nombre'       => $fmt->primerNombre((string) $u['nombre']),
             'delCliente'   => $delCliente,
             'mias'         => $mias,
@@ -554,6 +687,29 @@ class EquipoController
         ]));
     }
 
+    /** Todos los proyectos que ve el usuario, con su avance, filtrados por estado. */
+    public function proyectos(): void
+    {
+        $u   = $this->requerirUsuario();
+        $acc = $this->acceso($u);
+        $todos = $this->proyectosConAvance($acc);
+        usort($todos, fn($a, $b) => [(string) $a['cliente_nombre'], (string) $a['nombre']] <=> [(string) $b['cliente_nombre'], (string) $b['nombre']]);
+        $grupos = [
+            'activo'  => array_values(array_filter($todos, fn($p) => $p['estado'] === 'activo')),
+            'pausado' => array_values(array_filter($todos, fn($p) => $p['estado'] === 'pausado')),
+            'cerrado' => array_values(array_filter($todos, fn($p) => $p['estado'] === 'cerrado')),
+            'todos'   => $todos,
+        ];
+        $filtro = (string) ($_GET['f'] ?? 'activo');
+        $filtro = isset($grupos[$filtro]) ? $filtro : 'activo';
+        $this->view('proyectos.latte', $this->contexto($u, 'proyectos', [
+            'grupos'   => $grupos,
+            'filtro'   => $filtro,
+            'lista'    => $grupos[$filtro],
+            'puedeCrear' => $acc->todo() || $acc->clienteIds() !== [],
+        ]));
+    }
+
     public function cliente(string $id): void
     {
         $u   = $this->requerirUsuario();
@@ -572,6 +728,7 @@ class EquipoController
             'contactos' => $this->fetchAll('SELECT * FROM portal_contactos WHERE cliente_id = ? ORDER BY nombre', [$id]),
             'actividad' => (new ActividadService($this->pdo()))->deCliente($id, 10),
             'pais'      => HorarioHabil::PAISES[$c['pais'] ?? 'CL'] ?? null,
+            'quien'     => $this->quien($id),
         ]));
     }
 
@@ -609,8 +766,9 @@ class EquipoController
         $entregas = array_values(array_filter($entregas, fn($e) => $e['proyecto_id'] === $id));
         $reuniones = $this->fetchAll('SELECT * FROM portal_reuniones WHERE proyecto_id = ? ORDER BY fecha DESC LIMIT 8', [$id]);
 
-        $this->view('proyecto.latte', $this->contexto($u, 'clientes', [
+        $this->view('proyecto.latte', $this->contexto($u, 'proyectos', [
             'proyecto'  => $pr,
+            'quien'     => $u['rol'] === 'coordinador' ? $this->quien((string) $pr['cliente_id'], $id) : null,
             'marcaCli'  => $this->marcasClientes([(string) $pr['cliente_id']])[(string) $pr['cliente_id']],
             'tareas'    => $tareas,
             'entregas'  => $entregas,

@@ -5,10 +5,18 @@ namespace TypeDock\Plugin\Portal;
 
 use TypeDock\Core\PluginContext;
 
-/** Pantalla "qué pasó" para el admin + ajustes globales del portal. */
+/**
+ * «Qué pasó» (actividad) y ajustes de la agencia. Sirve al admin de TypeDock y al panel
+ * de equipo: la actividad la ve cada persona según sus clientes; los ajustes, solo Coordinación.
+ */
 class ActividadAdminController
 {
-    public function __construct(private readonly PluginContext $ctx) {}
+    protected readonly Pantalla $ui;
+
+    public function __construct(private readonly PluginContext $ctx, ?Pantalla $ui = null)
+    {
+        $this->ui = $ui ?? new PantallaAdmin($ctx);
+    }
 
     private function pdo(): \PDO
     {
@@ -26,28 +34,59 @@ class ActividadAdminController
             $this->notificador()->vaciarCola();
         } catch (\Throwable) {
         }
+        // «Desde tu última visita»: en el panel es de cada persona; en el admin, del sitio.
+        $yo = $this->ui->autorId();
+        [$dueno, $duenoId] = $yo !== null ? ['equipo', $yo] : ['global', 'portal'];
         $aj    = $this->ajustes();
-        $vista = $aj->get('global', 'portal', 'actividad_vista');
+        $vista = $aj->get($dueno, $duenoId, 'actividad_vista');
         $svc   = new ActividadService($this->pdo());
 
-        $this->ctx->view('templates/admin/actividad/index.latte', [
-            'items'          => $svc->recientes(80),
-            'nuevas'         => $svc->contarDeClientesDesde($vista),
+        // Por cliente y, si la novedad es de un proyecto, también por proyecto (alguien puede ver
+        // solo uno de los proyectos de un cliente).
+        $todos = $this->ui->filtrar($svc->recientes(400), 'cliente_id', 'cliente');
+        $deProyecto = array_values(array_filter($todos, fn($a) => !empty($a['proyecto_id'])));
+        $proyOk = array_flip(array_column($this->ui->filtrar($deProyecto, 'proyecto_id', 'proyecto'), 'id'));
+        $todos = array_values(array_filter($todos, fn($a) => empty($a['proyecto_id']) || isset($proyOk[$a['id']])));
+        $clientes = [];
+        foreach ($todos as $a) {
+            $clientes[(string) $a['cliente_id']] = (string) $a['cliente_nombre'];
+        }
+        asort($clientes);
+        $cliente = (string) ($_GET['cliente'] ?? '');
+        $quien   = (string) ($_GET['quien'] ?? '');
+        $delCliente = array_values(array_filter($todos, fn($a) => $cliente === '' || $a['cliente_id'] === $cliente));
+        $deClientes = array_values(array_filter($delCliente, fn($a) => $a['actor_tipo'] === 'contacto'));
+        $delEquipo  = array_values(array_filter($delCliente, fn($a) => $a['actor_tipo'] !== 'contacto'));
+        $items = match ($quien) {
+            'cliente' => $deClientes,
+            'equipo'  => $delEquipo,
+            default   => $delCliente,
+        };
+        $nuevas = count(array_filter($todos, fn($a) => $a['actor_tipo'] === 'contacto' && $vista !== '' && $a['created_at'] > $vista));
+
+        $this->ui->view('actividad/index.latte', [
+            'filas'          => array_slice($items, 0, 120),
+            'nuevas'         => $vista === '' ? 0 : $nuevas,
             'vistaAnterior'  => $vista,
+            'clientes'       => $clientes,
+            'fCliente'       => isset($clientes[$cliente]) ? $cliente : '',
+            'fQuien'         => in_array($quien, ['cliente', 'equipo'], true) ? $quien : '',
+            'conteos'        => ['' => count($delCliente), 'cliente' => count($deClientes), 'equipo' => count($delEquipo)],
             'fmt'            => new Fmt(),
         ]);
 
         // Se marca como vista después de mostrarla (el contador de arriba ya se calculó).
-        $aj->set('global', 'portal', 'actividad_vista', (new \DateTimeImmutable())->format('Y-m-d H:i:s'));
+        $aj->set($dueno, $duenoId, 'actividad_vista', (new \DateTimeImmutable())->format('Y-m-d H:i:s'));
     }
 
     public function ajustesForm(): void
     {
         $aj = $this->ajustes()->todos('global', 'portal');
-        $this->ctx->view('templates/admin/ajustes/index.latte', [
+        $this->ui->view('ajustes/index.latte', [
             'cfg' => [
                 'email_avisos'  => $aj['email_avisos'] ?? '',
                 'nombre_equipo' => $aj['nombre_equipo'] ?? '',
+                'color_agencia' => $aj['color_agencia'] ?? '',
                 'max_mb'        => $aj['max_mb'] ?? '20',
                 'urgentes_max'  => $aj['urgentes_max'] ?? '1',
                 'pais_agencia'  => HorarioHabil::paisValido($aj['pais_agencia'] ?? HorarioHabil::PAIS_DEFECTO),
@@ -72,8 +111,8 @@ class ActividadAdminController
                 ArchivoService::iniBytes((string) ini_get('upload_max_filesize')) ?: PHP_INT_MAX,
                 ArchivoService::iniBytes((string) ini_get('post_max_size')) ?: PHP_INT_MAX
             ) / 1048576),
-            'flash_success' => $this->ctx->getFlash('success'),
-            'flash_error'   => $this->ctx->getFlash('error'),
+            'flash_success' => $this->ui->flash('success'),
+            'flash_error'   => $this->ui->flash('error'),
         ]);
     }
 
@@ -81,7 +120,7 @@ class ActividadAdminController
     {
         $email = trim((string) ($_POST['email_avisos'] ?? ''));
         if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            $this->ctx->redirect($this->ctx->adminUrl('ajustes'), 'El correo de avisos no es válido.', 'error');
+            $this->ui->redirect($this->ui->url('ajustes'), 'El correo de avisos no es válido.', 'error');
             return;
         }
         $this->ajustes()->setMuchos('global', 'portal', [
@@ -104,7 +143,7 @@ class ActividadAdminController
                 $ia->guardarClave('', $prov);
             } elseif ($nueva !== '') {
                 if (!preg_match('/^[\w.\-]{20,300}$/', $nueva)) {
-                    $this->ctx->redirect($this->ctx->adminUrl('ajustes'), 'La clave de IA no tiene un formato válido (revisa que no traiga espacios).', 'error');
+                    $this->ui->redirect($this->ui->url('ajustes'), 'La clave de IA no tiene un formato válido (revisa que no traiga espacios).', 'error');
                     return;
                 }
                 $ia->guardarClave($nueva, $prov);
@@ -116,7 +155,7 @@ class ActividadAdminController
                 $ia->guardarModelo((string) $_POST['ia_modelo' . $suf], $prov);
             }
         }
-        $this->ctx->redirect($this->ctx->adminUrl('ajustes'), 'Ajustes guardados.');
+        $this->ui->redirect($this->ui->url('ajustes'), 'Ajustes guardados.');
     }
 
     private function notificador(): Notifier
@@ -186,7 +225,7 @@ class ActividadAdminController
         $aj->set('global', 'portal', 'horario_ini', (string) $i);
         $aj->set('global', 'portal', 'horario_fin', (string) $f);
         $aj->set('global', 'portal', 'horario_respetar', !empty($_POST['horario_respetar']) ? '1' : '0');
-        $this->ctx->redirect($this->ctx->adminUrl('ajustes') . '#correos', 'Ajustes de correo guardados.' . $aviso, $aviso === '' ? 'success' : 'error');
+        $this->ui->redirect($this->ui->url('ajustes') . '#correos', 'Ajustes de correo guardados.' . $aviso, $aviso === '' ? 'success' : 'error');
     }
 
     /** Manda al correo de avisos un ejemplo de aviso al cliente y otro para el equipo. */
@@ -194,7 +233,7 @@ class ActividadAdminController
     {
         $to = trim($this->ajustes()->get('global', 'portal', 'email_avisos'));
         if ($to === '' || !filter_var($to, FILTER_VALIDATE_EMAIL)) {
-            $this->ctx->redirect($this->ctx->adminUrl('ajustes') . '#correos', 'Primero escribe «Tu correo para avisos» arriba y guarda.', 'error');
+            $this->ui->redirect($this->ui->url('ajustes') . '#correos', 'Primero escribe «Tu correo para avisos» arriba y guarda.', 'error');
             return;
         }
         $n = $this->notificador();
@@ -222,39 +261,39 @@ class ActividadAdminController
         } elseif (!$v['lista'] && $n->modo() !== 'texto') {
             $msg .= ' Aún no configuras el SMTP propio: sin él, el servidor del sistema puede mandar los correos como texto plano.';
         }
-        $this->ctx->redirect($this->ctx->adminUrl('ajustes') . '#correos', $msg, $a && $b && $v['ultimoError'] === '' ? 'success' : 'error');
+        $this->ui->redirect($this->ui->url('ajustes') . '#correos', $msg, $a && $b && $v['ultimoError'] === '' ? 'success' : 'error');
     }
 
     /** Comprueba conexión y credenciales del SMTP propio (con lo ya guardado). */
     public function smtpProbar(): void
     {
         $err = $this->notificador()->smtpProbar();
-        $this->ctx->redirect($this->ctx->adminUrl('ajustes') . '#correos', $err === null ? 'Conexión SMTP correcta: el servidor aceptó el usuario y la contraseña.' : 'No se pudo: ' . $err, $err === null ? 'success' : 'error');
+        $this->ui->redirect($this->ui->url('ajustes') . '#correos', $err === null ? 'Conexión SMTP correcta: el servidor aceptó el usuario y la contraseña.' : 'No se pudo: ' . $err, $err === null ? 'success' : 'error');
     }
 
     public function colaEnviar(string $id): void
     {
         $ok = $this->notificador()->enviarAhora($id);
-        $this->ctx->redirect($this->ctx->adminUrl('ajustes') . '#correos', $ok ? 'Correo enviado.' : 'No se pudo enviar ese correo.', $ok ? 'success' : 'error');
+        $this->ui->redirect($this->ui->url('ajustes') . '#correos', $ok ? 'Correo enviado.' : 'No se pudo enviar ese correo.', $ok ? 'success' : 'error');
     }
 
     public function colaCancelar(string $id): void
     {
         $this->notificador()->cancelar($id);
-        $this->ctx->redirect($this->ctx->adminUrl('ajustes') . '#correos', 'Correo cancelado.');
+        $this->ui->redirect($this->ui->url('ajustes') . '#correos', 'Correo cancelado.');
     }
 
     public function cronRegenerar(): void
     {
         $this->ajustes()->set('global', 'portal', 'cron_token', bin2hex(random_bytes(16)));
-        $this->ctx->redirect($this->ctx->adminUrl('ajustes') . '#correos', 'Generé una clave nueva: actualiza la dirección en tu tarea programada.');
+        $this->ui->redirect($this->ui->url('ajustes') . '#correos', 'Generé una clave nueva: actualiza la dirección en tu tarea programada.');
     }
 
     public function iaProbar(): void
     {
         $error = (new IaService($this->pdo()))->probar();
-        $this->ctx->redirect(
-            $this->ctx->adminUrl('ajustes'),
+        $this->ui->redirect(
+            $this->ui->url('ajustes'),
             $error === null ? 'Conexión con la IA correcta.' : $error,
             $error === null ? 'success' : 'error'
         );

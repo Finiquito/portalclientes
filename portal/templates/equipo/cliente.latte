@@ -30,6 +30,21 @@
     {if $usuario['rol'] === 'coordinador'}<a href="/equipo/clientes/{$cliente['id']}/editar" class="btn btn-ghost btn-sm"><svg class="size-4"><use href="#i-edit"/></svg> Editar cliente y su portal</a>{/if}
 </div>
 
+{var $sinInvitar = array_values(array_filter($contactos, fn($x) => !$x['invitado_en'] && !$x['primer_acceso']))}
+{if $sinInvitar}
+    <section class="reveal mb-6 flex flex-wrap items-center gap-x-4 gap-y-3 rounded-2xl bg-surface2 px-4 py-3 text-sm" aria-label="Pendientes">
+        <svg class="size-5 flex-none text-brand-ink"><use href="#i-mail"/></svg>
+        <p class="min-w-0 flex-1">Falta invitar a <strong>{implode(' y ', array_map(fn($x) => $x['nombre'], $sinInvitar))}</strong> a su portal. Hazlo cuando el proyecto tenga algo que mostrar.</p>
+        {foreach $sinInvitar as $x}
+            <form method="post" action="/equipo/contactos/{$x['id']}/invitar">
+                <input type="hidden" name="_csrf" value="{$csrf}">
+                <input type="hidden" name="volver" value="/equipo/clientes/{$cliente['id']}">
+                <button type="submit" class="btn btn-soft btn-sm">Invitar{if count($sinInvitar) > 1} a {explode(' ', $x['nombre'])[0]}{/if} ahora</button>
+            </form>
+        {/foreach}
+    </section>
+{/if}
+
 <div class="xl:grid xl:grid-cols-[minmax(0,1fr)_20rem] xl:gap-6">
     <section class="min-w-0" aria-labelledby="h-proy">
         <h2 id="h-proy" class="mb-3 text-lg font-extrabold tracking-tight">Proyectos</h2>
@@ -50,24 +65,30 @@
             {else}
                 <ul class="mt-4 space-y-3">
                     {foreach $contactos as $ct}
-                        <li class="flex items-center gap-3">
+                        <li class="flex items-start gap-3">
                             <span class="avatar flex-none">{$fmt->iniciales($ct['nombre'])}</span>
                             <span class="min-w-0 flex-1 leading-snug">
-                                <span class="block truncate text-sm font-semibold">{$ct['nombre']}</span>
+                                <span class="flex items-center gap-2">
+                                    <span class="truncate text-sm font-semibold">{$ct['nombre']}</span>
+                                    <span class="chip {$ct['rol'] === 'aprobador' ? 'chip-brand' : 'chip-muted'} flex-none">{$ct['rol'] === 'aprobador' ? 'Aprueba' : 'Lectura'}</span>
+                                </span>
                                 <a href="mailto:{$ct['email']}" class="block truncate text-xs text-muted hover:text-brand-ink">{$ct['email']}</a>
-                                <a href="/equipo/contactos/{$ct['id']}" class="block text-xs font-semibold {$ct['primer_acceso'] ? 'text-ok' : ($ct['invitado_en'] ? 'text-warn' : 'text-brand-ink')}">{if $ct['primer_acceso']}Entró {$fmt->rel($ct['ultimo_acceso'])}{elseif $ct['invitado_en']}Invitado {$fmt->rel($ct['invitado_en'])} · aún no entra{else}Sin invitar · enviar invitación{/if}</a>
+                                <a href="/equipo/contactos/{$ct['id']}" class="block text-xs font-semibold {$ct['primer_acceso'] ? 'text-ok' : ($ct['invitado_en'] ? 'text-warn' : 'text-brand-ink')}">{if $ct['primer_acceso']}Entró {$fmt->rel($ct['ultimo_acceso'])}{elseif $ct['invitado_en']}Invitado {$fmt->rel($ct['invitado_en'])} · aún no entra{else}Sin invitar{/if}</a>
                             </span>
-                            <span class="chip {$ct['rol'] === 'aprobador' ? 'chip-brand' : 'chip-muted'}">{$ct['rol'] === 'aprobador' ? 'Aprueba' : 'Lectura'}</span>
-                            <form method="post" action="/equipo/ver-como/{$ct['id']}">
-                                <input type="hidden" name="_csrf" value="{$csrf}">
-                                <button type="submit" class="text-muted hover:text-ink" title="Ver el portal como {$ct['nombre']}" aria-label="Ver el portal como {$ct['nombre']}"><svg class="size-4"><use href="#i-eye"/></svg></button>
-                            </form>
-                            <a href="/equipo/contactos/{$ct['id']}" class="text-muted hover:text-ink" aria-label="Editar contacto"><svg class="size-4"><use href="#i-edit"/></svg></a>
+                            <span class="flex flex-none items-center gap-2 pt-0.5">
+                                <form method="post" action="/equipo/ver-como/{$ct['id']}">
+                                    <input type="hidden" name="_csrf" value="{$csrf}">
+                                    <button type="submit" class="text-muted hover:text-ink" title="Ver el portal como {$ct['nombre']}" aria-label="Ver el portal como {$ct['nombre']}"><svg class="size-4"><use href="#i-eye"/></svg></button>
+                                </form>
+                                <a href="/equipo/contactos/{$ct['id']}" class="text-muted hover:text-ink" aria-label="Editar contacto"><svg class="size-4"><use href="#i-edit"/></svg></a>
+                            </span>
                         </li>
                     {/foreach}
                 </ul>
             {/if}
         </section>
+
+        {include '_quien.latte', gente: $quien['gente'], disponibles: $quien['disponibles'], base: '/equipo/clientes/' . $cliente['id'] . '/equipo', puede: $usuario['rol'] === 'coordinador', csrf: $csrf, fmt: $fmt}
 
         <section class="card card-pad">
             <h2 class="text-base font-extrabold tracking-tight">Actividad reciente</h2>

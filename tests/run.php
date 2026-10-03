@@ -1199,6 +1199,121 @@ $_SESSION[P\EquipoController::SESION] = $coord;
 check(str_contains($htmlA, 'class="pa-pin" style="left:40.5%;top:62%"') && str_contains($htmlA, 'Imagen 2 · punto ') && str_contains($htmlA, 'Página 2 · punto '), 'el equipo ve los puntos sobre la imagen y en cada comentario');
 
 // ---------------------------------------------------------------------------
+seccion('Gestión de la agencia en el panel: proyectos, equipo, alta de clientes, actividad y ajustes');
+
+/** Corre un método propio del panel (no compartido con el admin) y devuelve [html, redirección]. */
+$panel = static function (GestionPrueba $g, string $metodo, array $args = [], array $post = [], string $verbo = 'GET'): array {
+    $_SERVER['REQUEST_METHOD'] = $verbo;
+    $_POST = $post;
+    $g->redir = null;
+    ob_start();
+    try {
+        $g->{$metodo}(...$args);
+    } catch (RuntimeException $e) {
+        if (!in_array($e->getMessage(), ['redirect', 'fin'], true)) {
+            ob_end_clean();
+            throw $e;
+        }
+    }
+    $_SERVER['REQUEST_METHOD'] = 'GET';
+    return [(string) ob_get_clean(), $g->redir];
+};
+
+$_SESSION[P\EquipoController::SESION] = $coord;
+$tok = P\PortalSession::csrf();
+[$html, $r] = $panel($g, 'proyectos');
+check($r === null && str_contains($html, 'Uno A') && str_contains($html, 'Dos B') && str_contains($html, 'Cliente Uno'), 'Coordinación ve la lista de todos los proyectos, con su cliente');
+check(str_contains($html, 'href="/equipo/personas"') && str_contains($html, 'href="/equipo/agencia"'), 'Coordinación tiene el bloque «Agencia» en el menú');
+
+// Personas: solo Coordinación.
+$E = P\EquipoAdminController::class;
+$_SESSION[P\EquipoController::SESION] = $ana;
+[, $r] = $g->hacer('GET', $E, 'index', [], null, true);
+check($r === '/equipo', 'alguien del equipo no entra a la sección Equipo');
+[$html] = $panel($g, 'proyectos');
+check(!str_contains($html, 'Dos B') && !str_contains($html, 'href="/equipo/agencia"'), 'la lista de proyectos respeta las asignaciones y no muestra «Agencia»');
+
+$_SESSION[P\EquipoController::SESION] = $coord;
+[$html, $r] = $g->hacer('GET', $E, 'index', [], null, true);
+check($r === null && str_contains($html, 'Ana') && str_contains($html, 'Coordina'), 'Coordinación ve la lista del equipo');
+[, $r] = $g->hacer('POST', $E, 'store', [], null, true, ['_csrf_token' => $tok, 'nombre' => 'Beto', 'email' => 'beto@agencia.cl', 'rol' => 'equipo', 'activo' => '1']);
+$beto = $eq->findByEmail('beto@agencia.cl');
+check($beto !== null && $r === '/equipo/personas/' . $beto['id'], 'crear una persona desde el panel y quedar en su ficha');
+[, $r] = $g->hacer('POST', $E, 'update', [$coord], null, true, ['_csrf_token' => $tok, 'nombre' => 'Coordina', 'email' => 'coord@agencia.cl', 'rol' => 'equipo', 'activo' => '1']);
+check($eq->find($coord)['rol'] === 'coordinador', 'nadie se quita Coordinación a sí mismo');
+[, $r] = $g->hacer('POST', $E, 'destroy', [$coord], null, true, ['_csrf_token' => $tok]);
+check($eq->find($coord) !== null, 'nadie se elimina a sí mismo');
+
+// «Quién trabaja aquí»: asignar y quitar desde la ficha.
+[, $r] = $panel($g, 'asignarCliente', [$c2], ['_csrf' => $tok, 'persona_id' => $beto['id']], 'POST');
+check($r === '/equipo/clientes/' . $c2 . '#equipo-asignado', 'asignar una persona a un cliente vuelve a la ficha');
+check(in_array($beto['id'], array_column($eq->delCliente($c2), 'id'), true), 'la persona queda asignada al cliente');
+[, $r] = $panel($g, 'asignarProyecto', [$p1a], ['_csrf' => $tok, 'persona_id' => $beto['id']], 'POST');
+$fila = array_values(array_filter($eq->delCliente($c1), fn($x) => $x['id'] === $beto['id']))[0] ?? null;
+check($fila !== null && !$fila['completo'] && in_array($p1a, $fila['proyecto_ids'], true), 'asignar solo un proyecto');
+[, $r] = $panel($g, 'quitarCliente', [$c2, $beto['id']], ['_csrf' => $tok], 'POST');
+check(!in_array($beto['id'], array_column($eq->delCliente($c2), 'id'), true), 'quitar a la persona del cliente');
+[, $r] = $panel($g, 'asignarCliente', [$c2], ['persona_id' => $beto['id']], 'POST');
+check(!in_array($beto['id'], array_column($eq->delCliente($c2), 'id'), true), 'sin token no se asigna');
+$_SESSION[P\EquipoController::SESION] = $ana;
+[, $r] = $panel($g, 'asignarCliente', [$c1], ['_csrf' => P\PortalSession::csrf(), 'persona_id' => $beto['id']], 'POST');
+$filaC1 = array_values(array_filter($eq->delCliente($c1), fn($x) => $x['id'] === $beto['id']))[0] ?? null;
+check($filaC1 !== null && !$filaC1['completo'], 'solo Coordinación asigna personas');
+
+// Alta de cliente en un paso, con invitación postergada.
+$_SESSION[P\EquipoController::SESION] = $coord;
+$antes = count($ctx->correos);
+$Cl = P\ClienteAdminController::class;
+[, $r] = $g->hacer('POST', $Cl, 'store', [], null, true, ['_csrf_token' => $tok, 'nombre' => 'Cliente Cuatro', 'pais' => 'CL',
+    'proyecto_nombre' => 'Lanzamiento', 'contacto_nombre' => 'Rita', 'contacto_email' => 'rita@cuatro.cl', 'contacto_rol' => 'aprobador',
+    'invitar' => 'despues', 'personas' => [$beto['id']]]);
+$c4 = $pdo->query("SELECT id FROM portal_clientes WHERE nombre = 'Cliente Cuatro'")->fetchColumn();
+check($c4 !== false && $r === '/equipo/clientes/' . $c4, 'crear cliente desde el panel y quedar en su ficha');
+check((int) $pdo->query("SELECT COUNT(*) FROM portal_proyectos WHERE cliente_id = '{$c4}' AND nombre = 'Lanzamiento'")->fetchColumn() === 1, 'con su primer proyecto');
+$rita = (new P\ContactoService($pdo))->findByEmail('rita@cuatro.cl');
+check($rita !== null && $rita['cliente_id'] === $c4 && count($ctx->correos) === $antes, 'con su contacto, sin invitarlo todavía');
+check(in_array($beto['id'], array_column($eq->delCliente((string) $c4), 'id'), true), 'y con el equipo asignado');
+[$html] = $panel($g, 'cliente', [(string) $c4]);
+check(str_contains($html, 'Falta invitar') && str_contains($html, '/equipo/contactos/' . $rita['id'] . '/invitar'), 'la ficha recuerda invitar al contacto');
+[, $r] = $g->hacer('POST', $Cl, 'store', [], null, true, ['_csrf_token' => $tok, 'nombre' => 'Cliente Repetido', 'contacto_email' => 'rita@cuatro.cl']);
+check((int) $pdo->query("SELECT COUNT(*) FROM portal_clientes WHERE nombre = 'Cliente Repetido'")->fetchColumn() === 0, 'un correo de contacto que ya existe no crea el cliente');
+
+// Actividad con filtros, y cada persona solo la de sus clientes.
+$Ac = P\ActividadAdminController::class;
+$_GET = ['quien' => 'cliente'];
+[$html, $r] = $g->hacer('GET', $Ac, 'actividad');
+check($r === null && str_contains($html, 'aria-current="true">De clientes'), 'Actividad filtra por quién');
+check(!str_contains($html, 'Coordina publicó'), 'con «De clientes» no aparece lo que hizo el equipo');
+$_GET = ['cliente' => $c2];
+[$html] = $g->hacer('GET', $Ac, 'actividad');
+check(!str_contains($html, '<td>Cliente Uno</td>'), 'Actividad filtra por cliente');
+$_GET = [];
+$act = new P\ActividadService($pdo);
+$act->registrar($c2, $p2a, 'contacto', 'Mario', 'comento', 'tarea', typedock_uuid7(), 'Nota en Dos A');
+$act->registrar($c2, $p2b, 'contacto', 'Mario', 'comento', 'tarea', typedock_uuid7(), 'Nota en Dos B');
+$act->registrar($c3, null, 'contacto', 'Tere', 'solicito', 'solicitud', typedock_uuid7(), 'Pedido de Tres');
+$_SESSION[P\EquipoController::SESION] = $ana;
+[$html] = $g->hacer('GET', $Ac, 'actividad');
+check(str_contains($html, 'Nota en Dos A') && !str_contains($html, 'Nota en Dos B') && !str_contains($html, 'Pedido de Tres'), 'cada persona ve la actividad de sus clientes y proyectos');
+check(str_contains($html, 'class="min-w-0 pb-32 lg:pb-8 adm"'), 'Actividad se dibuja dentro del panel');
+
+// Ajustes de la agencia: solo Coordinación, y guardar no pisa el color.
+[, $r] = $g->hacer('GET', $Ac, 'ajustesForm', [], null, true);
+check($r === '/equipo', 'alguien del equipo no entra a los ajustes de la agencia');
+$_SESSION[P\EquipoController::SESION] = $coord;
+(new P\AjustesService($pdo))->set('global', 'portal', 'color_agencia', '#2448b0');
+[$html, $r] = $g->hacer('GET', $Ac, 'ajustesForm', [], null, true);
+check($r === null && str_contains($html, 'action="/equipo/agencia"') && str_contains($html, 'value="#2448b0"'), 'Coordinación abre los ajustes con el color guardado');
+
+// Carga del equipo en Inicio.
+[$html] = $panel($g, 'inicio');
+check(str_contains($html, 'Carga del equipo') && str_contains($html, 'href="/equipo/personas/' . $ana . '"'), 'Coordinación ve la carga del equipo en Inicio');
+$_SESSION[P\EquipoController::SESION] = $ana;
+[$html] = $panel($g, 'inicio');
+check(!str_contains($html, 'Carga del equipo'), 'el resto del equipo no la ve');
+check((new P\Fmt())->iconoActividad('estado') === 'i-check' && (new P\Fmt())->iconoActividad('reunion') === 'i-calendar', 'íconos de actividad coherentes con el menú');
+
+// ---------------------------------------------------------------------------
 echo "\n\n" . $GLOBALS['ok'] . ' comprobaciones OK, ' . count($GLOBALS['fallas']) . " fallas ({$motor}).\n";
 foreach ($GLOBALS['fallas'] as $f) {
     echo "  ✗ {$f}\n";

@@ -30,6 +30,93 @@ class EquipoService
         )->fetchAll();
     }
 
+    /**
+     * Qué ve cada persona, en palabras: «Panadería Ruiz · Clínica Dental Sur: Sitio web».
+     * @return array<string, string> usuarioId => texto
+     */
+    public function resumenAsignaciones(): array
+    {
+        $filas = $this->pdo->query(
+            'SELECT a.usuario_id, c.nombre AS cliente, p.nombre AS proyecto
+             FROM portal_equipo_asignaciones a
+             JOIN portal_clientes c ON c.id = a.cliente_id
+             LEFT JOIN portal_proyectos p ON p.id = a.proyecto_id
+             ORDER BY c.nombre, p.nombre'
+        )->fetchAll();
+        $por = [];
+        foreach ($filas as $f) {
+            $u = (string) $f['usuario_id'];
+            $c = (string) $f['cliente'];
+            if ($f['proyecto'] === null) {
+                $por[$u][$c] = null;          // cliente completo
+            } elseif (!array_key_exists($c, $por[$u] ?? []) || $por[$u][$c] !== null) {
+                $por[$u][$c][] = (string) $f['proyecto'];
+            }
+        }
+        $out = [];
+        foreach ($por as $u => $clientes) {
+            $out[$u] = implode(' · ', array_map(
+                fn($c, $ps) => $ps === null ? $c : $c . ': ' . implode(', ', $ps),
+                array_keys($clientes), $clientes
+            ));
+        }
+        return $out;
+    }
+
+    /** Suma una asignación (cliente completo si $proyectoId es null) sin tocar las demás. */
+    public function asignar(string $usuarioId, string $clienteId, ?string $proyectoId = null): void
+    {
+        $ya = $this->pdo->prepare('SELECT COUNT(*) FROM portal_equipo_asignaciones WHERE usuario_id = ? AND cliente_id = ? AND (proyecto_id IS NULL OR proyecto_id = ?)');
+        $ya->execute([$usuarioId, $clienteId, (string) $proyectoId]);
+        if ((int) $ya->fetchColumn() > 0) {
+            return;
+        }
+        if ($proyectoId === null) {
+            // El cliente completo reemplaza los proyectos sueltos de ese cliente.
+            $this->pdo->prepare('DELETE FROM portal_equipo_asignaciones WHERE usuario_id = ? AND cliente_id = ?')->execute([$usuarioId, $clienteId]);
+        }
+        $this->pdo->prepare('INSERT INTO portal_equipo_asignaciones (id, usuario_id, cliente_id, proyecto_id, created_at) VALUES (?, ?, ?, ?, ?)')
+            ->execute([typedock_uuid7(), $usuarioId, $clienteId, $proyectoId, self::ahora()]);
+    }
+
+    /** Quita una asignación puntual (el cliente completo o un proyecto suelto). */
+    public function desasignar(string $usuarioId, string $clienteId, ?string $proyectoId = null): void
+    {
+        if ($proyectoId === null) {
+            $this->pdo->prepare('DELETE FROM portal_equipo_asignaciones WHERE usuario_id = ? AND cliente_id = ?')->execute([$usuarioId, $clienteId]);
+            return;
+        }
+        $this->pdo->prepare('DELETE FROM portal_equipo_asignaciones WHERE usuario_id = ? AND cliente_id = ? AND proyecto_id = ?')->execute([$usuarioId, $clienteId, $proyectoId]);
+    }
+
+    /**
+     * Quién trabaja en un cliente: personas (no Coordinación) con el cliente completo o algún proyecto.
+     * @return array<int, array<string, mixed>> con 'completo' (bool) y 'proyectos' (nombres)
+     */
+    public function delCliente(string $clienteId): array
+    {
+        $stmt = $this->pdo->prepare(
+            "SELECT e.id, e.nombre, e.cargo, e.email, a.proyecto_id, p.nombre AS proyecto
+             FROM portal_equipo_asignaciones a
+             JOIN portal_equipo e ON e.id = a.usuario_id AND e.activo = 1 AND e.rol <> 'coordinador'
+             LEFT JOIN portal_proyectos p ON p.id = a.proyecto_id
+             WHERE a.cliente_id = ? ORDER BY e.nombre"
+        );
+        $stmt->execute([$clienteId]);
+        $out = [];
+        foreach ($stmt->fetchAll() as $f) {
+            $id = (string) $f['id'];
+            $out[$id] ??= ['id' => $id, 'nombre' => $f['nombre'], 'cargo' => $f['cargo'], 'email' => $f['email'], 'completo' => false, 'proyectos' => [], 'proyecto_ids' => []];
+            if ($f['proyecto_id'] === null) {
+                $out[$id]['completo'] = true;
+            } else {
+                $out[$id]['proyectos'][] = (string) $f['proyecto'];
+                $out[$id]['proyecto_ids'][] = (string) $f['proyecto_id'];
+            }
+        }
+        return array_values($out);
+    }
+
     /** @return array<int, array<string, mixed>> Usuarios activos (para elegir responsables). */
     public function activos(): array
     {

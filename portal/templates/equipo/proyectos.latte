@@ -1,0 +1,34 @@
+{layout '_layout.latte'}
+
+{block title}Proyectos{/block}
+
+{block content}
+<section class="reveal flex flex-wrap items-end justify-between gap-3 pb-6 pt-1">
+    <div>
+        <h1 class="text-[2rem] font-extrabold leading-tight tracking-tight sm:text-4xl">Proyectos</h1>
+        <p class="mt-2 text-muted">{$usuario['rol'] === 'coordinador' ? 'Todos los proyectos de la agencia.' : 'Los proyectos que tienes asignados.'}</p>
+    </div>
+    {if $puedeCrear}<a href="/equipo/proyectos/nuevo" class="btn btn-primary btn-sm"><svg class="size-4"><use href="#i-briefcase"/></svg> Nuevo proyecto</a>{/if}
+</section>
+
+{var $tabs = [['activo', 'Activos'], ['pausado', 'En pausa'], ['cerrado', 'Cerrados'], ['todos', 'Todos']]}
+<nav class="scroll-x reveal -mx-1 flex gap-2 px-1 pb-4" style="--i:1" aria-label="Filtrar proyectos">
+    {foreach $tabs as $tab}
+        <a href="/equipo/proyectos?f={$tab[0]}" class="btn btn-sm {$filtro === $tab[0] ? 'btn-primary' : 'btn-ghost'}" {if $filtro === $tab[0]}aria-current="true"{/if}>
+            {$tab[1]}
+            <span class="rounded-full px-1.5 text-xs {$filtro === $tab[0] ? 'bg-white/25' : 'bg-surface2 text-muted'}">{count($grupos[$tab[0]])}</span>
+        </a>
+    {/foreach}
+</nav>
+
+{if empty($lista)}
+    <div class="card card-pad reveal text-center" style="--i:2">
+        <p class="font-bold">{$filtro === 'activo' ? 'No hay proyectos activos' : 'No hay proyectos aquí'}</p>
+        <p class="mt-1 text-sm text-muted">{$puedeCrear ? 'Crea uno con «Nuevo proyecto».' : 'Pídele a Coordinación que te asigne proyectos.'}</p>
+    </div>
+{else}
+    <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        {foreach $lista as $p}{include '_proyecto_card.latte', p: $p, fmt: $fmt, conCliente: true}{/foreach}
+    </div>
+{/if}
+{/block}

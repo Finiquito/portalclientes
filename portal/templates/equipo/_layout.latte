@@ -11,7 +11,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
-    <link rel="stylesheet" href="/plugins/portal/assets/portal.css?v=18">
+    <link rel="stylesheet" href="/plugins/portal/assets/portal.css?v=19">
     <script>{$portalBoot|noescape}</script>
 </head>
 <body class="min-h-dvh bg-bg font-sans text-ink antialiased">
@@ -20,10 +20,17 @@
 {var $items = [
     ['inicio',     '/equipo',           'i-inbox',    'Inicio'],
     ['clientes',   '/equipo/clientes',  'i-users',    'Clientes'],
+    ['proyectos',  '/equipo/proyectos', 'i-briefcase', 'Proyectos', 'escritorio'],
     ['tareas',     '/equipo/tareas',    'i-tasks',    'Tareas'],
     ['contenidos', '/equipo/entregas',  'i-eye',      'Contenidos'],
     ['reuniones',  '/equipo/reuniones', 'i-calendar', 'Reuniones'],
     ['solicitudes', '/equipo/solicitudes', 'i-plus',  'Solicitudes'],
+    ['actividad',  '/equipo/actividad', 'i-bolt',     'Actividad', 'escritorio'],
+]}
+{* Solo Coordinación: gestión de la agencia. *}
+{var $itemsAgencia = [
+    ['personas', '/equipo/personas', 'i-team', 'Equipo'],
+    ['agencia',  '/equipo/agencia',  'i-cog',  'Ajustes'],
 ]}
 
 <a href="#contenido" class="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:rounded-xl focus:bg-surface focus:px-4 focus:py-2 focus:shadow-pop">Saltar al contenido</a>
@@ -77,6 +84,18 @@
                         </a>
                     {/foreach}
                 </nav>
+
+                {if $usuario['rol'] === 'coordinador'}
+                    <p class="mb-1 mt-4 px-3 text-[0.6875rem] font-bold uppercase tracking-wide text-muted">Agencia</p>
+                    <nav class="flex flex-col gap-1" aria-label="Agencia">
+                        {foreach $itemsAgencia as $it}
+                            <a href="{$it[1]}" class="nav-item" {if $nav === $it[0]}aria-current="page"{/if}>
+                                <svg class="size-5 flex-none"><use href="#{$it[2]}"/></svg>
+                                <span class="flex-1">{$it[3]}</span>
+                            </a>
+                        {/foreach}
+                    </nav>
+                {/if}
 
                 {if $relojes}
                     <div class="mb-3 mt-4 rounded-2xl bg-surface2 p-3" aria-label="Hora de tus clientes">
@@ -137,6 +156,7 @@
 <nav class="pb-safe fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface/90 backdrop-blur-xl lg:hidden" aria-label="Navegación">
     <div class="mx-auto flex max-w-xl">
         {foreach $items as $it}
+            {continueIf ($it[4] ?? '') === 'escritorio'}
             <a href="{$it[1]}" class="tab-item" {if $nav === $it[0]}aria-current="page"{/if}>
                 <span class="relative">
                     <svg class="size-[1.4rem]"><use href="#{$it[2]}"/></svg>
