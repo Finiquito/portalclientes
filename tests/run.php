@@ -1349,11 +1349,11 @@ check(array_column($av->destinatarios($p5, null, ['responsable' => $beto['id'], 
 check(array_column($av->destinatarios($p5, null, ['actor' => $ana]), 'id') === [], 'a quien lo hizo no se le avisa');
 
 // Agrupados
-P\Notifier::$ahora = $enAgencia('2026-10-07 10:00');   // miércoles
+P\Notifier::$ahora = $enAgencia('2027-01-13 10:00');   // miércoles
 $ctx->correos = [];
 $n = new P\Notifier($ctx, $pdo);
 for ($i = 1; $i <= 3; $i++) {
-    P\Notifier::$ahora = $enAgencia('2026-10-07 09:5' . $i);
+    P\Notifier::$ahora = $enAgencia('2027-01-13 09:5' . $i);
     $n->alEquipo("Luz comentó ({$i})", 'Texto', 'tareas/t-uno', ['proyecto_id' => $p5, 'clave' => 'tareas/t-uno']);
 }
 $n->alEquipo('Luz subió archivos', '', 'tareas/t-dos', ['proyecto_id' => $p5]);
@@ -1367,20 +1367,20 @@ check($av->barrer() === 1 && count($av->pendientes($ana)) === 0, 'con 5 avisos s
 $cuerpo = $para('ana@agencia.cl')[0]['body'] ?? '';
 check(str_contains($cuerpo, 'CLIENTE CINCO · CINCO A') && str_contains($cuerpo, 'Luz comentó (3)') && str_contains($cuerpo, 'y 2 novedades más') && !str_contains($cuerpo, 'Luz comentó (1)'), 'ordenado por proyecto y con lo repetido junto');
 $n->alEquipo('Uno solo', '', 'tareas/t-uno', ['proyecto_id' => $p5]);
-P\Notifier::$ahora = $enAgencia('2026-10-07 13:05');
+P\Notifier::$ahora = $enAgencia('2027-01-13 13:05');
 $ctx->correos = [];
 check($av->barrer() === 1, 'a las 3 horas sale aunque sea uno');
 $n->alEquipo('De noche', '', 'tareas/t-uno', ['proyecto_id' => $p5]);
-P\Notifier::$ahora = $enAgencia('2026-10-07 23:30');
+P\Notifier::$ahora = $enAgencia('2027-01-13 23:30');
 check($av->barrer() === 0, 'de noche no se barre');
 
 // Resumen de la mañana
-$rs5 = $rs->create(['proyecto_id' => $p5, 'titulo' => 'Revisión con Luz', 'fecha' => '2026-10-08 11:00', 'duracion_min' => 45, 'publicada' => 1, 'enlace_meet' => 'https://meet.google.com/xyz']);
+$rs5 = $rs->create(['proyecto_id' => $p5, 'titulo' => 'Revisión con Luz', 'fecha' => '2027-01-14 11:00', 'duracion_min' => 45, 'publicada' => 1, 'enlace_meet' => 'https://meet.google.com/xyz']);
 (new P\Convocados($ctx, $pdo))->agregar($rs5, 'equipo', $ana);
-$tVence = $ts->create(['proyecto_id' => $p5, 'titulo' => 'Entregar logo', 'asignado' => 'equipo', 'responsable_usuario_id' => $ana, 'fecha_vencimiento' => '2026-10-08']);
-P\Notifier::$ahora = $enAgencia('2026-10-08 07:30');
+$tVence = $ts->create(['proyecto_id' => $p5, 'titulo' => 'Entregar logo', 'asignado' => 'equipo', 'responsable_usuario_id' => $ana, 'fecha_vencimiento' => '2027-01-14']);
+P\Notifier::$ahora = $enAgencia('2027-01-14 07:30');
 check($av->barrer() === 0 && count($av->pendientes($ana)) === 1, 'antes de las 8:30 lo de la noche espera al resumen');
-P\Notifier::$ahora = $enAgencia('2026-10-08 08:40');
+P\Notifier::$ahora = $enAgencia('2027-01-14 08:40');
 $ctx->correos = [];
 $av->resumenes();
 $res = $para('ana@agencia.cl')[0] ?? ['subject' => '', 'body' => ''];
@@ -1393,14 +1393,14 @@ check($para('ana@agencia.cl') === [], 'el resumen sale una sola vez al día');
 check($para('beto@agencia.cl') === [], 'si no hay nada, no hay resumen');
 $aj->set('contacto', $luz, 'resumen_diario', '1');
 $tCli = $ts->create(['proyecto_id' => $p5, 'titulo' => 'Enviar textos', 'asignado' => 'cliente', 'visible_cliente' => 1]);
-P\Notifier::$ahora = $enAgencia('2026-10-09 08:40');
+P\Notifier::$ahora = $enAgencia('2027-01-15 08:40');
 $ctx->correos = [];
 $av->resumenes();
 check(str_contains(($para('luz@cinco.cl')[0]['body'] ?? ''), 'Enviar textos'), 'el contacto que lo pidió recibe su resumen con lo que le toca');
 
 // Vencimientos
 $aj->set('equipo', $ana, 'avisos_como', 'instante');
-$ts->create(['proyecto_id' => $p5, 'titulo' => 'Mañana sin falta', 'asignado' => 'equipo', 'responsable_usuario_id' => $ana, 'fecha_vencimiento' => '2026-10-10']);
+$ts->create(['proyecto_id' => $p5, 'titulo' => 'Mañana sin falta', 'asignado' => 'equipo', 'responsable_usuario_id' => $ana, 'fecha_vencimiento' => '2027-01-16']);
 $ctx->correos = [];
 $av->vencimientos();
 $av->vencimientos();
@@ -1418,9 +1418,9 @@ check(count(array_filter($para('beto@agencia.cl'), fn($c) => str_contains($c['su
 check($para('ana@agencia.cl') === [], 'a los demás no');
 
 // Reuniones con convocados
-P\Notifier::$ahora = $enAgencia('2026-10-09 10:00');
+P\Notifier::$ahora = $enAgencia('2027-01-15 10:00');
 $ctx->correos = [];
-[, $r] = $g->hacer('POST', $R, 'store', [], null, false, ['_csrf_token' => $tok, 'proyecto_id' => $p5, 'titulo' => 'Kickoff Cinco', 'fecha_d' => '2026-10-20', 'fecha_t' => '10:00',
+[, $r] = $g->hacer('POST', $R, 'store', [], null, false, ['_csrf_token' => $tok, 'proyecto_id' => $p5, 'titulo' => 'Kickoff Cinco', 'fecha_d' => '2027-01-26', 'fecha_t' => '10:00',
     'duracion_min' => '60', 'enlace_meet' => 'https://meet.google.com/kick', 'publicada' => '1', 'convocados_form' => '1', 'conv_equipo' => [$ana, $coord], 'conv_contacto' => [$luz, $contacto], 'invitar' => '1']);
 $rk = (string) $pdo->query("SELECT id FROM portal_reuniones WHERE titulo = 'Kickoff Cinco'")->fetchColumn();
 $conv = new P\Convocados($ctx, $pdo);
@@ -1433,7 +1433,7 @@ check(count($para('luz@cinco.cl')) + $enCola === 1, 'al contacto convocado le ll
 check($conv->tokenValido($rk, $conv->token($rk)) && !$conv->tokenValido($rk, 'falso'), 'el enlace del .ics va firmado');
 $ctx->correos = [];
 $pdo->exec("DELETE FROM portal_correos_cola");
-$g->hacer('POST', $R, 'update', [$rk], 'reunion', false, ['_csrf_token' => $tok, 'proyecto_id' => $p5, 'titulo' => 'Kickoff Cinco', 'fecha_d' => '2026-10-21', 'fecha_t' => '10:00',
+$g->hacer('POST', $R, 'update', [$rk], 'reunion', false, ['_csrf_token' => $tok, 'proyecto_id' => $p5, 'titulo' => 'Kickoff Cinco', 'fecha_d' => '2027-01-27', 'fecha_t' => '10:00',
     'duracion_min' => '60', 'enlace_meet' => 'https://meet.google.com/kick', 'publicada' => '1', 'convocados_form' => '1', 'conv_equipo' => [$ana], 'conv_contacto' => [$luz], 'invitar' => '1', 'accion' => 'guardar']);
 check(str_starts_with(($para('ana@agencia.cl')[0]['subject'] ?? ''), 'Cambió la reunión: Kickoff Cinco'), 'cambiar la fecha manda la versión nueva a los convocados');
 check(str_starts_with(($para('coord@agencia.cl')[0]['subject'] ?? ''), 'Se canceló la reunión'), 'a quien se quita le llega la cancelación');
@@ -1442,12 +1442,12 @@ $ics = $rs->ics($rs->find($rk) + ['ics_seq' => 1], '', ['metodo' => 'REQUEST', '
 $ics = str_replace("\r\n ", '', $ics);   // las líneas largas vienen plegadas
 check(str_contains($ics, 'METHOD:REQUEST') && str_contains($ics, 'SEQUENCE:1') && str_contains($ics, 'ORGANIZER;CN="Agencia":mailto:hola@agencia.cl') && str_contains($ics, 'mailto:luz@cinco.cl'), 'invitación .ics con organizador, invitado y versión');
 $ctx->correos = [];
-$g->hacer('POST', $R, 'update', [$rk], 'reunion', false, ['_csrf_token' => $tok, 'proyecto_id' => $p5, 'titulo' => 'Kickoff Cinco', 'fecha_d' => '2026-10-21', 'fecha_t' => '10:00',
+$g->hacer('POST', $R, 'update', [$rk], 'reunion', false, ['_csrf_token' => $tok, 'proyecto_id' => $p5, 'titulo' => 'Kickoff Cinco', 'fecha_d' => '2027-01-27', 'fecha_t' => '10:00',
     'duracion_min' => '60', 'enlace_meet' => 'https://meet.google.com/kick', 'publicada' => '1', 'convocados_form' => '1', 'conv_equipo' => [$ana], 'conv_contacto' => [$luz], 'invitar' => '1', 'accion' => 'guardar']);
 check($ctx->correos === [], 'guardar sin cambios no reenvía nada');
 
 // Recordatorio del día anterior
-P\Notifier::$ahora = $enAgencia('2026-10-20 09:00');
+P\Notifier::$ahora = $enAgencia('2027-01-26 09:00');
 $pdo->exec("DELETE FROM portal_avisos_marcas WHERE clave LIKE 'inv:%'");
 $ctx->correos = [];
 $pdo->exec("DELETE FROM portal_correos_cola");
@@ -1458,7 +1458,7 @@ check(count(array_filter($para('ana@agencia.cl'), fn($c) => str_starts_with($c['
 
 // Borrar la reunión cancela
 $ctx->correos = [];
-P\Notifier::$ahora = $enAgencia('2026-10-09 10:00');
+P\Notifier::$ahora = $enAgencia('2027-01-15 10:00');
 $g->hacer('POST', $R, 'destroy', [$rk], 'reunion', false, ['_csrf_token' => $tok]);
 check(str_starts_with(($para('ana@agencia.cl')[0]['subject'] ?? ''), 'Se canceló la reunión: Kickoff Cinco'), 'borrar la reunión manda la cancelación');
 
