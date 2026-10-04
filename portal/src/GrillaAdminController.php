@@ -233,7 +233,9 @@ class GrillaAdminController
                 foreach ($indices as $i) {
                     $t['piezas'][$i]['aviso'] = 'Leída sin IA (la IA falló).';
                 }
-                $t['avisos'][] = $aviso;
+                if (!in_array($aviso, $t['avisos'], true)) {
+                    $t['avisos'][] = $aviso;   // una vez, aunque fallen varias tandas
+                }
             }
             $t['hechas'][] = $k;
             $this->trabajos()->guardar($token, $t);

@@ -15,7 +15,7 @@
 
 {if $pendientes}
 {* Mientras la IA lee la grilla por tandas: la página se recarga sola al terminar. *}
-<div class="card pa-ia" data-grilla-tandas data-base="{$admin_url('entregas/' . $entrega['id'] . '/grilla/' . $token . '/tanda/')}" data-csrf="{$csrf_token}" data-pendientes="{implode(',', $pendientes)}" data-total="{count($t['tandas'])}">
+<div class="card pa-ia" data-grilla-tandas data-base="{$admin_url('entregas/' . $entrega['id'] . '/grilla/' . $token . '/tanda')}" data-csrf="{$csrf_token}" data-pendientes="{implode(',', $pendientes)}" data-total="{count($t['tandas'])}">
     <h2 class="pa-h2" style="margin-top:0">Leyendo la grilla con IA…</h2>
     <p class="pa-muted">{count($t['bloques'])} piezas{if $t['archivo']} en «{$t['archivo']}»{/if}. Se leen de a pocas para no pasar el tiempo máximo del hosting. No cierres esta página.</p>
     <progress data-barra max="{count($t['tandas'])}" value="{count($t['hechas'])}" style="width:100%;height:.6rem"></progress>
@@ -33,8 +33,13 @@
     if (!pend.length) { estado.textContent = 'Listo. Cargando la vista previa…'; location.reload(); return; }
     var n = pend.shift();
     var fd = new FormData(); fd.append('_csrf_token', box.getAttribute('data-csrf')); fd.append('_csrf', box.getAttribute('data-csrf'));
-    fetch(box.getAttribute('data-base') + n, { method: 'POST', body: fd, credentials: 'same-origin' })
-      .then(function (r) { return r.json(); })
+    // La URL base viene sin barra final (el panel la quita): se agrega aquí.
+    fetch(box.getAttribute('data-base').replace(/\/$/, '') + '/' + n, { method: 'POST', body: fd, credentials: 'same-origin' })
+      .then(function (r) {
+        return r.text().then(function (txt) {
+          try { return JSON.parse(txt); } catch (e) { throw new Error('el servidor respondió ' + r.status + (r.statusText ? ' ' + r.statusText : '')); }
+        });
+      })
       .then(function (j) {
         if (j.error) throw new Error(j.error);
         barra.value = j.hechas;
@@ -57,7 +62,9 @@
 
     <div class="card">
         <p class="pa-muted" style="margin-top:0">
-            {count($piezas)} piezas{if $t['archivo']} de «{$t['archivo']}»{/if}, leídas {$t['ia'] ? 'con IA' : 'sin IA (por etiquetas)'}.
+            {var $sinIa = count(array_filter($piezas, fn($p) => str_starts_with((string) ($p['aviso'] ?? ''), 'Leída sin IA') || str_starts_with((string) ($p['aviso'] ?? ''), 'La IA no devolvió')))}
+            {count($piezas)} piezas{if $t['archivo']} de «{$t['archivo']}»{/if}, leídas
+            {if !$t['ia']}sin IA (por etiquetas){elseif $sinIa === count($piezas)}sin IA porque la IA falló{elseif $sinIa > 0}con IA ({$sinIa} sin IA: revísalas){else}con IA{/if}.
             Revisa y corrige lo que haga falta: nada se crea hasta que apretes <strong>Crear contenidos</strong>.
             Las imágenes se suben después, todas juntas, con «Imágenes por número».
         </p>
