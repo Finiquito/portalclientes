@@ -415,20 +415,129 @@ class EntregaAdminController
             'comentarios' => $comentarios,
             'pines' => Ubicacion::pines($comentarios, $c['version_id'] !== null ? (string) $c['version_id'] : null, $posImagen),
             'imgVigente' => $imgVigente, 'posImagen' => $posImagen,
+            'filasLaminas' => self::filasLaminas(TiposContenido::laminas($c['laminas'] ?? null), $imgVigente),
             'fmt' => new Fmt(), 'firma' => $this->firma(), 'maxMb' => $this->maxMb(),
         ] + $this->flashes());
     }
 
+    /**
+     * Filas del editor de láminas: cada lámina con su imagen de la versión vigente.
+     * Si las láminas aún no tienen imagen amarrada (contenido antiguo o importado), se reparten
+     * en orden. Las imágenes que no son de ninguna lámina quedan como filas al final.
+     *
+     * @param array<int, array<string, string>> $laminas
+     * @param array<int, array<string, mixed>> $imagenes de la versión vigente, en orden
+     * @return array<int, array{idea: string, texto: string, img: ?array<string, mixed>}>
+     */
+    public static function filasLaminas(array $laminas, array $imagenes): array
+    {
+        $porId = array_column($imagenes, null, 'id');
+        $amarradas = array_filter(array_column($laminas, 'img'), fn($i) => isset($porId[$i]));
+        $libres = array_values(array_filter($imagenes, fn($a) => !in_array($a['id'], $amarradas, true)));
+        $filas = [];
+        foreach ($laminas as $l) {
+            $img = isset($l['img'], $porId[$l['img']]) ? $porId[$l['img']] : null;
+            if ($img === null && $amarradas === [] && $libres !== []) {
+                $img = array_shift($libres);   // sin amarras: por orden
+            }
+            $filas[] = ['idea' => $l['idea'], 'texto' => $l['texto'], 'img' => $img];
+        }
+        foreach ($libres as $a) {
+            $filas[] = ['idea' => '', 'texto' => '', 'img' => $a];
+        }
+        return $filas;
+    }
+
+    /**
+     * Guarda las láminas del editor: sube la imagen nueva de cada fila (reemplaza la anterior),
+     * amarra cada imagen a su lámina y ordena el carrusel como las filas.
+     *
+     * @param array<string, mixed> $c contenido
+     * @return array<int, string> errores de subida
+     */
+    private function guardarLaminas(array $c, array $filasPost): array
+    {
+        $vid = $c['version_id'] !== null ? (string) $c['version_id'] : '';
+        $fmt = new Fmt();
+        $imgs = $vid !== '' ? array_values(array_filter($this->contenidos()->archivos($vid), fn($a) => $fmt->esImagen($a['mime']))) : [];
+        $porId = array_column($imgs, null, 'id');
+        // Láminas quitadas que tenían imagen: la imagen se va con ellas (si ninguna otra fila la usa).
+        $enUso = array_map(fn($l) => is_array($l) ? (string) ($l['img'] ?? '') : '', $filasPost);
+        foreach (array_unique(array_map('strval', (array) ($_POST['lamina_borrar'] ?? []))) as $bid) {
+            if (isset($porId[$bid]) && !in_array($bid, $enUso, true)) {
+                $this->archivos()->borrar($bid);
+                unset($porId[$bid]);
+            }
+        }
+        $f = $_FILES['lamina_archivo'] ?? null;
+        $errores = [];
+        $laminas = [];
+        foreach ($filasPost as $k => $l) {
+            if (!is_array($l)) {
+                continue;
+            }
+            $img = (string) ($l['img'] ?? '');
+            if (!isset($porId[$img])) {
+                $img = '';
+            }
+            $sube = is_array($f) && isset($f['name'][$k]) && ($f['error'][$k] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE;
+            if ($sube && $vid !== '') {
+                $uno = ['name' => (string) $f['name'][$k], 'tmp_name' => (string) $f['tmp_name'][$k], 'error' => (int) $f['error'][$k], 'size' => (int) $f['size'][$k]];
+                $r = $this->archivos()->guardarVarios([$uno], (string) $c['cliente_id'], (string) $c['proyecto_id'], 'version', $vid, $this->autor(), $this->maxMb());
+                if ($r['ok'] !== [] && $fmt->esImagen((string) ($r['ok'][0]['mime'] ?? ''))) {
+                    if ($img !== '') {
+                        $this->archivos()->borrar($img);   // la reemplaza
+                    }
+                    $img = (string) $r['ok'][0]['id'];
+                } elseif ($r['ok'] !== []) {
+                    $this->archivos()->borrar((string) $r['ok'][0]['id']);
+                    $errores[] = 'Lámina ' . (count($laminas) + 1) . ': sube una imagen (JPG, PNG o WebP).';
+                } else {
+                    $errores = array_merge($errores, $r['errores']);
+                }
+            }
+            $laminas[] = ['idea' => (string) ($l['idea'] ?? ''), 'texto' => (string) ($l['texto'] ?? ''), 'img' => $img];
+        }
+        // El carrusel sigue el orden de las filas; las imágenes sueltas van al final.
+        if ($vid !== '') {
+            $orden = 0;
+            $up = $this->pdo()->prepare('UPDATE ' . ArchivoService::TABLE . ' SET orden = ? WHERE id = ?');
+            $usadas = [];
+            foreach ($laminas as $l) {
+                if ($l['img'] !== '' && !isset($usadas[$l['img']])) {
+                    $up->execute([++$orden, $l['img']]);
+                    $usadas[$l['img']] = true;
+                }
+            }
+            foreach ($this->contenidos()->archivos($vid) as $a) {
+                if (!isset($usadas[$a['id']])) {
+                    $up->execute([++$orden, $a['id']]);
+                }
+            }
+        }
+        $_POST['laminas'] = $laminas;
+        return $errores;
+    }
+
     public function updateContenido(string $id): void
     {
-        if ($this->contenidos()->find($id) !== null) {
+        $c = $this->contenidos()->find($id);
+        $errores = [];
+        if ($c !== null) {
+            if (ArchivoService::postExcedido()) {
+                $this->ui->redirect($this->url('contenidos/' . $id), 'Las imágenes superan el máximo del servidor (post_max_size): súbelas en dos veces.', 'error');
+                return;
+            }
             if (trim((string) ($_POST['enlace'] ?? '')) !== '' && TiposContenido::enlaceSeguro((string) $_POST['enlace']) === '') {
                 $this->ui->redirect($this->url('contenidos/' . $id), 'El link debe empezar con http:// o https://', 'error');
                 return;
             }
+            if (!empty($_POST['laminas_form']) || is_array($_POST['laminas'] ?? null)) {
+                $errores = $this->guardarLaminas($c, is_array($_POST['laminas'] ?? null) ? $_POST['laminas'] : []);
+            }
             $this->contenidos()->actualizar($id, $_POST);
         }
-        $this->ui->redirect($this->url('contenidos/' . $id), 'Contenido actualizado.');
+        $this->ui->redirect($this->url('contenidos/' . $id), $errores === [] ? 'Contenido actualizado.' : 'Contenido actualizado, pero: ' . implode(' · ', $errores), $errores === [] ? 'success' : 'error');
     }
 
     public function borrarContenido(string $id): void

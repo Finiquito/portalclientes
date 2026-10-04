@@ -3,7 +3,7 @@
 {block page_title}{$c['titulo']}{/block}
 
 {block content}
-<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=4">
+<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=5">
 
 <div class="page-header">
     <h1>{$c['titulo']}</h1>
@@ -18,7 +18,7 @@
 
 <div class="card">
     <p class="pa-row"><span class="pa-chip brand">{$tipos[$c['tipo']][0] ?? $c['tipo']}</span>{var $etq = \TypeDock\Plugin\Portal\TiposContenido::etiqueta($c)}{if $etq !== ''} <span class="pa-muted">El cliente ve: «{$etq}»</span>{/if} <span class="pa-chip {$ct}">{$cs[0]}</span> <span class="pa-muted">Entrega: {$c['entrega_titulo']} · versión vigente v{$c['version_actual']}</span></p>
-    <form method="post" action="{$admin_url('contenidos/' . $c['id'])}">
+    <form method="post" action="{$admin_url('contenidos/' . $c['id'])}" enctype="multipart/form-data">
         <input type="hidden" name="_csrf_token" value="{$csrf_token}">
         <div class="pa-grid-2">
             <div>
@@ -46,7 +46,7 @@
         <p class="pa-muted" style="margin:0 0 .4rem">Se ve dentro del portal: YouTube, Vimeo, Loom, Google Drive (video), Google Slides, Canva y Figma. Para video, lo más limpio es subir el mp4. Presentaciones: sube el PDF exportado o pega el link.</p>
         <input type="url" name="enlace" class="form-input" value="{$c['enlace']}" maxlength="500" placeholder="https://…">
         <h3 class="pa-h2 mt-4" style="font-size:1rem">Brief de la pieza</h3>
-        {include '_brief.latte', c: $c}
+        {include '_brief.latte', c: $c, filas: $filasLaminas}
         <p class="mt-4"><button type="submit" class="btn btn-primary">Guardar</button></p>
     </form>
 </div>

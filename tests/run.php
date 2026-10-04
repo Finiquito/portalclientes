@@ -1482,6 +1482,18 @@ check($aj->get('global', 'portal', 'avisos_ultimo') !== '', 'sin cron, las visit
 P\Notifier::$ahora = null;
 
 // ---------------------------------------------------------------------------
+seccion('Editor de láminas: una fila por lámina con su imagen');
+
+$u1 = typedock_uuid7(); $u2 = typedock_uuid7(); $u3 = typedock_uuid7();
+$lam = P\TiposContenido::laminas([['idea' => 'Foto', 'texto' => 'Hola', 'img' => $u2], ['idea' => '', 'texto' => '', 'img' => $u1], ['idea' => '', 'texto' => ''], ['idea' => 'x', 'img' => 'no-es-id']]);
+check(count($lam) === 3 && $lam[0]['img'] === $u2 && $lam[1] === ['idea' => '', 'texto' => '', 'img' => $u1] && !isset($lam[2]['img']), 'cada lámina guarda su imagen; una fila vacía sin imagen se descarta');
+$imgs = [['id' => $u1], ['id' => $u2], ['id' => $u3]];
+$f = P\EntregaAdminController::filasLaminas([['idea' => 'A', 'texto' => ''], ['idea' => 'B', 'texto' => '']], $imgs);
+check(count($f) === 3 && $f[0]['img']['id'] === $u1 && $f[1]['img']['id'] === $u2 && $f[2]['idea'] === '' && $f[2]['img']['id'] === $u3, 'láminas sin imagen amarrada: se reparten en orden y la imagen que sobra queda como fila');
+$f = P\EntregaAdminController::filasLaminas([['idea' => 'A', 'texto' => '', 'img' => $u3], ['idea' => 'B', 'texto' => '']], $imgs);
+check($f[0]['img']['id'] === $u3 && $f[1]['img'] === null && count($f) === 4, 'con imágenes amarradas se respeta la amarra y las demás van al final');
+
+// ---------------------------------------------------------------------------
 echo "\n\n" . $GLOBALS['ok'] . ' comprobaciones OK, ' . count($GLOBALS['fallas']) . " fallas ({$motor}).\n";
 foreach ($GLOBALS['fallas'] as $f) {
     echo "  ✗ {$f}\n";

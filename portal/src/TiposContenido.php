@@ -88,7 +88,7 @@ final class TiposContenido
     /**
      * Láminas del brief (idea de cada lámina y el texto que va en la imagen).
      * Se guardan como JSON; acepta también el texto del formulario (ver laminasDesdeTexto).
-     * @return array<int, array{idea: string, texto: string}>
+     * @return array<int, array{idea: string, texto: string, img?: string}>
      */
     public static function laminas(mixed $valor): array
     {
@@ -113,8 +113,10 @@ final class TiposContenido
             }
             $idea  = mb_substr(trim((string) ($l['idea'] ?? '')), 0, 1000);
             $texto = mb_substr(trim((string) ($l['texto'] ?? '')), 0, 1000);
-            if ($idea !== '' || $texto !== '') {
-                $out[] = ['idea' => $idea, 'texto' => $texto];
+            // Imagen de la lámina (id de un archivo de la versión): la amarra a su fila.
+            $img = preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/', (string) ($l['img'] ?? '')) === 1 ? (string) $l['img'] : '';
+            if ($idea !== '' || $texto !== '' || $img !== '') {
+                $out[] = ['idea' => $idea, 'texto' => $texto] + ($img !== '' ? ['img' => $img] : []);
             }
             if (count($out) >= 20) {
                 break;

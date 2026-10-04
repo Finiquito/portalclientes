@@ -12,9 +12,92 @@
 </div>
 <label class="form-label mt-3">Objetivo</label>
 <textarea name="objetivo" class="form-input" rows="2" maxlength="2000" placeholder="Para qué es esta pieza. El cliente lo ve arriba, antes de revisar.">{$c['objetivo'] ?? ''}</textarea>
-<label class="form-label mt-3">Láminas / guion (una por línea)</label>
-<textarea name="laminas" class="form-input" rows="5" placeholder="foto F11 pensando | ¿Cuánto tiempo llevas acostumbrándote?&#10;ilustración de almohada | Duermes mal y ya lo das por normal">{\TypeDock\Plugin\Portal\TiposContenido::laminasATexto($c['laminas'] ?? null)}</textarea>
-<p class="form-hint mt-1">Idea de la lámina y, después de « | », el texto que va en la imagen. Mientras no haya imágenes, el cliente las ve como notas pegadas sobre cada lámina.</p>
+{* Láminas: una fila por lámina. Con $filas (editar un contenido) cada fila lleva su imagen de la versión vigente. *}
+{var $conImg = isset($filas)}
+{var $lista = $filas ?? array_map(fn($l) => ['idea' => $l['idea'], 'texto' => $l['texto'], 'img' => null], \TypeDock\Plugin\Portal\TiposContenido::laminas($c['laminas'] ?? null))}
+<input type="hidden" name="laminas_form" value="1">
+<label class="form-label mt-3">Láminas</label>
+<p class="form-hint" style="margin:0 0 .25rem">Una fila por lámina: {if $conImg}su imagen, {/if}la idea y el texto que va en la imagen. {if $conImg}El carrusel del cliente sigue este orden.{else}Las imágenes se suben después, en el contenido.{/if} Mientras no haya imágenes, el cliente ve las láminas como notas pegadas.</p>
+<div class="pa-laminas" data-laminas>
+    {foreach $lista as $k => $l}{include lamFila, k: $k, l: $l, conImg: $conImg}{/foreach}
+</div>
+<template data-lamina-molde>{include lamFila, k: '__K__', l: ['idea' => '', 'texto' => '', 'img' => null], conImg: $conImg}</template>
+<p style="margin:.5rem 0 0"><button type="button" class="btn btn-sm" data-lamina-agregar>+ Agregar lámina</button></p>
+
+{define lamFila, $k, $l, $conImg}
+<div class="pa-lam" data-lamina>
+    <span class="pa-lam-n" data-lamina-n>{is_int($k) ? $k + 1 : ''}</span>
+    {if $conImg}
+    <label class="pa-lam-img" title="Subir o cambiar la imagen">
+        {if $l['img']}<img src="{$admin_url('archivos/' . $l['img']['id'])}?t=1" alt="Imagen de la lámina" data-lamina-thumb>{else}<span data-lamina-thumb>Subir<br>imagen</span>{/if}
+        <input type="file" name="lamina_archivo[{$k}]" accept="image/*" class="pa-lam-file" data-lamina-file>
+    </label>
+    <input type="hidden" name="laminas[{$k}][img]" value="{$l['img']['id'] ?? ''}" data-lamina-img>
+    {/if}
+    <div class="pa-lam-txt">
+        <input type="text" name="laminas[{$k}][idea]" class="form-input" value="{$l['idea']}" maxlength="1000" placeholder="Idea de la lámina (foto, ilustración…)" aria-label="Idea de la lámina">
+        <input type="text" name="laminas[{$k}][texto]" class="form-input" value="{$l['texto']}" maxlength="1000" placeholder="Texto que va en la imagen" aria-label="Texto en la imagen">
+    </div>
+    <div class="pa-lam-acc">
+        <button type="button" class="btn btn-sm" data-lamina-mover="-1" title="Subir" aria-label="Mover arriba">↑</button>
+        <button type="button" class="btn btn-sm" data-lamina-mover="1" title="Bajar" aria-label="Mover abajo">↓</button>
+        <button type="button" class="btn btn-sm" data-lamina-quitar title="Quitar" aria-label="Quitar lámina">×</button>
+    </div>
+</div>
+{/define}
+
+<script n:syntax="off">
+(function () {
+  var caja = document.querySelector('[data-laminas]');
+  var molde = document.querySelector('[data-lamina-molde]');
+  if (!caja || !molde || caja.dataset.listo) return;
+  caja.dataset.listo = '1';
+  var n = 1000;
+  function numerar() {
+    caja.querySelectorAll('[data-lamina-n]').forEach(function (s, i) { s.textContent = i + 1; });
+  }
+  document.querySelector('[data-lamina-agregar]').addEventListener('click', function () {
+    var html = molde.innerHTML.replace(/__K__/g, String(n++));
+    caja.insertAdjacentHTML('beforeend', html);
+    numerar();
+    caja.lastElementChild.querySelector('input[type=text]').focus();
+  });
+  caja.addEventListener('click', function (e) {
+    var b = e.target.closest('button');
+    if (!b) return;
+    var fila = b.closest('[data-lamina]');
+    if (b.hasAttribute('data-lamina-quitar')) {
+      var img = fila.querySelector('[data-lamina-img]');
+      if (img && img.value) {
+        if (!confirm('La imagen de esta lámina también se elimina al guardar. ¿Seguir?')) return;
+        var h = document.createElement('input');
+        h.type = 'hidden'; h.name = 'lamina_borrar[]'; h.value = img.value;
+        caja.appendChild(h);
+      }
+      fila.remove();
+    } else if (b.hasAttribute('data-lamina-mover')) {
+      var otra = b.getAttribute('data-lamina-mover') === '-1' ? fila.previousElementSibling : fila.nextElementSibling;
+      if (otra && otra.hasAttribute('data-lamina')) {
+        b.getAttribute('data-lamina-mover') === '-1' ? caja.insertBefore(fila, otra) : caja.insertBefore(otra, fila);
+      }
+    }
+    numerar();
+  });
+  // Vista previa de la imagen elegida (se sube al guardar).
+  caja.addEventListener('change', function (e) {
+    var f = e.target;
+    if (!f.hasAttribute('data-lamina-file') || !f.files || !f.files[0]) return;
+    var t = f.closest('label').querySelector('[data-lamina-thumb]');
+    var img = document.createElement('img');
+    img.src = URL.createObjectURL(f.files[0]);
+    img.alt = 'Imagen nueva';
+    img.setAttribute('data-lamina-thumb', '');
+    t.replaceWith(img);
+    f.closest('label').classList.add('nueva');
+  });
+  numerar();
+})();
+</script>
 <label class="form-label mt-3">Notas del equipo (visibles para el cliente)</label>
 <textarea name="notas" class="form-input" rows="2" maxlength="4000" placeholder="Ej.: los tiempos son orientativos; valida la explicación técnica antes de publicar.">{$c['notas'] ?? ''}</textarea>
 <p class="form-hint mt-1">Van en una caja aparte, no en la conversación de la revisión.</p>

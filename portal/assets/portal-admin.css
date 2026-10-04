@@ -122,3 +122,24 @@
 .pa-sec-pie { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; padding-top: 1.1rem; border-top: 1px solid color-mix(in srgb, currentColor 10%, transparent); }
 .pa-campos-3 { display: grid; gap: .75rem; grid-template-columns: repeat(auto-fit, minmax(min(12rem, 100%), 1fr)); max-width: 40rem; }
 .pa-campos-3 label { display: flex; flex-direction: column; gap: .3rem; font-size: .8125rem; font-weight: 650; }
+
+/* Editor de láminas: una fila por lámina (número, imagen, idea y texto, acciones). */
+.pa-laminas { display: flex; flex-direction: column; }
+.pa-lam { display: grid; grid-template-columns: 1.75rem auto minmax(0, 1fr); gap: .5rem .9rem; align-items: start; padding: .75rem 0; border-top: 1px solid color-mix(in srgb, currentColor 10%, transparent); }
+.pa-lam:first-child { border-top: 0; }
+.pa-lam:not(:has(.pa-lam-img)) { grid-template-columns: 1.75rem minmax(0, 1fr); }
+.pa-lam-n { display: grid; place-items: center; width: 1.75rem; height: 1.75rem; margin-top: .35rem; border-radius: 999px; font-size: .8rem; font-weight: 700; background: color-mix(in srgb, currentColor 8%, transparent); }
+.pa-lam-img { position: relative; display: grid; place-items: center; width: 5.5rem; height: 5.5rem; overflow: hidden; border-radius: .75rem; cursor: pointer; text-align: center; font-size: .75rem; font-weight: 650; line-height: 1.3;
+  color: color-mix(in srgb, currentColor 60%, transparent); border: 1.5px dashed color-mix(in srgb, currentColor 25%, transparent); }
+.pa-lam-img:hover { border-color: #6d5df6; color: #6d5df6; }
+.pa-lam-img:has(img) { border-style: solid; }
+.pa-lam-img.nueva { border-color: #6d5df6; }
+.pa-lam-img img { width: 100%; height: 100%; object-fit: cover; }
+.pa-lam-file { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.pa-lam-txt { display: flex; flex-direction: column; gap: .45rem; min-width: 0; }
+.pa-lam-acc { display: flex; gap: .3rem; grid-column: 1 / -1; justify-content: flex-end; }
+@media (min-width: 720px) {
+  .pa-lam { grid-template-columns: 1.75rem auto minmax(0, 1fr) auto; }
+  .pa-lam:not(:has(.pa-lam-img)) { grid-template-columns: 1.75rem minmax(0, 1fr) auto; }
+  .pa-lam-acc { grid-column: auto; margin-top: .3rem; }
+}

@@ -144,7 +144,8 @@ class EntregaPublicController extends PortalPublicController
             'esVigente'  => $esVigente,
             'visor'      => TiposContenido::visor((string) $x['tipo']),
             'etiqueta'   => TiposContenido::etiqueta($x, count($imagenes)),
-            'laminas'    => TiposContenido::laminas($x['laminas'] ?? null),
+            // Al cliente sólo las láminas con texto (las que sólo amarran una imagen no se listan).
+            'laminas'    => array_values(array_filter(TiposContenido::laminas($x['laminas'] ?? null), fn($l) => $l['idea'] !== '' || $l['texto'] !== '')),
             'imagenes'   => $imagenes,
             'videos'     => $videos,
             'docs'       => $docs,
