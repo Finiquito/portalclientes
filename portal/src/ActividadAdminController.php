@@ -30,10 +30,8 @@ class ActividadAdminController
 
     public function actividad(): void
     {
-        try {
-            $this->notificador()->vaciarCola();
-        } catch (\Throwable) {
-        }
+        $n = $this->notificador();
+        Diferido::alTerminar(static fn() => $n->vaciarCola());
         // «Desde tu última visita»: en el panel es de cada persona; en el admin, del sitio.
         $yo = $this->ui->autorId();
         [$dueno, $duenoId] = $yo !== null ? ['equipo', $yo] : ['global', 'portal'];
@@ -168,10 +166,7 @@ class ActividadAdminController
     {
         $n = $this->notificador();
         $aj = $this->ajustes();
-        try {
-            $n->vaciarCola();
-        } catch (\Throwable) {
-        }
+        Diferido::alTerminar(static fn() => $n->vaciarCola());
         [$respetar, $ini, $fin] = $n->horario();
         $token = $aj->get('global', 'portal', 'cron_token');
         if ($token === '') {

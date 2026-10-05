@@ -258,12 +258,14 @@ class PortalPublicController
     {
         $clienteId = (string) $contacto['cliente_id'];
         // Aprovecha la visita para enviar los correos que ya llegaron a su horario hábil.
-        try {
-            $this->notificador()->vaciarCola();
-            (new Avisos($this->ctx, $this->pdo(), $this->notificador()))->correrSiToca();
-        } catch (\Throwable) {
-            // nunca romper una página por un correo
-        }
+        // Correos en espera y avisos: después de entregar la página (un SMTP lento no la deja colgada).
+        $n = $this->notificador();
+        $ctx = $this->ctx;
+        $pdo = $this->pdo();
+        Diferido::alTerminar(static function () use ($n, $ctx, $pdo): void {
+            $n->vaciarCola();
+            (new Avisos($ctx, $pdo, $n))->correrSiToca();
+        });
         $cliente   = $this->fetchOne('SELECT * FROM portal_clientes WHERE id = ?', [$clienteId]) ?? ['nombre' => '', 'empresa' => ''];
         $cfg       = $this->ajustes()->todos('cliente', $clienteId);
         $pref      = $this->ajustes()->todos('contacto', (string) $contacto['id']);

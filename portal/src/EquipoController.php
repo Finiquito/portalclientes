@@ -150,12 +150,13 @@ class EquipoController
      */
     protected function contexto(array $u, string $nav, array $extra = []): array
     {
-        try {
-            (new Notifier($this->ctx, $this->pdo()))->vaciarCola();
-            (new Avisos($this->ctx, $this->pdo()))->correrSiToca();
-        } catch (\Throwable) {
-            // nunca romper una página por un correo
-        }
+        // Correos en espera y avisos: después de entregar la página (un SMTP lento no la deja colgada).
+        $ctx = $this->ctx;
+        $pdo = $this->pdo();
+        Diferido::alTerminar(static function () use ($ctx, $pdo): void {
+            (new Notifier($ctx, $pdo))->vaciarCola();
+            (new Avisos($ctx, $pdo))->correrSiToca();
+        });
         $pref = $this->ajustes()->todos('equipo', (string) $u['id']);
         $tema = in_array($pref['tema'] ?? '', ['claro', 'oscuro'], true) ? $pref['tema'] : 'auto';
 

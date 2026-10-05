@@ -25,7 +25,7 @@ final class SmtpCliente
         private readonly string $seguridad,
         private readonly string $usuario,
         private readonly string $clave,
-        private readonly int $espera = 20,
+        private readonly int $espera = 12,
         private readonly string $ehlo = 'localhost'
     ) {}
 
