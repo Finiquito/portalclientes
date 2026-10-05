@@ -328,7 +328,9 @@ final class Convocados
                 ['Te llega porque te convocaron a esta reunión.']);
             $ini = ReunionService::aUtc((string) $r['fecha']);
             $pronto = $ini !== null && $ini <= (Notifier::$ahora ?? new \DateTimeImmutable('now', new \DateTimeZone('UTC')))->modify('+36 hours');
-            $this->n->aContacto($p, $cid, $asunto, $html, $texto, $this->inmediato || $pronto || $tipo === 'cancelada', $ics);
+            // La cancelación sale siempre; la invitación y el recordatorio, sólo si la reunión sigue en pie.
+            $this->n->aContacto($p, $cid, $asunto, $html, $texto, $this->inmediato || $pronto || $tipo === 'cancelada', $ics,
+                $tipo === 'cancelada' ? null : Vigencia::reunion((string) $r['id'], $tipo === 'recordatorio' ? null : (int) ($r['ics_seq'] ?? 0)));
             return 1;
         }
 
@@ -344,7 +346,7 @@ final class Convocados
             }
             if ($pref['como'] === 'agrupado') {
                 (new Avisos($this->ctx, $this->pdo, $this->n))->guardar((string) $u['id'], $cid, (string) $r['proyecto_id'], 'reuniones/' . $r['id'],
-                    $asunto, $cuando, 'reuniones/' . $r['id']);
+                    $asunto, $cuando, 'reuniones/' . $r['id'], Vigencia::reunion((string) $r['id']));
                 return 1;
             }
         }

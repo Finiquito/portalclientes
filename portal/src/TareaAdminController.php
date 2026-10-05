@@ -278,7 +278,7 @@ class TareaAdminController
                 (string) $t['cliente_id'], (string) $t['proyecto_id'], 'equipo', $this->firma(), 'asigno', 'tarea', $id, (string) $t['titulo']
             );
             if (!empty($_POST['avisar'])) {
-                $this->avisarCliente($t, 'Tienes algo pendiente: ' . $t['titulo'], 'Te dejamos una nueva tarea en el portal.', ['titulo' => 'Tienes algo pendiente', 'resaltado' => 'pendiente']);
+                $this->avisarCliente($t, 'Tienes algo pendiente: ' . $t['titulo'], 'Te dejamos una nueva tarea en el portal.', ['titulo' => 'Tienes algo pendiente', 'resaltado' => 'pendiente', 'vigencia' => Vigencia::tarea((string) $t['id'])]);
             }
         }
 
@@ -325,7 +325,7 @@ class TareaAdminController
                 $this->avisarCliente($t, 'Novedades en: ' . $t['titulo'], $seAsignoAhora
                     ? 'Te dejamos una nueva tarea en el portal.'
                     : 'Actualizamos esta tarea: ahora está en estado «' . (Fmt::ESTADOS[$t['estado']][0] ?? $t['estado']) . '».',
-                    $seAsignoAhora ? ['titulo' => 'Tienes algo pendiente', 'resaltado' => 'pendiente'] : ['titulo' => 'Novedades en tu tarea', 'resaltado' => 'Novedades']);
+                    $seAsignoAhora ? ['titulo' => 'Tienes algo pendiente', 'resaltado' => 'pendiente', 'vigencia' => Vigencia::tarea((string) $t['id'])] : ['titulo' => 'Novedades en tu tarea', 'resaltado' => 'Novedades']);
             }
         }
 
@@ -363,6 +363,7 @@ class TareaAdminController
             'urgente' => $vence !== '' && substr($vence, 0, 10) <= $hoy,
             'etiqueta' => 'Tarea', 'titulo' => 'Te asignaron una tarea', 'resaltado' => 'asignaron', 'bloques' => $bloques, 'boton' => 'Abrir la tarea',
             'preheader' => ($quien !== '' ? $quien . ' te asignó: ' : '') . $t['titulo'], 'clave' => 'tareas/' . $t['id'], 'detalle' => $detalle,
+            'vigencia' => Vigencia::tarea((string) $t['id']),
         ]);
     }
 

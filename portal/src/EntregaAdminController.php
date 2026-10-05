@@ -207,7 +207,8 @@ class EntregaAdminController
             (new Notifier($this->ctx, $this->pdo()))->alCliente(
                 (string) $e['cliente_id'], null, 'Tienes contenido para revisar: ' . $e['titulo'], $cuerpo, '/portal/entregas/' . $id,
                 ['etiqueta' => 'Revisión', 'titulo' => 'Tienes contenido para revisar', 'resaltado' => 'contenido', 'boton' => 'Revisar contenido',
-                 'bloques' => [['tarjetas' => [['titulo' => (string) $e['titulo'], 'detalle' => ((int) $e['n_total']) . ' contenido(s) esperando tu opinión', 'chip' => 'Para revisar']]]]]
+                 'bloques' => [['tarjetas' => [['titulo' => (string) $e['titulo'], 'detalle' => ((int) $e['n_total']) . ' contenido(s) esperando tu opinión', 'chip' => 'Para revisar']]]],
+                 'vigencia' => Vigencia::revision($id)]
             );
         }
         $this->ui->redirect($this->url('entregas/' . $id), 'Entrega publicada: el cliente ya la ve en su portal.');
@@ -631,7 +632,8 @@ class EntregaAdminController
                 (string) $c['cliente_id'], null, 'Nueva versión para revisar: ' . $c['titulo'],
                 'Subimos una nueva versión de «' . $c['titulo'] . '» en «' . $c['entrega_titulo'] . '». Échale un vistazo cuando puedas.', '/portal/entregas/' . $c['entrega_id'],
                 ['etiqueta' => 'Nueva versión', 'titulo' => 'Hay una nueva versión para revisar', 'resaltado' => 'nueva versión', 'boton' => 'Ver la nueva versión',
-                 'bloques' => [['tarjetas' => [['titulo' => (string) $c['titulo'], 'detalle' => (string) $c['entrega_titulo'], 'chip' => 'v' . ((int) $c['version_actual'] + 1)]]]]]
+                 'bloques' => [['tarjetas' => [['titulo' => (string) $c['titulo'], 'detalle' => (string) $c['entrega_titulo'], 'chip' => 'v' . ((int) $c['version_actual'] + 1)]]]],
+                 'vigencia' => Vigencia::contenido($id)]
             );
         }
         if ($vid !== null) {

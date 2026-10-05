@@ -143,6 +143,7 @@ class Notifier
      *   urgente                    true: no espera al agrupado
      *   clave                      para agrupar varias novedades de lo mismo (por defecto, la ruta)
      *   detalle                    una línea para el correo agrupado
+     *   vigencia                   marca de Vigencia: si mientras espera deja de aplicar, no sale
      *
      * @param array<string, mixed> $op
      */
@@ -173,7 +174,8 @@ class Notifier
             $enviados[] = $mail;
             if ($u['como'] === 'agrupado' && empty($op['urgente'])) {
                 $avisos->guardar((string) $u['id'], $cid, $pid, (string) ($op['clave'] ?? $rutaAdmin ?? $asunto), $asunto,
-                    (string) ($op['detalle'] ?? mb_substr(trim(preg_replace('/\s+/u', ' ', $cuerpo) ?? ''), 0, 160)), $rutaAdmin);
+                    (string) ($op['detalle'] ?? mb_substr(trim(preg_replace('/\s+/u', ' ', $cuerpo) ?? ''), 0, 160)), $rutaAdmin,
+                    isset($op['vigencia']) ? (string) $op['vigencia'] : null);
                 continue;
             }
             $pieEq = array_merge($pie, [Avisos::pieMotivo($u)]);
@@ -251,7 +253,7 @@ class Notifier
                 $asunto, $cuerpo, $op, 'Hola ' . $this->primerNombre((string) $c['nombre']) . ',', $this->absoluta($ruta), $clienteId,
                 ['Puedes desactivar estos avisos en Ajustes dentro del portal.']
             );
-            $this->aContacto($c, $clienteId, $asunto, $html, $texto, !empty($op['inmediato']));
+            $this->aContacto($c, $clienteId, $asunto, $html, $texto, !empty($op['inmediato']), null, isset($op['vigencia']) ? (string) $op['vigencia'] : null);
         }
     }
 
@@ -396,13 +398,13 @@ class Notifier
 
     // ---- Cola ----------------------------------------------------------------------------
 
-    private function encolar(string $clienteId, string $contactoId, string $to, string $asunto, string $texto, string $html, \DateTimeImmutable $cuando, ?string $ics = null): void
+    private function encolar(string $clienteId, string $contactoId, string $to, string $asunto, string $texto, string $html, \DateTimeImmutable $cuando, ?string $ics = null, ?string $vigencia = null): void
     {
         Schema::asegurar($this->pdo);
         $this->pdo->prepare(
-            'INSERT INTO ' . self::COLA . ' (id, cliente_id, contacto_id, destino, asunto, texto, html, ics, enviar_desde, estado, intentos, created_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)'
-        )->execute([typedock_uuid7(), $clienteId, $contactoId, $to, mb_substr($asunto, 0, 500), $texto, $html, $ics, $cuando->format('Y-m-d H:i:s'), 'pendiente', $this->ahoraUtc()->format('Y-m-d H:i:s')]);
+            'INSERT INTO ' . self::COLA . ' (id, cliente_id, contacto_id, destino, asunto, texto, html, ics, vigencia, enviar_desde, estado, intentos, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)'
+        )->execute([typedock_uuid7(), $clienteId, $contactoId, $to, mb_substr($asunto, 0, 500), $texto, $html, $ics, $vigencia, $cuando->format('Y-m-d H:i:s'), 'pendiente', $this->ahoraUtc()->format('Y-m-d H:i:s')]);
     }
 
     /**
@@ -411,13 +413,13 @@ class Notifier
      *
      * @param array<string, mixed> $contacto id, email
      */
-    public function aContacto(array $contacto, string $clienteId, string $asunto, string $html, string $texto, bool $inmediato = false, ?string $ics = null): void
+    public function aContacto(array $contacto, string $clienteId, string $asunto, string $html, string $texto, bool $inmediato = false, ?string $ics = null, ?string $vigencia = null): void
     {
         $cuando = $this->cuandoEnviar($clienteId, $inmediato);
         if ($cuando <= $this->ahoraUtc()) {
             $this->enviarCorreo((string) $contacto['email'], $asunto, $html, $texto, true, $ics);
         } else {
-            $this->encolar($clienteId, (string) $contacto['id'], (string) $contacto['email'], $asunto, $texto, $html, $cuando, $ics);
+            $this->encolar($clienteId, (string) $contacto['id'], (string) $contacto['email'], $asunto, $texto, $html, $cuando, $ics, $vigencia);
         }
     }
 
@@ -442,6 +444,12 @@ class Notifier
         }
         $n = 0;
         foreach ($filas as $f) {
+            // Si lo que avisaba ya se resolvió (la tarea se completó, el contenido se aprobó…), no sale.
+            if (!Vigencia::sigue($this->pdo, ($f['vigencia'] ?? null) ?: null)) {
+                $this->pdo->prepare('UPDATE ' . self::COLA . " SET estado = 'descartado', error = ? WHERE id = ? AND estado = 'pendiente'")
+                    ->execute(['Ya no hacía falta: se resolvió antes de enviarlo.', $f['id']]);
+                continue;
+            }
             if ($this->enviarDeCola($f)) {
                 $n++;
             }

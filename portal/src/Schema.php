@@ -198,19 +198,21 @@ final class Schema
     /** Buzón de avisos agrupados, marcas de «ya avisado» y convocados de reuniones (migración 0009). */
     private static function tablasAvisos(\PDO $pdo): void
     {
-        // Invitación de calendario adjunta a un correo que espera en la cola.
-        if (self::existe($pdo, 'portal_correos_cola', 'id') && !self::existe($pdo, 'portal_correos_cola', 'ics')) {
-            $pdo->exec('ALTER TABLE portal_correos_cola ADD COLUMN ics TEXT');
+        if (!self::existe($pdo, 'portal_avisos_buzon', 'id, usuario_id, clave, enviado_en')
+            || !self::existe($pdo, 'portal_avisos_marcas', 'clave')
+            || !self::existe($pdo, 'portal_reunion_asistentes', 'reunion_id, asistente_tipo, asistente_usuario_id, asistente_contacto_id')) {
+            $sql = (string) @file_get_contents(dirname(__DIR__) . '/migrations/0009_avisos.sql');
+            $sql = preg_replace('/^\s*--.*$/m', '', $sql) ?? '';
+            foreach (array_filter(array_map('trim', explode(';', $sql))) as $stmt) {
+                $pdo->exec($stmt);
+            }
         }
-        if (self::existe($pdo, 'portal_avisos_buzon', 'id, usuario_id, clave, enviado_en')
-            && self::existe($pdo, 'portal_avisos_marcas', 'clave')
-            && self::existe($pdo, 'portal_reunion_asistentes', 'reunion_id, asistente_tipo, asistente_usuario_id, asistente_contacto_id')) {
-            return;
-        }
-        $sql = (string) @file_get_contents(dirname(__DIR__) . '/migrations/0009_avisos.sql');
-        $sql = preg_replace('/^\s*--.*$/m', '', $sql) ?? '';
-        foreach (array_filter(array_map('trim', explode(';', $sql))) as $stmt) {
-            $pdo->exec($stmt);
+        // Columnas que llegaron después: invitación de calendario en la cola y marca de vigencia
+        // (ver Vigencia: si el aviso ya no hace falta, no sale).
+        foreach ([['portal_correos_cola', 'ics', 'TEXT'], ['portal_correos_cola', 'vigencia', 'VARCHAR(80)'], ['portal_avisos_buzon', 'vigencia', 'VARCHAR(80)']] as [$t, $col, $def]) {
+            if (self::existe($pdo, $t, 'id') && !self::existe($pdo, $t, $col)) {
+                $pdo->exec("ALTER TABLE {$t} ADD COLUMN {$col} {$def}");
+            }
         }
     }
 

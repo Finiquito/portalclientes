@@ -1494,6 +1494,44 @@ $f = P\EntregaAdminController::filasLaminas([['idea' => 'A', 'texto' => '', 'img
 check($f[0]['img']['id'] === $u3 && $f[1]['img'] === null && count($f) === 4, 'con imágenes amarradas se respeta la amarra y las demás van al final');
 
 // ---------------------------------------------------------------------------
+seccion('Avisos que ya no hacen falta no salen');
+
+$aj->set('global', 'portal', 'horario_respetar', '1');
+P\Notifier::$ahora = $enAgencia('2027-02-03 23:00');   // de noche: lo del cliente espera su horario
+$nv = new P\Notifier($ctx, $pdo);
+$tPend = $ts->create(['proyecto_id' => $p5, 'titulo' => 'Mandar el logo en alta', 'asignado' => 'cliente', 'visible_cliente' => 1]);
+$nv->alCliente($c5, null, 'Tienes algo pendiente: Mandar el logo en alta', '', '/portal/tareas/' . $tPend, ['vigencia' => P\Vigencia::tarea($tPend)]);
+$nv->alCliente($c5, null, 'Nuevo comentario', 'Hola', '/portal');
+$enCola = fn(string $asunto) => (string) $pdo->query("SELECT estado FROM portal_correos_cola WHERE asunto = " . $pdo->quote($asunto))->fetchColumn();
+check($enCola('Tienes algo pendiente: Mandar el logo en alta') === 'pendiente', 'el aviso al cliente espera su horario hábil');
+$ts->cambiarEstado($tPend, 'hecha');
+P\Notifier::$ahora = $enAgencia('2027-02-04 09:00');
+$ctx->correos = [];
+$nv->vaciarCola(50);
+check($enCola('Tienes algo pendiente: Mandar el logo en alta') === 'descartado' && $para('luz@cinco.cl') !== [] && !in_array('Tienes algo pendiente: Mandar el logo en alta', array_column($ctx->correos, 'subject'), true), 'si la tarea se completó mientras esperaba, el aviso se descarta (y lo demás sale)');
+check(P\Vigencia::sigue($pdo, null) && P\Vigencia::sigue($pdo, 'otra:cosa'), 'sin marca o con una marca desconocida, el aviso sale');
+
+// Buzón del equipo
+$aj->set('equipo', $beto['id'], 'avisos_como', 'agrupado');
+$pdo->exec('DELETE FROM portal_avisos_buzon');
+$tB = $ts->create(['proyecto_id' => $p5, 'titulo' => 'Retocar foto', 'asignado' => 'equipo', 'responsable_usuario_id' => $beto['id']]);
+$nv->alEquipo('Te asignaron: «Retocar foto»', '', 'tareas/' . $tB, ['proyecto_id' => $p5, 'responsable' => $beto['id'], 'solo_responsable' => true, 'vigencia' => P\Vigencia::tarea($tB)]);
+$nv->alEquipo('Luz comentó', '', 'tareas/' . $tB, ['proyecto_id' => $p5, 'responsable' => $beto['id'], 'solo_responsable' => true]);
+check(count($av->pendientes($beto['id'])) === 2, 'los dos avisos esperan en el buzón');
+$ts->cambiarEstado($tB, 'hecha');
+check(array_column($av->pendientes($beto['id']), 'asunto') === ['Luz comentó'], 'si la tarea se completó, «te asignaron» sale del buzón; el comentario se mantiene');
+
+// Invitación vieja a una reunión que cambió de hora
+$rv = $rs->create(['proyecto_id' => $p5, 'titulo' => 'Revisión', 'fecha' => '2027-02-20 10:00', 'duracion_min' => 30, 'publicada' => 1]);
+$marca = P\Vigencia::reunion($rv, 0);
+check(P\Vigencia::sigue($pdo, $marca), 'la invitación vale para su versión');
+$pdo->exec("UPDATE portal_reuniones SET ics_seq = 1 WHERE id = " . $pdo->quote($rv));
+check(!P\Vigencia::sigue($pdo, $marca) && P\Vigencia::sigue($pdo, P\Vigencia::reunion($rv)), 'si la reunión cambió, la invitación vieja ya no sale (el recordatorio sí)');
+$rs->delete($rv);
+check(!P\Vigencia::sigue($pdo, P\Vigencia::reunion($rv)), 'si la reunión se borró, nada de ella sale');
+P\Notifier::$ahora = null;
+
+// ---------------------------------------------------------------------------
 echo "\n\n" . $GLOBALS['ok'] . ' comprobaciones OK, ' . count($GLOBALS['fallas']) . " fallas ({$motor}).\n";
 foreach ($GLOBALS['fallas'] as $f) {
     echo "  ✗ {$f}\n";

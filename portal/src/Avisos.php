@@ -160,19 +160,31 @@ final class Avisos
         return ($t ?? $this->ahora())->setTimezone(new \DateTimeZone($zona ?? Zona::agencia()));
     }
 
-    public function guardar(string $usuarioId, ?string $clienteId, ?string $proyectoId, string $clave, string $asunto, string $detalle, ?string $ruta): void
+    /** @param ?string $vigencia marca de Vigencia: si deja de aplicar antes de salir, el aviso se descarta */
+    public function guardar(string $usuarioId, ?string $clienteId, ?string $proyectoId, string $clave, string $asunto, string $detalle, ?string $ruta, ?string $vigencia = null): void
     {
         Schema::asegurar($this->pdo);
         $this->pdo->prepare(
-            'INSERT INTO ' . self::BUZON . ' (id, usuario_id, cliente_id, proyecto_id, clave, asunto, detalle, ruta, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+            'INSERT INTO ' . self::BUZON . ' (id, usuario_id, cliente_id, proyecto_id, clave, asunto, detalle, ruta, vigencia, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         )->execute([typedock_uuid7(), $usuarioId, $clienteId, $proyectoId, mb_substr($clave, 0, 120), mb_substr($asunto, 0, 500),
-            $detalle !== '' ? mb_substr($detalle, 0, 1000) : null, $ruta !== null ? mb_substr($ruta, 0, 255) : null, $this->ahora()->format('Y-m-d H:i:s')]);
+            $detalle !== '' ? mb_substr($detalle, 0, 1000) : null, $ruta !== null ? mb_substr($ruta, 0, 255) : null, $vigencia, $this->ahora()->format('Y-m-d H:i:s')]);
+    }
+
+    /** Saca del buzón lo que ya no hace falta avisar (la tarea se completó, la reunión se borró…). */
+    public function depurar(?string $usuarioId = null): int
+    {
+        Schema::asegurar($this->pdo);
+        $st = $this->pdo->prepare('SELECT id, vigencia FROM ' . self::BUZON . ' WHERE enviado_en IS NULL AND vigencia IS NOT NULL' . ($usuarioId !== null ? ' AND usuario_id = ?' : ''));
+        $st->execute($usuarioId !== null ? [$usuarioId] : []);
+        $viejos = array_values(array_filter($st->fetchAll(), fn($f) => !Vigencia::sigue($this->pdo, (string) $f['vigencia'])));
+        $this->marcarEnviados($viejos);   // quedan como despachados: no salen
+        return count($viejos);
     }
 
     /** @return array<int, array<string, mixed>> pendientes de una persona, ordenados por cliente y proyecto */
     public function pendientes(string $usuarioId): array
     {
-        Schema::asegurar($this->pdo);
+        $this->depurar($usuarioId);
         $st = $this->pdo->prepare(
             'SELECT b.*, p.nombre AS proyecto_nombre, c.nombre AS cliente_nombre
              FROM ' . self::BUZON . ' b
@@ -280,6 +292,7 @@ final class Avisos
         if (!$this->enHorarioAgencia()) {
             return 0;   // de noche y fines de semana se junta; sale en el resumen o al abrir el día
         }
+        $this->depurar();
         $limite = $this->ahora()->modify('-' . self::HORAS . ' hours')->format('Y-m-d H:i:s');
         $filas = $this->pdo->query('SELECT usuario_id, COUNT(*) AS n, MIN(created_at) AS primero FROM ' . self::BUZON . ' WHERE enviado_en IS NULL GROUP BY usuario_id');
         $eq = new EquipoService($this->pdo);
@@ -585,7 +598,7 @@ final class Avisos
                 'proyecto_id' => (string) $t['proyecto_id'], 'responsable' => $resp !== '' ? $resp : null, 'solo_responsable' => $resp !== '',
                 'etiqueta' => 'Tarea', 'titulo' => $titulo, 'resaltado' => $f === $manana ? 'mañana' : 'atrasó',
                 'bloques' => [['tarjetas' => [['titulo' => (string) $t['titulo'], 'detalle' => 'Fecha: ' . (new Fmt())->fechaLarga($f)]]]],
-                'detalle' => 'Fecha: ' . (new Fmt())->fechaLarga($f), 'clave' => 'tareas/' . $t['id'],
+                'detalle' => 'Fecha: ' . (new Fmt())->fechaLarga($f), 'clave' => 'tareas/' . $t['id'], 'vigencia' => Vigencia::tarea((string) $t['id']),
             ]);
             $n++;
         }
