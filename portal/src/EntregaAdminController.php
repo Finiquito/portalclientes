@@ -415,7 +415,10 @@ class EntregaAdminController
             'comentarios' => $comentarios,
             'pines' => Ubicacion::pines($comentarios, $c['version_id'] !== null ? (string) $c['version_id'] : null, $posImagen),
             'imgVigente' => $imgVigente, 'posImagen' => $posImagen,
-            'filasLaminas' => self::filasLaminas(TiposContenido::laminas($c['laminas'] ?? null), $imgVigente),
+            // En un reel las láminas son el guion (sin imagen por fila) y la imagen es la portada.
+            'esReel' => TiposContenido::visor((string) $c['tipo']) === 'reel',
+            'portada' => TiposContenido::visor((string) $c['tipo']) === 'reel' ? ($imgVigente[0] ?? null) : null,
+            'filasLaminas' => TiposContenido::visor((string) $c['tipo']) === 'reel' ? null : self::filasLaminas(TiposContenido::laminas($c['laminas'] ?? null), $imgVigente),
             'fmt' => new Fmt(), 'firma' => $this->firma(), 'maxMb' => $this->maxMb(),
         ] + $this->flashes());
     }
@@ -446,6 +449,45 @@ class EntregaAdminController
             $filas[] = ['idea' => '', 'texto' => '', 'img' => $a];
         }
         return $filas;
+    }
+
+    /**
+     * Portada de un reel: es la primera imagen de la versión vigente. Subir otra la reemplaza.
+     *
+     * @param array<string, mixed> $c contenido
+     * @return array<int, string> errores
+     */
+    private function guardarPortada(array $c): array
+    {
+        $vid = $c['version_id'] !== null ? (string) $c['version_id'] : '';
+        if ($vid === '') {
+            return [];
+        }
+        $fmt = new Fmt();
+        $actual = array_values(array_filter($this->contenidos()->archivos($vid), fn($a) => $fmt->esImagen($a['mime'])))[0] ?? null;
+        if (!empty($_POST['quitar_portada']) && $actual !== null) {
+            $this->archivos()->borrar((string) $actual['id']);
+            $actual = null;
+        }
+        $f = ArchivoService::normalizar($_FILES['portada'] ?? null);
+        if ($f === []) {
+            return [];
+        }
+        $r = $this->archivos()->guardarVarios([$f[0]], (string) $c['cliente_id'], (string) $c['proyecto_id'], 'version', $vid, $this->autor(), $this->maxMb());
+        if ($r['ok'] === []) {
+            return $r['errores'];
+        }
+        $nueva = $r['ok'][0];
+        if (!$fmt->esImagen((string) $nueva['mime'])) {
+            $this->archivos()->borrar((string) $nueva['id']);
+            return ['la portada debe ser una imagen (JPG, PNG o WebP)'];
+        }
+        if ($actual !== null) {
+            $this->archivos()->borrar((string) $actual['id']);   // la reemplaza
+        }
+        // Primera de la versión: así es la portada y la miniatura del reel.
+        $this->pdo()->prepare('UPDATE ' . ArchivoService::TABLE . ' SET orden = 0 WHERE id = ?')->execute([$nueva['id']]);
+        return [];
     }
 
     /**
@@ -532,7 +574,9 @@ class EntregaAdminController
                 $this->ui->redirect($this->url('contenidos/' . $id), 'El link debe empezar con http:// o https://', 'error');
                 return;
             }
-            if (!empty($_POST['laminas_form']) || is_array($_POST['laminas'] ?? null)) {
+            if (TiposContenido::visor((string) $c['tipo']) === 'reel') {
+                $errores = $this->guardarPortada($c);
+            } elseif (!empty($_POST['laminas_form']) || is_array($_POST['laminas'] ?? null)) {
                 $errores = $this->guardarLaminas($c, is_array($_POST['laminas'] ?? null) ? $_POST['laminas'] : []);
             }
             $this->contenidos()->actualizar($id, $_POST);

@@ -45,8 +45,34 @@
         <label class="form-label mt-3">Link (versión vigente)</label>
         <p class="pa-muted" style="margin:0 0 .4rem">Se ve dentro del portal: YouTube, Vimeo, Loom, Google Drive (video), Google Slides, Canva y Figma. Para video, lo más limpio es subir el mp4. Presentaciones: sube el PDF exportado o pega el link.</p>
         <input type="url" name="enlace" class="form-input" value="{$c['enlace']}" maxlength="500" placeholder="https://…">
+        {if $esReel}
+        <h3 class="pa-h2 mt-4" style="font-size:1rem">Portada</h3>
+        <div class="pa-row" style="align-items:flex-start">
+            <label class="pa-lam-img" title="Subir o cambiar la portada" style="width:6rem;height:auto;aspect-ratio:9/16">
+                {if $portada}<img src="{$admin_url('archivos/' . $portada['id'])}?t=1" alt="Portada actual" data-portada-thumb>{else}<span data-portada-thumb>Subir<br>portada</span>{/if}
+                <input type="file" name="portada" accept="image/*" class="pa-lam-file" data-portada-file>
+            </label>
+            <div style="flex:1;min-width:14rem">
+                <p class="pa-muted" style="margin:0">La imagen que se ve antes de reproducir el reel (9:16, como en Instagram). El cliente la revisa y le puede marcar puntos como a cualquier imagen. Se sube al guardar.</p>
+                {if $portada}<label class="pa-check"><input type="checkbox" name="quitar_portada" value="1"> <span>Quitar la portada</span></label>{/if}
+            </div>
+        </div>
+        <script n:syntax="off">
+        (function () {
+          var f = document.querySelector('[data-portada-file]');
+          if (!f) return;
+          f.addEventListener('change', function () {
+            if (!f.files || !f.files[0]) return;
+            var img = document.createElement('img');
+            img.src = URL.createObjectURL(f.files[0]); img.alt = 'Portada nueva'; img.setAttribute('data-portada-thumb', '');
+            f.closest('label').querySelector('[data-portada-thumb]').replaceWith(img);
+            f.closest('label').classList.add('nueva');
+          });
+        })();
+        </script>
+        {/if}
         <h3 class="pa-h2 mt-4" style="font-size:1rem">Brief de la pieza</h3>
-        {include '_brief.latte', c: $c, filas: $filasLaminas}
+        {include '_brief.latte', c: $c, filas: $filasLaminas, esReel: $esReel}
         <p class="mt-4"><button type="submit" class="btn btn-primary">Guardar</button></p>
     </form>
 </div>

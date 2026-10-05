@@ -16,8 +16,13 @@
 {var $conImg = isset($filas)}
 {var $lista = $filas ?? array_map(fn($l) => ['idea' => $l['idea'], 'texto' => $l['texto'], 'img' => null], \TypeDock\Plugin\Portal\TiposContenido::laminas($c['laminas'] ?? null))}
 <input type="hidden" name="laminas_form" value="1">
+{if $esReel ?? false}
+<label class="form-label mt-3">Guion (escenas)</label>
+<p class="form-hint" style="margin:0 0 .25rem">Una fila por escena: lo que se ve y el texto en pantalla. Mientras no haya video, el cliente ve el guion.</p>
+{else}
 <label class="form-label mt-3">Láminas</label>
 <p class="form-hint" style="margin:0 0 .25rem">Una fila por lámina: {if $conImg}su imagen, {/if}la idea y el texto que va en la imagen. {if $conImg}El carrusel del cliente sigue este orden.{else}Las imágenes se suben después, en el contenido.{/if} Mientras no haya imágenes, el cliente ve las láminas como notas pegadas.</p>
+{/if}
 <div class="pa-laminas" data-laminas>
     {foreach $lista as $k => $l}{include lamFila, k: $k, l: $l, conImg: $conImg}{/foreach}
 </div>

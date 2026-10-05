@@ -131,7 +131,7 @@
                         allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen" class="size-full border-0"></iframe>
                 {/if}
             {elseif count($videos) > 0}
-                <video controls playsinline preload="metadata" class="size-full object-cover" src="/portal/archivo/{$videos[0]['id']}?i=1"></video>
+                <video controls playsinline preload="metadata" class="size-full object-cover" src="/portal/archivo/{$videos[0]['id']}?i=1"{if $visor === 'reel' && count($imagenes) > 0} poster="/portal/archivo/{$imagenes[0]['id']}?i=1"{/if}></video>
             {elseif count($imagenes) > 0}
                 <a href="/portal/archivo/{$imagenes[0]['id']}?i=1" data-zoom data-zoom-alt="{$x['titulo']}" data-pinable data-archivo="{$imagenes[0]['id']}" data-img-n="1" class="relative block size-full" aria-label="Ampliar">
                     <img src="/portal/archivo/{$imagenes[0]['id']}?i=1" alt="{$x['titulo']}" class="size-full object-cover">
@@ -158,6 +158,18 @@
                 <span class="pointer-events-none absolute left-3 top-6 flex items-center gap-2 text-xs font-bold text-white drop-shadow">{$cuenta}</span>
             {/if}
         </div>
+        {* Portada del reel: aparte, para revisarla y marcarle puntos como a cualquier imagen. *}
+        {if $visor === 'reel' && count($imagenes) > 0 && ($embed || count($videos) > 0)}
+            <div class="mt-4">
+                <p class="text-xs font-bold uppercase tracking-wide text-muted">Portada</p>
+                <a href="/portal/archivo/{$imagenes[0]['id']}?i=1" data-zoom data-zoom-alt="Portada · {$x['titulo']}" class="relative mt-2 block w-32 overflow-hidden rounded-xl border border-line shadow-soft" aria-label="Ampliar la portada">
+                    <span class="relative block" data-pinable data-archivo="{$imagenes[0]['id']}" data-img-n="1">
+                        <img src="/portal/archivo/{$imagenes[0]['id']}?i=1" alt="Portada de {$x['titulo']}" class="block aspect-[9/16] w-full object-cover">
+                        {include pines-de, $imagenes[0]['id']}
+                    </span>
+                </a>
+            </div>
+        {/if}
         {if $ver && $ver['copy']}
             <p class="mt-4 whitespace-pre-line text-sm leading-relaxed"><strong class="font-bold">{$cuenta}</strong> {$ver['copy']}</p>
         {/if}
