@@ -51,6 +51,12 @@ final class Fmt
     }
 
     /** "12 oct" o "12 oct 2025" si no es del año en curso. */
+    /** Primera letra en mayúscula («revisar logo» → «Revisar logo»; respeta «¿» y comillas al inicio). */
+    public static function mayusculaInicial(string $s): string
+    {
+        return preg_replace_callback('/^([^\p{L}\p{N}]*)(\p{Ll})/u', fn($m) => $m[1] . mb_strtoupper($m[2]), $s) ?? $s;
+    }
+
     public function fecha(?string $s): string
     {
         $d = $this->parse($s);

@@ -118,6 +118,13 @@ class EquipoService
     }
 
     /** @return array<int, array<string, mixed>> Usuarios activos (para elegir responsables). */
+    /** Id de la única persona activa del equipo, o null si hay ninguna o más de una. */
+    public function unico(): ?string
+    {
+        $act = $this->activos();
+        return count($act) === 1 ? (string) $act[0]['id'] : null;
+    }
+
     public function activos(): array
     {
         return $this->pdo->query('SELECT id, nombre, email, cargo, rol FROM portal_equipo WHERE activo = 1 ORDER BY nombre')->fetchAll();

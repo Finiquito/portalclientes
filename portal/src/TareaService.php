@@ -107,7 +107,8 @@ class TareaService
         $usuarioId  = null;
         $contactoId = null;
         if ($asignado === 'equipo') {
-            $usuarioId = $this->nullIfEmpty((string) ($p['responsable_usuario_id'] ?? ''));
+            // Si el equipo es una sola persona, lo del equipo es suyo.
+            $usuarioId = $this->nullIfEmpty((string) ($p['responsable_usuario_id'] ?? '')) ?? (new EquipoService($this->pdo))->unico();
         } else {
             $contactoId = $this->nullIfEmpty((string) ($p['responsable_contacto_id'] ?? ''));
             if ($contactoId !== null && !$this->existe(
@@ -122,7 +123,7 @@ class TareaService
             'proyecto_id'       => $proyectoId,
             'fase_id'           => $faseId,
             'reunion_origen_id' => $this->nullIfEmpty((string) ($p['reunion_origen_id'] ?? '')),
-            'titulo'            => mb_substr(trim((string) ($p['titulo'] ?? '')), 0, 255),
+            'titulo'            => Fmt::mayusculaInicial(mb_substr(trim((string) ($p['titulo'] ?? '')), 0, 255)),
             'descripcion'       => (string) ($p['descripcion'] ?? ''),
             'fecha_inicio'      => $this->nullIfEmpty((string) ($p['fecha_inicio'] ?? '')),
             'fecha_vencimiento' => $this->nullIfEmpty((string) ($p['fecha_vencimiento'] ?? '')),

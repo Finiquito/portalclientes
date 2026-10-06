@@ -64,7 +64,7 @@
             <select name="responsable_usuario_id" class="form-input">
                 <option value="">— Sin asignar —</option>
                 {foreach $usuarios as $u}
-                    <option value="{$u['id']}" {if isset($tarea['responsable_usuario_id']) && $tarea['responsable_usuario_id'] === $u['id']}selected{/if}>{$u['name']}</option>
+                    <option value="{$u['id']}" {if ($tarea['responsable_usuario_id'] ?? null) === $u['id'] || (empty($tarea['responsable_usuario_id']) && $unico === $u['id'])}selected{/if}>{$u['name']}</option>
                 {/foreach}
             </select>
             <label class="pa-check"><input type="checkbox" name="visible_cliente" value="1" {if !$tarea || (int) ($tarea['visible_cliente'] ?? 1) === 1}checked{/if}> <span>Visible para el cliente (desmárcalo para tareas internas)</span></label>

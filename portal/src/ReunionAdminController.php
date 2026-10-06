@@ -206,7 +206,7 @@ class ReunionAdminController
             $this->ui->redirect($this->url('reuniones'), 'Crea un proyecto primero.', 'error');
             return;
         }
-        $yo = $this->ui->autorId();
+        $yo = $this->ui->autorId() ?? (new EquipoService($this->pdo()))->unico();   // equipo de una persona: convocada
         $this->ui->view('reuniones/nueva.latte', $this->zonasFormulario() + $this->datosConvocados($proyectos, ['equipo' => $yo !== null ? [$yo] : [], 'contacto' => []]) + [
             'proyectos' => $proyectos,
             'proyectoId' => (string) ($_GET['proyecto'] ?? $_GET['proyecto_id'] ?? ''),

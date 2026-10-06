@@ -107,6 +107,7 @@ class TareaAdminController
             'proyectos' => $this->proyectos(),
             'reuniones' => $this->reuniones(),
             'usuarios'  => $this->usuariosEquipo(),
+            'unico'     => (new EquipoService($this->pdo()))->unico(),   // equipo de una persona: viene elegida
             'contactos' => $this->ui->filtrar($this->service()->contactosAsignables(), 'cliente_id', 'cliente'),
             'fases'     => $this->ui->filtrar($this->service()->todasLasFases(), 'proyecto_id'),
             'firma'     => $this->firma(),

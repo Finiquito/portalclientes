@@ -199,7 +199,7 @@ class ReunionService
     /** @param array<string, mixed> $p */
     public function agregarPropuesta(string $reunionId, array $p, string $origen = 'manual'): ?string
     {
-        $titulo = mb_substr(trim((string) ($p['titulo'] ?? '')), 0, 255);
+        $titulo = Fmt::mayusculaInicial(mb_substr(trim((string) ($p['titulo'] ?? '')), 0, 255));
         if ($titulo === '') {
             return null;
         }
@@ -225,7 +225,7 @@ class ReunionService
     {
         $asignado = ($p['asignado'] ?? 'equipo') === 'cliente' ? 'cliente' : 'equipo';
         $vence = self::normalizarFecha((string) ($p['fecha_vencimiento'] ?? ''));
-        $titulo = mb_substr(trim((string) ($p['titulo'] ?? '')), 0, 255);
+        $titulo = Fmt::mayusculaInicial(mb_substr(trim((string) ($p['titulo'] ?? '')), 0, 255));
         if ($titulo === '') {
             return;
         }

@@ -1532,6 +1532,26 @@ check(!P\Vigencia::sigue($pdo, P\Vigencia::reunion($rv)), 'si la reunión se bor
 P\Notifier::$ahora = null;
 
 // ---------------------------------------------------------------------------
+seccion('Equipo de una persona y títulos de tareas');
+
+check(P\Fmt::mayusculaInicial('revisar el logo') === 'Revisar el logo' && P\Fmt::mayusculaInicial('¿cuándo publicamos?') === '¿Cuándo publicamos?'
+    && P\Fmt::mayusculaInicial('«ñandú» en portada') === '«Ñandú» en portada' && P\Fmt::mayusculaInicial('3 fotos') === '3 fotos', 'primera letra en mayúscula (respeta signos al inicio)');
+$tMay = $ts->create(['proyecto_id' => $p5, 'titulo' => 'enviar propuesta', 'asignado' => 'equipo']);
+check($ts->find($tMay)['titulo'] === 'Enviar propuesta', 'las tareas se guardan con mayúscula inicial');
+$rProp = $rs->create(['proyecto_id' => $p5, 'titulo' => 'Seguimiento', 'fecha' => '2027-03-01 10:00']);
+$pid = $rs->agregarPropuesta($rProp, ['titulo' => 'mandar cotización'], 'ia');
+check($rs->propuesta((string) $pid)['titulo'] === 'Mandar cotización', 'las tareas que propone la IA también');
+
+check($eq->unico() === null && $ts->find($tMay)['responsable_usuario_id'] === null, 'con varias personas en el equipo, la tarea queda sin asignar para elegir');
+$pdo->exec("UPDATE portal_equipo SET activo = 0 WHERE id <> " . $pdo->quote($ana));
+check($eq->unico() === $ana, 'con una sola persona activa, esa es la del equipo');
+$tSola = $ts->create(['proyecto_id' => $p5, 'titulo' => 'Diseñar post', 'asignado' => 'equipo']);
+check($ts->find($tSola)['responsable_usuario_id'] === $ana, 'y las tareas del equipo se le asignan solas');
+$tCli = $ts->create(['proyecto_id' => $p5, 'titulo' => 'Enviar fotos', 'asignado' => 'cliente']);
+check($ts->find($tCli)['responsable_usuario_id'] === null, 'las del cliente no');
+$pdo->exec('UPDATE portal_equipo SET activo = 1');
+
+// ---------------------------------------------------------------------------
 echo "\n\n" . $GLOBALS['ok'] . ' comprobaciones OK, ' . count($GLOBALS['fallas']) . " fallas ({$motor}).\n";
 foreach ($GLOBALS['fallas'] as $f) {
     echo "  ✗ {$f}\n";
