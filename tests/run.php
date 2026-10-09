@@ -1552,6 +1552,99 @@ check($ts->find($tCli)['responsable_usuario_id'] === null, 'las del cliente no')
 $pdo->exec('UPDATE portal_equipo SET activo = 1');
 
 // ---------------------------------------------------------------------------
+seccion('Línea de tiempo: hitos, dependencias y fechas estimadas');
+
+use TypeDock\Plugin\Portal\Cronograma as Cr;
+check(Cr::habilDesde('2027-03-06') === '2027-03-08' && Cr::siguienteHabil('2027-03-05') === '2027-03-08', 'días hábiles: el sábado pasa al lunes; después del viernes viene el lunes');
+check(Cr::finTras('2027-03-08', 5) === '2027-03-12' && Cr::finTras('2027-03-11', 3) === '2027-03-15' && Cr::habilesEntre('2027-03-11', '2027-03-15') === 3, '5 días hábiles desde el lunes terminan el viernes; se saltan los fines de semana');
+
+P\Notifier::$ahora = new DateTimeImmutable('2027-03-08 12:00', new DateTimeZone('UTC'));   // lunes
+$pT = $ps->create(['cliente_id' => $c5, 'nombre' => 'Sitio web Cinco']);
+$fs = new P\FaseService($pdo);
+$fDis = $fs->create(['proyecto_id' => $pT, 'nombre' => 'Diseño', 'orden' => 1]);
+$tA = $ts->create(['proyecto_id' => $pT, 'fase_id' => $fDis, 'titulo' => 'Brief', 'asignado' => 'equipo', 'fecha_inicio' => '2027-03-08', 'fecha_vencimiento' => '2027-03-10']);
+$tB = $ts->create(['proyecto_id' => $pT, 'fase_id' => $fDis, 'titulo' => 'Bocetos', 'asignado' => 'equipo', 'depende_de' => $tA, 'duracion_dias' => 3, 'fecha_inicio' => '2030-01-01']);
+$tC = $ts->create(['proyecto_id' => $pT, 'titulo' => 'Presentación', 'asignado' => 'equipo', 'depende_de' => $tB, 'duracion_dias' => 2]);
+$bB = $ts->find($tB);
+check($bB['depende_de'] === $tA && (int) $bB['duracion_dias'] === 3 && $bB['fecha_inicio'] === null, 'una tarea con dependencia guarda la anterior y la duración, sin fechas a mano');
+$cr = new Cr($pdo);
+$d = $cr->datos($pT);
+$porT = array_column($d['tareas'], null, 'id');
+check($porT[$tB]['estimada'] && $porT[$tB]['ini'] === '2027-03-11' && $porT[$tB]['fin'] === '2027-03-15', 'mientras la anterior sigue abierta, la fecha es estimada (parte el día hábil siguiente)');
+check($porT[$tC]['estimada'] && $porT[$tC]['ini'] === '2027-03-16' && $porT[$tC]['fin'] === '2027-03-17', 'la estimación sigue la cadena');
+check(!$cr->dependenciaValida($tA, $tC, $pT) && !$cr->dependenciaValida($tA, $tA, $pT), 'no se permiten dependencias en círculo');
+$ts->update($tA, array_merge($ts->find($tA), ['asignado' => 'equipo', 'estado' => 'hecha']));
+$bB = $ts->find($tB);
+check($bB['fecha_inicio'] !== null && $bB['fecha_vencimiento'] === Cr::finTras((string) $bB['fecha_inicio'], 3), 'al completar la anterior, la siguiente recibe fechas reales según su duración');
+$d = $cr->datos($pT);
+check(!array_column($d['tareas'], null, 'id')[$tB]['estimada'] && array_column($d['tareas'], null, 'id')[$tC]['estimada'], 'la que ya tiene fecha deja de ser estimada; la siguiente sigue estimada');
+
+$hs = new P\HitoService($pdo);
+$h1 = $hs->create(['proyecto_id' => $pT, 'nombre' => 'diseño aprobado', 'fecha' => '2027-03-19', 'fase_id' => $fDis, 'visible_cliente' => '1']);
+$h2 = $hs->create(['proyecto_id' => $pT, 'nombre' => 'Interno', 'fecha' => '2027-03-01']);
+check($hs->find((string) $h1)['nombre'] === 'Diseño aprobado' && $hs->create(['proyecto_id' => $pT, 'nombre' => '', 'fecha' => '2027-03-01']) === null, 'hitos con nombre y fecha');
+$d = $cr->datos($pT);
+$hh = array_column($d['hitos'], null, 'id');
+check($hh[$h1]['estado'] === 'pendiente' && $hh[$h2]['estado'] === 'atrasado', 'un hito sin cumplir y con fecha pasada se ve atrasado');
+$ts->cambiarEstado($tB, 'hecha');
+$hh = array_column($cr->datos($pT)['hitos'], null, 'id');
+check($hh[$h1]['estado'] === 'cumplido', 'el hito ligado a una fase se cumple solo cuando la fase termina');
+$hc = array_column($cr->datos($pT, true)['hitos'], 'id');
+check(in_array($h1, $hc, true) && !in_array($h2, $hc, true), 'el cliente sólo ve los hitos visibles');
+check($ts->moverFechas($tC, '2027-03-22', '2027-03-26') && (int) $ts->find($tC)['duracion_dias'] === 5, 'arrastrar una tarea con dependencia cambia su duración');
+$tD = $ts->create(['proyecto_id' => $pT, 'titulo' => 'Libre', 'asignado' => 'equipo']);
+check($ts->moverFechas($tD, '2027-03-24', '2027-03-22') && $ts->find($tD)['fecha_inicio'] === '2027-03-22' && $ts->find($tD)['fecha_vencimiento'] === '2027-03-24', 'arrastrar una tarea libre cambia sus fechas');
+check($d['desde'] <= '2027-03-01' && $d['hasta'] >= '2027-03-19' && $d['dias'] >= 42, 'el eje cubre todo, con margen');
+$eje = Cr::eje('2027-03-29', 10);
+check(count($eje['meses']) === 2 && $eje['meses'][0]['nombre'] === 'Marzo 2027' && $eje['meses'][0]['dias'] === 3 && $eje['dias'][5]['finde'] && $eje['dias'][0]['lunes'], 'el eje separa los meses y marca fines de semana');
+check((Cr::columna('2027-03-01'))('2027-03-11') === 10 && (Cr::columna('2027-03-01'))(null) === 0, 'cada día cae en su columna');
+
+// Pantalla del equipo: Gantt, arrastre y hitos
+class CronogramaPrueba extends P\CronogramaAdminController
+{
+    protected function terminate(): void { throw new RuntimeException('fin'); }
+    protected function limpiarSalida(): void {}
+}
+$_SESSION[P\EquipoController::SESION] = $coord;
+$tok = P\PortalSession::csrf();
+$CR = CronogramaPrueba::class;
+[$html] = $g->hacer('GET', $CR, 'ver', [$pT], 'proyecto');
+check(str_contains($html, 'Línea de tiempo') && str_contains($html, 'Presentación') && str_contains($html, 'Diseño aprobado') && str_contains($html, 'data-tipo="tarea"'), 'el equipo ve la línea de tiempo con tareas e hitos');
+check(str_contains($html, 'pa-gb-asa') && str_contains($html, '/equipo/proyectos/' . $pT . '/linea/mover'), 'en el panel las barras se pueden arrastrar');
+[$json] = $g->hacer('POST', $CR, 'mover', [$pT], 'proyecto', false, ['_csrf_token' => $tok, 'tipo' => 'tarea', 'obj' => $tD, 'ini' => '2027-03-29', 'fin' => '2027-03-31']);
+check((json_decode($json, true)['ok'] ?? false) === true && $ts->find($tD)['fecha_inicio'] === '2027-03-29' && $ts->find($tD)['fecha_vencimiento'] === '2027-03-31', 'arrastrar en el panel guarda las fechas');
+[$json] = $g->hacer('POST', $CR, 'mover', [$pT], 'proyecto', false, ['_csrf_token' => $tok, 'tipo' => 'hito', 'obj' => (string) $h2, 'ini' => '2027-03-05', 'fin' => '2027-03-05']);
+check((json_decode($json, true)['ok'] ?? false) === true && $hs->find((string) $h2)['fecha'] === '2027-03-05', 'los hitos también se arrastran');
+$tOtro = $ts->create(['proyecto_id' => $p1a, 'titulo' => 'De otro proyecto', 'asignado' => 'equipo']);
+[$json] = $g->hacer('POST', $CR, 'mover', [$pT], 'proyecto', false, ['_csrf_token' => $tok, 'tipo' => 'tarea', 'obj' => $tOtro, 'ini' => '2027-03-29', 'fin' => '2027-03-31']);
+check(isset(json_decode($json, true)['error']) && $ts->find($tOtro)['fecha_inicio'] === null, 'no se puede mover algo de otro proyecto');
+[, $r] = $g->hacer('POST', $CR, 'hitoGuardar', [$pT], 'proyecto', false, ['_csrf_token' => $tok, 'nombre' => 'lanzamiento', 'fecha' => '2027-04-15', 'visible_cliente' => '1']);
+$hL = (string) $pdo->query("SELECT id FROM portal_hitos WHERE nombre = 'Lanzamiento'")->fetchColumn();
+check($r === '/equipo/proyectos/' . $pT . '/linea' && $hL !== '', 'el diálogo crea hitos y vuelve a la línea de tiempo');
+[, $r] = $g->hacer('POST', $CR, 'hitoGuardar', [$pT], 'proyecto', false, ['_csrf_token' => $tok, 'hito_id' => $hL, 'nombre' => 'Lanzamiento', 'fecha' => '2027-04-16', 'visible_cliente' => '1', 'cumplido' => '1']);
+check($hs->find($hL)['fecha'] === '2027-04-16' && $hs->find($hL)['cumplido_en'] !== null, 'y los edita (fecha y cumplido)');
+$_SESSION[P\EquipoController::SESION] = $eq->create(['nombre' => 'Sin Proyectos', 'email' => 'sinp@agencia.cl', 'rol' => 'equipo', 'activo' => 1]);
+[, $r] = $g->hacer('GET', $CR, 'ver', [$pT], 'proyecto');
+check($r === '/equipo', 'quien no tiene el proyecto asignado no ve su línea de tiempo');
+
+// El cliente: Calendario del proyecto
+$ctT = (new P\ContactoService($pdo))->create(['cliente_id' => $c5, 'nombre' => 'Carla Cinco', 'email' => 'carla@cinco.cl', 'rol' => 'aprobador']);
+$_SESSION[P\PortalSession::CONTACTO] = $ctT;
+$pdo->prepare('UPDATE portal_tareas SET visible_cliente = 1 WHERE id IN (?, ?)')->execute([$tA, $tB]);
+$_GET = ['proyecto' => $pT];
+ob_start();
+try { $pub->calendario(); } catch (RuntimeException) {}
+$html = (string) ob_get_clean();
+$_GET = [];
+check(str_contains($html, 'Calendario del proyecto') && str_contains($html, 'Diseño aprobado') && str_contains($html, 'Lanzamiento') && !str_contains($html, 'Interno'), 'el cliente ve su calendario, sin los hitos internos');
+check(!str_contains($html, 'pa-gb-asa') && str_contains($html, 'pa-gantt') && str_contains($html, 'lectura'), 'para el cliente la línea de tiempo es de solo lectura');
+$mom = P\PortalPublicController::momentos($cr->datos($pT, true));
+$plano = array_merge(...array_values($mom));
+check(count($plano) > 0 && $plano === array_values(array_filter($plano, fn($m) => true)) && array_column($plano, 'fecha') === (function ($f) { sort($f); return $f; })(array_column($plano, 'fecha')), 'en el celular, la lista va en orden de fecha');
+check(in_array('Empieza Diseño', array_column($plano, 'titulo'), true) && in_array('hito', array_column($plano, 'tipo'), true), 'la lista incluye etapas e hitos');
+P\Notifier::$ahora = null;
+
+// ---------------------------------------------------------------------------
 echo "\n\n" . $GLOBALS['ok'] . ' comprobaciones OK, ' . count($GLOBALS['fallas']) . " fallas ({$motor}).\n";
 foreach ($GLOBALS['fallas'] as $f) {
     echo "  ✗ {$f}\n";

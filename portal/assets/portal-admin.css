@@ -143,3 +143,104 @@
   .pa-lam:not(:has(.pa-lam-img)) { grid-template-columns: 1.75rem minmax(0, 1fr) auto; }
   .pa-lam-acc { grid-column: auto; margin-top: .3rem; }
 }
+
+/* Línea de tiempo (Gantt). Columna de nombres fija a la izquierda y eje por días que se desplaza.
+   --dia: px por día; --dias: largo del eje. El eje siempre parte un lunes, así los fines de semana
+   se sombrean con un degradado que se repite cada 7 días. */
+.pa-g-barra { display: flex; gap: .75rem 1.25rem; flex-wrap: wrap; align-items: center; justify-content: space-between; margin: 0 0 .5rem; }
+.pa-g-leyenda { display: flex; gap: .4rem 1rem; flex-wrap: wrap; font-size: .75rem; color: color-mix(in srgb, currentColor 70%, transparent); }
+.pa-g-leyenda span { display: inline-flex; align-items: center; gap: .35rem; }
+.pa-gantt { --et: 15rem; --alto: 2.25rem; border: 1px solid color-mix(in srgb, currentColor 14%, transparent); border-radius: .9rem; overflow: hidden; }
+@media (max-width: 720px) { .pa-gantt { --et: 9rem; } }
+.pa-gantt, .pa-gantt * { box-sizing: border-box; }
+.pa-gantt { max-width: 100%; contain: inline-size; }   /* su ancho no depende del eje: el eje se desplaza adentro */
+.pa-gantt.guardando { opacity: .6; pointer-events: none; }
+.pa-g-scroll { overflow-x: auto; }
+.pa-g-tabla { width: max-content; min-width: 100%; }
+.pa-g-cuerpo { position: relative; }
+.pa-g-fila { display: flex; min-height: var(--alto); }
+.pa-g-fila > * { border-top: 1px solid color-mix(in srgb, currentColor 7%, transparent); }
+.pa-g-et { position: sticky; left: 0; z-index: 3; flex: none; width: var(--et); display: flex; flex-direction: column; justify-content: center; padding: .25rem .75rem; min-width: 0;
+  background: var(--surface, Canvas); border-right: 1px solid color-mix(in srgb, currentColor 12%, transparent); font-size: .8125rem; line-height: 1.25; }
+.pa-g-et a { color: inherit !important; font-weight: 600; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pa-g-et a:hover { text-decoration: underline; }
+.pa-g-et small { font-size: .7rem; color: color-mix(in srgb, currentColor 60%, transparent); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pa-g-et-tarea { padding-left: 1.5rem; }
+.pa-g-pista { position: relative; flex: none; width: calc(var(--dia) * var(--dias));
+  background: repeating-linear-gradient(90deg, transparent 0 calc(var(--dia) * 5), color-mix(in srgb, currentColor 4%, transparent) calc(var(--dia) * 5) calc(var(--dia) * 7)); }
+.pa-g-fase .pa-g-et, .pa-g-fase { background-color: color-mix(in srgb, currentColor 3%, transparent); }
+.pa-g-fase .pa-g-et { background: var(--surface, Canvas); background-image: linear-gradient(color-mix(in srgb, currentColor 3%, transparent), color-mix(in srgb, currentColor 3%, transparent)); }
+
+/* Cabecera: meses arriba, días abajo */
+.pa-g-cab { position: relative; z-index: 4; }
+.pa-g-cab > * { border-top: 0; }
+.pa-g-cab .pa-g-pista { height: 3rem; border-bottom: 1px solid color-mix(in srgb, currentColor 12%, transparent); }
+.pa-g-meses span, .pa-g-dias span { position: absolute; white-space: nowrap; overflow: hidden; }
+.pa-g-meses span { top: 0; height: 1.5rem; padding: .3rem .5rem 0; font-size: .75rem; font-weight: 700; border-left: 1px solid color-mix(in srgb, currentColor 14%, transparent); }
+.pa-g-dias span { top: 1.5rem; width: var(--dia); height: 1.5rem; display: grid; place-items: center; font-size: .7rem; color: color-mix(in srgb, currentColor 65%, transparent); }
+.pa-g-dias span.finde { color: color-mix(in srgb, currentColor 40%, transparent); }
+.pa-g-dias span.hoy { color: #fff; font-weight: 700; }
+.pa-g-dias span.hoy::before { content: ""; position: absolute; inset: .1rem; z-index: -1; border-radius: 999px; background: #e11d48; }
+.pa-gantt.mes .pa-g-dias span { width: auto; padding-left: .2rem; place-items: center start; border-left: 1px solid color-mix(in srgb, currentColor 10%, transparent); }
+
+/* Hoy: línea vertical sobre todas las filas */
+.pa-g-hoy { position: absolute; top: 0; bottom: 0; z-index: 2; pointer-events: none; width: 2px; left: calc(var(--et) + var(--dia) * var(--x) + var(--dia) / 2 - 1px); background: #e11d48; opacity: .7; }
+
+/* Barras de tareas y fases */
+.pa-gb, .pa-gf { position: absolute; top: .35rem; bottom: .35rem; margin-left: 2px; display: flex; align-items: center; padding: 0 .5rem; border-radius: .45rem; min-width: 6px;
+  font-size: .75rem; font-weight: 650; text-decoration: none !important; cursor: grab; touch-action: none; user-select: none; -webkit-user-drag: none; z-index: 1; }
+.pa-gb-txt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; pointer-events: none; }
+.pa-gb-txt em { font-style: normal; font-weight: 700; font-size: .65rem; text-transform: uppercase; letter-spacing: .04em; opacity: .8; margin-right: .2rem; }
+.pa-gb { background: color-mix(in srgb, currentColor 12%, transparent); color: inherit; border: 1px solid color-mix(in srgb, currentColor 22%, transparent); }
+.pa-gb.en_progreso { background: color-mix(in srgb, #3b82f6 22%, transparent); border-color: color-mix(in srgb, #3b82f6 55%, transparent); color: color-mix(in srgb, #2563eb 72%, currentColor); }
+.pa-gb.entregada, .pa-gb.cambios { background: color-mix(in srgb, #8b5cf6 20%, transparent); border-color: color-mix(in srgb, #8b5cf6 50%, transparent); color: color-mix(in srgb, #7c3aed 72%, currentColor); }
+.pa-gb.cambios { background: color-mix(in srgb, #f59e0b 22%, transparent); border-color: color-mix(in srgb, #f59e0b 55%, transparent); color: color-mix(in srgb, #d97706 72%, currentColor); }
+.pa-gb.hecha { background: color-mix(in srgb, #10b981 22%, transparent); border-color: color-mix(in srgb, #10b981 50%, transparent); color: color-mix(in srgb, #059669 72%, currentColor); }
+.pa-gb.atrasada { border: 1.5px solid #e11d48; color: color-mix(in srgb, #e11d48 80%, currentColor); }
+/* Estimada: depende de otra que no ha terminado. Rayado en diagonal y borde segmentado. */
+.pa-gb.estimada { border-style: dashed; background-color: transparent;
+  background-image: repeating-linear-gradient(135deg, color-mix(in srgb, currentColor 13%, transparent) 0 5px, transparent 5px 10px); }
+.pa-gf { background: color-mix(in srgb, var(--c) 16%, transparent); border: 1px solid color-mix(in srgb, var(--c) 45%, transparent); color: inherit; font-weight: 700; overflow: hidden; }
+.pa-gf::before { content: ""; position: absolute; inset: 0 auto 0 0; width: var(--pct); background: color-mix(in srgb, var(--c) 38%, transparent); pointer-events: none; }
+.pa-gf .pa-gb-txt { position: relative; }
+.pa-gb.arrastrando, .pa-gf.arrastrando, .pa-g-hito.arrastrando { cursor: grabbing; z-index: 5; box-shadow: 0 4px 14px rgb(0 0 0 / .18); }
+.pa-gb.arrastrando::after, .pa-gf.arrastrando::after, .pa-g-hito.arrastrando::after { content: attr(data-aviso); position: absolute; left: 0; bottom: calc(100% + .35rem); padding: .15rem .45rem; border-radius: .35rem;
+  background: #1f2937; color: #fff; font-size: .7rem; font-weight: 650; white-space: nowrap; pointer-events: none; }
+.pa-gb-asa { position: absolute; top: 0; bottom: 0; width: 8px; cursor: ew-resize; }
+.pa-gb-asa.ini { left: -2px; }
+.pa-gb-asa.fin { right: -2px; }
+.pa-gb[data-dep="1"] { cursor: default; }
+
+/* Marcas: hitos (rombo), reuniones (punto) y entregas (cuadrado) */
+.pa-g-marcas .pa-g-pista { min-height: 2.6rem; }
+.pa-g-hito, .pa-g-reu, .pa-g-ent { position: absolute; top: 50%; z-index: 1; }
+.pa-g-hito { display: flex; align-items: center; gap: .3rem; transform: translateY(-50%); margin-left: calc(var(--dia) / 2 - .45rem); padding: 0; border: 0; background: none; color: inherit;
+  font: inherit; font-size: .72rem; font-weight: 700; cursor: grab; touch-action: none; user-select: none; white-space: nowrap; }
+.pa-g-hito i, .pa-g-rombo-mini { width: .9rem; height: .9rem; flex: none; transform: rotate(45deg); border-radius: 2px; background: var(--brand, #6d5df6); }
+.pa-g-hito.cumplido i { background: #10b981; }
+.pa-g-hito.atrasado i { background: #e11d48; }
+.pa-g-hito span { padding: .05rem .35rem; border-radius: .3rem; background: color-mix(in srgb, var(--surface, Canvas) 85%, transparent); }
+.pa-g-reu, .pa-g-reu-mini { width: .7rem; height: .7rem; border-radius: 999px; background: #3b82f6; }
+.pa-g-reu { margin: -.35rem 0 0 calc(var(--dia) / 2 - .35rem); }
+.pa-g-ent, .pa-g-ent-mini { width: .65rem; height: .65rem; border-radius: 2px; background: #f59e0b; }
+.pa-g-ent { margin: -.33rem 0 0 calc(var(--dia) / 2 - .33rem); }
+.pa-g-rombo-mini { width: .6rem; height: .6rem; display: inline-block; }
+.pa-g-reu-mini, .pa-g-ent-mini { display: inline-block; }
+.pa-gb-mini { display: inline-block; width: 1.4rem; height: .65rem; border-radius: .25rem; }
+.pa-gb-mini.pendiente { background: color-mix(in srgb, currentColor 14%, transparent); }
+.pa-gb-mini.en_progreso { background: color-mix(in srgb, #3b82f6 40%, transparent); }
+.pa-gb-mini.hecha { background: color-mix(in srgb, #10b981 40%, transparent); }
+.pa-gb-mini.atrasada { border: 1.5px solid #e11d48; }
+.pa-gb-mini.estimada { border: 1px dashed currentColor; background: repeating-linear-gradient(135deg, color-mix(in srgb, currentColor 25%, transparent) 0 3px, transparent 3px 6px); }
+
+/* Flechas de dependencia */
+.pa-g-flechas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; overflow: visible; }
+.pa-g-flechas path { fill: none; stroke: color-mix(in srgb, currentColor 45%, transparent); stroke-width: 1.25; }
+.pa-g-flechas marker path { fill: color-mix(in srgb, currentColor 45%, transparent); stroke: none; }
+
+/* Diálogo (hitos) */
+.pa-dialogo { margin: auto; max-height: calc(100vh - 2rem); overflow: auto; width: min(32rem, calc(100vw - 2rem)); padding: 1.4rem; border: 1px solid color-mix(in srgb, currentColor 14%, transparent); border-radius: 1rem; background: var(--surface, Canvas); color: inherit; }
+.pa-dialogo::backdrop { background: rgb(15 15 30 / .45); }
+.pa-gantt.lectura .pa-gb { cursor: pointer; }
+.pa-gantt.lectura .pa-gf, .pa-gantt.lectura .pa-g-hito { cursor: default; }
+.pa-gantt.lectura .pa-g-hito:disabled { opacity: 1; }

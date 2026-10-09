@@ -1,0 +1,207 @@
+{layout $plugin_ui_layout}
+
+{block page_title}Línea de tiempo · {$proyecto['nombre']}{/block}
+
+{block content}
+<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=6">
+{var $volver = ($enPanel ?? false) ? '/equipo/proyectos/' . $proyecto['id'] : $admin_url('proyectos/' . $proyecto['id'])}
+
+<div class="page-header">
+    <div style="display:block">
+        <h1>Línea de tiempo</h1>
+        <p class="pa-muted" style="margin:.2rem 0 0"><span class="pa-dot" style="background:{$color}"></span>{$proyecto['nombre']} · {$clienteNombre} · {$d['pct']}% avanzado</p>
+    </div>
+    <div class="pa-row">
+        <button type="button" class="btn btn-primary" data-hito-nuevo>Nuevo hito</button>
+        <a href="{$volver}" class="btn">Volver al proyecto</a>
+    </div>
+</div>
+
+{if $flash_success}<div class="alert alert-success">{$flash_success}</div>{/if}
+{if $flash_error}<div class="alert alert-error">{$flash_error}</div>{/if}
+
+<div class="pa-g-barra">
+    <div class="pa-pills">
+        <a class="pa-pill" href="?zoom=semana" aria-current="{$zoom === 'semana' ? 'true' : 'false'}">Días</a>
+        <a class="pa-pill" href="?zoom=mes" aria-current="{$zoom === 'mes' ? 'true' : 'false'}">Meses</a>
+    </div>
+    <div class="pa-g-leyenda">
+        <span><i class="pa-gb-mini pendiente"></i>Pendiente</span>
+        <span><i class="pa-gb-mini en_progreso"></i>En curso</span>
+        <span><i class="pa-gb-mini hecha"></i>Hecha</span>
+        <span><i class="pa-gb-mini atrasada"></i>Atrasada</span>
+        <span><i class="pa-gb-mini estimada"></i>Estimada (depende de otra)</span>
+        <span><i class="pa-g-rombo-mini"></i>Hito</span>
+        <span><i class="pa-g-reu-mini"></i>Reunión</span>
+        <span><i class="pa-g-ent-mini"></i>Entrega</span>
+    </div>
+</div>
+<p class="pa-muted" style="margin:0 0 .75rem">Arrastra una barra para mover sus fechas; desde su borde cambias el inicio o el fin. Las tareas que dependen de otra solo cambian su duración. Clic para editar.</p>
+
+{include '../../_gantt.latte'}
+
+{if $d['sinFecha']}
+<div class="card" style="margin-top:1rem">
+    <h2 class="pa-h2">Tareas sin fecha</h2>
+    <p class="pa-muted" style="margin-top:-.4rem">No aparecen en la línea hasta que tengan fechas (o dependan de otra tarea).</p>
+    <div class="pa-pills">
+        {foreach $d['sinFecha'] as $t}<a class="pa-pill" href="{$enlace('tareas', $t['id'])}">{$t['titulo']}</a>{/foreach}
+    </div>
+</div>
+{/if}
+
+<dialog class="pa-dialogo" id="hito-dialogo">
+    <form method="post" action="{$admin_url('proyectos/' . $proyecto['id'] . '/linea/hitos')}">
+        <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+        <input type="hidden" name="hito_id" value="">
+        <h2 class="pa-h2" data-titulo>Nuevo hito</h2>
+        <label class="form-label">Nombre</label>
+        <input type="text" name="nombre" class="form-input" required maxlength="255" placeholder="Ej: Lanzamiento del sitio">
+        <div class="pa-grid-2">
+            <div>
+                <label class="form-label mt-3">Fecha</label>
+                <input type="date" name="fecha" class="form-input" required>
+            </div>
+            <div>
+                <label class="form-label mt-3">Fase</label>
+                <select name="fase_id" class="form-input">
+                    <option value="">Sin fase</option>
+                    {foreach $fasesProyecto as $fp}<option value="{$fp['id']}">{$fp['nombre']}</option>{/foreach}
+                </select>
+            </div>
+        </div>
+        <label class="pa-check"><input type="checkbox" name="visible_cliente" value="1" checked> Lo ve el cliente en su calendario</label>
+        <label class="pa-check" data-cumplido><input type="checkbox" name="cumplido" value="1"> Cumplido</label>
+        <p class="pa-muted" style="margin:.5rem 0 0">Si le pones fase, el hito se marca cumplido solo cuando terminan todas sus tareas.</p>
+        <div class="pa-row" style="margin-top:1.25rem; justify-content:space-between">
+            <button type="submit" class="btn btn-sm btn-danger" data-borrar formaction="" formnovalidate hidden onclick="return confirm('¿Eliminar este hito?')">Eliminar</button>
+            <div class="pa-row" style="margin-left:auto">
+                <button type="button" class="btn" data-cerrar>Cancelar</button>
+                <button type="submit" class="btn btn-primary">Guardar hito</button>
+            </div>
+        </div>
+    </form>
+</dialog>
+
+<script>
+(() => {
+    const g = document.querySelector('.pa-gantt');
+    const dia = parseFloat(getComputedStyle(g).getPropertyValue('--dia')) || 30;
+    const desde = new Date(g.dataset.desde + 'T12:00:00');
+    const fecha = (n) => { const d = new Date(desde); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
+    const corta = (n) => new Date(fecha(n) + 'T12:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' });
+    const indice = (f) => Math.round((new Date(f + 'T12:00:00') - desde) / 864e5);
+
+    // Diálogo de hitos (nuevo o editar)
+    const dlg = document.getElementById('hito-dialogo');
+    const form = dlg.querySelector('form');
+    const base = form.getAttribute('action');
+    const abrir = (h) => {
+        form.reset();
+        form.hito_id.value = h ? h.id : '';
+        form.nombre.value = h ? h.nombre : '';
+        form.fecha.value = h ? h.fecha : '';
+        form.fase_id.value = h && h.fase_id ? h.fase_id : '';
+        form.visible_cliente.checked = h ? h.visible : true;
+        form.cumplido.checked = h ? h.manual : false;
+        dlg.querySelector('[data-cumplido]').hidden = !h;
+        dlg.querySelector('[data-titulo]').textContent = h ? 'Editar hito' : 'Nuevo hito';
+        const borrar = dlg.querySelector('[data-borrar]');
+        borrar.hidden = !h;
+        borrar.setAttribute('formaction', h ? base + '/' + h.id + '/borrar' : '');
+        dlg.showModal();
+    };
+    document.querySelector('[data-hito-nuevo]').addEventListener('click', () => abrir(null));
+    dlg.querySelector('[data-cerrar]').addEventListener('click', () => dlg.close());
+
+    // Flechas de dependencia: del fin de la tarea anterior al inicio de la que espera.
+    const svg = g.querySelector('.pa-g-flechas');
+    const flechas = () => {
+        const caja = svg.getBoundingClientRect();
+        let html = '<defs><marker id="pa-punta" viewBox="0 0 6 6" refX="5" refY="3" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L6,3 L0,6 z"/></marker></defs>';
+        g.querySelectorAll('.pa-gb[data-de]:not([data-de=""])').forEach((b) => {
+            const a = g.querySelector('.pa-gb[data-id="' + b.dataset.de + '"]');
+            if (!a) return;
+            const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect();
+            const x1 = ra.right - caja.left, y1 = ra.top + ra.height / 2 - caja.top;
+            const x2 = rb.left - caja.left, y2 = rb.top + rb.height / 2 - caja.top;
+            // Si hay espacio baja recto; si no, rodea por entre las filas.
+            const d = x2 - x1 >= 16
+                ? 'M' + x1 + ',' + y1 + ' H' + (x1 + 8) + ' V' + y2 + ' H' + (x2 - 2)
+                : 'M' + x1 + ',' + y1 + ' H' + (x1 + 8) + ' V' + (y2 - rb.height / 2 - 4) + ' H' + (x2 - 10) + ' V' + y2 + ' H' + (x2 - 2);
+            html += '<path d="' + d + '" marker-end="url(#pa-punta)"/>';
+        });
+        svg.innerHTML = html;
+    };
+    flechas();
+    addEventListener('resize', flechas);
+
+    // Arrastrar: mover entero o estirar desde un borde, por días enteros.
+    let arr = null, soltadoEn = 0;
+    // El clic que sigue a un arrastre no abre nada.
+    g.addEventListener('click', (e) => { if (Date.now() - soltadoEn < 400) { e.preventDefault(); e.stopPropagation(); } }, true);
+    g.addEventListener('pointerdown', (e) => {
+        const el = e.target.closest('[data-tipo]');
+        if (!el || e.button !== 0) return;
+        const asa = e.target.closest('[data-asa]')?.dataset.asa || 'todo';
+        arr = { el, asa, x0: e.clientX, ini: indice(el.dataset.ini), fin: indice(el.dataset.fin), d: 0, movio: false,
+                left: parseFloat(el.style.left), width: parseFloat(el.style.width) || 0,
+                soloLargo: el.dataset.dep === '1' };
+        el.setPointerCapture(e.pointerId);
+    });
+    g.addEventListener('pointermove', (e) => {
+        if (!arr) return;
+        const d = Math.round((e.clientX - arr.x0) / dia);
+        if (Math.abs(e.clientX - arr.x0) > 4) arr.movio = true;
+        if (!arr.movio || d === arr.d) return;
+        let { asa } = arr;
+        if (arr.soloLargo && asa !== 'fin') return;          // depende de otra: solo su duración
+        if (asa === 'ini' && arr.ini + d > arr.fin) return;
+        if (asa === 'fin' && arr.fin + d < arr.ini) return;
+        arr.d = d;
+        arr.el.classList.add('arrastrando');
+        if (asa === 'todo') arr.el.style.left = (arr.left + d * dia) + 'px';
+        if (asa === 'ini') { arr.el.style.left = (arr.left + d * dia) + 'px'; arr.el.style.width = (arr.width - d * dia) + 'px'; }
+        if (asa === 'fin') arr.el.style.width = (arr.width + d * dia) + 'px';
+        const ini = arr.ini + (asa === 'fin' ? 0 : d), fin = arr.fin + (asa === 'ini' ? 0 : d);
+        arr.el.dataset.aviso = ini === fin ? corta(ini) : corta(ini) + ' → ' + corta(fin);
+        flechas();
+    });
+    const soltar = async (e) => {
+        if (!arr) return;
+        const a = arr; arr = null;
+        a.el.classList.remove('arrastrando');
+        if (!a.movio) return;                                  // fue un clic
+        soltadoEn = Date.now();
+        if (a.d === 0) return;
+        const ini = a.ini + (a.asa === 'fin' ? 0 : a.d), fin = a.fin + (a.asa === 'ini' ? 0 : a.d);
+        const datos = new FormData();
+        datos.append('_csrf_token', g.dataset.csrf);
+        datos.append('tipo', a.el.dataset.tipo);
+        datos.append('obj', a.el.dataset.obj);
+        datos.append('ini', fecha(ini));
+        datos.append('fin', fecha(fin));
+        g.classList.add('guardando');
+        try {
+            const r = await fetch(g.dataset.mover, { method: 'POST', body: datos, credentials: 'same-origin', headers: { 'Accept': 'application/json' } });
+            const j = await r.json().catch(() => ({ error: 'Respuesta inesperada (HTTP ' + r.status + ').' }));
+            if (!r.ok || !j.ok) throw new Error(j.error || 'No se pudo guardar.');
+            location.reload();
+        } catch (err) {
+            alert(err.message);
+            location.reload();
+        }
+    };
+    g.addEventListener('pointerup', soltar);
+    g.addEventListener('pointercancel', () => { if (arr) { arr = null; location.reload(); } });
+
+    // Clic en un hito (sin arrastrar): editarlo.
+    g.querySelectorAll('.pa-g-hito').forEach((b) => b.addEventListener('click', () => abrir(JSON.parse(b.dataset.hito))));
+
+    // Que hoy quede a la vista al abrir.
+    const sc = g.querySelector('.pa-g-scroll');
+    const hoy = g.querySelector('.pa-g-hoy');
+    sc.scrollLeft = Math.max(0, hoy.offsetLeft - sc.clientWidth / 3);
+})();
+</script>
+{/block}

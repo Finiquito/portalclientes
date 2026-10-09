@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
-    <link rel="stylesheet" href="/plugins/portal/assets/portal.css?v=21">
+    <link rel="stylesheet" href="/plugins/portal/assets/portal.css?v=22">
     <script>{$portalBoot|noescape}</script>
 </head>
 <body class="min-h-dvh bg-bg font-sans text-ink antialiased">
@@ -22,16 +22,17 @@
     ['tareas',    '/portal/tareas',    'i-tasks',    'Tareas'],
     ['archivos',  '/portal/archivos',  'i-folder',   'Archivos'],
     ['reuniones', '/portal/reuniones', 'i-calendar', 'Reuniones'],
+    ['calendario', '/portal/calendario', 'i-flag', 'Calendario'],
     ['solicitudes', '/portal/solicitudes', 'i-plus', 'Solicitudes'],
 ]}
 {if $hayRevisiones}
-    {var $items = [$items[0], $items[1], ['revisiones', '/portal/entregas', 'i-eye', 'Revisiones'], $items[2], $items[3], $items[4]]}
+    {var $items = [$items[0], $items[1], ['revisiones', '/portal/entregas', 'i-eye', 'Revisiones'], $items[2], $items[3], $items[4], $items[5]]}
 {/if}
 
 {if $vistaPrevia}
     {* «Ver como cliente»: sólo lectura, siempre visible *}
     <div class="sticky top-0 z-50 border-b border-warn/40 bg-warn/15 backdrop-blur-xl">
-        <div class="mx-auto flex max-w-[1320px] flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2.5 text-sm sm:px-6 lg:px-8">
+        <div class="mx-auto flex max-w-[1320px] flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2.5 text-sm sm:px-6 lg:max-w-[1680px] lg:px-8 lg:max-[1441px]:px-5">
             <svg class="size-5 flex-none text-warn"><use href="#i-eye"/></svg>
             <p class="min-w-0 flex-1 leading-snug"><strong>Vista previa:</strong> así ve el portal {$contacto['nombre']} ({$puedeColaborar ? 'colaborador' : 'sólo lectura'}). Puedes recorrer todo, pero no enviar ni cambiar nada.</p>
             <form method="post" action="/portal/vista-previa/salir">
@@ -42,7 +43,7 @@
 {/if}
 <a href="#contenido" class="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:rounded-xl focus:bg-surface focus:px-4 focus:py-2 focus:shadow-pop">Saltar al contenido</a>
 
-<div class="mx-auto w-full max-w-[1320px] px-4 sm:px-6 lg:px-8">
+<div class="mx-auto w-full max-w-[1320px] px-4 sm:px-6 lg:max-w-[1680px] lg:px-8 lg:max-[1441px]:px-5">
 
     {* Encabezado móvil *}
     <header class="flex items-center justify-between gap-3 py-4 lg:hidden">
@@ -137,7 +138,7 @@
 <nav class="pb-safe fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface/90 backdrop-blur-xl lg:hidden" aria-label="Navegación">
     <div class="mx-auto flex max-w-xl">
         {foreach $items as $it}
-            {continueIf $it[0] === 'solicitudes'}
+            {continueIf $it[0] === 'solicitudes' || $it[0] === 'calendario'}{* el calendario se abre desde Reuniones *}
             <a href="{$it[1]}" class="tab-item" {if $nav === $it[0]}aria-current="page"{/if}>
                 <span class="relative">
                     <svg class="size-[1.4rem]"><use href="#{$it[2]}"/></svg>

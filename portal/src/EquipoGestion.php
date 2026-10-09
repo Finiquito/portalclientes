@@ -44,6 +44,10 @@ class EquipoGestion extends EquipoController
         $r('GET',  'proyectos/@id/editar',          ProyectoAdminController::class, 'edit', 'proyecto');
         $r('POST', 'proyectos/@id/editar',          ProyectoAdminController::class, 'update', 'proyecto');
         $r('POST', 'proyectos/@id/borrar',          ProyectoAdminController::class, 'destroy', 'proyecto', true);
+        $r('GET',  'proyectos/@id/linea',           CronogramaAdminController::class, 'ver', 'proyecto');
+        $r('POST', 'proyectos/@id/linea/mover',     CronogramaAdminController::class, 'mover', 'proyecto');
+        $r('POST', 'proyectos/@id/linea/hitos',     CronogramaAdminController::class, 'hitoGuardar', 'proyecto');
+        $r('POST', 'proyectos/@id/linea/hitos/@hid/borrar', CronogramaAdminController::class, 'hitoBorrar', 'proyecto');
 
         $r('GET',  'fases',                         FaseAdminController::class, 'index');
         $r('GET',  'fases/nuevo',                   FaseAdminController::class, 'create');
@@ -243,7 +247,7 @@ class EquipoGestion extends EquipoController
             'entregas'  => 'contenidos',
             'reuniones' => 'reuniones',
             'solicitudes' => 'solicitudes',
-            'proyectos' => 'proyectos',
+            'proyectos', 'cronograma' => 'proyectos',
             'equipo'    => 'personas',
             'ajustes'   => 'agencia',
             'actividad' => 'actividad',

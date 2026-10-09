@@ -110,6 +110,7 @@ class TareaAdminController
             'unico'     => (new EquipoService($this->pdo()))->unico(),   // equipo de una persona: viene elegida
             'contactos' => $this->ui->filtrar($this->service()->contactosAsignables(), 'cliente_id', 'cliente'),
             'fases'     => $this->ui->filtrar($this->service()->todasLasFases(), 'proyecto_id'),
+            'previas'   => $this->ui->filtrar($this->service()->paraDependencia(), 'proyecto_id'),
             'firma'     => $this->firma(),
             'fmt'       => new Fmt(),
             'maxMb'     => (int) round($this->archivos()->limiteBytes(max(1, (int) $this->ajustes()->get('global', 'portal', 'max_mb', '20'))) / 1048576),

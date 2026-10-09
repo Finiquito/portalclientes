@@ -1,0 +1,125 @@
+{*
+  Línea de tiempo (Gantt) compartida: la usa el equipo (editable, con arrastre) y el cliente (solo lectura).
+  Espera: $d (Cronograma::datos), $eje, $x (día → columna), $ancho (px por día), $zoom, $color, $fmt,
+  $estados, $enlace(tipo, id) → URL, $editable y, si es editable, $mover y $csrf_token.
+*}
+{define barra, $t, $x, $ancho, $estados, $enlace, $editable}
+    {var $ini = $x($t['ini'])}
+    {var $largo = $x($t['fin'] ?? $t['ini']) - $ini + 1}
+    <a href="{$enlace('tareas', $t['id'])}" draggable="false"
+       class="pa-gb {$t['estado']} {$t['atrasada'] ? 'atrasada' : ''} {$t['estimada'] ? 'estimada' : ''}"
+       style="left:{$ini * $ancho}px; width:{max(1, $largo) * $ancho - 4}px"
+       data-tipo="tarea" data-obj="{$t['id']}" data-ini="{$t['ini']}" data-fin="{$t['fin'] ?? $t['ini']}"
+       data-dep="{$t['depende_de'] ? 1 : 0}" data-id="{$t['id']}" data-de="{$t['depende_de']}"
+       title="{$t['titulo']} · {$estados[$t['estado']] ?? $t['estado']}{if $t['responsable']} · {$t['responsable']}{/if}{if $t['estimada']} · fechas estimadas{/if}{if $t['duracion']} · {$t['duracion']} días hábiles{/if}">
+        <span class="pa-gb-txt">{if $t['estimada']}<em>estimado</em> {/if}{$t['titulo']}</span>
+        {if $editable}
+            {if !$t['depende_de']}<i class="pa-gb-asa ini" data-asa="ini"></i>{/if}
+            <i class="pa-gb-asa fin" data-asa="fin"></i>
+        {/if}
+    </a>
+{/define}
+
+{define filaTarea, $t, $x, $ancho, $estados, $enlace, $editable}
+    <div class="pa-g-fila">
+        <div class="pa-g-et pa-g-et-tarea">
+            <a href="{$enlace('tareas', $t['id'])}" title="{$t['titulo']}">{$t['titulo']}</a>
+            {if $editable}
+                <small>{if $t['responsable']}{$t['responsable']}{/if}{if $t['quien'] === 'cliente'} · cliente{/if}</small>
+            {else}
+                <small>{$t['quien'] === 'cliente' ? 'Te toca a ti' : 'Equipo'}</small>
+            {/if}
+        </div>
+        <div class="pa-g-pista">
+            {if $t['ini']}{include barra, $t, $x, $ancho, $estados, $enlace, $editable}{/if}
+        </div>
+    </div>
+{/define}
+
+<div class="pa-gantt {$zoom} {$editable ? 'editable' : 'lectura'}" style="--dia: {$ancho}px; --dias: {$d['dias']}"
+     data-mover="{$mover ?? ''}" data-csrf="{$csrf_token ?? ''}" data-desde="{$d['desde']}">
+  <div class="pa-g-scroll">
+    <div class="pa-g-tabla">
+        <div class="pa-g-fila pa-g-cab">
+            <div class="pa-g-et"></div>
+            <div class="pa-g-pista">
+                <div class="pa-g-meses">
+                    {foreach $eje['meses'] as $m}<span style="left:{$m['ini'] * $ancho}px; width:{$m['dias'] * $ancho}px">{$m['nombre']}</span>{/foreach}
+                </div>
+                <div class="pa-g-dias">
+                    {foreach $eje['dias'] as $i => $dia}
+                        {if $zoom === 'semana' || $dia['lunes']}
+                        <span style="left:{$i * $ancho}px" class="{$dia['finde'] ? 'finde' : ''} {$dia['fecha'] === $d['hoy'] ? 'hoy' : ''}">{$dia['n']}</span>
+                        {/if}
+                    {/foreach}
+                </div>
+            </div>
+        </div>
+
+        <div class="pa-g-cuerpo">
+            <div class="pa-g-hoy" style="--x: {$x($d['hoy'])}" title="Hoy"></div>
+            <svg class="pa-g-flechas" aria-hidden="true"></svg>
+
+            {if $d['hitos'] || $d['reuniones'] || $d['entregas']}
+            <div class="pa-g-fila pa-g-marcas">
+                <div class="pa-g-et"><strong>Hitos y fechas</strong></div>
+                <div class="pa-g-pista">
+                    {foreach $d['entregas'] as $e}
+                        <a href="{$enlace('entregas', $e['id'])}" class="pa-g-ent" style="left:{$x($e['fecha']) * $ancho}px" title="Entrega: {$e['titulo']} · {$fmt->fecha($e['fecha'])}"></a>
+                    {/foreach}
+                    {foreach $d['reuniones'] as $r}
+                        <a href="{$enlace('reuniones', $r['id'])}" class="pa-g-reu" style="left:{$x($r['fecha']) * $ancho}px" title="Reunión: {$r['titulo']} · {$fmt->fecha($r['fecha'])}{if $r['hora']} {$r['hora']}{/if}"></a>
+                    {/foreach}
+                    {foreach $d['hitos'] as $h}
+                        <button type="button" class="pa-g-hito {$h['estado']}" {if !$editable}disabled{/if} style="left:{$x($h['fecha']) * $ancho}px"
+                            data-tipo="hito" data-obj="{$h['id']}" data-ini="{$h['fecha']}" data-fin="{$h['fecha']}"
+                            data-hito="{json_encode($h)}" title="Hito: {$h['nombre']} · {$fmt->fecha($h['fecha'])}{if $h['cumplido']} · cumplido{elseif $h['estado'] === 'atrasado'} · atrasado{/if}">
+                            <i></i><span>{$h['nombre']}</span>
+                        </button>
+                    {/foreach}
+                </div>
+            </div>
+            {/if}
+
+            {foreach $d['fases'] as $f}
+                <div class="pa-g-fila pa-g-fase">
+                    <div class="pa-g-et">
+                        <a href="{$enlace('fases', $f['id'])}" n:tag="$editable ? 'a' : 'span'"><strong>{$f['nombre']}</strong></a>
+                        <small>{$f['pct']}%{if !$f['fechas_propias'] && $f['ini']} · según sus tareas{/if}</small>
+                    </div>
+                    <div class="pa-g-pista">
+                        {if $f['ini']}
+                            {var $ini = $x($f['ini'])}
+                            <a href="{$enlace('fases', $f['id'])}" n:tag="$editable ? 'a' : 'span'" class="pa-gf {$f['estado']}" draggable="false"
+                               style="left:{$ini * $ancho}px; width:{max(1, $x($f['fin'] ?? $f['ini']) - $ini + 1) * $ancho - 4}px; --c: {$color|noescape}; --pct: {$f['pct']}%"
+                               data-tipo="fase" data-obj="{$f['id']}" data-ini="{$f['ini']}" data-fin="{$f['fin'] ?? $f['ini']}" data-dep="0"
+                               title="{$f['nombre']} · {$f['pct']}% · {$fmt->fecha($f['ini'])} a {$fmt->fecha($f['fin'] ?? $f['ini'])}">
+                                <span class="pa-gb-txt">{$f['nombre']}</span>
+                                {if $editable}<i class="pa-gb-asa ini" data-asa="ini"></i><i class="pa-gb-asa fin" data-asa="fin"></i>{/if}
+                            </a>
+                        {/if}
+                    </div>
+                </div>
+                {foreach $f['tareas'] as $t}
+                    {include filaTarea, $t, $x, $ancho, $estados, $enlace, $editable}
+                {/foreach}
+            {/foreach}
+
+            {if $d['sinFase']}
+                <div class="pa-g-fila pa-g-fase">
+                    <div class="pa-g-et"><strong>Sin fase</strong></div>
+                    <div class="pa-g-pista"></div>
+                </div>
+                {foreach $d['sinFase'] as $t}
+                    {include filaTarea, $t, $x, $ancho, $estados, $enlace, $editable}
+                {/foreach}
+            {/if}
+
+            {if !$d['fases'] && !$d['sinFase']}
+                <div class="pa-g-fila"><div class="pa-g-et pa-muted">Todavía no hay fases ni tareas con fechas.</div><div class="pa-g-pista"></div></div>
+            {/if}
+        </div>
+    </div>
+  </div>
+</div>
+

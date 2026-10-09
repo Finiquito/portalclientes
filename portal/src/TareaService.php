@@ -75,6 +75,14 @@ class TareaService
         return $stmt ? $stmt->fetchAll() : [];
     }
 
+    /** @return array<array<string, mixed>> tareas que pueden ir antes que otra (las no archivadas, por proyecto) */
+    public function paraDependencia(): array
+    {
+        Schema::asegurar($this->pdo);
+        $stmt = $this->pdo->query('SELECT id, proyecto_id, titulo, estado FROM ' . self::TABLE . ' WHERE archivada = 0 OR archivada IS NULL ORDER BY proyecto_id, COALESCE(fecha_vencimiento, fecha_inicio, created_at), titulo');
+        return $stmt ? $stmt->fetchAll() : [];
+    }
+
     /** @return array<array<string, mixed>> contactos con su cliente, para asignar tareas */
     public function contactosAsignables(): array
     {
@@ -119,7 +127,16 @@ class TareaService
             }
         }
 
+        // Dependencia: la tarea parte cuando termina otra del mismo proyecto y dura N días hábiles.
+        $dependeDe = $this->nullIfEmpty((string) ($p['depende_de'] ?? ''));
+        $duracion = (int) ($p['duracion_dias'] ?? 0);
+        if ($dependeDe !== null && !(new Cronograma($this->pdo))->dependenciaValida((string) ($p['id'] ?? ''), $dependeDe, $proyectoId)) {
+            $dependeDe = null;
+        }
+
         return [
+            'depende_de'        => $dependeDe,
+            'duracion_dias'     => $dependeDe !== null ? max(1, min(250, $duracion ?: 1)) : ($duracion > 0 ? min(250, $duracion) : null),
             'proyecto_id'       => $proyectoId,
             'fase_id'           => $faseId,
             'reunion_origen_id' => $this->nullIfEmpty((string) ($p['reunion_origen_id'] ?? '')),
@@ -140,9 +157,11 @@ class TareaService
     /** @param array<string, mixed> $payload */
     public function create(array $payload): string
     {
-        $d   = $this->normalizar($payload);
+        Schema::asegurar($this->pdo);
         $id  = typedock_uuid7();
+        $d   = $this->normalizar(['id' => $id] + $payload);
         $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
+        [$d['fecha_inicio'], $d['fecha_vencimiento']] = $this->fechasConDependencia($d);
 
         $this->pdo->prepare(
             'INSERT INTO ' . self::TABLE . '
@@ -156,6 +175,7 @@ class TareaService
             $d['estado'] === 'hecha' ? $now : null,
             $d['responsable_tipo'], $d['responsable_usuario_id'], $d['responsable_contacto_id'], $now, $now,
         ]);
+        $this->guardarDependencia($id, $d);
 
         return $id;
     }
@@ -163,8 +183,10 @@ class TareaService
     /** @param array<string, mixed> $payload */
     public function update(string $id, array $payload): void
     {
-        $d   = $this->normalizar($payload);
+        Schema::asegurar($this->pdo);
+        $d   = $this->normalizar(['id' => $id] + $payload);
         $old = $this->find($id);
+        [$d['fecha_inicio'], $d['fecha_vencimiento']] = $this->fechasConDependencia($d);
         $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
 
         $completada = null;
@@ -183,6 +205,68 @@ class TareaService
             $d['fecha_inicio'], $d['fecha_vencimiento'], $d['estado'], $d['tipo'], $d['visible_cliente'], $completada,
             $d['responsable_tipo'], $d['responsable_usuario_id'], $d['responsable_contacto_id'], $now, $id,
         ]);
+        $this->guardarDependencia($id, $d);
+        if ($d['estado'] === 'hecha' && ($old['estado'] ?? '') !== 'hecha') {
+            (new Cronograma($this->pdo))->fijar($id);
+        }
+    }
+
+    /**
+     * Con dependencia, las fechas no se escriben a mano: si la anterior ya terminó se fijan desde
+     * su término; si no, quedan vacías (la línea de tiempo las estima).
+     *
+     * @param array<string, mixed> $d
+     * @return array{0: ?string, 1: ?string}
+     */
+    private function fechasConDependencia(array $d): array
+    {
+        if ($d['depende_de'] === null) {
+            return [$d['fecha_inicio'], $d['fecha_vencimiento']];
+        }
+        $st = $this->pdo->prepare("SELECT completada_en FROM portal_tareas WHERE id = ? AND estado = 'hecha'");
+        $st->execute([$d['depende_de']]);
+        $fin = $st->fetchColumn();
+        if (!is_string($fin) || $fin === '') {
+            return [null, null];
+        }
+        $ini = Cronograma::siguienteHabil(substr($fin, 0, 10));
+        return [$ini, Cronograma::finTras($ini, (int) $d['duracion_dias'])];
+    }
+
+    /** @param array<string, mixed> $d */
+    private function guardarDependencia(string $id, array $d): void
+    {
+        try {
+            $this->pdo->prepare('UPDATE ' . self::TABLE . ' SET depende_de = ?, duracion_dias = ? WHERE id = ?')
+                ->execute([$d['depende_de'], $d['duracion_dias'], $id]);
+        } catch (\Throwable) {
+            // columnas aún no creadas
+        }
+    }
+
+    /** Fechas desde la línea de tiempo (arrastrar). Con dependencia sólo cambia la duración. */
+    public function moverFechas(string $id, string $ini, string $fin): bool
+    {
+        $t = $this->find($id);
+        if ($t === null || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $ini) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $fin)) {
+            return false;
+        }
+        if ($fin < $ini) {
+            [$ini, $fin] = [$fin, $ini];
+        }
+        $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
+        if (!empty($t['depende_de'])) {
+            $this->pdo->prepare('UPDATE ' . self::TABLE . ' SET duracion_dias = ?, updated_at = ? WHERE id = ?')
+                ->execute([Cronograma::habilesEntre($ini, $fin), $now, $id]);
+            if ($t['fecha_inicio']) {   // ya fijada: también corre el vencimiento
+                $this->pdo->prepare('UPDATE ' . self::TABLE . ' SET fecha_vencimiento = ? WHERE id = ?')
+                    ->execute([Cronograma::finTras((string) $t['fecha_inicio'], Cronograma::habilesEntre($ini, $fin)), $id]);
+            }
+            return true;
+        }
+        $this->pdo->prepare('UPDATE ' . self::TABLE . ' SET fecha_inicio = ?, fecha_vencimiento = ?, updated_at = ? WHERE id = ?')
+            ->execute([$ini, $fin, $now, $id]);
+        return true;
     }
 
     public function cambiarEstado(string $id, string $estado): void
@@ -193,6 +277,9 @@ class TareaService
         $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
         $this->pdo->prepare('UPDATE ' . self::TABLE . ' SET estado = ?, completada_en = ?, updated_at = ? WHERE id = ?')
             ->execute([$estado, $estado === 'hecha' ? $now : null, $now, $id]);
+        if ($estado === 'hecha') {
+            (new Cronograma($this->pdo))->fijar($id);   // las que dependen de ésta ya tienen fecha
+        }
     }
 
     public function delete(string $id): void

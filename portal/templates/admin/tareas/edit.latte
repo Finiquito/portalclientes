@@ -3,7 +3,7 @@
 {block page_title}{if $tarea}Editar tarea{else}Nueva tarea{/if}{/block}
 
 {block content}
-<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=5">
+<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=6">
 
 <div class="page-header">
     <h1>{if $tarea}Editar tarea{else}Nueva tarea{/if}</h1>
@@ -105,6 +105,25 @@
 
         <div class="pa-grid-2">
             <div>
+                <label class="form-label mt-3">Depende de (opcional)</label>
+                <select name="depende_de" class="form-input">
+                    <option value="">— Ninguna: tiene sus propias fechas —</option>
+                    {foreach $previas as $pv}
+                        {if !$tarea || $pv['id'] !== $tarea['id']}
+                        <option value="{$pv['id']}" data-proyecto="{$pv['proyecto_id']}" {if ($tarea['depende_de'] ?? '') === $pv['id']}selected{/if}>{$pv['titulo']}{if $pv['estado'] === 'hecha'} (lista){/if}</option>
+                        {/if}
+                    {/foreach}
+                </select>
+                <p class="form-hint mt-1">Parte el día hábil siguiente a que esa tarea quede lista. Mientras tanto, sus fechas son estimadas.</p>
+            </div>
+            <div>
+                <label class="form-label mt-3">Duración (días hábiles)</label>
+                <input type="number" name="duracion_dias" class="form-input" min="1" max="250" value="{$tarea['duracion_dias'] ?? ''}" placeholder="Ej: 5">
+            </div>
+        </div>
+
+        <div class="pa-grid-2" data-fechas>
+            <div>
                 <label class="form-label mt-3">Fecha inicio</label>
                 <input type="date" name="fecha_inicio" class="form-input" value="{$tarea['fecha_inicio'] ?? ''}">
             </div>
@@ -113,6 +132,10 @@
                 <input type="date" name="fecha_vencimiento" class="form-input" value="{$tarea['fecha_vencimiento'] ?? ''}">
             </div>
         </div>
+
+        {if !empty($tarea['fecha_inicio']) && !empty($tarea['depende_de'])}
+        <p class="form-hint mt-1" data-fechas-dep hidden>La tarea anterior ya terminó: sus fechas quedaron fijas del {$fmt->fecha($tarea['fecha_inicio'])} al {$fmt->fecha($tarea['fecha_vencimiento'])}.</p>
+        {/if}
 
         <label class="pa-check"><input type="checkbox" name="avisar" value="1"> <span>Avisar al cliente por correo (si es del cliente y es nueva o cambia de estado)</span></label>
 
@@ -216,14 +239,22 @@
     var s = select.options[select.selectedIndex];
     if (s && s.disabled) select.value = '';
   }
+  var dep = f.querySelector('[name=depende_de]');
+  var fechas = f.querySelector('[data-fechas]');
+  var fechasDep = f.querySelector('[data-fechas-dep]');
   function actualizar() {
     filtrar(fase, 'data-proyecto', proy.value);
+    filtrar(dep, 'data-proyecto', proy.value);
+    var conDep = dep.value !== '';
+    fechas.style.display = conDep ? 'none' : '';
+    if (fechasDep) fechasDep.hidden = !conDep;
     filtrar(cont, 'data-cliente', clienteActual());
     var cli = f.querySelector('[name=asignado]:checked').value === 'cliente';
     boxEq.hidden = cli;
     boxCl.hidden = !cli;
   }
   proy.addEventListener('change', actualizar);
+  dep.addEventListener('change', actualizar);
   Array.prototype.forEach.call(f.querySelectorAll('[name=asignado]'), function (r) {
     r.addEventListener('change', actualizar);
   });

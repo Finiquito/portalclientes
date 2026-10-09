@@ -20,6 +20,8 @@ final class Schema
     /** tabla => [columna => definición]. */
     private const COLUMNAS = [
         'portal_tareas' => [
+            'depende_de'      => 'VARCHAR(36)',   // tarea anterior (línea de tiempo)
+            'duracion_dias'   => 'INTEGER',       // días hábiles, para las que dependen de otra
             'tipo'            => "VARCHAR(16) NOT NULL DEFAULT 'tarea'",
             'completada_en'   => 'VARCHAR(32)',
             'visible_cliente' => 'SMALLINT NOT NULL DEFAULT 1',
@@ -89,6 +91,7 @@ final class Schema
         self::tablasEquipo($pdo);
         self::tablaSolicitudes($pdo);
         self::tablasAvisos($pdo);
+        self::tablaHitos($pdo);
         self::ampliarTextos($pdo);
     }
 
@@ -213,6 +216,19 @@ final class Schema
             if (self::existe($pdo, $t, 'id') && !self::existe($pdo, $t, $col)) {
                 $pdo->exec("ALTER TABLE {$t} ADD COLUMN {$col} {$def}");
             }
+        }
+    }
+
+    /** Hitos de la línea de tiempo (migración 0010). */
+    private static function tablaHitos(\PDO $pdo): void
+    {
+        if (self::existe($pdo, 'portal_hitos', 'id, proyecto_id, fecha, cumplido_en')) {
+            return;
+        }
+        $sql = (string) @file_get_contents(dirname(__DIR__) . '/migrations/0010_cronograma.sql');
+        $sql = preg_replace('/^\s*--.*$/m', '', $sql) ?? '';
+        foreach (array_filter(array_map('trim', explode(';', $sql))) as $stmt) {
+            $pdo->exec($stmt);
         }
     }
 

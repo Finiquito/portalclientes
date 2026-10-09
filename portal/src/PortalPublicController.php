@@ -898,6 +898,78 @@ class PortalPublicController
         ]);
     }
 
+    /**
+     * Calendario del proyecto: fases, hitos, reuniones, entregas y tareas visibles en el tiempo.
+     * En pantallas grandes, la línea de tiempo (solo lectura); en el celular, una lista por fecha.
+     */
+    public function calendario(): void
+    {
+        $c = $this->requerirContacto();
+        $cid = (string) $c['cliente_id'];
+        $proyectos = $this->fetchAll('SELECT id, nombre, estado FROM portal_proyectos WHERE cliente_id = ? ORDER BY created_at, id', [$cid]);
+        $ids = array_column($proyectos, 'id');
+        $pid = (string) ($_GET['proyecto'] ?? '');
+        if (!in_array($pid, $ids, true)) {
+            // Por defecto, el primer proyecto activo.
+            $activos = array_values(array_filter($proyectos, fn($p) => $p['estado'] === 'activo'));
+            $pid = (string) (($activos[0] ?? $proyectos[0] ?? ['id' => ''])['id']);
+        }
+        $d = $pid !== '' ? (new Cronograma($this->pdo()))->datos($pid, true) : null;
+        $this->ctx->view('templates/public/calendario.latte', $this->contexto($c, 'calendario') + [
+            'proyectos' => $proyectos,
+            'proyectoId' => $pid,
+            'd' => $d,
+            'eje' => $d !== null ? Cronograma::eje($d['desde'], $d['dias']) : null,
+            'x' => $d !== null ? Cronograma::columna($d['desde']) : null,
+            'ancho' => 22, 'zoom' => 'semana', 'editable' => false,
+            'estados' => CronogramaAdminController::ESTADOS,
+            'enlace' => static fn(string $tipo, string $id): string => match ($tipo) {
+                'tareas' => '/portal/tareas/' . $id, 'reuniones' => '/portal/reuniones/' . $id,
+                'entregas' => '/portal/entregas/' . $id, default => '#',
+            },
+            'momentos' => $d !== null ? self::momentos($d) : [],
+        ]);
+    }
+
+    /**
+     * La línea de tiempo como lista, agrupada por mes: hitos, reuniones, entregas, inicio y fin
+     * de cada fase y el plazo de las tareas que le tocan al cliente.
+     * @param array<string, mixed> $d
+     * @return array<string, list<array<string, mixed>>>
+     */
+    public static function momentos(array $d): array
+    {
+        $m = [];
+        foreach ($d['hitos'] as $h) {
+            $m[] = ['fecha' => $h['fecha'], 'tipo' => 'hito', 'titulo' => $h['nombre'], 'estado' => $h['estado'], 'url' => null, 'estimada' => false];
+        }
+        foreach ($d['reuniones'] as $r) {
+            $m[] = ['fecha' => $r['fecha'], 'tipo' => 'reunion', 'titulo' => $r['titulo'], 'hora' => $r['hora'], 'url' => '/portal/reuniones/' . $r['id'], 'estimada' => false];
+        }
+        foreach ($d['entregas'] as $e) {
+            $m[] = ['fecha' => $e['fecha'], 'tipo' => 'entrega', 'titulo' => $e['titulo'], 'url' => '/portal/entregas/' . $e['id'], 'estimada' => false];
+        }
+        foreach ($d['fases'] as $f) {
+            if ($f['ini'] !== null) {
+                $m[] = ['fecha' => $f['ini'], 'tipo' => 'fase', 'titulo' => 'Empieza ' . $f['nombre'], 'url' => null, 'estimada' => false];
+                $m[] = ['fecha' => $f['fin'] ?? $f['ini'], 'tipo' => 'fase', 'titulo' => 'Termina ' . $f['nombre'], 'url' => null,
+                    'estimada' => count(array_filter($f['tareas'], fn($t) => $t['estimada'])) > 0];
+            }
+        }
+        foreach ($d['tareas'] as $t) {
+            if ($t['quien'] === 'cliente' && $t['fin'] !== null && $t['estado'] !== 'hecha') {
+                $m[] = ['fecha' => $t['fin'], 'tipo' => 'tarea', 'titulo' => $t['titulo'], 'url' => '/portal/tareas/' . $t['id'], 'estimada' => $t['estimada'], 'atrasada' => $t['atrasada']];
+            }
+        }
+        $orden = ['fase' => 0, 'hito' => 1, 'entrega' => 2, 'reunion' => 3, 'tarea' => 4];
+        usort($m, fn($a, $b) => [$a['fecha'], $orden[$a['tipo']]] <=> [$b['fecha'], $orden[$b['tipo']]]);
+        $porMes = [];
+        foreach ($m as $x) {
+            $porMes[substr($x['fecha'], 0, 7)][] = $x;
+        }
+        return $porMes;
+    }
+
     /** Detalle de una reunión: Meet, resumen y acuerdos (si están publicados) y las tareas que salieron de ella. */
     public function reunion(string $id): void
     {

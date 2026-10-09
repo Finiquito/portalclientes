@@ -1,0 +1,105 @@
+{layout '_layout.latte'}
+
+{block title}Calendario del proyecto{/block}
+
+{block content}
+<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=6">
+{var $meses = ['01' => 'Enero', '02' => 'Febrero', '03' => 'Marzo', '04' => 'Abril', '05' => 'Mayo', '06' => 'Junio', '07' => 'Julio', '08' => 'Agosto', '09' => 'Septiembre', '10' => 'Octubre', '11' => 'Noviembre', '12' => 'Diciembre']}
+{var $tipos = ['hito' => ['Hito', 'chip-brand'], 'reunion' => ['Reunión', 'chip-info'], 'entrega' => ['Para revisar', 'chip-warn'], 'fase' => ['Etapa', 'chip-muted'], 'tarea' => ['Te toca', 'chip-danger']]}
+
+<header class="reveal pb-5 pt-1">
+    <h1 class="text-3xl font-extrabold tracking-tight sm:text-4xl">Calendario del proyecto</h1>
+    <p class="mt-1.5 text-muted">Las etapas, metas y fechas importantes. Lo que depende de otra tarea aparece como fecha estimada.</p>
+</header>
+
+{if count($proyectos) > 1}
+    <nav class="reveal mb-5 flex flex-wrap gap-2" aria-label="Proyectos">
+        {foreach $proyectos as $p}
+            <a href="?proyecto={$p['id']}" class="chip {$p['id'] === $proyectoId ? 'chip-brand' : 'chip-muted'} px-3! py-1.5!" {if $p['id'] === $proyectoId}aria-current="page"{/if}>
+                <span aria-hidden="true" style="display:inline-block;width:.6rem;height:.6rem;border-radius:9999px;background:{($colorProy[$p['id']] ?? '#94a3b8')|noescape}"></span>{$p['nombre']}
+            </a>
+        {/foreach}
+    </nav>
+{/if}
+
+{if $d === null}
+    <div class="card card-pad reveal text-sm text-muted">Todavía no hay proyectos.</div>
+{elseif !$momentos && !$d['tareas']}
+    <div class="card card-pad reveal text-sm text-muted">Este proyecto todavía no tiene fechas. Apenas el equipo las defina, las verás aquí.</div>
+{else}
+    {* Pantallas grandes: la línea de tiempo *}
+    <section class="reveal mb-6 hidden lg:block">
+        <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <p class="text-sm text-muted">Avance del proyecto: <strong class="text-ink">{$d['pct']}%</strong></p>
+            <div class="pa-g-leyenda">
+                <span><i class="pa-gb-mini pendiente"></i>Por hacer</span>
+                <span><i class="pa-gb-mini en_progreso"></i>En curso</span>
+                <span><i class="pa-gb-mini hecha"></i>Lista</span>
+                <span><i class="pa-gb-mini estimada"></i>Fecha estimada</span>
+                <span><i class="pa-g-rombo-mini"></i>Hito</span>
+                <span><i class="pa-g-reu-mini"></i>Reunión</span>
+                <span><i class="pa-g-ent-mini"></i>Para revisar</span>
+            </div>
+        </div>
+        <div class="card overflow-hidden p-0!">
+            {include '../_gantt.latte', color: $colorProy[$proyectoId] ?? '#6d5df6'}
+        </div>
+    </section>
+
+    {* Celular (y resumen en grande): la lista por fecha *}
+    <section class="lg:hidden">
+        {foreach $momentos as $mes => $lista}
+            <h2 class="reveal mb-3 mt-6 text-sm font-extrabold uppercase tracking-wide text-muted first:mt-0">{$meses[substr($mes, 5, 2)]} {substr($mes, 0, 4)}</h2>
+            <ul class="space-y-2.5">
+                {foreach $lista as $m}
+                    {var $pasado = $m['fecha'] < $d['hoy']}
+                    <li class="card card-pad reveal flex items-center gap-4 py-3! {$pasado ? 'opacity-70' : ''}">
+                        <span class="flex size-12 flex-none flex-col items-center justify-center rounded-2xl leading-none {$m['fecha'] === $d['hoy'] ? 'bg-brand text-brand-fg' : 'border-2 border-brand/50 text-brand-ink'} {$m['estimada'] ? 'border-dashed' : ''}">
+                            <span class="text-lg font-extrabold">{$fmt->dia($m['fecha'])}</span>
+                            <span class="mt-0.5 text-[0.625rem] font-bold uppercase tracking-wide">{$fmt->mesCorto($m['fecha'])}</span>
+                        </span>
+                        <div class="min-w-0 flex-1">
+                            <p class="font-bold leading-snug">
+                                {if $m['url']}<a href="{$m['url']}" class="hover:underline">{$m['titulo']}</a>{else}{$m['titulo']}{/if}
+                            </p>
+                            <p class="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted">
+                                <span class="chip {$tipos[$m['tipo']][1]}">{$tipos[$m['tipo']][0]}</span>
+                                {if !empty($m['hora'])}<span>{$m['hora']}</span>{/if}
+                                {if $m['estimada']}<span class="font-semibold">Fecha estimada</span>{/if}
+                                {if ($m['estado'] ?? '') === 'cumplido'}<span class="chip chip-ok">Cumplido</span>{/if}
+                                {if !empty($m['atrasada'])}<span class="chip chip-danger">Atrasada</span>{/if}
+                            </p>
+                        </div>
+                    </li>
+                {/foreach}
+            </ul>
+        {/foreach}
+    </section>
+
+    <script>
+    (() => {
+        // Que hoy quede a la vista al abrir la línea de tiempo.
+        const g = document.querySelector('.pa-gantt');
+        if (!g) return;
+        const sc = g.querySelector('.pa-g-scroll'), hoy = g.querySelector('.pa-g-hoy');
+        sc.scrollLeft = Math.max(0, hoy.offsetLeft - sc.clientWidth / 3);
+        // Flechas de dependencia
+        const svg = g.querySelector('.pa-g-flechas');
+        const caja = svg.getBoundingClientRect();
+        let html = '<defs><marker id="pa-punta" viewBox="0 0 6 6" refX="5" refY="3" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L6,3 L0,6 z"/></marker></defs>';
+        g.querySelectorAll('.pa-gb[data-de]:not([data-de=""])').forEach((b) => {
+            const a = g.querySelector('.pa-gb[data-id="' + b.dataset.de + '"]');
+            if (!a) return;
+            const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect();
+            const x1 = ra.right - caja.left, y1 = ra.top + ra.height / 2 - caja.top;
+            const x2 = rb.left - caja.left, y2 = rb.top + rb.height / 2 - caja.top;
+            const d = x2 - x1 >= 16
+                ? 'M' + x1 + ',' + y1 + ' H' + (x1 + 8) + ' V' + y2 + ' H' + (x2 - 2)
+                : 'M' + x1 + ',' + y1 + ' H' + (x1 + 8) + ' V' + (y2 - rb.height / 2 - 4) + ' H' + (x2 - 10) + ' V' + y2 + ' H' + (x2 - 2);
+            html += '<path d="' + d + '" marker-end="url(#pa-punta)"/>';
+        });
+        svg.innerHTML = html;
+    })();
+    </script>
+{/if}
+{/block}

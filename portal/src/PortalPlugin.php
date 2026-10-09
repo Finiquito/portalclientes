@@ -46,6 +46,11 @@ class PortalPlugin implements PluginInterface
         $ctx->registerAdminRoute('GET',  'proyectos/@id',             fn(string $id) => $proyectos->edit($id));
         $ctx->registerAdminRoute('POST', 'proyectos/@id',             fn(string $id) => $proyectos->update($id));
         $ctx->registerAdminRoute('POST', 'proyectos/@id/borrar',      fn(string $id) => $proyectos->destroy($id));
+        $linea = new CronogramaAdminController($ctx);
+        $ctx->registerAdminRoute('GET',  'proyectos/@id/linea',       fn(string $id) => $linea->ver($id));
+        $ctx->registerAdminRoute('POST', 'proyectos/@id/linea/mover', fn(string $id) => $linea->mover($id));
+        $ctx->registerAdminRoute('POST', 'proyectos/@id/linea/hitos', fn(string $id) => $linea->hitoGuardar($id));
+        $ctx->registerAdminRoute('POST', 'proyectos/@id/linea/hitos/@hid/borrar', fn(string $id, string $hid) => $linea->hitoBorrar($id, $hid));
 
         $reuniones = new ReunionAdminController($ctx);
         $ctx->registerAdminRoute('GET',  'reuniones',                [$reuniones, 'index']);
@@ -181,6 +186,7 @@ class PortalPlugin implements PluginInterface
         \Flight::route('GET /portal/archivo/@id',             fn(string $id) => $publico->archivo($id));
         \Flight::route('POST /portal/archivos/@id/borrar',    fn(string $id) => $publico->borrarArchivo($id));
         \Flight::route('GET /portal/reuniones',               [$publico, 'reuniones']);
+        \Flight::route('GET /portal/calendario',              [$publico, 'calendario']);
         \Flight::route('GET /portal/reuniones/@id',           fn(string $id) => $publico->reunion($id));
         \Flight::route('GET /portal/reuniones/@id/calendario.ics', fn(string $id) => $publico->reunionIcs($id));
         \Flight::route('GET /portal/reuniones/@id/invitacion.ics', fn(string $id) => $publico->reunionIcsFirmado($id));
