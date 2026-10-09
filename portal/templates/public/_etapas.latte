@@ -1,0 +1,26 @@
+{*
+  Etapas del proyecto en línea (paso 1, 2, 3…). Recibe $etapas: [{nombre, estado: hecha|actual|pendiente, ini?, fin?}]
+  y $conFechas (bool) para mostrar el rango de cada una.
+*}
+<div class="scroll-x -mx-2 px-2 pb-1">
+    <ol class="flex min-w-max sm:min-w-0">
+        {foreach $etapas as $i => $f}
+            <li class="relative min-w-[7.5rem] flex-1 px-1 text-center">
+                {if $i > 0}
+                    <span class="absolute right-1/2 top-[1.05rem] h-0.5 w-full {$etapas[$i - 1]['estado'] === 'hecha' ? 'bg-brand' : 'bg-line'}" aria-hidden="true"></span>
+                {/if}
+                <span class="relative z-10 mx-auto flex size-[2.2rem] items-center justify-center rounded-full text-sm font-bold
+                    {$f['estado'] === 'hecha' ? 'bg-brand text-brand-fg' : ($f['estado'] === 'actual' ? 'border-2 border-brand bg-surface text-brand-ink shadow-[0_0_0_5px_var(--brand-soft)]' : 'border border-line bg-surface2 text-muted')}">
+                    {if $f['estado'] === 'hecha'}<svg class="size-4"><use href="#i-check"/></svg>{else}{$i + 1}{/if}
+                </span>
+                <span class="mt-2.5 block text-[0.8125rem] font-bold leading-tight {$f['estado'] === 'pendiente' ? 'text-muted' : ''}">{$f['nombre']}</span>
+                <span class="mt-0.5 block text-[0.6875rem] text-muted">
+                    {if $f['estado'] === 'actual'}En curso{elseif $f['estado'] === 'hecha'}Lista{else}Próxima{/if}
+                </span>
+                {if ($conFechas ?? false) && !empty($f['ini'])}
+                    <span class="mt-0.5 block text-[0.6875rem] text-muted">{$fmt->fechaCorta($f['ini'])} – {$fmt->fechaCorta($f['fin'] ?? $f['ini'])}</span>
+                {/if}
+            </li>
+        {/foreach}
+    </ol>
+</div>

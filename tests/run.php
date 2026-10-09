@@ -1636,7 +1636,7 @@ ob_start();
 try { $pub->calendario(); } catch (RuntimeException) {}
 $html = (string) ob_get_clean();
 $_GET = [];
-check(str_contains($html, 'Calendario del proyecto') && str_contains($html, 'Diseño aprobado') && str_contains($html, 'Lanzamiento') && !str_contains($html, 'Interno'), 'el cliente ve su calendario, sin los hitos internos');
+check(str_contains($html, 'Sitio web Cinco') && str_contains($html, 'Etapas') && str_contains($html, 'Diseño aprobado') && str_contains($html, 'Lanzamiento') && !str_contains($html, 'Interno'), 'el cliente ve su calendario, sin los hitos internos');
 check(!str_contains($html, 'pa-gb-asa') && str_contains($html, 'pa-gantt') && str_contains($html, 'lectura'), 'para el cliente la línea de tiempo es de solo lectura');
 $mom = P\PortalPublicController::momentos($cr->datos($pT, true));
 $plano = array_merge(...array_values($mom));

@@ -1,6 +1,6 @@
 {layout '_layout.latte'}
 
-{block title}Calendario del proyecto{/block}
+{block title}{count($proyectos) > 1 ? 'Proyectos' : 'Tu proyecto'}{/block}
 
 {block content}
 <link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=9">
@@ -8,8 +8,9 @@
 {var $tipos = ['hito' => ['Hito', 'chip-brand'], 'reunion' => ['Reunión', 'chip-info'], 'entrega' => ['Para revisar', 'chip-warn'], 'fase' => ['Etapa', 'chip-muted'], 'tarea' => ['Te toca', 'chip-danger']]}
 
 <header class="reveal pb-5 pt-1">
-    <h1 class="text-3xl font-extrabold tracking-tight sm:text-4xl">Calendario del proyecto</h1>
-    <p class="mt-1.5 text-muted">Las etapas, metas y fechas importantes. Lo que depende de otra tarea aparece como fecha estimada.</p>
+    {var $actual = array_column($proyectos, null, 'id')[$proyectoId] ?? null}
+    <h1 class="text-3xl font-extrabold tracking-tight sm:text-4xl">{$actual ? $actual['nombre'] : 'Tu proyecto'}</h1>
+    <p class="mt-1.5 text-muted">Sus etapas, metas y fechas importantes. Lo que depende de otra tarea aparece como fecha estimada.</p>
 </header>
 
 {if count($proyectos) > 1}
@@ -27,10 +28,23 @@
 {elseif !$momentos && !$d['tareas']}
     <div class="card card-pad reveal text-sm text-muted">Este proyecto todavía no tiene fechas. Apenas el equipo las defina, las verás aquí.</div>
 {else}
+    {* Etapas, como en Inicio, con sus fechas *}
+    {if $d['fases']}
+    <section class="card card-pad reveal mb-6">
+        <div class="mb-5 flex flex-wrap items-baseline justify-between gap-2">
+            <h2 class="text-lg font-extrabold tracking-tight">Etapas</h2>
+            <p class="text-sm text-muted">Avance: <strong class="text-ink">{$d['pct']}%</strong></p>
+        </div>
+        {include '_etapas.latte', etapas: $d['fases'], conFechas: true}
+    </section>
+    {/if}
+
+    <h2 class="reveal mb-3 text-lg font-extrabold tracking-tight">Línea de tiempo</h2>
+
     {* Pantallas grandes: la línea de tiempo *}
     <section class="reveal mb-6 hidden lg:block">
         <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
-            <p class="text-sm text-muted">Avance del proyecto: <strong class="text-ink">{$d['pct']}%</strong></p>
+            <span></span>
             <div class="pa-g-leyenda">
                 <span><i class="pa-g-quien-mini cliente"></i>Te toca a ti</span>
                 <span><i class="pa-g-quien-mini agencia"></i>Equipo</span>

@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
-    <link rel="stylesheet" href="/plugins/portal/assets/portal.css?v=23">
+    <link rel="stylesheet" href="/plugins/portal/assets/portal.css?v=24">
     <script>{$portalBoot|noescape}</script>
 </head>
 <body class="min-h-dvh bg-bg font-sans text-ink antialiased">
@@ -22,7 +22,7 @@
     ['tareas',    '/portal/tareas',    'i-tasks',    'Tareas'],
     ['archivos',  '/portal/archivos',  'i-folder',   'Archivos'],
     ['reuniones', '/portal/reuniones', 'i-calendar', 'Reuniones'],
-    ['calendario', '/portal/calendario', 'i-flag', 'Calendario'],
+    ['calendario', '/portal/calendario', 'i-briefcase', count($colorProy ?? []) > 1 ? 'Proyectos' : 'Proyecto'],
     ['solicitudes', '/portal/solicitudes', 'i-plus', 'Solicitudes'],
 ]}
 {if $hayRevisiones}
@@ -138,7 +138,7 @@
 <nav class="pb-safe fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface/90 backdrop-blur-xl lg:hidden" aria-label="Navegación">
     <div class="mx-auto flex max-w-xl">
         {foreach $items as $it}
-            {continueIf $it[0] === 'solicitudes' || $it[0] === 'calendario'}{* el calendario se abre desde Reuniones *}
+            {continueIf $it[0] === 'solicitudes' || $it[0] === 'archivos'}{* en el celular, Archivos se abre desde Inicio *}
             <a href="{$it[1]}" class="tab-item" {if $nav === $it[0]}aria-current="page"{/if}>
                 <span class="relative">
                     <svg class="size-[1.4rem]"><use href="#{$it[2]}"/></svg>
