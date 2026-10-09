@@ -134,10 +134,40 @@ class ContenidoService
         }
         $n = (int) $c['version_actual'] + 1;
         $vid = $this->crearVersion($contenidoId, $n, $d);
-        $this->pdo->prepare('UPDATE ' . self::TABLE . " SET version_actual = ?, estado = 'pendiente', updated_at = ? WHERE id = ?")
-            ->execute([$n, self::ahora(), $contenidoId]);
+        Schema::asegurar($this->pdo);
+        $this->pdo->prepare('UPDATE ' . self::TABLE . " SET version_actual = ?, estado = 'pendiente', actualizado_en = ?, updated_at = ? WHERE id = ?")
+            ->execute([$n, self::ahora(), self::ahora(), $contenidoId]);
         (new EntregaService($this->pdo))->reabrir((string) $c['entrega_id']);
         return $vid;
+    }
+
+    /**
+     * El equipo cambió la pieza (sin versión nueva) y quiere que el cliente la vuelva a mirar:
+     * queda «Por revisar», marcada como actualizada, y la entrega se reabre.
+     */
+    public function marcarActualizado(string $id): void
+    {
+        $c = $this->find($id);
+        if ($c === null) {
+            return;
+        }
+        Schema::asegurar($this->pdo);
+        $this->pdo->prepare('UPDATE ' . self::TABLE . " SET estado = 'pendiente', actualizado_en = ?, updated_at = ? WHERE id = ?")
+            ->execute([self::ahora(), self::ahora(), $id]);
+        (new EntregaService($this->pdo))->reabrir((string) $c['entrega_id']);
+    }
+
+    /**
+     * ¿Hay algo nuevo que el cliente todavía no revisó? (versión nueva o actualización avisada,
+     * y la pieza sigue por revisar). Para marcarla en su portal.
+     * @param array<string, mixed> $c
+     */
+    public static function novedad(array $c): ?string
+    {
+        if (($c['estado'] ?? '') !== 'pendiente' || empty($c['actualizado_en'])) {
+            return null;
+        }
+        return (int) ($c['version_actual'] ?? 1) > 1 ? 'Versión nueva · v' . (int) $c['version_actual'] : 'Actualizado';
     }
 
     /** @param array<string, mixed> $d */

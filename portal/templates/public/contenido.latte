@@ -309,6 +309,8 @@
         <div class="flex flex-wrap items-center gap-2">
             {if $etiqueta}<span class="chip chip-brand">{$etiqueta}</span>{/if}
             <span class="chip chip-{$cs[1]}">{$cs[0]}</span>
+            {var $nov = \TypeDock\Plugin\Portal\ContenidoService::novedad($x)}
+            {if $nov}<span class="novedad-pieza"><svg class="size-3.5"><use href="#i-sparkles"/></svg>{$nov}</span>{/if}
         </div>
         <h1 class="mt-3 text-xl font-extrabold leading-tight tracking-tight">{$x['titulo']}</h1>
         {if $x['fecha_publicacion']}<p class="mt-1 text-sm text-muted">Publica el {$fmt->fechaLarga($x['fecha_publicacion'])}</p>{/if}

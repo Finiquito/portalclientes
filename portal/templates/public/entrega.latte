@@ -48,6 +48,13 @@
     {/if}
 </section>
 
+{var $conNovedad = array_filter($contenidos, fn($c) => \TypeDock\Plugin\Portal\ContenidoService::novedad($c) !== null)}
+{if $conNovedad}
+    <div class="reveal mt-5 flex items-center gap-3 rounded-2xl border border-brand/30 bg-brand-soft px-4 py-3 text-sm font-semibold text-brand-ink">
+        <svg class="size-5 flex-none"><use href="#i-sparkles"/></svg>
+        <span>{count($conNovedad) === 1 ? 'Hay 1 pieza con cambios nuevos para revisar' : 'Hay ' . count($conNovedad) . ' piezas con cambios nuevos para revisar'}: están marcadas abajo.</span>
+    </div>
+{/if}
 <section class="mt-5" aria-label="Contenidos">
     <ul class="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-4">
         {foreach $contenidos as $c}
@@ -71,6 +78,8 @@
                         {if $c['estado'] === 'aprobado'}<svg class="size-3.5"><use href="#i-check"/></svg>{elseif $c['estado'] === 'cambios'}<svg class="size-3.5"><use href="#i-edit"/></svg>{/if}{$cs[0]}
                     </span>
                     {if $rc && $rc['mia'] !== ''}<span class="absolute right-2 top-2 flex size-8 items-center justify-center rounded-full bg-surface text-base shadow-soft">{$reaccionesDef[$rc['mia']][0]}</span>{/if}
+                    {var $nov = \TypeDock\Plugin\Portal\ContenidoService::novedad($c)}
+                    {if $nov}<span class="novedad-pieza absolute left-2 top-11"><svg class="size-3.5"><use href="#i-sparkles"/></svg>{$nov}</span>{/if}
                 </a>
             </li>
         {/foreach}

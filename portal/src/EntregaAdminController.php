@@ -583,6 +583,22 @@ class EntregaAdminController
                 $errores = $this->guardarLaminas($c, is_array($_POST['laminas'] ?? null) ? $_POST['laminas'] : []);
             }
             $this->contenidos()->actualizar($id, $_POST);
+            // Cambio que el cliente debe volver a mirar: se marca y se le avisa.
+            if (!empty($_POST['avisar_cambio']) && $c['entrega_estado'] !== 'borrador') {
+                $this->contenidos()->marcarActualizado($id);
+                (new Notifier($this->ctx, $this->pdo()))->alCliente(
+                    (string) $c['cliente_id'], null, 'Actualizamos una pieza: ' . $c['titulo'],
+                    'Hicimos cambios en «' . $c['titulo'] . '» de «' . $c['entrega_titulo'] . '». Échale un vistazo cuando puedas.', '/portal/contenidos/' . $id,
+                    ['etiqueta' => 'Pieza actualizada', 'titulo' => 'Actualizamos una pieza para que la revises', 'resaltado' => 'actualizamos', 'boton' => 'Ver la pieza',
+                     'bloques' => [['tarjetas' => [['titulo' => (string) $c['titulo'], 'detalle' => (string) $c['entrega_titulo'], 'chip' => 'Actualizado']]]],
+                     'vigencia' => Vigencia::contenido($id)]
+                );
+                (new ActividadService($this->pdo()))->registrar(
+                    (string) $c['cliente_id'], (string) $c['proyecto_id'], 'equipo', $this->firma(), 'actualizo', 'contenido', $id, (string) $c['titulo'], 'Actualizado'
+                );
+                $this->ui->redirect($this->url('contenidos/' . $id), 'Contenido actualizado y le avisamos al cliente: lo verá marcado como «Actualizado».');
+                return;
+            }
         }
         $this->ui->redirect($this->url('contenidos/' . $id), $errores === [] ? 'Contenido actualizado.' : 'Contenido actualizado, pero: ' . implode(' · ', $errores), $errores === [] ? 'success' : 'error');
     }

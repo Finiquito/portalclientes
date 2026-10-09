@@ -94,6 +94,19 @@
   @keyframes aparece { from { opacity: 0; } }
   .guardando-aviso[hidden] { display: none; }
   @media (max-width: 1023px) { .guardando-aviso { bottom: calc(5.25rem + env(safe-area-inset-bottom)); } }
+  .guardado-aviso { position: fixed; right: 1.25rem; bottom: 1.25rem; z-index: 90; display: flex; align-items: center; gap: .6rem; max-width: min(28rem, calc(100vw - 2.5rem));
+    padding: .7rem .8rem .7rem 1rem; border-radius: 1rem; background: var(--surface); color: var(--ink); border: 1px solid var(--line);
+    box-shadow: var(--shadow-pop); font-size: .875rem; font-weight: 600; animation: aparece .25s ease-out; transition: opacity .5s, transform .5s; }
+  .guardado-aviso.ok { border-color: color-mix(in oklab, var(--ok) 45%, var(--line)); }
+  .guardado-aviso.ok svg { color: var(--ok); }
+  .guardado-aviso.error { border-color: color-mix(in oklab, var(--danger) 45%, var(--line)); }
+  .guardado-aviso.error svg { color: var(--danger); }
+  .guardado-aviso button { margin-left: .25rem; padding: 0 .35rem; font-size: 1.2rem; line-height: 1; color: var(--muted); }
+  .guardado-aviso.saliendo { opacity: 0; transform: translateY(.5rem); }
+  @media (max-width: 1023px) { .guardado-aviso { left: 1rem; right: 1rem; bottom: calc(5.25rem + env(safe-area-inset-bottom)); max-width: none; } }
+  /* Pieza con cambios nuevos (versión nueva o actualizada) que el cliente aún no revisa */
+  .novedad-pieza { display: inline-flex; align-items: center; gap: .3rem; padding: .2rem .6rem; border-radius: 999px; font-size: .6875rem; font-weight: 800;
+    letter-spacing: .01em; background: var(--brand); color: var(--brand-fg); box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand) 25%, transparent); }
   .guardando-giro { width: 1rem; height: 1rem; border-radius: 999px; border: 2px solid color-mix(in oklab, var(--brand) 25%, transparent); border-top-color: var(--brand); animation: giro .7s linear infinite; }
   @keyframes giro { to { transform: rotate(360deg); } }
 

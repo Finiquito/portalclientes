@@ -994,6 +994,21 @@ $unica = (string) $pdo->query("SELECT id FROM portal_contenidos WHERE entrega_id
 $rp->correr('decidir', [$unica], ['_csrf' => P\PortalSession::csrf(), 'accion' => 'cambios', 'cuerpo' => 'Más grande el logo']);
 check($es2->find($eUna)['estado'] === 'respondida', 'con una sola pieza, pedir cambios también la envía al tiro');
 
+// Piezas con cambios nuevos: el cliente las ve marcadas
+$cA = $cs2->find((string) $piezas[0]);
+check(P\ContenidoService::novedad($cA) === null, 'una pieza ya revisada no aparece como nueva');
+$cs2->marcarActualizado((string) $piezas[0]);
+check(P\ContenidoService::novedad($cs2->find((string) $piezas[0])) === 'Actualizado' && $es2->find($eRev)['estado'] === 'publicada', 'al avisar una actualización, la pieza vuelve a revisión marcada «Actualizado» y la entrega se reabre');
+$cs2->nuevaVersion((string) $piezas[1], ['nota' => 'Otro color']);
+check(P\ContenidoService::novedad($cs2->find((string) $piezas[1])) === 'Versión nueva · v2', 'una versión nueva queda marcada con su número');
+$rp->correr('decidir', [$piezas[1]], ['_csrf' => P\PortalSession::csrf(), 'accion' => 'aprobar']);
+check(P\ContenidoService::novedad($cs2->find((string) $piezas[1])) === null, 'cuando el cliente la revisa, deja de estar marcada');
+$_SESSION[P\EquipoController::SESION] = $coord;
+$ctx->correos = [];
+P\Notifier::$ahora = null;
+$g->hacer('POST', P\EntregaAdminController::class, 'updateContenido', [(string) $piezas[1]], 'contenido', false, ['_csrf_token' => P\PortalSession::csrf(), 'titulo' => 'Pieza B', 'avisar_cambio' => '1']);
+check(P\ContenidoService::novedad($cs2->find((string) $piezas[1])) === 'Versión nueva · v2' && $pdo->query("SELECT COUNT(*) FROM portal_actividad WHERE accion = 'actualizo'")->fetchColumn() >= 1, 'guardar con «Avisarle al cliente» la marca y deja registro');
+
 $ss->borrarDeProyecto($p3a);
 check($ss->find((string) $ajena['id']) === null, 'al borrar un proyecto se van sus solicitudes');
 
@@ -1686,6 +1701,7 @@ $pdo->prepare('UPDATE portal_proyectos SET updated_at = ? WHERE id = ?')->execut
 $tRec = $ts->create(['proyecto_id' => $pVacio, 'titulo' => 'Recién', 'asignado' => 'equipo']);
 $pdo->prepare('UPDATE portal_tareas SET updated_at = ? WHERE id = ?')->execute(['2099-01-01 00:00:00', $tRec]);   // lo más nuevo de todo
 check(((new P\ProyectoService($pdo))->porMovimiento()[0]['id'] ?? '') === $pVacio, 'en «Proyecto», primero el que tuvo movimiento más reciente');
+check(str_contains((string) file_get_contents(dirname(__DIR__) . '/portal/templates/_guardando.latte'), 'data-guardado') && str_contains((string) file_get_contents(dirname(__DIR__) . '/portal/templates/equipo/_layout.latte'), "flash: \$flash"), 'al volver de guardar, el resultado aparece en una esquina y la página sube');
 check(str_contains((string) file_get_contents(dirname(__DIR__) . '/portal/templates/equipo/_layout.latte'), '_guardando.latte') && str_contains((string) file_get_contents(dirname(__DIR__) . '/portal/templates/public/_layout.latte'), '_guardando.latte'), 'el aviso «Guardando…» está en el panel y en el portal');
 
 // Tareas de agencia y de cliente se distinguen en la línea

@@ -73,6 +73,9 @@
         {/if}
         <h3 class="pa-h2 mt-4" style="font-size:1rem">Brief de la pieza</h3>
         {include '_brief.latte', c: $c, filas: $filasLaminas, esReel: $esReel}
+        {if $c['entrega_estado'] !== 'borrador'}
+            <label class="pa-check"><input type="checkbox" name="avisar_cambio" value="1"> <span><strong>Avisarle al cliente que la actualizamos.</strong> Vuelve a «Por revisar» y la ve marcada como «Actualizado». Si cambia la pieza en sí, mejor «Subir una versión nueva» (abajo): queda el historial v1, v2…</span></label>
+        {/if}
         <p class="mt-4"><button type="submit" class="btn btn-primary">Guardar</button></p>
     </form>
 </div>

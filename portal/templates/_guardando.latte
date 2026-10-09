@@ -2,7 +2,25 @@
   Aviso «Guardando…»: al enviar cualquier formulario, el botón queda deshabilitado con el texto
   «Guardando…» y aparece un aviso abajo. Se puede usar desde otros scripts con window.portalGuardando(true|false).
   Un formulario con data-sin-aviso no lo muestra.
+  Al volver con el resultado ($flash), sube al inicio de la página y lo muestra también en una esquina.
 *}
+{if !empty($flash)}
+{* Resultado de lo que se acaba de guardar, en una esquina: se ve aunque la página sea larga. *}
+<div class="guardado-aviso {$flash['tipo'] === 'error' ? 'error' : 'ok'}" role="status" aria-live="polite" data-guardado>
+    <svg class="size-5 flex-none" aria-hidden="true"><use href="#{$flash['tipo'] === 'error' ? 'i-alert' : 'i-check'}"/></svg>
+    <span>{$flash['mensaje']}</span>
+    <button type="button" aria-label="Cerrar" onclick="this.parentElement.remove()">×</button>
+</div>
+<script>
+(() => {
+    const t = document.currentScript.previousElementSibling;
+    // Después de guardar, arriba (salvo que la dirección apunte a una sección, p. ej. #conversacion).
+    if (!location.hash) { history.scrollRestoration = 'manual'; scrollTo(0, 0); }
+    setTimeout(() => t.classList.add('saliendo'), 6000);
+    setTimeout(() => t.remove(), 6600);
+})();
+</script>
+{/if}
 <div class="guardando-aviso" role="status" aria-live="polite" hidden><span class="guardando-giro" aria-hidden="true"></span><span data-texto>Guardando…</span></div>
 <script>
 (() => {

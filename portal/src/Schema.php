@@ -66,6 +66,7 @@ final class Schema
             'objetivo' => 'TEXT',
             'laminas'  => 'TEXT',
             'notas'    => 'TEXT',
+            'actualizado_en' => 'VARCHAR(19)',   // última vez que el equipo le avisó al cliente de un cambio (versión nueva o actualización)
         ],
         'portal_comentarios' => [
             'version_id' => 'VARCHAR(36)',
