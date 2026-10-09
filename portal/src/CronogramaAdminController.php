@@ -70,6 +70,7 @@ class CronogramaAdminController
             'editable' => true,
             'mover' => $this->ui->url('proyectos/' . $id . '/linea/mover'),
             'estados' => self::ESTADOS,
+            'plantillas' => (new PlantillaService($this->pdo()))->lista(),
             'fasesProyecto' => (new FaseService($this->pdo()))->listByProyecto($id),
             'color' => self::hex(Fmt::coloresTodos($this->pdo())[$id] ?? ''),
             'fmt' => new Fmt(),
@@ -130,6 +131,25 @@ class CronogramaAdminController
             $volver = $this->ui->url('fases/' . $fase);
         }
         $this->ui->redirect($volver, $ok ? 'Hito guardado.' : 'El hito necesita nombre y fecha.', $ok ? 'success' : 'error');
+    }
+
+    /** Arma el proyecto con una plantilla a partir de una fecha de inicio. */
+    public function plantillaAplicar(string $id): void
+    {
+        $volver = $this->ui->url('proyectos/' . $id . '/linea');
+        $inicio = substr((string) ($_POST['inicio'] ?? ''), 0, 10);
+        $n = (new PlantillaService($this->pdo()))->aplicar((string) ($_POST['plantilla_id'] ?? ''), $id, $inicio);
+        $this->ui->redirect($volver, $n > 0
+            ? "Listo: {$n} tareas con sus fases e hitos. Las que dependen de otra muestran fechas estimadas; ajústalas a tu gusto."
+            : 'Elige una plantilla y la fecha de inicio.', $n > 0 ? 'success' : 'error');
+    }
+
+    /** Guarda la estructura de este proyecto (fases, tareas, hitos) como plantilla nueva. */
+    public function plantillaGuardar(string $id): void
+    {
+        $svc = new PlantillaService($this->pdo());
+        $ok = $svc->crear((string) ($_POST['nombre'] ?? ''), (string) ($_POST['descripcion'] ?? ''), $svc->estructuraDe($id)) !== null;
+        $this->ui->redirect($this->ui->url('proyectos/' . $id . '/linea'), $ok ? 'Plantilla guardada. La verás al crear un proyecto.' : 'La plantilla necesita nombre y al menos una tarea.', $ok ? 'success' : 'error');
     }
 
     public function hitoBorrar(string $id, string $hid): void

@@ -21,13 +21,14 @@
 {/define}
 
 {define filaTarea, $t, $x, $ancho, $estados, $enlace, $editable}
-    <div class="pa-g-fila">
+    {* Franja de color al inicio: a quién le toca (agencia o cliente) *}
+    <div class="pa-g-fila quien-{$t['quien']}" data-quien="{$t['quien']}">
         <div class="pa-g-et pa-g-et-tarea">
             <a href="{$enlace('tareas', $t['id'])}" title="{$t['titulo']}">{$t['titulo']}</a>
             {if $editable}
-                <small>{if $t['responsable']}{$t['responsable']}{/if}{if $t['quien'] === 'cliente'} · cliente{/if}</small>
+                <small><b class="pa-quien">{$t['quien'] === 'cliente' ? 'Cliente' : 'Agencia'}</b>{if $t['responsable'] && $t['responsable'] !== 'Cliente'} · {$t['responsable']}{/if}</small>
             {else}
-                <small>{$t['quien'] === 'cliente' ? 'Te toca a ti' : 'Equipo'}</small>
+                <small><b class="pa-quien">{$t['quien'] === 'cliente' ? 'Te toca a ti' : 'Equipo'}</b></small>
             {/if}
         </div>
         <div class="pa-g-pista">

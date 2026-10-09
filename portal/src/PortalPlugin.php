@@ -51,6 +51,12 @@ class PortalPlugin implements PluginInterface
         $ctx->registerAdminRoute('POST', 'proyectos/@id/linea/mover', fn(string $id) => $linea->mover($id));
         $ctx->registerAdminRoute('POST', 'proyectos/@id/linea/hitos', fn(string $id) => $linea->hitoGuardar($id));
         $ctx->registerAdminRoute('POST', 'proyectos/@id/linea/hitos/@hid/borrar', fn(string $id, string $hid) => $linea->hitoBorrar($id, $hid));
+        $ctx->registerAdminRoute('POST', 'proyectos/@id/linea/plantilla', fn(string $id) => $linea->plantillaAplicar($id));
+        $ctx->registerAdminRoute('POST', 'proyectos/@id/linea/guardar-plantilla', fn(string $id) => $linea->plantillaGuardar($id));
+        $plantillas = new PlantillaAdminController($ctx);
+        $ctx->registerAdminRoute('GET',  'plantillas',            [$plantillas, 'index']);
+        $ctx->registerAdminRoute('POST', 'plantillas/@id',        fn(string $id) => $plantillas->renombrar($id));
+        $ctx->registerAdminRoute('POST', 'plantillas/@id/borrar', fn(string $id) => $plantillas->borrar($id));
 
         $reuniones = new ReunionAdminController($ctx);
         $ctx->registerAdminRoute('GET',  'reuniones',                [$reuniones, 'index']);

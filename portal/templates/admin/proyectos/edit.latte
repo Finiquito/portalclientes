@@ -3,6 +3,7 @@
 {block page_title}{if $proyecto}Editar proyecto{else}Nuevo proyecto{/if}{/block}
 
 {block content}
+<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=9">
 <div class="page-header">
     <h1>{if $proyecto}Editar proyecto{else}Nuevo proyecto{/if}</h1>
     <div class="pa-row">
@@ -27,6 +28,23 @@
 
         <label class="form-label mt-3">Descripción</label>
         <textarea name="descripcion" class="form-input" rows="4">{$proyecto['descripcion'] ?? ''}</textarea>
+
+        {if !$proyecto && !empty($plantillas)}
+        <div class="pa-grid-2">
+            <div>
+                <label class="form-label mt-3">Plantilla (opcional)</label>
+                <select name="plantilla_id" class="form-input">
+                    <option value="">— En blanco —</option>
+                    {foreach $plantillas as $pl}<option value="{$pl['id']}">{$pl['nombre']} · {count($pl['e']['tareas'])} tareas</option>{/foreach}
+                </select>
+                <p class="form-hint mt-1">Crea las fases, tareas e hitos de una vez. <a href="{$admin_url('plantillas')}">Ver plantillas</a></p>
+            </div>
+            <div>
+                <label class="form-label mt-3">Empieza el</label>
+                <input type="date" name="inicio" class="form-input" value="{$hoy}">
+            </div>
+        </div>
+        {/if}
 
         <label class="form-label mt-3">Estado</label>
         <select name="estado" class="form-input">

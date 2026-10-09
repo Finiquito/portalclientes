@@ -8,7 +8,10 @@
         <h1 class="text-[2rem] font-extrabold leading-tight tracking-tight sm:text-4xl">Proyectos</h1>
         <p class="mt-2 text-muted">{$usuario['rol'] === 'coordinador' ? 'Todos los proyectos de la agencia.' : 'Los proyectos que tienes asignados.'}</p>
     </div>
-    {if $puedeCrear}<a href="/equipo/proyectos/nuevo" class="btn btn-primary btn-sm"><svg class="size-4"><use href="#i-briefcase"/></svg> Nuevo proyecto</a>{/if}
+    <div class="flex flex-wrap gap-2">
+        <a href="/equipo/plantillas" class="btn btn-ghost btn-sm">Plantillas</a>
+        {if $puedeCrear}<a href="/equipo/proyectos/nuevo" class="btn btn-primary btn-sm"><svg class="size-4"><use href="#i-briefcase"/></svg> Nuevo proyecto</a>{/if}
+    </div>
 </section>
 
 {var $tabs = [['activo', 'Activos'], ['pausado', 'En pausa'], ['cerrado', 'Cerrados'], ['todos', 'Todos']]}

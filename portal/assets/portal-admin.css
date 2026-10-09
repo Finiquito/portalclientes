@@ -277,3 +277,31 @@ a.pa-g-hito { cursor: pointer; text-decoration: none !important; }
 .pa-en-fase li:first-child { border-top: 0; }
 .pa-en-fase li small { flex: none; color: color-mix(in srgb, currentColor 60%, transparent); }
 .pa-en-fase .pa-muted { margin: 0 0 .75rem; }
+
+/* A quién le toca: franja al inicio de la fila y tope de la barra.
+   Agencia = color de la agencia; cliente = naranjo (el mismo de los pines del cliente). */
+.pa-gantt { --c-agencia: var(--brand, #6d5df6); --c-cliente: #e8590c; }
+.pa-g-fila[data-quien] > .pa-g-et { box-shadow: inset 4px 0 0 var(--c-quien); }
+.pa-g-fila.quien-equipo { --c-quien: var(--c-agencia); }
+.pa-g-fila.quien-cliente { --c-quien: var(--c-cliente); }
+.pa-g-fila.quien-cliente > .pa-g-pista { background-color: color-mix(in srgb, var(--c-cliente) 5%, transparent); }
+.pa-g-fila[data-quien] .pa-gb { box-shadow: inset 4px 0 0 var(--c-quien); padding-left: .65rem; }
+.pa-quien { font-weight: 700; color: color-mix(in srgb, var(--c-quien) 80%, currentColor); }
+.pa-g-quien-mini { display: inline-block; width: 4px; height: .85rem; border-radius: 2px; }
+.pa-g-quien-mini.agencia { background: var(--c-agencia, var(--brand, #6d5df6)); }
+.pa-g-quien-mini.cliente { background: #e8590c; }
+/* Filtro «Agencia / Cliente»: oculta las filas del otro lado */
+.pa-gantt[data-ver="equipo"] .pa-g-fila[data-quien="cliente"], .pa-gantt[data-ver="cliente"] .pa-g-fila[data-quien="equipo"] { display: none; }
+
+/* Plantillas de proyecto */
+.pa-plantilla-cab { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; }
+.pa-plantilla-cab .pa-row { align-items: flex-start; }
+.pa-plantilla-fases { display: grid; gap: 1rem 1.5rem; grid-template-columns: repeat(auto-fill, minmax(min(15rem, 100%), 1fr)); margin-top: 1rem; }
+.pa-plantilla-fases h3 { margin: 0 0 .35rem; font-size: .875rem; font-weight: 700; }
+.pa-plantilla-fases ul { list-style: none; margin: 0; padding: 0; }
+.pa-plantilla-fases li { display: flex; justify-content: space-between; gap: .5rem; padding: .3rem 0 .3rem .6rem; font-size: .8125rem; box-shadow: inset 3px 0 0 var(--c-quien, transparent); }
+.pa-plantilla-fases li + li { margin-top: .2rem; }
+.pa-plantilla-fases li small { flex: none; color: color-mix(in srgb, currentColor 60%, transparent); }
+.pa-plantilla-fases li.quien-equipo { --c-quien: var(--brand, #6d5df6); }
+.pa-plantilla-fases li.quien-cliente { --c-quien: #e8590c; }
+.pa-plantilla-fases li.hito { font-weight: 650; }

@@ -97,6 +97,7 @@ final class Schema
         self::tablaSolicitudes($pdo);
         self::tablasAvisos($pdo);
         self::tablaHitos($pdo);
+        self::tablaPlantillas($pdo);
         self::ampliarTextos($pdo);
     }
 
@@ -235,6 +236,18 @@ final class Schema
         foreach (array_filter(array_map('trim', explode(';', $sql))) as $stmt) {
             $pdo->exec($stmt);
         }
+    }
+
+    private static function tablaPlantillas(\PDO $pdo): void
+    {
+        if (!self::existe($pdo, 'portal_plantillas', 'id, nombre, estructura')) {
+            $sql = (string) @file_get_contents(dirname(__DIR__) . '/migrations/0011_plantillas.sql');
+            $sql = preg_replace('/^\s*--.*$/m', '', $sql) ?? '';
+            foreach (array_filter(array_map('trim', explode(';', $sql))) as $stmt) {
+                $pdo->exec($stmt);
+            }
+        }
+        PlantillaService::sembrar($pdo);   // la primera vez: las de ejemplo
     }
 
     /** Sólo para pruebas. */

@@ -43,12 +43,23 @@ class ProyectoAdminController
         $this->ui->view('proyectos/edit.latte', [
             'proyecto' => null,
             'clientes' => $clientes,
+            'plantillas' => (new PlantillaService($this->ctx->db()->pdo()))->lista(),
+            'hoy' => Cronograma::hoy(),
         ]);
     }
 
     public function store(): void
     {
-        $this->service()->create($_POST);
+        $id = $this->service()->create($_POST);
+        // Con plantilla: se arma y se abre su línea de tiempo.
+        $plantilla = (string) ($_POST['plantilla_id'] ?? '');
+        if ($plantilla !== '') {
+            $n = (new PlantillaService($this->ctx->db()->pdo()))->aplicar($plantilla, $id, substr((string) ($_POST['inicio'] ?? ''), 0, 10) ?: Cronograma::hoy());
+            if ($n > 0) {
+                $this->ui->redirect($this->ui->url('proyectos/' . $id . '/linea'), "Proyecto creado con {$n} tareas, sus fases e hitos. Ajusta lo que necesites.");
+                return;
+            }
+        }
         $this->ui->redirect($this->ui->url('proyectos'), 'Proyecto creado.');
     }
 

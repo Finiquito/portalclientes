@@ -3,7 +3,7 @@
 {block page_title}Línea de tiempo · {$proyecto['nombre']}{/block}
 
 {block content}
-<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=8">
+<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=9">
 {var $volver = ($enPanel ?? false) ? '/equipo/proyectos/' . $proyecto['id'] : $admin_url('proyectos/' . $proyecto['id'])}
 {var $q = '?proyecto_id=' . $proyecto['id'] . '&linea=1'}
 {var $conFecha = array_filter($d['tareas'], fn($t) => $t['ini'] !== null)}
@@ -27,8 +27,27 @@
 
 {if $vacia}
 {* Sin nada con fecha: en vez de una grilla en blanco, cómo se arma *}
+{if $plantillas}
+<div class="card">
+    <h2 class="pa-h2">Partir de una plantilla</h2>
+    <p class="pa-muted" style="margin-top:-.4rem">Crea las fases, tareas (con su duración y de quién son) e hitos de una vez. Después ajustas lo que quieras. <a href="{$admin_url('plantillas')}">Ver plantillas</a></p>
+    <form method="post" action="{$admin_url('proyectos/' . $proyecto['id'] . '/linea/plantilla')}" class="pa-inline" style="margin-top:.75rem; align-items:flex-end">
+        <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+        <label style="flex:1 1 16rem"><span class="form-label">Plantilla</span>
+            <select name="plantilla_id" class="form-input" required>
+                {foreach $plantillas as $pl}<option value="{$pl['id']}">{$pl['nombre']} · {count($pl['e']['tareas'])} tareas, unos {\TypeDock\Plugin\Portal\PlantillaService::diasTotales($pl['e'])} días hábiles</option>{/foreach}
+            </select>
+        </label>
+        <label style="flex:0 1 11rem"><span class="form-label">Empieza el</span>
+            <input type="date" name="inicio" class="form-input" value="{$d['hoy']}" required>
+        </label>
+        <button type="submit" class="btn btn-primary">Armar el proyecto</button>
+    </form>
+</div>
+{/if}
+
 <div class="card pa-pasos">
-    <h2 class="pa-h2">Arma la línea de tiempo en 3 pasos</h2>
+    <h2 class="pa-h2">{$plantillas ? 'O ármala a mano en 3 pasos' : 'Arma la línea de tiempo en 3 pasos'}</h2>
     <p class="pa-muted" style="margin-top:-.4rem">No se llena aparte: muestra en el calendario las fases, tareas, hitos, reuniones y entregas del proyecto que tienen fecha.</p>
     <ol>
         <li class="{$fasesProyecto ? 'listo' : ''}">
@@ -54,6 +73,11 @@
         <a class="pa-pill" href="?zoom=semana" aria-current="{$zoom === 'semana' ? 'true' : 'false'}">Días</a>
         <a class="pa-pill" href="?zoom=mes" aria-current="{$zoom === 'mes' ? 'true' : 'false'}">Meses</a>
     </div>
+    <div class="pa-pills" data-ver-quien>
+        <button type="button" class="pa-pill" data-ver="" aria-current="true">Todas</button>
+        <button type="button" class="pa-pill" data-ver="equipo"><i class="pa-g-quien-mini agencia"></i>Agencia</button>
+        <button type="button" class="pa-pill" data-ver="cliente"><i class="pa-g-quien-mini cliente"></i>Cliente</button>
+    </div>
     <div class="pa-g-leyenda">
         <span><i class="pa-gb-mini pendiente"></i>Pendiente</span>
         <span><i class="pa-gb-mini en_progreso"></i>En curso</span>
@@ -68,6 +92,23 @@
 <p class="pa-muted" style="margin:0 0 .75rem">Arrastra una barra para mover sus fechas; desde su borde cambias el inicio o el fin. Las tareas que dependen de otra solo cambian su duración. Clic para editar.</p>
 
 {include '../../_gantt.latte'}
+<p class="pa-muted" style="margin:.75rem 0 0">¿Este proyecto te sirve de base para otros? <button type="button" class="btn btn-sm" data-plantilla-guardar>Guardar como plantilla</button> <a href="{$admin_url('plantillas')}" style="margin-left:.5rem">Ver plantillas</a></p>
+
+<dialog class="pa-dialogo" id="plantilla-dialogo">
+    <form method="post" action="{$admin_url('proyectos/' . $proyecto['id'] . '/linea/guardar-plantilla')}">
+        <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+        <h2 class="pa-h2">Guardar como plantilla</h2>
+        <p class="pa-muted" style="margin-top:-.4rem">Se guardan las fases, las tareas (duración, de quién son y de cuál dependen) y los hitos. Sin fechas ni datos del cliente.</p>
+        <label class="form-label">Nombre</label>
+        <input type="text" name="nombre" class="form-input" required maxlength="255" value="{$proyecto['nombre']}">
+        <label class="form-label mt-3">Descripción (opcional)</label>
+        <input type="text" name="descripcion" class="form-input" maxlength="500" placeholder="Para qué tipo de proyecto sirve">
+        <div class="pa-row" style="margin-top:1.25rem; justify-content:flex-end">
+            <button type="button" class="btn" onclick="this.closest('dialog').close()">Cancelar</button>
+            <button type="submit" class="btn btn-primary">Guardar plantilla</button>
+        </div>
+    </form>
+</dialog>
 {/if}
 
 {if $d['sinFecha']}
@@ -136,6 +177,7 @@
     };
     document.querySelectorAll('[data-hito-nuevo]').forEach((b) => b.addEventListener('click', () => abrir(null)));
     dlg.querySelector('[data-cerrar]').addEventListener('click', () => dlg.close());
+    document.querySelector('[data-plantilla-guardar]')?.addEventListener('click', () => document.getElementById('plantilla-dialogo').showModal());
 
     const g = document.querySelector('.pa-gantt');
     if (!g) return;   // línea vacía: sólo los pasos
@@ -145,6 +187,13 @@
     const corta = (n) => new Date(fecha(n) + 'T12:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' });
     const indice = (f) => Math.round((new Date(f + 'T12:00:00') - desde) / 864e5);
 
+    // Ver sólo las tareas de la agencia o del cliente
+    document.querySelectorAll('[data-ver-quien] [data-ver]').forEach((b) => b.addEventListener('click', () => {
+        g.dataset.ver = b.dataset.ver;
+        document.querySelectorAll('[data-ver-quien] [data-ver]').forEach((o) => o.setAttribute('aria-current', o === b ? 'true' : 'false'));
+        flechas();
+    }));
+
     // Flechas de dependencia: del fin de la tarea anterior al inicio de la que espera.
     const svg = g.querySelector('.pa-g-flechas');
     const flechas = () => {
@@ -152,7 +201,7 @@
         let html = '<defs><marker id="pa-punta" viewBox="0 0 6 6" refX="5" refY="3" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L6,3 L0,6 z"/></marker></defs>';
         g.querySelectorAll('.pa-gb[data-de]:not([data-de=""])').forEach((b) => {
             const a = g.querySelector('.pa-gb[data-id="' + b.dataset.de + '"]');
-            if (!a) return;
+            if (!a || !a.offsetParent || !b.offsetParent) return;   // fila oculta por el filtro
             const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect();
             const x1 = ra.right - caja.left, y1 = ra.top + ra.height / 2 - caja.top;
             const x2 = rb.left - caja.left, y2 = rb.top + rb.height / 2 - caja.top;

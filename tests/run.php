@@ -1679,7 +1679,7 @@ check($r === '/equipo/fases/' . $fDis, 'el hito creado desde la ficha de la fase
 check(str_contains($html, 'En esta fase') && str_contains($html, 'Bocetos aprobados') && str_contains($html, 'Revisión de bocetos') === false && str_contains($html, 'Bocetos v1'), 'la ficha de la fase muestra sus hitos, reuniones y entregas');
 $pVacio = $ps->create(['cliente_id' => $c5, 'nombre' => 'Vacío']);
 [$html] = $g->hacer('GET', $CR, 'ver', [$pVacio], 'proyecto');
-check(str_contains($html, 'Arma la línea de tiempo en 3 pasos') && !str_contains($html, 'class="pa-gantt'), 'sin nada con fecha, la línea enseña cómo armarla');
+check(str_contains($html, 'ármala a mano en 3 pasos') && str_contains($html, 'Partir de una plantilla') && !str_contains($html, 'class="pa-gantt'), 'sin nada con fecha, la línea enseña cómo armarla (con plantilla o a mano)');
 
 // Proyectos por último movimiento
 $pdo->prepare('UPDATE portal_proyectos SET updated_at = ? WHERE id = ?')->execute(['2000-01-01 00:00:00', $pVacio]);
@@ -1687,6 +1687,49 @@ $tRec = $ts->create(['proyecto_id' => $pVacio, 'titulo' => 'Recién', 'asignado'
 $pdo->prepare('UPDATE portal_tareas SET updated_at = ? WHERE id = ?')->execute(['2099-01-01 00:00:00', $tRec]);   // lo más nuevo de todo
 check(((new P\ProyectoService($pdo))->porMovimiento()[0]['id'] ?? '') === $pVacio, 'en «Proyecto», primero el que tuvo movimiento más reciente');
 check(str_contains((string) file_get_contents(dirname(__DIR__) . '/portal/templates/equipo/_layout.latte'), '_guardando.latte') && str_contains((string) file_get_contents(dirname(__DIR__) . '/portal/templates/public/_layout.latte'), '_guardando.latte'), 'el aviso «Guardando…» está en el panel y en el portal');
+
+// Tareas de agencia y de cliente se distinguen en la línea
+[$html] = $g->hacer('GET', $CR, 'ver', [$pT], 'proyecto');
+check(str_contains($html, 'data-quien="equipo"') && str_contains($html, 'data-ver="cliente"'), 'la línea marca de quién es cada tarea y se puede filtrar');
+
+// Plantillas de proyecto
+seccion('Plantillas de proyecto');
+$pls = new P\PlantillaService($pdo);
+$lista = $pls->lista();
+check(array_column($lista, 'nombre') === ['Sitio web', 'Branding', 'Campaña digital'], 'vienen tres plantillas de ejemplo: Sitio web, Branding y Campaña digital');
+check(P\PlantillaService::diasTotales($lista[0]['e']) > 20, 'cada plantilla sabe cuánto dura más o menos');
+P\Notifier::$ahora = new DateTimeImmutable('2027-05-03 10:00', new DateTimeZone('UTC'));   // lunes
+$pW = $ps->create(['cliente_id' => $c5, 'nombre' => 'Web nueva']);
+$n = $pls->aplicar($lista[0]['id'], $pW, '2027-05-01');   // sábado: parte el lunes
+$dW = $cr->datos($pW);
+$tW = $dW['tareas'];
+check($n === 13 && count($dW['fases']) === 5 && count($dW['hitos']) === 2, 'aplicar la plantilla crea sus fases, tareas e hitos');
+check($tW[0]['ini'] === '2027-05-03' && !$tW[0]['estimada'] && count(array_filter($tW, fn($t) => $t['estimada'])) === 12, 'la primera tarea parte el día de inicio (hábil) y el resto queda encadenado, con fechas estimadas');
+check(in_array('cliente', array_column($tW, 'quien'), true), 'las tareas del cliente quedan como del cliente');
+$finDis = array_column($dW['fases'], 'fin', 'nombre')['Diseño'];
+check(array_column($dW['hitos'], 'fecha', 'nombre')['Diseño aprobado'] === $finDis, 'el hito de una fase cae el día que termina esa fase');
+$est = $pls->estructuraDe($pW);
+$idP = $pls->crear('mi web', 'La nuestra', $est);
+$pW2 = $ps->create(['cliente_id' => $c5, 'nombre' => 'Web dos']);
+check($pls->aplicar((string) $idP, $pW2, '2027-05-03') === 13 && count($cr->datos($pW2)['hitos']) === 2 && $pls->find((string) $idP)['nombre'] === 'Mi web', 'guardar un proyecto como plantilla y volver a usarla da lo mismo');
+$_SESSION[P\EquipoController::SESION] = $coord;
+$pW3 = $ps->create(['cliente_id' => $c5, 'nombre' => 'Web tres']);
+[, $r] = $g->hacer('POST', $CR, 'plantillaAplicar', [$pW3], 'proyecto', false, ['_csrf_token' => $tok, 'plantilla_id' => $lista[1]['id'], 'inicio' => '2027-05-03']);
+check($r === '/equipo/proyectos/' . $pW3 . '/linea' && count($cr->datos($pW3)['tareas']) === 14, 'desde la línea vacía se arma el proyecto con una plantilla');
+[, $r] = $g->hacer('POST', $CR, 'plantillaGuardar', [$pW3], 'proyecto', false, ['_csrf_token' => $tok, 'nombre' => 'Branding corto']);
+check($r === '/equipo/proyectos/' . $pW3 . '/linea' && in_array('Branding corto', array_column($pls->lista(), 'nombre'), true), '«Guardar como plantilla» desde la línea de tiempo');
+[, $r] = $g->hacer('POST', P\ProyectoAdminController::class, 'store', [], null, false, ['_csrf_token' => $tok, 'cliente_id' => $c5, 'nombre' => 'Campaña verano', 'estado' => 'activo', 'plantilla_id' => $lista[2]['id'], 'inicio' => '2027-05-03']);
+$pCv = (string) $pdo->query("SELECT id FROM portal_proyectos WHERE nombre = 'Campaña verano'")->fetchColumn();
+check($r === '/equipo/proyectos/' . $pCv . '/linea' && count($cr->datos($pCv)['tareas']) === 12, 'al crear un proyecto se puede elegir plantilla y se abre su línea de tiempo');
+[$html] = $g->hacer('GET', P\PlantillaAdminController::class, 'index');
+check(str_contains($html, 'Plantillas de proyecto') && str_contains($html, 'Campaña digital') && str_contains($html, 'Revisión de piezas'), 'la página de plantillas muestra cada una con sus fases y tareas');
+$_SESSION[P\EquipoController::SESION] = $ana;
+[, $r] = $g->hacer('POST', P\PlantillaAdminController::class, 'borrar', [(string) $idP], null, true, ['_csrf_token' => $tok]);
+check($pls->find((string) $idP) !== null, 'sólo Coordinación borra plantillas');
+foreach ($pls->lista() as $x) { $pls->borrar((string) $x['id']); }
+P\Schema::reiniciar(); P\Schema::asegurar($pdo);
+check($pls->lista() === [], 'si se borran todas, las de ejemplo no vuelven solas');
+P\Notifier::$ahora = null;
 P\Notifier::$ahora = null;
 
 // ---------------------------------------------------------------------------

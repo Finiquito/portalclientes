@@ -3,7 +3,7 @@
 {block title}Calendario del proyecto{/block}
 
 {block content}
-<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=8">
+<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=9">
 {var $meses = ['01' => 'Enero', '02' => 'Febrero', '03' => 'Marzo', '04' => 'Abril', '05' => 'Mayo', '06' => 'Junio', '07' => 'Julio', '08' => 'Agosto', '09' => 'Septiembre', '10' => 'Octubre', '11' => 'Noviembre', '12' => 'Diciembre']}
 {var $tipos = ['hito' => ['Hito', 'chip-brand'], 'reunion' => ['Reunión', 'chip-info'], 'entrega' => ['Para revisar', 'chip-warn'], 'fase' => ['Etapa', 'chip-muted'], 'tarea' => ['Te toca', 'chip-danger']]}
 
@@ -32,6 +32,8 @@
         <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
             <p class="text-sm text-muted">Avance del proyecto: <strong class="text-ink">{$d['pct']}%</strong></p>
             <div class="pa-g-leyenda">
+                <span><i class="pa-g-quien-mini cliente"></i>Te toca a ti</span>
+                <span><i class="pa-g-quien-mini agencia"></i>Equipo</span>
                 <span><i class="pa-gb-mini pendiente"></i>Por hacer</span>
                 <span><i class="pa-gb-mini en_progreso"></i>En curso</span>
                 <span><i class="pa-gb-mini hecha"></i>Lista</span>
@@ -91,7 +93,7 @@
         let html = '<defs><marker id="pa-punta" viewBox="0 0 6 6" refX="5" refY="3" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L6,3 L0,6 z"/></marker></defs>';
         g.querySelectorAll('.pa-gb[data-de]:not([data-de=""])').forEach((b) => {
             const a = g.querySelector('.pa-gb[data-id="' + b.dataset.de + '"]');
-            if (!a) return;
+            if (!a || !a.offsetParent || !b.offsetParent) return;   // fila oculta por el filtro
             const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect();
             const x1 = ra.right - caja.left, y1 = ra.top + ra.height / 2 - caja.top;
             const x2 = rb.left - caja.left, y2 = rb.top + rb.height / 2 - caja.top;

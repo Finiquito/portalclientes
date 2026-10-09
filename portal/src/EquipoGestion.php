@@ -48,6 +48,11 @@ class EquipoGestion extends EquipoController
         $r('POST', 'proyectos/@id/linea/mover',     CronogramaAdminController::class, 'mover', 'proyecto');
         $r('POST', 'proyectos/@id/linea/hitos',     CronogramaAdminController::class, 'hitoGuardar', 'proyecto');
         $r('POST', 'proyectos/@id/linea/hitos/@hid/borrar', CronogramaAdminController::class, 'hitoBorrar', 'proyecto');
+        $r('POST', 'proyectos/@id/linea/plantilla', CronogramaAdminController::class, 'plantillaAplicar', 'proyecto');
+        $r('POST', 'proyectos/@id/linea/guardar-plantilla', CronogramaAdminController::class, 'plantillaGuardar', 'proyecto');
+        $r('GET',  'plantillas',                    PlantillaAdminController::class, 'index');
+        $r('POST', 'plantillas/@id',                PlantillaAdminController::class, 'renombrar', null, true);
+        $r('POST', 'plantillas/@id/borrar',         PlantillaAdminController::class, 'borrar', null, true);
 
         $r('GET',  'fases',                         FaseAdminController::class, 'index');
         $r('GET',  'fases/nuevo',                   FaseAdminController::class, 'create');
@@ -247,7 +252,7 @@ class EquipoGestion extends EquipoController
             'entregas'  => 'contenidos',
             'reuniones' => 'reuniones',
             'solicitudes' => 'solicitudes',
-            'proyectos', 'cronograma', 'fases' => 'proyectos',
+            'proyectos', 'cronograma', 'fases', 'plantillas' => 'proyectos',
             'equipo'    => 'personas',
             'ajustes'   => 'agencia',
             'actividad' => 'actividad',

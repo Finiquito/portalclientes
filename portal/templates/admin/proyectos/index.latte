@@ -5,7 +5,7 @@
 {block content}
 <div class="page-header">
     <h1>Proyectos</h1>
-    <a href="{$admin_url('proyectos/nuevo')}" class="btn btn-primary">Nuevo proyecto</a>
+    <div class="pa-row"><a href="{$admin_url('plantillas')}" class="btn">Plantillas</a><a href="{$admin_url('proyectos/nuevo')}" class="btn btn-primary">Nuevo proyecto</a></div>
 </div>
 
 {if $flash_success}<div class="alert alert-success">{$flash_success}</div>{/if}
