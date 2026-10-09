@@ -220,10 +220,15 @@
 .pa-g-hito.cumplido i { background: #10b981; }
 .pa-g-hito.atrasado i { background: #e11d48; }
 .pa-g-hito span { padding: .05rem .35rem; border-radius: .3rem; background: color-mix(in srgb, var(--surface, Canvas) 85%, transparent); }
-.pa-g-reu, .pa-g-reu-mini { width: .7rem; height: .7rem; border-radius: 999px; background: #3b82f6; }
-.pa-g-reu { margin: -.35rem 0 0 calc(var(--dia) / 2 - .35rem); }
-.pa-g-ent, .pa-g-ent-mini { width: .65rem; height: .65rem; border-radius: 2px; background: #f59e0b; }
-.pa-g-ent { margin: -.33rem 0 0 calc(var(--dia) / 2 - .33rem); }
+/* Reuniones y entregas: su marca y su nombre al lado, como los hitos */
+.pa-g-reu, .pa-g-ent { display: flex; align-items: center; gap: .3rem; transform: translateY(-50%); color: inherit; text-decoration: none !important;
+  font-size: .72rem; font-weight: 600; white-space: nowrap; }
+.pa-g-reu { margin-left: calc(var(--dia) / 2 - .35rem); }
+.pa-g-ent { margin-left: calc(var(--dia) / 2 - .33rem); }
+.pa-g-reu span, .pa-g-ent span { padding: .05rem .35rem; border-radius: .3rem; background: color-mix(in srgb, var(--surface, Canvas) 85%, transparent); }
+.pa-g-reu:hover span, .pa-g-ent:hover span { text-decoration: underline; }
+.pa-g-reu i, .pa-g-reu-mini { width: .7rem; height: .7rem; flex: none; border-radius: 999px; background: #3b82f6; }
+.pa-g-ent i, .pa-g-ent-mini { width: .65rem; height: .65rem; flex: none; border-radius: 2px; background: #f59e0b; }
 .pa-g-rombo-mini { width: .6rem; height: .6rem; display: inline-block; }
 .pa-g-reu-mini, .pa-g-ent-mini { display: inline-block; }
 .pa-gb-mini { display: inline-block; width: 1.4rem; height: .65rem; border-radius: .25rem; }

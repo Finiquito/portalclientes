@@ -65,10 +65,10 @@
                 <div class="pa-g-et"><strong>Hitos y fechas</strong></div>
                 <div class="pa-g-pista">
                     {foreach $d['entregas'] as $e}
-                        <a href="{$enlace('entregas', $e['id'])}" class="pa-g-ent" style="left:{$x($e['fecha']) * $ancho}px" title="Entrega: {$e['titulo']} · {$fmt->fecha($e['fecha'])}"></a>
+                        <a href="{$enlace('entregas', $e['id'])}" class="pa-g-ent" style="left:{$x($e['fecha']) * $ancho}px" title="Entrega: {$e['titulo']} · {$fmt->fecha($e['fecha'])}"><i></i><span>{$e['titulo']}</span></a>
                     {/foreach}
                     {foreach $d['reuniones'] as $r}
-                        <a href="{$enlace('reuniones', $r['id'])}" class="pa-g-reu" style="left:{$x($r['fecha']) * $ancho}px" title="Reunión: {$r['titulo']} · {$fmt->fecha($r['fecha'])}{if $r['hora']} {$r['hora']}{/if}"></a>
+                        <a href="{$enlace('reuniones', $r['id'])}" class="pa-g-reu" style="left:{$x($r['fecha']) * $ancho}px" title="Reunión: {$r['titulo']} · {$fmt->fecha($r['fecha'])}{if $r['hora']} {$r['hora']}{/if}"><i></i><span>{$r['titulo']}{if $r['hora']} · {$r['hora']}{/if}</span></a>
                     {/foreach}
                     {foreach $d['hitos'] as $h}
                         <button type="button" class="pa-g-hito {$h['estado']}" {if !$editable}disabled{/if} style="left:{$x($h['fecha']) * $ancho}px"
@@ -123,3 +123,25 @@
   </div>
 </div>
 
+
+<script>
+// Hitos, reuniones y entregas del mismo día (o que se pisan): cada uno en su propia línea.
+(() => {
+    document.querySelectorAll('.pa-g-marcas .pa-g-pista').forEach((pista) => {
+        if (pista.offsetParent === null) return;   // oculta (p. ej. en el celular)
+        const base = pista.getBoundingClientRect().left;
+        const marcas = [...pista.querySelectorAll('.pa-g-hito, .pa-g-reu, .pa-g-ent')]
+            .map((el) => ({ el, r: el.getBoundingClientRect() }))
+            .sort((a, b) => a.r.left - b.r.left);
+        const lineas = [];   // dónde termina lo último puesto en cada línea
+        marcas.forEach(({ el, r }) => {
+            const ini = r.left - base, fin = r.right - base;
+            let n = lineas.findIndex((x) => x + 6 <= ini);
+            if (n === -1) { n = lineas.length; lineas.push(0); }
+            lineas[n] = fin;
+            el.style.top = (1.05 + n * 1.5) + 'rem';
+        });
+        pista.style.minHeight = (Math.max(1, lineas.length) * 1.5 + .6) + 'rem';
+    });
+})();
+</script>
