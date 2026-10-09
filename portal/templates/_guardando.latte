@@ -1,0 +1,35 @@
+{*
+  Aviso «Guardando…»: al enviar cualquier formulario, el botón queda deshabilitado con el texto
+  «Guardando…» y aparece un aviso abajo. Se puede usar desde otros scripts con window.portalGuardando(true|false).
+  Un formulario con data-sin-aviso no lo muestra.
+*}
+<div class="guardando-aviso" role="status" aria-live="polite" hidden><span class="guardando-giro" aria-hidden="true"></span><span data-texto>Guardando…</span></div>
+<script>
+(() => {
+    const aviso = document.currentScript.previousElementSibling;
+    window.portalGuardando = (si, texto) => {
+        aviso.querySelector('[data-texto]').textContent = texto || 'Guardando…';
+        aviso.hidden = !si;
+    };
+    document.addEventListener('submit', (e) => {
+        const f = e.target;
+        if (e.defaultPrevented || f.hasAttribute('data-sin-aviso') || f.target === '_blank' || (f.method || '').toLowerCase() !== 'post') return;
+        const b = e.submitter;
+        const sube = f.enctype === 'multipart/form-data' && [...f.querySelectorAll('input[type=file]')].some((i) => i.files && i.files.length);
+        window.portalGuardando(true, sube ? 'Subiendo archivos…' : 'Guardando…');
+        // Se deshabilita después: si no, el botón no viajaría con el formulario (name/value).
+        setTimeout(() => {
+            if (b && !b.disabled) {
+                b.dataset.textoOriginal = b.innerHTML;
+                b.disabled = true;
+                if (b.tagName === 'BUTTON' && b.textContent.trim() !== '' && b.textContent.trim().length < 40) b.textContent = sube ? 'Subiendo…' : 'Guardando…';
+            }
+        }, 0);
+    });
+    // Al volver con «Atrás», todo como estaba.
+    addEventListener('pageshow', () => {
+        window.portalGuardando(false);
+        document.querySelectorAll('[data-texto-original]').forEach((b) => { b.innerHTML = b.dataset.textoOriginal; b.disabled = false; delete b.dataset.textoOriginal; });
+    });
+})();
+</script>

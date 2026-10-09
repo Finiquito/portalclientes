@@ -124,6 +124,11 @@ class CronogramaAdminController
         } else {
             $ok = $svc->create(['proyecto_id' => $id] + $_POST) !== null;
         }
+        // Desde la ficha de una fase se vuelve a ella.
+        $fase = (string) ($_POST['volver_fase'] ?? '');
+        if ($fase !== '' && (new FaseService($this->pdo()))->deProyecto($fase, $id) !== null) {
+            $volver = $this->ui->url('fases/' . $fase);
+        }
         $this->ui->redirect($volver, $ok ? 'Hito guardado.' : 'El hito necesita nombre y fecha.', $ok ? 'success' : 'error');
     }
 

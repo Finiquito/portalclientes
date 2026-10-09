@@ -3,13 +3,21 @@
 {block page_title}{if $fase}Editar fase{else}Nueva fase{/if}{/block}
 
 {block content}
+<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=8">
 <div class="page-header">
     <h1>{if $fase}Editar fase{else}Nueva fase{/if}</h1>
-    <a href="{$admin_url('fases')}" class="btn">Volver</a>
+    <div class="pa-row">
+        {if $fase}<a href="{$admin_url('proyectos/' . $fase['proyecto_id'] . '/linea')}" class="btn">Línea de tiempo</a>{/if}
+        <a href="{$admin_url('fases')}" class="btn">Volver</a>
+    </div>
 </div>
+
+{if $flash_success ?? null}<div class="alert alert-success">{$flash_success}</div>{/if}
+{if $flash_error ?? null}<div class="alert alert-error">{$flash_error}</div>{/if}
 
 <div class="card">
     <form method="post" action="{if $fase}{$admin_url('fases/' . $fase['id'])}{else}{$admin_url('fases')}{/if}">
+        {if !empty($pre['a_linea'])}<input type="hidden" name="a_linea" value="{$pre['a_linea']}">{/if}
         <input type="hidden" name="_csrf_token" value="{$csrf_token}">
 
         <label class="form-label">Proyecto</label>
@@ -39,3 +47,54 @@
         <p class="mt-4"><button type="submit" class="btn btn-primary">Guardar</button></p>
     </form>
 </div>
+
+{if $fase}
+{var $q = '?proyecto_id=' . $fase['proyecto_id'] . '&fase_id=' . $fase['id']}
+<div class="card">
+    <h2 class="pa-h2">En esta fase</h2>
+    <p class="pa-muted" style="margin-top:-.4rem">Todo lo que pertenece a «{$fase['nombre']}». Así se ve agrupado en la línea de tiempo.</p>
+
+    <div class="pa-en-fase">
+        <section>
+            <h3>Hitos <span class="pa-chip gris">{count($enFase['hitos'])}</span></h3>
+            {if $enFase['hitos']}
+                <ul>{foreach $enFase['hitos'] as $h}<li><span>◆ {$h['nombre']}</span><small>{$fmt->fecha($h['fecha'])}{if $h['cumplido_en']} · cumplido{/if}</small></li>{/foreach}</ul>
+            {else}<p class="pa-muted">Sin hitos todavía.</p>{/if}
+            <details class="pa-mas">
+                <summary>Agregar un hito</summary>
+                <form method="post" action="{$admin_url('proyectos/' . $fase['proyecto_id'] . '/linea/hitos')}" class="pa-inline" style="margin-top:.5rem">
+                    <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+                    <input type="hidden" name="fase_id" value="{$fase['id']}">
+                    <input type="hidden" name="volver_fase" value="{$fase['id']}">
+                    <input type="hidden" name="visible_cliente" value="1">
+                    <input type="text" name="nombre" class="form-input" required maxlength="255" placeholder="Ej: Propuesta aprobada" style="flex:1 1 14rem">
+                    <input type="date" name="fecha" class="form-input" required style="flex:0 1 11rem">
+                    <button type="submit" class="btn btn-sm btn-primary">Agregar</button>
+                </form>
+            </details>
+        </section>
+        <section>
+            <h3>Tareas <span class="pa-chip gris">{count($enFase['tareas'])}</span></h3>
+            {if $enFase['tareas']}
+                <ul>{foreach $enFase['tareas'] as $t}<li><a href="{$admin_url('tareas/' . $t['id'])}">{$t['titulo']}</a><small>{if $t['fecha_vencimiento']}{$fmt->fecha($t['fecha_vencimiento'])} · {/if}{$fmt->estado($t['estado'])[0] ?? $t['estado']}</small></li>{/foreach}</ul>
+            {else}<p class="pa-muted">Sin tareas todavía.</p>{/if}
+            <a href="{$admin_url('tareas/nuevo') . $q}" class="btn btn-sm">Nueva tarea</a>
+        </section>
+        <section>
+            <h3>Reuniones <span class="pa-chip gris">{count($enFase['reuniones'])}</span></h3>
+            {if $enFase['reuniones']}
+                <ul>{foreach $enFase['reuniones'] as $r}<li><a href="{$admin_url('reuniones/' . $r['id'])}">{if $r['es_hito']}◆ {/if}{$r['titulo']}</a><small>{$fmt->fecha($r['fecha'])}</small></li>{/foreach}</ul>
+            {else}<p class="pa-muted">Sin reuniones todavía.</p>{/if}
+            <a href="{$admin_url('reuniones/nuevo') . $q}" class="btn btn-sm">Agendar reunión</a>
+        </section>
+        <section>
+            <h3>Entregas <span class="pa-chip gris">{count($enFase['entregas'])}</span></h3>
+            {if $enFase['entregas']}
+                <ul>{foreach $enFase['entregas'] as $e}<li><a href="{$admin_url('entregas/' . $e['id'])}">{$e['titulo']}</a><small>{if $e['fecha_limite']}{$fmt->fecha($e['fecha_limite'])}{/if}</small></li>{/foreach}</ul>
+            {else}<p class="pa-muted">Sin entregas todavía.</p>{/if}
+            <a href="{$admin_url('entregas/nuevo') . $q}" class="btn btn-sm">Nueva entrega</a>
+        </section>
+    </div>
+</div>
+{/if}
+{/block}

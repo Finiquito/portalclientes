@@ -83,7 +83,19 @@ class EntregaService
             self::fecha((string) ($d['fecha_limite'] ?? '')),
             'borrador', self::ahora(), self::ahora(),
         ]);
+        $this->guardarFase($id, $d, (string) $proy['id']);
         return $id;
+    }
+
+    /** Fase de la entrega (línea de tiempo), sólo si viene del formulario (marca _linea). @param array<string, mixed> $d */
+    private function guardarFase(string $id, array $d, string $proyectoId): void
+    {
+        if (!isset($d['_linea'])) {
+            return;
+        }
+        Schema::asegurar($this->pdo);
+        $this->pdo->prepare('UPDATE ' . self::TABLE . ' SET fase_id = ? WHERE id = ?')
+            ->execute([(new FaseService($this->pdo))->deProyecto((string) ($d['fase_id'] ?? ''), $proyectoId), $id]);
     }
 
     /** @param array<string, mixed> $d */
@@ -96,6 +108,11 @@ class EntregaService
                 self::fecha((string) ($d['fecha_limite'] ?? '')),
                 self::ahora(), $id,
             ]);
+        if (isset($d['_linea'])) {
+            $st = $this->pdo->prepare('SELECT proyecto_id FROM ' . self::TABLE . ' WHERE id = ?');
+            $st->execute([$id]);
+            $this->guardarFase($id, $d, (string) $st->fetchColumn());
+        }
     }
 
     private static function fecha(string $f): ?string

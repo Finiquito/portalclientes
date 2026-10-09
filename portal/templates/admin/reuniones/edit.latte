@@ -3,7 +3,7 @@
 {block page_title}{$reunion['titulo']}{/block}
 
 {block content}
-<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=7">
+<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=8">
 {* Fechas en la hora de la agencia; debajo se muestra la del cliente *}
 {var $fecha10 = substr((string) $reunion['fecha'], 0, 10)}
 {var $hora = strlen((string) $reunion['fecha']) > 10 ? substr((string) $reunion['fecha'], 11, 5) : ''}
@@ -49,6 +49,7 @@
         </p>
         <label class="form-label mt-3">Grabación (opcional)</label>
         <input type="url" name="enlace_grabacion" class="form-input" value="{$reunion['enlace_grabacion']}" maxlength="500" placeholder="https://drive.google.com/…">
+        {include '../_fase_campo.latte', fasesRango: $fasesRango, faseActual: $reunion['fase_id'] ?? '', campoFecha: 'fecha_d', proyFijo: null, esHito: (bool) ($reunion['es_hito'] ?? 0)}
         <label class="pa-check"><input type="checkbox" name="publicada" value="1" {if $reunion['publicada']}checked{/if}> Visible para el cliente en «Reuniones»</label>
 
         {include '_convocados.latte', nueva: false}

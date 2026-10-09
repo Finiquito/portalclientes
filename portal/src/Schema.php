@@ -45,6 +45,11 @@ final class Schema
             'ia_generado_en'   => 'VARCHAR(32)',
             'ia_modelo'        => 'VARCHAR(64)',
             'ics_seq'          => 'INTEGER NOT NULL DEFAULT 0',   // versión de la invitación de calendario
+            'fase_id'          => 'VARCHAR(36)',                  // línea de tiempo: la etapa a la que pertenece
+            'es_hito'          => 'SMALLINT NOT NULL DEFAULT 0',  // se ve como hito en la línea de tiempo
+        ],
+        'portal_entregas' => [
+            'fase_id' => 'VARCHAR(36)',
         ],
         'portal_clientes' => [
             'pais' => "VARCHAR(2) NOT NULL DEFAULT 'CL'",

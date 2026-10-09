@@ -108,13 +108,14 @@ class EntregaAdminController
 
     public function create(): void
     {
-        $proyectos = $this->ui->filtrar((new ProyectoService($this->pdo()))->listAll(), 'id');
+        $proyectos = $this->ui->filtrar((new ProyectoService($this->pdo()))->porMovimiento(), 'id');
         if ($proyectos === []) {
             $this->ui->redirect($this->url('entregas'), 'Crea un proyecto primero.', 'error');
             return;
         }
         $this->ui->view('entregas/edit.latte', [
             'entrega' => null, 'proyectos' => $proyectos, 'contenidos' => [], 'fmt' => new Fmt(),
+            'fasesRango' => $this->ui->filtrar((new FaseService($this->pdo()))->conRangos(), 'proyecto_id'),
             'estados' => TiposContenido::ESTADOS_ENTREGA, 'tipos' => TiposContenido::TIPOS,
             'estadosContenido' => TiposContenido::ESTADOS_CONTENIDO, 'reacciones' => TiposContenido::REACCIONES,
             'portadas' => [], 'resumenReacc' => [], 'maxMb' => $this->maxMb(),
@@ -165,6 +166,7 @@ class EntregaAdminController
         }
         $this->ui->view('entregas/edit.latte', [
             'entrega' => $e, 'proyectos' => [], 'contenidos' => $lista, 'fmt' => new Fmt(),
+            'fasesRango' => $this->ui->filtrar((new FaseService($this->pdo()))->conRangos(), 'proyecto_id'),
             'estados' => TiposContenido::ESTADOS_ENTREGA, 'tipos' => TiposContenido::TIPOS,
             'estadosContenido' => TiposContenido::ESTADOS_CONTENIDO, 'reacciones' => TiposContenido::REACCIONES,
             'portadas' => $portadas, 'resumenReacc' => $resumen, 'maxMb' => $this->maxMb(),

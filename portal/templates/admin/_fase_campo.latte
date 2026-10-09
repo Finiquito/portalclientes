@@ -1,0 +1,47 @@
+{*
+  Campo «Fase (opcional)» para reuniones y entregas (línea de tiempo).
+  Recibe: $fasesRango (FaseService::conRangos, ya filtradas), $faseActual, $campoFecha (name del input de fecha),
+  $proyFijo (id del proyecto si el formulario no tiene selector) y, para reuniones, $esHito (bool).
+  Mientras no la elijas a mano, se sugiere la fase en curso según la fecha.
+*}
+<input type="hidden" name="_linea" value="1">
+<div class="pa-grid-2" data-fase-campo data-fecha="{$campoFecha}" data-proyecto="{$proyFijo ?? ''}">
+    <div>
+        <label class="form-label mt-3">Fase (opcional)</label>
+        <select name="fase_id" class="form-input">
+            <option value="">— Sin fase —</option>
+            {foreach $fasesRango as $fr}
+                <option value="{$fr['id']}" data-proyecto="{$fr['proyecto_id']}" data-ini="{$fr['ini']}" data-fin="{$fr['fin']}" {if ($faseActual ?? '') === $fr['id']}selected{/if}>{$fr['nombre']}</option>
+            {/foreach}
+        </select>
+        <p class="form-hint mt-1">En la línea de tiempo aparece bajo esa fase. Se sugiere sola según la fecha.</p>
+    </div>
+    {if isset($esHito)}
+    <div>
+        <label class="pa-check" style="margin-top:2.4rem"><input type="checkbox" name="es_hito" value="1" {if $esHito}checked{/if}> <span>Es un hito del proyecto (se ve como rombo en la línea de tiempo)</span></label>
+    </div>
+    {/if}
+</div>
+<script>
+(() => {
+    const caja = document.currentScript.previousElementSibling;
+    const form = caja.closest('form');
+    const sel = caja.querySelector('[name=fase_id]');
+    const fecha = form.querySelector('[name="' + caja.dataset.fecha + '"]');
+    const proy = form.querySelector('[name=proyecto_id]');
+    let aMano = sel.value !== '';
+    sel.addEventListener('change', () => { aMano = sel.value !== ''; });
+    const actualizar = () => {
+        const p = proy ? proy.value : caja.dataset.proyecto;
+        [...sel.options].forEach((o) => { if (o.value) { o.hidden = o.disabled = o.dataset.proyecto !== p; } });
+        if (sel.selectedOptions[0] && sel.selectedOptions[0].disabled) { sel.value = ''; aMano = false; }
+        const f = fecha ? fecha.value : '';
+        if (aMano || !f) return;
+        const en = [...sel.options].find((o) => o.value && !o.disabled && o.dataset.ini && o.dataset.ini <= f && (o.dataset.fin || o.dataset.ini) >= f);
+        sel.value = en ? en.value : '';
+    };
+    if (proy) proy.addEventListener('change', actualizar);
+    if (fecha) fecha.addEventListener('change', actualizar);
+    actualizar();
+})();
+</script>

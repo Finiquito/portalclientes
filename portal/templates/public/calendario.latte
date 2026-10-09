@@ -3,7 +3,7 @@
 {block title}Calendario del proyecto{/block}
 
 {block content}
-<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=7">
+<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=8">
 {var $meses = ['01' => 'Enero', '02' => 'Febrero', '03' => 'Marzo', '04' => 'Abril', '05' => 'Mayo', '06' => 'Junio', '07' => 'Julio', '08' => 'Agosto', '09' => 'Septiembre', '10' => 'Octubre', '11' => 'Noviembre', '12' => 'Diciembre']}
 {var $tipos = ['hito' => ['Hito', 'chip-brand'], 'reunion' => ['Reunión', 'chip-info'], 'entrega' => ['Para revisar', 'chip-warn'], 'fase' => ['Etapa', 'chip-muted'], 'tarea' => ['Te toca', 'chip-danger']]}
 
@@ -64,6 +64,8 @@
                             </p>
                             <p class="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted">
                                 <span class="chip {$tipos[$m['tipo']][1]}">{$tipos[$m['tipo']][0]}</span>
+                                {if !empty($m['reunion']) && $m['tipo'] === 'hito'}<span class="chip chip-info">Reunión</span>{/if}
+                                {if !empty($m['fase'])}<span>{$m['fase']}</span>{/if}
                                 {if !empty($m['hora'])}<span>{$m['hora']}</span>{/if}
                                 {if $m['estimada']}<span class="font-semibold">Fecha estimada</span>{/if}
                                 {if ($m['estado'] ?? '') === 'cumplido'}<span class="chip chip-ok">Cumplido</span>{/if}

@@ -249,3 +249,31 @@
 .pa-gantt.lectura .pa-gb { cursor: pointer; }
 .pa-gantt.lectura .pa-gf, .pa-gantt.lectura .pa-g-hito { cursor: default; }
 .pa-gantt.lectura .pa-g-hito:disabled { opacity: 1; }
+/* La fase puede crecer hacia abajo (sus reuniones y entregas van bajo la barra): la barra mantiene su alto. */
+.pa-gf { bottom: auto; height: calc(var(--alto) - .7rem); }
+a.pa-g-hito { cursor: pointer; text-decoration: none !important; }
+.pa-g-fase .pa-g-et { position: sticky; padding-right: 2.2rem; }
+.pa-g-mas { position: absolute; right: .55rem; top: 50%; transform: translateY(-50%); display: grid; place-items: center; width: 1.5rem; height: 1.5rem; border-radius: 999px;
+  font-size: 1rem; font-weight: 700; line-height: 1; text-decoration: none !important; color: inherit !important;
+  border: 1px solid color-mix(in srgb, currentColor 20%, transparent); }
+.pa-g-mas:hover { background: color-mix(in srgb, currentColor 8%, transparent); }
+
+/* Línea de tiempo vacía: los 3 pasos */
+.pa-pasos ol { list-style: none; margin: 1rem 0 0; padding: 0; display: grid; gap: .25rem; }
+.pa-pasos li { display: grid; grid-template-columns: 2rem minmax(0, 1fr) auto; gap: .9rem; align-items: center; padding: .85rem 0; border-top: 1px solid color-mix(in srgb, currentColor 10%, transparent); }
+.pa-pasos li:first-child { border-top: 0; }
+.pa-pasos li p { margin: .2rem 0 0; font-size: .85rem; color: color-mix(in srgb, currentColor 65%, transparent); }
+.pa-paso-n { display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: 999px; font-weight: 800; background: color-mix(in srgb, currentColor 8%, transparent); }
+.pa-pasos li.listo .pa-paso-n { background: color-mix(in srgb, #10b981 20%, transparent); color: color-mix(in srgb, #059669 75%, currentColor); }
+.pa-pasos li.listo strong { text-decoration: line-through; opacity: .7; }
+@media (max-width: 600px) { .pa-pasos li { grid-template-columns: 2rem minmax(0, 1fr); } .pa-pasos li > :last-child { grid-column: 2; justify-self: start; } }
+
+/* Ficha de fase: lo que cuelga de ella */
+.pa-en-fase { display: grid; gap: 1.25rem 2rem; grid-template-columns: 1fr; margin-top: 1rem; }
+@media (min-width: 860px) { .pa-en-fase { grid-template-columns: 1fr 1fr; } }
+.pa-en-fase h3 { display: flex; align-items: center; gap: .5rem; margin: 0 0 .5rem; font-size: .95rem; font-weight: 700; }
+.pa-en-fase ul { list-style: none; margin: 0 0 .75rem; padding: 0; }
+.pa-en-fase li { display: flex; justify-content: space-between; gap: .75rem; padding: .4rem 0; border-top: 1px solid color-mix(in srgb, currentColor 8%, transparent); font-size: .875rem; }
+.pa-en-fase li:first-child { border-top: 0; }
+.pa-en-fase li small { flex: none; color: color-mix(in srgb, currentColor 60%, transparent); }
+.pa-en-fase .pa-muted { margin: 0 0 .75rem; }

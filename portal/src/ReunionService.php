@@ -150,7 +150,25 @@ class ReunionService
             $d['resumen'], $d['acuerdos'], $d['analisis'], $d['transcripcion'], $d['publicada'], $d['resumen_publicado'],
             $d['prox_fecha'], $d['prox_titulo'], $now, $now,
         ]);
+        $this->guardarLinea($id, $payload, $d['proyecto_id']);
         return $id;
+    }
+
+    /**
+     * Fase y «es hito» (línea de tiempo). Sólo si vienen del formulario (marca _linea),
+     * para que otros caminos que guardan reuniones no los borren.
+     * @param array<string, mixed> $p
+     */
+    private function guardarLinea(string $id, array $p, string $proyectoId): void
+    {
+        if (!isset($p['_linea'])) {
+            return;
+        }
+        Schema::asegurar($this->pdo);
+        $this->pdo->prepare('UPDATE ' . self::TABLE . ' SET fase_id = ?, es_hito = ? WHERE id = ?')->execute([
+            (new FaseService($this->pdo))->deProyecto((string) ($p['fase_id'] ?? ''), $proyectoId),
+            !empty($p['es_hito']) ? 1 : 0, $id,
+        ]);
     }
 
     /** @param array<string, mixed> $payload */
@@ -166,6 +184,7 @@ class ReunionService
             $d['resumen'], $d['acuerdos'], $d['analisis'], $d['transcripcion'], $d['publicada'], $d['resumen_publicado'],
             $d['prox_fecha'], $d['prox_titulo'], self::ahora(), $id,
         ]);
+        $this->guardarLinea($id, $payload, $d['proyecto_id']);
     }
 
     public function delete(string $id): void

@@ -3,7 +3,7 @@
 {block page_title}{if $tarea}Editar tarea{else}Nueva tarea{/if}{/block}
 
 {block content}
-<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=7">
+<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=8">
 
 <div class="page-header">
     <h1>{if $tarea}Editar tarea{else}Nueva tarea{/if}</h1>
@@ -17,6 +17,7 @@
 
 <div class="card">
     <form id="tarea-form" method="post" action="{if $tarea}{$admin_url('tareas/' . $tarea['id'])}{else}{$admin_url('tareas')}{/if}">
+        {if !empty($pre['a_linea'])}<input type="hidden" name="a_linea" value="{$pre['a_linea']}">{/if}
         <input type="hidden" name="_csrf_token" value="{$csrf_token}">
 
         <label class="form-label">Proyecto</label>
@@ -87,7 +88,7 @@
                 <select name="fase_id" class="form-input">
                     <option value="">— Ninguna —</option>
                     {foreach $fases as $f}
-                        <option value="{$f['id']}" data-proyecto="{$f['proyecto_id']}" {if isset($tarea['fase_id']) && $tarea['fase_id'] === $f['id']}selected{/if}>{$f['nombre']}</option>
+                        <option value="{$f['id']}" data-proyecto="{$f['proyecto_id']}" {if ($tarea['fase_id'] ?? $pre['fase_id'] ?? '') === $f['id']}selected{/if}>{$f['nombre']}</option>
                     {/foreach}
                 </select>
                 <p class="form-hint mt-1">Sirve para calcular el avance por etapas en el portal.</p>

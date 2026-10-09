@@ -37,7 +37,7 @@ class ReunionAdminController
 
     private function proyectos(): array
     {
-        return $this->ui->filtrar((new ProyectoService($this->pdo()))->listAll(), 'id');
+        return $this->ui->filtrar((new ProyectoService($this->pdo()))->porMovimiento(), 'id');
     }
 
     private function firma(): string
@@ -210,6 +210,7 @@ class ReunionAdminController
         $this->ui->view('reuniones/nueva.latte', $this->zonasFormulario() + $this->datosConvocados($proyectos, ['equipo' => $yo !== null ? [$yo] : [], 'contacto' => []]) + [
             'proyectos' => $proyectos,
             'proyectoId' => (string) ($_GET['proyecto'] ?? $_GET['proyecto_id'] ?? ''),
+            'fasesRango' => $this->ui->filtrar((new FaseService($this->pdo()))->conRangos(), 'proyecto_id'),
         ]);
     }
 
@@ -236,6 +237,7 @@ class ReunionAdminController
         $this->ui->view('reuniones/edit.latte', $this->zonasFormulario() + $this->datosConvocados($proyectos, $this->convocados()->ids($id)) + [
             'reunion'    => $reunion,
             'paisCliente' => $paisCli,
+            'fasesRango' => $this->ui->filtrar((new FaseService($this->pdo()))->conRangos(), 'proyecto_id'),
             'proyectos'  => $proyectos,
             'propuestas' => $this->service()->propuestas($id),
             'iaActiva'   => $ia->activa(),

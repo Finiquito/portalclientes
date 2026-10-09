@@ -3,8 +3,11 @@
 {block page_title}Línea de tiempo · {$proyecto['nombre']}{/block}
 
 {block content}
-<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=7">
+<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=8">
 {var $volver = ($enPanel ?? false) ? '/equipo/proyectos/' . $proyecto['id'] : $admin_url('proyectos/' . $proyecto['id'])}
+{var $q = '?proyecto_id=' . $proyecto['id'] . '&linea=1'}
+{var $conFecha = array_filter($d['tareas'], fn($t) => $t['ini'] !== null)}
+{var $vacia = !$conFecha && !$d['hitos'] && !$d['reuniones'] && !$d['entregas'] && !array_filter($d['fases'], fn($f) => $f['ini'] !== null)}
 
 <div class="page-header">
     <div style="display:block">
@@ -12,6 +15,8 @@
         <p class="pa-muted" style="margin:.2rem 0 0"><span class="pa-dot" style="background:{$color}"></span>{$proyecto['nombre']} · {$clienteNombre} · {$d['pct']}% avanzado</p>
     </div>
     <div class="pa-row">
+        <a href="{$admin_url('fases/nuevo') . $q}" class="btn">Nueva fase</a>
+        <a href="{$admin_url('tareas/nuevo') . $q}" class="btn">Nueva tarea</a>
         <button type="button" class="btn btn-primary" data-hito-nuevo>Nuevo hito</button>
         <a href="{$volver}" class="btn">Volver al proyecto</a>
     </div>
@@ -20,6 +25,30 @@
 {if $flash_success}<div class="alert alert-success">{$flash_success}</div>{/if}
 {if $flash_error}<div class="alert alert-error">{$flash_error}</div>{/if}
 
+{if $vacia}
+{* Sin nada con fecha: en vez de una grilla en blanco, cómo se arma *}
+<div class="card pa-pasos">
+    <h2 class="pa-h2">Arma la línea de tiempo en 3 pasos</h2>
+    <p class="pa-muted" style="margin-top:-.4rem">No se llena aparte: muestra en el calendario las fases, tareas, hitos, reuniones y entregas del proyecto que tienen fecha.</p>
+    <ol>
+        <li class="{$fasesProyecto ? 'listo' : ''}">
+            <span class="pa-paso-n">{$fasesProyecto ? '✓' : '1'}</span>
+            <div><strong>Crea las fases</strong><p>Las etapas del proyecto: Brief, Propuesta, Producción… Con fechas propias o, si no, toman las de sus tareas.</p></div>
+            <a href="{$admin_url('fases/nuevo') . $q}" class="btn btn-sm">Nueva fase</a>
+        </li>
+        <li class="{$conFecha ? 'listo' : ''}">
+            <span class="pa-paso-n">{$conFecha ? '✓' : '2'}</span>
+            <div><strong>Agrega tareas con fecha</strong><p>Con fecha de inicio o límite, o que dependan de otra tarea (parten cuando la anterior termina).</p></div>
+            <a href="{$admin_url('tareas/nuevo') . $q}" class="btn btn-sm">Nueva tarea</a>
+        </li>
+        <li class="{$d['hitos'] ? 'listo' : ''}">
+            <span class="pa-paso-n">{$d['hitos'] ? '✓' : '3'}</span>
+            <div><strong>Marca los hitos</strong><p>Las metas con fecha («Lanzamiento»). Una reunión importante también puede ser hito.</p></div>
+            <button type="button" class="btn btn-sm" data-hito-nuevo>Nuevo hito</button>
+        </li>
+    </ol>
+</div>
+{else}
 <div class="pa-g-barra">
     <div class="pa-pills">
         <a class="pa-pill" href="?zoom=semana" aria-current="{$zoom === 'semana' ? 'true' : 'false'}">Días</a>
@@ -39,6 +68,7 @@
 <p class="pa-muted" style="margin:0 0 .75rem">Arrastra una barra para mover sus fechas; desde su borde cambias el inicio o el fin. Las tareas que dependen de otra solo cambian su duración. Clic para editar.</p>
 
 {include '../../_gantt.latte'}
+{/if}
 
 {if $d['sinFecha']}
 <div class="card" style="margin-top:1rem">
@@ -85,13 +115,6 @@
 
 <script>
 (() => {
-    const g = document.querySelector('.pa-gantt');
-    const dia = parseFloat(getComputedStyle(g).getPropertyValue('--dia')) || 30;
-    const desde = new Date(g.dataset.desde + 'T12:00:00');
-    const fecha = (n) => { const d = new Date(desde); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
-    const corta = (n) => new Date(fecha(n) + 'T12:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' });
-    const indice = (f) => Math.round((new Date(f + 'T12:00:00') - desde) / 864e5);
-
     // Diálogo de hitos (nuevo o editar)
     const dlg = document.getElementById('hito-dialogo');
     const form = dlg.querySelector('form');
@@ -111,8 +134,16 @@
         borrar.setAttribute('formaction', h ? base + '/' + h.id + '/borrar' : '');
         dlg.showModal();
     };
-    document.querySelector('[data-hito-nuevo]').addEventListener('click', () => abrir(null));
+    document.querySelectorAll('[data-hito-nuevo]').forEach((b) => b.addEventListener('click', () => abrir(null)));
     dlg.querySelector('[data-cerrar]').addEventListener('click', () => dlg.close());
+
+    const g = document.querySelector('.pa-gantt');
+    if (!g) return;   // línea vacía: sólo los pasos
+    const dia = parseFloat(getComputedStyle(g).getPropertyValue('--dia')) || 30;
+    const desde = new Date(g.dataset.desde + 'T12:00:00');
+    const fecha = (n) => { const d = new Date(desde); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
+    const corta = (n) => new Date(fecha(n) + 'T12:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' });
+    const indice = (f) => Math.round((new Date(f + 'T12:00:00') - desde) / 864e5);
 
     // Flechas de dependencia: del fin de la tarea anterior al inicio de la que espera.
     const svg = g.querySelector('.pa-g-flechas');
@@ -182,6 +213,7 @@
         datos.append('ini', fecha(ini));
         datos.append('fin', fecha(fin));
         g.classList.add('guardando');
+        if (window.portalGuardando) window.portalGuardando(true);
         try {
             const r = await fetch(g.dataset.mover, { method: 'POST', body: datos, credentials: 'same-origin', headers: { 'Accept': 'application/json' } });
             const j = await r.json().catch(() => ({ error: 'Respuesta inesperada (HTTP ' + r.status + ').' }));
@@ -196,7 +228,7 @@
     g.addEventListener('pointercancel', () => { if (arr) { arr = null; location.reload(); } });
 
     // Clic en un hito (sin arrastrar): editarlo.
-    g.querySelectorAll('.pa-g-hito').forEach((b) => b.addEventListener('click', () => abrir(JSON.parse(b.dataset.hito))));
+    g.querySelectorAll('button.pa-g-hito').forEach((b) => b.addEventListener('click', () => abrir(JSON.parse(b.dataset.hito))));
 
     // Que hoy quede a la vista al abrir.
     const sc = g.querySelector('.pa-g-scroll');

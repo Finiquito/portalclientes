@@ -36,6 +36,20 @@
     </div>
 {/define}
 
+{define entrega, $e, $x, $ancho, $enlace, $fmt}
+    <a href="{$enlace('entregas', $e['id'])}" class="pa-g-ent" style="left:{$x($e['fecha']) * $ancho}px" title="Entrega: {$e['titulo']} · {$fmt->fecha($e['fecha'])}"><i></i><span>{$e['titulo']}</span></a>
+{/define}
+
+{define reunion, $r, $x, $ancho, $enlace, $fmt, $hoy}
+    {if $r['es_hito']}
+        {* Reunión que vale como hito: rombo, y cumplida una vez que pasó *}
+        <a href="{$enlace('reuniones', $r['id'])}" class="pa-g-hito {$r['fecha'] < $hoy ? 'cumplido' : 'pendiente'}" style="left:{$x($r['fecha']) * $ancho}px"
+           title="Hito · reunión: {$r['titulo']} · {$fmt->fecha($r['fecha'])}{if $r['hora']} {$r['hora']}{/if}"><i></i><span>{$r['titulo']}{if $r['hora']} · {$r['hora']}{/if}</span></a>
+    {else}
+        <a href="{$enlace('reuniones', $r['id'])}" class="pa-g-reu" style="left:{$x($r['fecha']) * $ancho}px" title="Reunión: {$r['titulo']} · {$fmt->fecha($r['fecha'])}{if $r['hora']} {$r['hora']}{/if}"><i></i><span>{$r['titulo']}{if $r['hora']} · {$r['hora']}{/if}</span></a>
+    {/if}
+{/define}
+
 <div class="pa-gantt {$zoom} {$editable ? 'editable' : 'lectura'}" style="--dia: {$ancho}px; --dias: {$d['dias']}"
      data-mover="{$mover ?? ''}" data-csrf="{$csrf_token ?? ''}" data-desde="{$d['desde']}">
   <div class="pa-g-scroll">
@@ -60,16 +74,14 @@
             <div class="pa-g-hoy" style="--x: {$x($d['hoy'])}" title="Hoy"></div>
             <svg class="pa-g-flechas" aria-hidden="true"></svg>
 
-            {if $d['hitos'] || $d['reuniones'] || $d['entregas']}
+            {var $arriba = array_filter($d['reuniones'], fn($r) => $r['es_hito'] || $r['fase_id'] === null)}
+            {var $entArriba = array_filter($d['entregas'], fn($e) => $e['fase_id'] === null)}
+            {if $d['hitos'] || $arriba || $entArriba}
             <div class="pa-g-fila pa-g-marcas">
                 <div class="pa-g-et"><strong>Hitos y fechas</strong></div>
-                <div class="pa-g-pista">
-                    {foreach $d['entregas'] as $e}
-                        <a href="{$enlace('entregas', $e['id'])}" class="pa-g-ent" style="left:{$x($e['fecha']) * $ancho}px" title="Entrega: {$e['titulo']} · {$fmt->fecha($e['fecha'])}"><i></i><span>{$e['titulo']}</span></a>
-                    {/foreach}
-                    {foreach $d['reuniones'] as $r}
-                        <a href="{$enlace('reuniones', $r['id'])}" class="pa-g-reu" style="left:{$x($r['fecha']) * $ancho}px" title="Reunión: {$r['titulo']} · {$fmt->fecha($r['fecha'])}{if $r['hora']} {$r['hora']}{/if}"><i></i><span>{$r['titulo']}{if $r['hora']} · {$r['hora']}{/if}</span></a>
-                    {/foreach}
+                <div class="pa-g-pista" data-marcas="1.05">
+                    {foreach $entArriba as $e}{include entrega, $e, $x, $ancho, $enlace, $fmt}{/foreach}
+                    {foreach $arriba as $r}{include reunion, $r, $x, $ancho, $enlace, $fmt, $d['hoy']}{/foreach}
                     {foreach $d['hitos'] as $h}
                         <button type="button" class="pa-g-hito {$h['estado']}" {if !$editable}disabled{/if} style="left:{$x($h['fecha']) * $ancho}px"
                             data-tipo="hito" data-obj="{$h['id']}" data-ini="{$h['fecha']}" data-fin="{$h['fecha']}"
@@ -86,8 +98,9 @@
                     <div class="pa-g-et">
                         <a href="{$enlace('fases', $f['id'])}" n:tag="$editable ? 'a' : 'span'"><strong>{$f['nombre']}</strong></a>
                         <small>{$f['pct']}%{if !$f['fechas_propias'] && $f['ini']} · según sus tareas{/if}</small>
+                        {if $editable}<a href="{$enlace('tareas', 'nuevo')}?proyecto_id={$proyecto['id']}&amp;fase_id={$f['id']}&amp;linea=1" class="pa-g-mas" title="Nueva tarea en {$f['nombre']}" aria-label="Nueva tarea en {$f['nombre']}">+</a>{/if}
                     </div>
-                    <div class="pa-g-pista">
+                    <div class="pa-g-pista" data-marcas="2.95">
                         {if $f['ini']}
                             {var $ini = $x($f['ini'])}
                             <a href="{$enlace('fases', $f['id'])}" n:tag="$editable ? 'a' : 'span'" class="pa-gf {$f['estado']}" draggable="false"
@@ -98,6 +111,9 @@
                                 {if $editable}<i class="pa-gb-asa ini" data-asa="ini"></i><i class="pa-gb-asa fin" data-asa="fin"></i>{/if}
                             </a>
                         {/if}
+                        {* Sus reuniones y entregas, bajo la barra *}
+                        {foreach $d['entregas'] as $e}{if $e['fase_id'] === $f['id']}{include entrega, $e, $x, $ancho, $enlace, $fmt}{/if}{/foreach}
+                        {foreach $d['reuniones'] as $r}{if $r['fase_id'] === $f['id'] && !$r['es_hito']}{include reunion, $r, $x, $ancho, $enlace, $fmt, $d['hoy']}{/if}{/foreach}
                     </div>
                 </div>
                 {foreach $f['tareas'] as $t}
@@ -126,9 +142,11 @@
 
 <script>
 // Hitos, reuniones y entregas del mismo día (o que se pisan): cada uno en su propia línea.
+// En las filas de fase van bajo la barra.
 (() => {
-    document.querySelectorAll('.pa-g-marcas .pa-g-pista').forEach((pista) => {
+    document.querySelectorAll('.pa-g-pista[data-marcas]').forEach((pista) => {
         if (pista.offsetParent === null) return;   // oculta (p. ej. en el celular)
+        const arranque = parseFloat(pista.dataset.marcas);   // centro de la primera línea, en rem
         const base = pista.getBoundingClientRect().left;
         const marcas = [...pista.querySelectorAll('.pa-g-hito, .pa-g-reu, .pa-g-ent')]
             .map((el) => ({ el, r: el.getBoundingClientRect() }))
@@ -139,9 +157,9 @@
             let n = lineas.findIndex((x) => x + 6 <= ini);
             if (n === -1) { n = lineas.length; lineas.push(0); }
             lineas[n] = fin;
-            el.style.top = (1.05 + n * 1.5) + 'rem';
+            el.style.top = (arranque + n * 1.5) + 'rem';
         });
-        pista.style.minHeight = (Math.max(1, lineas.length) * 1.5 + .6) + 'rem';
+        if (lineas.length) pista.style.minHeight = (arranque + (lineas.length - 1) * 1.5 + 1.05) + 'rem';
     });
 })();
 </script>

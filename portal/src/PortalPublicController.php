@@ -943,11 +943,14 @@ class PortalPublicController
         foreach ($d['hitos'] as $h) {
             $m[] = ['fecha' => $h['fecha'], 'tipo' => 'hito', 'titulo' => $h['nombre'], 'estado' => $h['estado'], 'url' => null, 'estimada' => false];
         }
+        $nombreFase = array_column($d['fases'], 'nombre', 'id');
         foreach ($d['reuniones'] as $r) {
-            $m[] = ['fecha' => $r['fecha'], 'tipo' => 'reunion', 'titulo' => $r['titulo'], 'hora' => $r['hora'], 'url' => '/portal/reuniones/' . $r['id'], 'estimada' => false];
+            $m[] = ['fecha' => $r['fecha'], 'tipo' => $r['es_hito'] ? 'hito' : 'reunion', 'titulo' => $r['titulo'], 'hora' => $r['hora'], 'url' => '/portal/reuniones/' . $r['id'],
+                'estimada' => false, 'fase' => $nombreFase[$r['fase_id']] ?? null, 'reunion' => true];
         }
         foreach ($d['entregas'] as $e) {
-            $m[] = ['fecha' => $e['fecha'], 'tipo' => 'entrega', 'titulo' => $e['titulo'], 'url' => '/portal/entregas/' . $e['id'], 'estimada' => false];
+            $m[] = ['fecha' => $e['fecha'], 'tipo' => 'entrega', 'titulo' => $e['titulo'], 'url' => '/portal/entregas/' . $e['id'], 'estimada' => false,
+                'fase' => $nombreFase[$e['fase_id']] ?? null];
         }
         foreach ($d['fases'] as $f) {
             if ($f['ini'] !== null) {

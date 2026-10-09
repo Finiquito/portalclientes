@@ -3,7 +3,7 @@
 {block page_title}Nueva reunión{/block}
 
 {block content}
-<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=7">
+<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=8">
 <div class="page-header">
     <h1>Nueva reunión</h1>
     <a href="{$admin_url('reuniones')}" class="btn">Volver</a>
@@ -11,6 +11,7 @@
 
 <div class="card">
     <form method="post" action="{$admin_url('reuniones')}">
+        {if !empty($pre['a_linea'])}<input type="hidden" name="a_linea" value="{$pre['a_linea']}">{/if}
         <input type="hidden" name="_csrf_token" value="{$csrf_token}">
 
         <label class="form-label">Proyecto</label>
@@ -34,6 +35,7 @@
         <input type="url" name="enlace_meet" class="form-input" maxlength="500" placeholder="https://meet.google.com/…">
         <p class="form-hint mt-1">¿Aún no lo tienes? Crea la reunión en <a href="https://meet.google.com/new" target="_blank" rel="noopener noreferrer">meet.google.com/new</a> y pega el link aquí. Después podrás abrir Google Calendar con el evento ya rellenado.</p>
 
+        {include '../_fase_campo.latte', fasesRango: $fasesRango, faseActual: ($pre['fase_id'] ?? ''), campoFecha: 'fecha_d', proyFijo: null, esHito: false}
         <label class="pa-check"><input type="checkbox" name="publicada" value="1" checked> Mostrarla al cliente en «Reuniones» (con link de Meet y opción de agregarla a su calendario)</label>
 
         {include '_convocados.latte', nueva: true}

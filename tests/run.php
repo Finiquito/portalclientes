@@ -1642,6 +1642,51 @@ $mom = P\PortalPublicController::momentos($cr->datos($pT, true));
 $plano = array_merge(...array_values($mom));
 check(count($plano) > 0 && $plano === array_values(array_filter($plano, fn($m) => true)) && array_column($plano, 'fecha') === (function ($f) { sort($f); return $f; })(array_column($plano, 'fecha')), 'en el celular, la lista va en orden de fecha');
 check(in_array('Empieza Diseño', array_column($plano, 'titulo'), true) && in_array('hito', array_column($plano, 'tipo'), true), 'la lista incluye etapas e hitos');
+
+// Reuniones y entregas con fase; reunión que vale como hito
+$fOtra = $fs->create(['proyecto_id' => $p1a, 'nombre' => 'Fase ajena', 'orden' => 1]);
+$rF = $rs->create(['proyecto_id' => $pT, 'titulo' => 'Revisión de bocetos', 'fecha' => '2027-03-12 10:00', 'publicada' => 1, '_linea' => '1', 'fase_id' => $fDis]);
+$rH = $rs->create(['proyecto_id' => $pT, 'titulo' => 'Presentación final', 'fecha' => '2027-03-25 10:00', 'publicada' => 1, '_linea' => '1', 'fase_id' => $fOtra, 'es_hito' => '1']);
+check($rs->find($rF)['fase_id'] === $fDis && $rs->find($rH)['fase_id'] === null && (int) $rs->find($rH)['es_hito'] === 1, 'una reunión se liga a una fase de su proyecto (no a una ajena) y puede ser hito');
+$rs->update($rF, array_merge($rs->find($rF), ['titulo' => 'Revisión de bocetos']));
+check($rs->find($rF)['fase_id'] === $fDis, 'guardar la reunión desde otro lado no le borra la fase');
+$es3 = new P\EntregaService($pdo);
+$eF = $es3->create(['proyecto_id' => $pT, 'titulo' => 'Bocetos v1', 'fecha_limite' => '2027-03-15', '_linea' => '1', 'fase_id' => $fDis]);
+check($es3->find($eF)['fase_id'] === $fDis, 'una entrega también se liga a una fase');
+$dF = $cr->datos($pT);
+$rr = array_column($dF['reuniones'], null, 'id');
+check($rr[$rF]['fase_id'] === $fDis && !$rr[$rF]['es_hito'] && $rr[$rH]['es_hito'], 'la línea de tiempo sabe la fase de cada reunión y cuáles son hitos');
+$_SESSION[P\EquipoController::SESION] = $coord;
+[$html] = $g->hacer('GET', $CR, 'ver', [$pT], 'proyecto');
+check(str_contains($html, 'Revisión de bocetos') && str_contains($html, 'Hito · reunión: Presentación final') && str_contains($html, 'Bocetos v1'), 'reuniones, entregas y reuniones-hito aparecen en la línea');
+$plano = array_merge(...array_values(P\PortalPublicController::momentos($cr->datos($pT, true))));
+$porTit = array_column($plano, null, 'titulo');
+check(($porTit['Presentación final']['tipo'] ?? '') === 'hito' && ($porTit['Revisión de bocetos']['fase'] ?? '') === 'Diseño', 'el cliente ve la reunión-hito como hito y la fase de cada reunión');
+$fBorrar = $fs->create(['proyecto_id' => $pT, 'nombre' => 'Temporal', 'orden' => 9]);
+$rs->update($rF, array_merge($rs->find($rF), ['_linea' => '1', 'fase_id' => $fBorrar]));
+$fs->delete($fBorrar);
+check($rs->find($rF)['fase_id'] === null, 'al borrar una fase, sus reuniones quedan en el proyecto sin fase');
+
+// Crear desde la línea de tiempo vuelve a ella; hitos desde la ficha de la fase
+$_GET = ['proyecto_id' => $pT, 'fase_id' => $fDis, 'linea' => '1'];
+check((P\PantallaAdmin::preseleccion()['a_linea'] ?? '') === $pT && (P\PantallaAdmin::preseleccion()['fase_id'] ?? '') === $fDis, 'abrir «Nueva tarea» desde la línea deja elegidos proyecto y fase');
+$_GET = [];
+[, $r] = $g->hacer('POST', P\TareaAdminController::class, 'store', [], null, false, ['_csrf_token' => $tok, 'proyecto_id' => $pT, 'fase_id' => $fDis, 'titulo' => 'Desde la línea', 'asignado' => 'equipo', 'a_linea' => $pT]);
+check($r === '/equipo/proyectos/' . $pT . '/linea', 'al guardar, vuelve a la línea de tiempo');
+[, $r] = $g->hacer('POST', $CR, 'hitoGuardar', [$pT], 'proyecto', false, ['_csrf_token' => $tok, 'nombre' => 'Bocetos aprobados', 'fecha' => '2027-03-16', 'fase_id' => $fDis, 'volver_fase' => $fDis]);
+check($r === '/equipo/fases/' . $fDis, 'el hito creado desde la ficha de la fase vuelve a ella');
+[$html] = $g->hacer('GET', P\FaseAdminController::class, 'edit', [$fDis], 'fase');
+check(str_contains($html, 'En esta fase') && str_contains($html, 'Bocetos aprobados') && str_contains($html, 'Revisión de bocetos') === false && str_contains($html, 'Bocetos v1'), 'la ficha de la fase muestra sus hitos, reuniones y entregas');
+$pVacio = $ps->create(['cliente_id' => $c5, 'nombre' => 'Vacío']);
+[$html] = $g->hacer('GET', $CR, 'ver', [$pVacio], 'proyecto');
+check(str_contains($html, 'Arma la línea de tiempo en 3 pasos') && !str_contains($html, 'class="pa-gantt'), 'sin nada con fecha, la línea enseña cómo armarla');
+
+// Proyectos por último movimiento
+$pdo->prepare('UPDATE portal_proyectos SET updated_at = ? WHERE id = ?')->execute(['2000-01-01 00:00:00', $pVacio]);
+$tRec = $ts->create(['proyecto_id' => $pVacio, 'titulo' => 'Recién', 'asignado' => 'equipo']);
+$pdo->prepare('UPDATE portal_tareas SET updated_at = ? WHERE id = ?')->execute(['2099-01-01 00:00:00', $tRec]);   // lo más nuevo de todo
+check(((new P\ProyectoService($pdo))->porMovimiento()[0]['id'] ?? '') === $pVacio, 'en «Proyecto», primero el que tuvo movimiento más reciente');
+check(str_contains((string) file_get_contents(dirname(__DIR__) . '/portal/templates/equipo/_layout.latte'), '_guardando.latte') && str_contains((string) file_get_contents(dirname(__DIR__) . '/portal/templates/public/_layout.latte'), '_guardando.latte'), 'el aviso «Guardando…» está en el panel y en el portal');
 P\Notifier::$ahora = null;
 
 // ---------------------------------------------------------------------------

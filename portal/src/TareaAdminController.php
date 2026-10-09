@@ -46,7 +46,7 @@ class TareaAdminController
 
     private function proyectos(): array
     {
-        return $this->ui->filtrar((new ProyectoService($this->pdo()))->listAll(), 'id');
+        return $this->ui->filtrar((new ProyectoService($this->pdo()))->porMovimiento(), 'id');
     }
 
     private function reuniones(): array
@@ -289,7 +289,7 @@ class TareaAdminController
         }
 
         // Directo a la edición: ahí se adjuntan los archivos y se conversa.
-        $this->ui->redirect($this->urlTarea($id), 'Tarea creada. Ahora puedes adjuntar archivos o dejar un comentario.');
+        $this->ui->redirect($this->urlTarea($id), PantallaAdmin::destinoLinea('success') !== null ? 'Tarea creada.' : 'Tarea creada. Ahora puedes adjuntar archivos o dejar un comentario.');
     }
 
     public function edit(string $id): void

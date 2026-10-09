@@ -19,13 +19,30 @@ final class PantallaAdmin implements Pantalla
     public static function preseleccion(): array
     {
         $out = [];
-        foreach (['proyecto_id', 'cliente_id'] as $k) {
+        foreach (['proyecto_id', 'cliente_id', 'fase_id'] as $k) {
             $v = (string) ($_GET[$k] ?? '');
             if (preg_match('/^[0-9a-f-]{36}$/i', $v) === 1) {
                 $out[$k] = $v;
             }
         }
+        // Abierto desde la línea de tiempo: al guardar, se vuelve a ella.
+        if (($_GET['linea'] ?? '') === '1' && isset($out['proyecto_id'])) {
+            $out['a_linea'] = $out['proyecto_id'];
+        }
         return $out;
+    }
+
+    /**
+     * Si el formulario vino de la línea de tiempo (campo a_linea), la ruta de vuelta a ella.
+     * Sólo para guardados que salieron bien.
+     */
+    public static function destinoLinea(string $tipo): ?string
+    {
+        $p = (string) ($_POST['a_linea'] ?? '');
+        if ($tipo === 'error' || ($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST' || preg_match('/^[0-9a-f-]{36}$/i', $p) !== 1) {
+            return null;
+        }
+        return 'proyectos/' . $p . '/linea';
     }
 
     public function url(string $ruta = ''): string
@@ -35,6 +52,10 @@ final class PantallaAdmin implements Pantalla
 
     public function redirect(string $url, ?string $mensaje = null, string $tipo = 'success'): void
     {
+        $linea = self::destinoLinea($tipo);
+        if ($linea !== null) {
+            $url = $this->url($linea);
+        }
         if ($mensaje === null) {
             $this->ctx->redirect($url);
             return;

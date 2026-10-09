@@ -50,6 +50,10 @@ final class PantallaEquipo implements Pantalla
 
     public function redirect(string $url, ?string $mensaje = null, string $tipo = 'success'): void
     {
+        $linea = PantallaAdmin::destinoLinea($tipo);
+        if ($linea !== null) {
+            $url = $this->url($linea);
+        }
         if ($mensaje !== null && $mensaje !== '') {
             PortalSession::flash($tipo === 'error' ? 'error' : 'ok', $mensaje);
         }

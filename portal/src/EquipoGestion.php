@@ -247,7 +247,7 @@ class EquipoGestion extends EquipoController
             'entregas'  => 'contenidos',
             'reuniones' => 'reuniones',
             'solicitudes' => 'solicitudes',
-            'proyectos', 'cronograma' => 'proyectos',
+            'proyectos', 'cronograma', 'fases' => 'proyectos',
             'equipo'    => 'personas',
             'ajustes'   => 'agencia',
             'actividad' => 'actividad',

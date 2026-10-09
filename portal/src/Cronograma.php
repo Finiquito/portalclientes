@@ -240,11 +240,15 @@ final class Cronograma
         }
 
         // Reuniones y entregas (en hora de la agencia)
+        // Reuniones y entregas con su fase (si es una fase de este proyecto). Una reunión puede valer como hito.
+        $fase = static fn($f): ?string => $f && isset($estFase[$f]) ? (string) $f : null;
         $reuniones = array_map(fn($r) => ['id' => (string) $r['id'], 'titulo' => (string) $r['titulo'], 'fecha' => substr((string) $r['fecha'], 0, 10),
-            'hora' => strlen((string) $r['fecha']) > 10 ? substr((string) $r['fecha'], 11, 5) : '', 'fecha_completa' => (string) $r['fecha']],
-            $q('SELECT id, titulo, fecha FROM portal_reuniones WHERE proyecto_id = ? AND fecha IS NOT NULL AND fecha <> \'\'' . ($cliente ? ' AND publicada = 1' : '') . ' ORDER BY fecha', [$proyectoId]));
-        $entregas = array_map(fn($e) => ['id' => (string) $e['id'], 'titulo' => (string) $e['titulo'], 'fecha' => substr((string) $e['fecha_limite'], 0, 10), 'estado' => (string) $e['estado']],
-            $q("SELECT id, titulo, fecha_limite, estado FROM portal_entregas WHERE proyecto_id = ? AND fecha_limite IS NOT NULL AND fecha_limite <> ''" . ($cliente ? " AND estado <> 'borrador'" : '') . ' ORDER BY fecha_limite', [$proyectoId]));
+            'hora' => strlen((string) $r['fecha']) > 10 ? substr((string) $r['fecha'], 11, 5) : '', 'fecha_completa' => (string) $r['fecha'],
+            'fase_id' => $fase($r['fase_id']), 'es_hito' => (int) $r['es_hito'] === 1],
+            $q('SELECT id, titulo, fecha, fase_id, es_hito FROM portal_reuniones WHERE proyecto_id = ? AND fecha IS NOT NULL AND fecha <> \'\'' . ($cliente ? ' AND publicada = 1' : '') . ' ORDER BY fecha', [$proyectoId]));
+        $entregas = array_map(fn($e) => ['id' => (string) $e['id'], 'titulo' => (string) $e['titulo'], 'fecha' => substr((string) $e['fecha_limite'], 0, 10), 'estado' => (string) $e['estado'],
+            'fase_id' => $fase($e['fase_id'])],
+            $q("SELECT id, titulo, fecha_limite, estado, fase_id FROM portal_entregas WHERE proyecto_id = ? AND fecha_limite IS NOT NULL AND fecha_limite <> ''" . ($cliente ? " AND estado <> 'borrador'" : '') . ' ORDER BY fecha_limite', [$proyectoId]));
 
         // Rango del eje: de lo primero a lo último, con margen, y siempre con hoy a la vista.
         $fechas = [$hoy];
