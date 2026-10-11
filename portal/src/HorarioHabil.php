@@ -22,6 +22,7 @@ final class HorarioHabil
         'AR' => ['Argentina', 'America/Argentina/Buenos_Aires'],
         'BO' => ['Bolivia', 'America/La_Paz'],
         'BR' => ['Brasil', 'America/Sao_Paulo'],
+        'CN' => ['China', 'Asia/Shanghai'],
         'CO' => ['Colombia', 'America/Bogota'],
         'CR' => ['Costa Rica', 'America/Costa_Rica'],
         'DO' => ['República Dominicana', 'America/Santo_Domingo'],

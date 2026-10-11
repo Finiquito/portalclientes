@@ -449,7 +449,7 @@ check(!str_contains($html, '>Ajena<'), 'no lista entregas ajenas');
 check($r === '/equipo' && (new P\EntregaService($pdo))->find($entAjena) !== null, 'no puede borrar entregas ajenas');
 
 $R = P\ReunionAdminController::class;
-[, $r] = $g->hacer('POST', $R, 'store', [], null, false, ['_csrf_token' => $tok, 'proyecto_id' => $p1a, 'titulo' => 'Reunión panel', 'fecha_d' => '2026-10-10', 'fecha_t' => '11:00', 'publicada' => '1']);
+[, $r] = $g->hacer('POST', $R, 'store', [], null, false, ['_csrf_token' => $tok, 'proyecto_id' => $p1a, 'titulo' => 'Reunión panel', 'fecha_d' => (new DateTimeImmutable('+30 days'))->format('Y-m-d'), 'fecha_t' => '11:00', 'publicada' => '1']);
 $reu = $pdo->query("SELECT id FROM portal_reuniones WHERE titulo = 'Reunión panel'")->fetchColumn();
 check($reu !== false && $r === '/equipo/reuniones/' . $reu, 'agendar reunión desde el panel');
 [$html] = $g->hacer('GET', $R, 'edit', [$reu], 'reunion');
@@ -1707,6 +1707,8 @@ check(str_contains((string) file_get_contents(dirname(__DIR__) . '/portal/templa
 // Tareas de agencia y de cliente se distinguen en la línea
 [$html] = $g->hacer('GET', $CR, 'ver', [$pT], 'proyecto');
 check(str_contains($html, 'data-quien="equipo"') && str_contains($html, 'data-ver="cliente"'), 'la línea marca de quién es cada tarea y se puede filtrar');
+
+check(P\HorarioHabil::zonaDe('CN') === 'Asia/Shanghai' && P\HorarioHabil::nombreDe('CN') === 'China', 'se puede tener clientes en China, con su hora');
 
 // Plantillas de proyecto
 seccion('Plantillas de proyecto');
