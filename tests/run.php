@@ -1710,6 +1710,24 @@ check(str_contains($html, 'data-quien="equipo"') && str_contains($html, 'data-ve
 
 check(P\HorarioHabil::zonaDe('CN') === 'Asia/Shanghai' && P\HorarioHabil::nombreDe('CN') === 'China', 'se puede tener clientes en China, con su hora');
 
+// País por persona: una socia en otro país que su empresa
+seccion('País por persona');
+$cCL = $cs->create(['nombre' => 'Viña Chilena', 'pais' => 'CL']);
+$ctSvc = new P\ContactoService($pdo);
+$socia = $ctSvc->create(['cliente_id' => $cCL, 'nombre' => 'Mei Socia', 'email' => 'mei@vina.cl', 'rol' => 'aprobador', 'pais' => 'CN']);
+$local = $ctSvc->create(['cliente_id' => $cCL, 'nombre' => 'Pedro Local', 'email' => 'pedro@vina.cl', 'rol' => 'aprobador', 'pais' => '']);
+check(P\Zona::paisPersona($pdo, $cCL, $socia) === 'CN' && P\Zona::paisPersona($pdo, $cCL, $local) === 'CL' && P\Zona::paisPersona($pdo, $cCL) === 'CL', 'cada persona puede tener su país; si no, vale el de su empresa');
+$ctSvc->update($socia, ['cliente_id' => $cCL, 'nombre' => 'Mei Socia', 'email' => 'mei@vina.cl', 'rol' => 'aprobador']);
+check(P\Zona::paisPersona($pdo, $cCL, $socia) === 'CN', 'editar el contacto sin el campo no le borra el país');
+P\Notifier::$ahora = new DateTimeImmutable('2027-03-10 15:00', new DateTimeZone('UTC'));   // Chile 12:00 · China 23:00
+$nP = new P\Notifier($ctx, $pdo);
+check($nP->cuandoEnviar($cCL, false, $local) == P\Notifier::$ahora->setTimezone(new DateTimeZone('UTC')) && $nP->cuandoEnviar($cCL, false, $socia) > P\Notifier::$ahora, 'el correo a la socia en China espera su horario; al de Chile sale ya');
+P\Notifier::$ahora = null;
+$pCL = $ps->create(['cliente_id' => $cCL, 'nombre' => 'Vinos 2027']);
+$horSoc = (new P\SolicitudService($pdo))->crear($ctSvc->find($socia), ['tipo' => 'reunion', 'proyecto_id' => $pCL, 'titulo' => 'Hablemos', 'detalle' => 'Revisar la etiqueta', 'horarios' => [(new DateTimeImmutable('+10 days'))->format('Y-m-d') . ' 10:00'], 'urgencia' => 'semana']);
+$hz = P\SolicitudService::horariosZona((string) $pdo->query("SELECT horarios FROM portal_solicitudes WHERE id = " . $pdo->quote((string) ($horSoc['id'] ?? '')))->fetchColumn());
+check($hz['pais'] === 'CN', 'los horarios que propone la socia quedan en la hora de China');
+
 // Plantillas de proyecto
 seccion('Plantillas de proyecto');
 $pls = new P\PlantillaService($pdo);

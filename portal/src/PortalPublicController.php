@@ -164,7 +164,8 @@ class PortalPublicController
      */
     protected function enHoraDelCliente(array $filas, string $clienteId): array
     {
-        $pais = (new SolicitudService($this->pdo()))->paisCliente($clienteId);
+        $yo = $this->currentContacto();
+        $pais = Zona::paisPersona($this->pdo(), $clienteId, $yo !== null ? (string) $yo['id'] : null);
         foreach ($filas as &$f) {
             foreach (['fecha', 'prox_fecha'] as $k) {
                 if (isset($f[$k]) && $f[$k] !== null) {
@@ -307,7 +308,7 @@ class PortalPublicController
                 [$clienteId, (new \DateTimeImmutable('now', new \DateTimeZone(Zona::agencia())))->format('Y-m-d')]
             ), fn(array $r): bool => ReunionService::estado($r) === 'proxima')),
             'solicitudesCliente' => (int) ($this->fetchOne("SELECT COUNT(*) AS n FROM portal_solicitudes WHERE cliente_id = ? AND estado = 'cotizada'", [$clienteId])['n'] ?? 0),
-            'paisCliente'   => HorarioHabil::paisValido((string) ($cliente['pais'] ?? '')),
+            'paisCliente'   => Zona::paisPersona($this->pdo(), $clienteId, (string) $contacto['id']),   // el de la persona si vive en otro país
             'vistaPrevia'   => PortalSession::vistaPrevia(),
             'hayRevisiones' => (int) ($this->fetchOne("SELECT COUNT(*) AS n FROM portal_entregas WHERE cliente_id = ? AND estado <> 'borrador'", [$clienteId])['n'] ?? 0) > 0,
             'puedeColaborar' => $this->esColaborador($contacto),

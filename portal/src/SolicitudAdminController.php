@@ -123,10 +123,10 @@ class SolicitudAdminController
             'proyectosCliente' => array_values(array_filter(
                 $this->ui->filtrar((new ProyectoService($this->pdo()))->listAll(), 'id'), fn(array $p): bool => $p['cliente_id'] === $s['cliente_id'])),
             'paisHorarios' => $hz['pais'],
-            'paisCliente' => HorarioHabil::paisValido((string) $s['cliente_pais']),
+            'paisCliente' => $suPais = Zona::paisPersona($this->pdo(), (string) $s['cliente_id'], (string) ($s['contacto_id'] ?? '')),   // de quien pidió
             'paisAgencia' => SolicitudService::paisAgencia(),
-            'horaCliente' => (new \DateTimeImmutable('now', new \DateTimeZone(HorarioHabil::zonaDe((string) $s['cliente_pais']))))->format('H:i'),
-            'zonaCliente' => HorarioHabil::zonaDe((string) $s['cliente_pais']),
+            'horaCliente' => (new \DateTimeImmutable('now', new \DateTimeZone(HorarioHabil::zonaDe($suPais))))->format('H:i'),
+            'zonaCliente' => HorarioHabil::zonaDe($suPais),
             'archivos'    => (new ArchivoService($this->pdo()))->deEntidad('solicitud', $id),
             'comentarios' => (new ComentarioService($this->pdo()))->listar('solicitud', $id),
             'usuarios'    => $usuarios,

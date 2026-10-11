@@ -366,7 +366,7 @@ final class Avisos
 
         // Contactos que lo pidieron: a las 8:30 de su país.
         $st = $this->pdo->query(
-            "SELECT ct.*, c.pais FROM portal_contactos ct JOIN portal_clientes c ON c.id = ct.cliente_id
+            "SELECT ct.*, COALESCE(NULLIF(ct.pais, ''), c.pais) AS pais FROM portal_contactos ct JOIN portal_clientes c ON c.id = ct.cliente_id
              JOIN portal_ajustes a ON a.owner_tipo = 'contacto' AND a.owner_id = ct.id AND a.clave = 'resumen_diario' AND a.valor = '1'"
         );
         foreach ($st ? $st->fetchAll() : [] as $c) {

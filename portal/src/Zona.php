@@ -68,4 +68,28 @@ final class Zona
         }
         return SolicitudService::convertir($fecha, HorarioHabil::zonaDe($pais), self::agencia());
     }
+
+    /**
+     * País (para la hora) de una persona del cliente: el suyo si vive en otro país que su empresa;
+     * si no, el del cliente. Sin contacto, el del cliente.
+     */
+    public static function paisPersona(\PDO $pdo, string $clienteId, ?string $contactoId = null): string
+    {
+        try {
+            if ($contactoId !== null && $contactoId !== '') {
+                $st = $pdo->prepare('SELECT pais FROM portal_contactos WHERE id = ?');
+                $st->execute([$contactoId]);
+                $p = $st->fetchColumn();
+                if (is_string($p) && isset(HorarioHabil::PAISES[$p])) {
+                    return $p;
+                }
+            }
+            $st = $pdo->prepare('SELECT pais FROM portal_clientes WHERE id = ?');
+            $st->execute([$clienteId]);
+            $p = $st->fetchColumn();
+        } catch (\Throwable) {
+            $p = false;
+        }
+        return HorarioHabil::paisValido(is_string($p) ? $p : '');
+    }
 }

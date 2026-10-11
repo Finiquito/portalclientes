@@ -385,15 +385,21 @@ class Notifier
         return HorarioHabil::paisValido(is_string($p) ? $p : '');
     }
 
-    /** Instante (UTC) desde el que se puede enviar a este cliente. */
-    public function cuandoEnviar(string $clienteId, bool $inmediato = false): \DateTimeImmutable
+    /** País de una persona del cliente: el suyo si vive en otro país, si no el del cliente. */
+    public function paisDeContacto(?string $contactoId, string $clienteId): string
+    {
+        return Zona::paisPersona($this->pdo, $clienteId, $contactoId);
+    }
+
+    /** Instante (UTC) desde el que se puede enviar a este cliente (o a esa persona, si vive en otro país). */
+    public function cuandoEnviar(string $clienteId, bool $inmediato = false, ?string $contactoId = null): \DateTimeImmutable
     {
         $ahora = $this->ahoraUtc();
         [$respetar, $ini, $fin] = $this->horario();
         if ($inmediato || !$respetar) {
             return $ahora;
         }
-        return HorarioHabil::proximoEnvio($ahora, $this->paisDe($clienteId), $ini, $fin)->setTimezone(new \DateTimeZone('UTC'));
+        return HorarioHabil::proximoEnvio($ahora, $this->paisDeContacto($contactoId, $clienteId), $ini, $fin)->setTimezone(new \DateTimeZone('UTC'));
     }
 
     // ---- Cola ----------------------------------------------------------------------------
@@ -415,7 +421,7 @@ class Notifier
      */
     public function aContacto(array $contacto, string $clienteId, string $asunto, string $html, string $texto, bool $inmediato = false, ?string $ics = null, ?string $vigencia = null): void
     {
-        $cuando = $this->cuandoEnviar($clienteId, $inmediato);
+        $cuando = $this->cuandoEnviar($clienteId, $inmediato, isset($contacto['id']) ? (string) $contacto['id'] : null);
         if ($cuando <= $this->ahoraUtc()) {
             $this->enviarCorreo((string) $contacto['email'], $asunto, $html, $texto, true, $ics);
         } else {

@@ -73,8 +73,24 @@ class ContactoService
             $now,
             $now,
         ]);
+        $this->guardarPais($id, $payload);
 
         return $id;
+    }
+
+    /**
+     * País de la persona si vive en otro que su empresa (vacío = el del cliente).
+     * Sólo si viene en el formulario, para no borrarlo desde otros caminos.
+     * @param array<string, mixed> $payload
+     */
+    private function guardarPais(string $id, array $payload): void
+    {
+        if (!array_key_exists('pais', $payload)) {
+            return;
+        }
+        Schema::asegurar($this->pdo);
+        $p = strtoupper(trim((string) $payload['pais']));
+        $this->pdo->prepare('UPDATE ' . self::TABLE . ' SET pais = ? WHERE id = ?')->execute([isset(HorarioHabil::PAISES[$p]) ? $p : null, $id]);
     }
 
     /** @param array<string, mixed> $payload */
@@ -92,6 +108,7 @@ class ContactoService
             $now,
             $id,
         ]);
+        $this->guardarPais($id, $payload);
     }
 
     public function delete(string $id): void

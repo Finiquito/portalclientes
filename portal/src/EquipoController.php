@@ -205,12 +205,23 @@ class EquipoController
         } catch (\Throwable) {
             return [];
         }
+        // Personas que viven en otro país que su empresa (por ejemplo, una socia en China).
+        try {
+            [$w2, $p2] = $this->acceso($u)->filtroCliente('c.id');
+            $personas = $this->fetchAll("SELECT ct.nombre, ct.pais, c.nombre AS cliente FROM portal_contactos ct JOIN portal_clientes c ON c.id = ct.cliente_id
+                WHERE ct.pais IS NOT NULL AND ct.pais <> '' AND " . $w2 . ' ORDER BY ct.nombre', $p2);
+        } catch (\Throwable) {
+            $personas = [];
+        }
         $ahora = new \DateTimeImmutable('now');
         $offAg = (new \DateTimeZone(Zona::agencia()))->getOffset($ahora);
         $por = [];
         foreach ($filas as $f) {
             $pais = HorarioHabil::paisValido((string) ($f['pais'] ?? ''));
             $por[$pais][] = (string) $f['nombre'];
+        }
+        foreach ($personas as $f) {
+            $por[HorarioHabil::paisValido((string) $f['pais'])][] = $f['nombre'] . ' (' . $f['cliente'] . ')';
         }
         // Sólo los países que hoy tienen otra hora que la agencia (España y Francia, por ejemplo, comparten hora).
         $out = [];

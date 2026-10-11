@@ -19,7 +19,7 @@
         <label class="form-label">Cliente</label>
         <select name="cliente_id" class="form-input" required>
             {foreach $clientes as $c}
-                <option value="{$c['id']}" {if ($contacto['cliente_id'] ?? $pre['cliente_id'] ?? '') === $c['id']}selected{/if}>{$c['nombre']}</option>
+                <option value="{$c['id']}" data-pais="{\TypeDock\Plugin\Portal\HorarioHabil::nombreDe((string) ($c['pais'] ?? ''))}" {if ($contacto['cliente_id'] ?? $pre['cliente_id'] ?? '') === $c['id']}selected{/if}>{$c['nombre']}</option>
             {/foreach}
         </select>
 
@@ -28,6 +28,23 @@
 
         <label class="form-label mt-3">Email (con esto entra al portal)</label>
         <input type="email" name="email" class="form-input" value="{$contacto['email'] ?? ''}" required>
+
+        <label class="form-label mt-3">¿Vive en otro país?</label>
+        <select name="pais" class="form-input" style="max-width:26rem" data-pais-persona>
+            <option value="">No: el mismo de su empresa</option>
+            {foreach \TypeDock\Plugin\Portal\HorarioHabil::PAISES as $codigo => $pp}
+                <option value="{$codigo}" {if ($contacto['pais'] ?? '') === $codigo}selected{/if}>{\TypeDock\Plugin\Portal\Fmt::bandera($codigo)} {$pp[0]}</option>
+            {/foreach}
+        </select>
+        <p class="form-hint mt-1">Para una socia en otro país: sus correos le llegan en su horario y ve las reuniones en su hora. El resto del cliente sigue con la hora de la empresa.</p>
+        <script>
+        (() => {
+            const f = document.currentScript.closest('form');
+            const cli = f.querySelector('[name=cliente_id]'), sel = f.querySelector('[data-pais-persona]');
+            const poner = () => { const o = cli.selectedOptions[0]; sel.options[0].textContent = 'No: el mismo de su empresa' + (o && o.dataset.pais ? ' (' + o.dataset.pais + ')' : ''); };
+            cli.addEventListener('change', poner); poner();
+        })();
+        </script>
 
         <label class="form-label mt-3">Rol</label>
         <select name="rol" class="form-input">

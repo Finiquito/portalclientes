@@ -91,7 +91,8 @@ class ReunionAdminController
         $clientes = array_values(array_unique(array_map(fn($p) => (string) $p['cliente_id'], $proyectos)));
         $contactos = [];
         if ($clientes !== []) {
-            $st = $this->pdo()->prepare('SELECT id, nombre, email, cliente_id FROM portal_contactos WHERE cliente_id IN (' . implode(',', array_fill(0, count($clientes), '?')) . ') ORDER BY nombre');
+            Schema::asegurar($this->pdo());
+            $st = $this->pdo()->prepare('SELECT id, nombre, email, cliente_id, pais FROM portal_contactos WHERE cliente_id IN (' . implode(',', array_fill(0, count($clientes), '?')) . ') ORDER BY nombre');
             $st->execute($clientes);
             $contactos = $st->fetchAll();
         }

@@ -271,7 +271,7 @@ final class Convocados
         }
         $cid = (string) $r['cliente_id'];
         $fmt = new Fmt();
-        $pais = $esCliente ? $this->n->paisDe($cid) : Zona::pais();
+        $pais = $esCliente ? $this->n->paisDeContacto(isset($p['id']) ? (string) $p['id'] : null, $cid) : Zona::pais();
         $fechaLocal = $esCliente ? Zona::aPais((string) $r['fecha'], $pais) : (string) $r['fecha'];
         $cuando = $fmt->fechaLarga($fechaLocal) . ' a las ' . $fmt->hora($fechaLocal);
         $zona = 'hora de ' . HorarioHabil::nombreDe($pais);

@@ -304,7 +304,7 @@ class SolicitudService
 
         $horarios = [];
         $modalidad = null;
-        $pais = $this->paisCliente($clienteId);
+        $pais = Zona::paisPersona($this->pdo, $clienteId, (string) $contacto['id']);
         if ($tipo === 'reunion') {
             // Los horarios se escriben en la hora del país del cliente.
             foreach ((array) ($p['horarios'] ?? []) as $h) {

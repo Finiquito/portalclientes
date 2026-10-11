@@ -111,9 +111,9 @@ class SolicitudPublicController extends PortalPublicController
                 'urgente' => $svc->rango('urgente'),
                 'semana'  => $svc->rango('semana'),
             ],
-            'paisCliente' => $svc->paisCliente($clienteId),
+            'paisCliente' => $miPais = Zona::paisPersona($this->pdo(), $clienteId, (string) $c['id']),   // hora de quien pide
             'iaActiva'    => $this->ia()->activa(),
-            'minHorario'  => (new \DateTimeImmutable('now', new \DateTimeZone(HorarioHabil::zonaDe($svc->paisCliente($clienteId)))))->modify('+1 hour')->format('Y-m-d\TH:00'),
+            'minHorario'  => (new \DateTimeImmutable('now', new \DateTimeZone(HorarioHabil::zonaDe($miPais))))->modify('+1 hour')->format('Y-m-d\TH:00'),
         ]);
     }
 
@@ -183,9 +183,9 @@ class SolicitudPublicController extends PortalPublicController
             'urgencias'   => SolicitudService::URGENCIAS,
             'modalidades' => SolicitudService::MODALIDADES,
             'horarios'    => SolicitudService::horarios($s['horarios']),
-            'paisCliente' => HorarioHabil::paisValido((string) $s['cliente_pais']),
-            // La reunión se guarda en hora de la agencia: al cliente se le muestra en la suya.
-            'reunionLocal' => $s['reunion_fecha'] ? SolicitudService::convertir((string) $s['reunion_fecha'], Zona::agencia(), HorarioHabil::zonaDe((string) $s['cliente_pais'])) : null,
+            'paisCliente' => $miPais = Zona::paisPersona($this->pdo(), (string) $s['cliente_id'], (string) $c['id']),
+            // La reunión se guarda en hora de la agencia: a cada persona se le muestra en la suya.
+            'reunionLocal' => $s['reunion_fecha'] ? SolicitudService::convertir((string) $s['reunion_fecha'], Zona::agencia(), HorarioHabil::zonaDe($miPais)) : null,
             'archivosS'   => $this->archivos()->deEntidad('solicitud', $id),
             'comentarios' => $this->comentarios()->listar('solicitud', $id),
             'conversa'    => !in_array($s['estado'], ['en_curso', 'agendada'], true),

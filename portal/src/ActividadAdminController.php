@@ -183,7 +183,7 @@ class ActividadAdminController
         }
         $cola = [];
         foreach ($n->cola() as $f) {
-            $pais = $f['cliente_id'] ? $n->paisDe((string) $f['cliente_id']) : HorarioHabil::PAIS_DEFECTO;
+            $pais = $f['cliente_id'] ? $n->paisDeContacto(isset($f['contacto_id']) ? (string) $f['contacto_id'] : null, (string) $f['cliente_id']) : HorarioHabil::PAIS_DEFECTO;
             $d = (new \DateTimeImmutable((string) $f['enviar_desde'], new \DateTimeZone('UTC')))->setTimezone(new \DateTimeZone(HorarioHabil::zonaDe($pais)));
             $f['sale'] = $dias[(int) $d->format('w')] . ' ' . $d->format('d/m H:i') . ' (hora de ' . HorarioHabil::nombreDe($pais) . ')';
             $cola[] = $f;

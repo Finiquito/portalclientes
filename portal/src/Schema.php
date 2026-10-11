@@ -55,6 +55,7 @@ final class Schema
             'pais' => "VARCHAR(2) NOT NULL DEFAULT 'CL'",
         ],
         'portal_contactos' => [
+            'pais'          => 'VARCHAR(2)',      // si vive en otro país que su empresa (vacío = el del cliente)
             'invitado_en'   => 'VARCHAR(32)',
             'primer_acceso' => 'VARCHAR(32)',
             'ultimo_acceso' => 'VARCHAR(32)',

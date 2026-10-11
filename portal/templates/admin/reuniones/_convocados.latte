@@ -16,7 +16,7 @@
     <div>
         <p class="pa-muted" style="margin:0">Cliente</p>
         {foreach $convContactos as $c}
-            <label class="pa-check" style="margin-top:.4rem" data-cliente="{$c['cliente_id']}"><input type="checkbox" name="conv_contacto[]" value="{$c['id']}" {if in_array($c['id'], $convMarcados['contacto'], true)}checked{/if}> <span>{$c['nombre']} <span class="pa-muted">· {$c['email']}</span></span></label>
+            <label class="pa-check" style="margin-top:.4rem" data-cliente="{$c['cliente_id']}"><input type="checkbox" name="conv_contacto[]" value="{$c['id']}" {if in_array($c['id'], $convMarcados['contacto'], true)}checked{/if}> <span>{$c['nombre']} <span class="pa-muted">· {$c['email']}</span>{if !empty($c['pais'])} <span class="pa-chip gris" title="Vive en {\TypeDock\Plugin\Portal\HorarioHabil::nombreDe($c['pais'])}: la invitación le llega en su hora">{\TypeDock\Plugin\Portal\Fmt::bandera($c['pais'])} {\TypeDock\Plugin\Portal\HorarioHabil::nombreDe($c['pais'])} · {(new \DateTimeImmutable('now', new \DateTimeZone(\TypeDock\Plugin\Portal\HorarioHabil::zonaDe($c['pais']))))->format('H:i')}</span>{/if}</span></label>
         {/foreach}
         <p class="pa-muted" data-sin-contactos hidden>Este cliente aún no tiene contactos.</p>
     </div>
