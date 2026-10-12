@@ -305,3 +305,4 @@ a.pa-g-hito { cursor: pointer; text-decoration: none !important; }
 .pa-plantilla-fases li.quien-equipo { --c-quien: var(--brand, #6d5df6); }
 .pa-plantilla-fases li.quien-cliente { --c-quien: #e8590c; }
 .pa-plantilla-fases li.hito { font-weight: 650; }
+.pa-grid-2[hidden], .pa-chip[hidden] { display: none; }
