@@ -74,6 +74,9 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### v0.30.1
+- **Logo en la barra lateral** del portal y del panel: más alto (64 px en vez de 40) y puede usar todo el ancho de la barra, así los logos cuadrados o con bajada se leen. En el encabezado del celular pasa de 36 a 44 px.
+
 ### v0.30.0: nuevas pantallas de ingreso y favicon
 - **Ingreso al portal del cliente**:
   - En grises, con una trama isométrica suave.

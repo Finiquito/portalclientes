@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
-    <link rel="stylesheet" href="/plugins/portal/assets/portal.css?v=28">
+    <link rel="stylesheet" href="/plugins/portal/assets/portal.css?v=29">
     <script>{$portalBoot|noescape}</script>
 </head>
 <body class="min-h-dvh bg-bg font-sans text-ink antialiased">
@@ -45,7 +45,7 @@
     <header class="flex items-center justify-between gap-3 py-4 lg:hidden">
         <a href="/equipo" class="flex min-w-0 items-center gap-2.5">
             {if $marca['logo']}
-                <img src="{$marca['logo']}" alt="{$marca['titulo']}" class="h-9 w-auto max-w-[9rem] object-contain dark:rounded-lg dark:bg-white dark:p-1">
+                <img src="{$marca['logo']}" alt="{$marca['titulo']}" class="h-11 w-auto max-w-[11rem] object-contain dark:rounded-lg dark:bg-white dark:p-1">
             {else}
                 <span class="avatar size-9! rounded-xl! bg-brand! text-brand-fg!">{$fmt->iniciales($marca['titulo'])}</span>
                 <span class="truncate text-[0.9375rem] font-extrabold tracking-tight">{$marca['titulo']}</span>
@@ -68,7 +68,7 @@
             <div class="card sticky top-8 flex max-h-[calc(100dvh-4rem)] flex-col p-3.5">
                 <a href="/equipo" class="mb-3 flex items-center gap-3 rounded-2xl p-2">
                     {if $marca['logo']}
-                        <img src="{$marca['logo']}" alt="{$marca['titulo']}" class="h-10 w-auto max-w-[10rem] object-contain dark:rounded-lg dark:bg-white dark:p-1">
+                        <img src="{$marca['logo']}" alt="{$marca['titulo']}" class="h-16 w-auto max-w-full object-contain object-left dark:rounded-lg dark:bg-white dark:p-1.5">
                     {else}
                         <span class="avatar size-10! rounded-xl! bg-brand! text-brand-fg!">{$fmt->iniciales($marca['titulo'])}</span>
                         <span class="min-w-0 leading-tight">
