@@ -110,42 +110,59 @@ final class MailchimpConsulta
             'origen'    => mb_substr((string) ($m['source'] ?? ''), 0, 60),
         ];
         if ($actividad) {
-            $d['actividad'] = $this->actividad($audiencia, $hash);
+            [$d['actividad'], $d['conteo']] = $this->actividad($audiencia, $hash);
         }
         return ['estado' => isset(self::ESTADOS[$estado]) ? $estado : 'error', 'datos' => $d];
     }
 
     /**
-     * Últimos eventos (correos recibidos, abiertos, clics, baja…). Usa el «activity feed» y,
-     * si la cuenta no lo entrega, la actividad clásica. Mailchimp sólo guarda lo reciente.
+     * Últimos eventos (correos recibidos, abiertos, clics, baja…) y cuántos correos distintos
+     * recibió, abrió y en cuántos hizo clic. Usa el «activity feed» y, si la cuenta no lo
+     * entrega, la actividad clásica (sólo los últimos 50 eventos: el conteo queda como «al menos»).
+     * Mailchimp sólo guarda la historia reciente.
      *
-     * @return array<int, array{tipo: string, fecha: string, titulo: string}>
+     * @return array{0: array<int, array{tipo: string, fecha: string, titulo: string}>, 1: array{enviados: int, abiertos: int, clics: int, completo: bool}|null}
      */
     private function actividad(string $audiencia, string $hash): array
     {
-        [$cod, $r] = $this->get("/lists/{$audiencia}/members/{$hash}/activity-feed?count=12");
+        $completo = true;
+        [$cod, $r] = $this->get("/lists/{$audiencia}/members/{$hash}/activity-feed?count=1000"
+            . '&fields=total_items,activity.activity_type,activity.created_at_timestamp,activity.campaign_id,activity.campaign_title');
         if ($cod !== 200) {
-            [$cod, $r] = $this->get("/lists/{$audiencia}/members/{$hash}/activity?count=12");
+            $completo = false;
+            [$cod, $r] = $this->get("/lists/{$audiencia}/members/{$hash}/activity?count=50");
         }
         if ($cod !== 200) {
-            return [];
+            return [[], null];
+        }
+        $eventos = (array) ($r['activity'] ?? []);
+        if (isset($r['total_items']) && (int) $r['total_items'] > count($eventos)) {
+            $completo = false;
         }
         $out = [];
-        foreach ((array) ($r['activity'] ?? []) as $a) {
+        $porTipo = ['sent' => [], 'open' => [], 'click' => [], 'unsub' => []];
+        foreach ($eventos as $a) {
             $tipo = (string) ($a['activity_type'] ?? $a['action'] ?? '');
             if ($tipo === '') {
                 continue;
             }
-            $out[] = [
-                'tipo'   => mb_substr($tipo, 0, 30),
-                'fecha'  => self::fecha((string) ($a['created_at_timestamp'] ?? $a['timestamp'] ?? '')),
-                'titulo' => mb_substr((string) ($a['campaign_title'] ?? $a['title'] ?? ''), 0, 150),
-            ];
-            if (count($out) >= 10) {
-                break;
+            $titulo = (string) ($a['campaign_title'] ?? $a['title'] ?? '');
+            if (isset($porTipo[$tipo])) {
+                // Un correo se cuenta una vez aunque lo abra varias veces.
+                $porTipo[$tipo][(string) ($a['campaign_id'] ?? '') ?: $titulo] = true;
+            }
+            if (count($out) < 10) {
+                $out[] = [
+                    'tipo'   => mb_substr($tipo, 0, 30),
+                    'fecha'  => self::fecha((string) ($a['created_at_timestamp'] ?? $a['timestamp'] ?? '')),
+                    'titulo' => mb_substr($titulo, 0, 150),
+                ];
             }
         }
-        return $out;
+        // Si abrió, hizo clic o se dio de baja desde un correo cuyo envío ya no aparece, igual lo recibió.
+        $enviados = $porTipo['sent'] + $porTipo['open'] + $porTipo['click'] + $porTipo['unsub'];
+        $conteo = ['enviados' => count($enviados), 'abiertos' => count($porTipo['open'] + $porTipo['click']), 'clics' => count($porTipo['click']), 'completo' => $completo];
+        return [$out, $conteo];
     }
 
     /** Fecha de Mailchimp (ISO, UTC) → «Y-m-d H:i:s» en la hora del servidor, como el resto del portal. */

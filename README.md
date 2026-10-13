@@ -74,6 +74,9 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### v0.30.2
+- **Mailchimp en la ficha de cada contacto**: ahora dice cuántos correos distintos ha recibido (campañas y automatizaciones, como la bienvenida), cuántos abrió (con el porcentaje) y en cuántos hizo clic. Abrir el mismo correo varias veces cuenta una vez. Se calcula con la actividad que guarda Mailchimp; si la cuenta sólo entrega lo más reciente, dice «al menos».
+
 ### v0.30.1
 - **Logo en la barra lateral** del portal y del panel: más alto (64 px en vez de 40) y puede usar todo el ancho de la barra, así los logos cuadrados o con bajada se leen. En el encabezado del celular pasa de 36 a 44 px.
 

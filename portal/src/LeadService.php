@@ -570,6 +570,7 @@ class LeadService
             $antes = json_decode((string) ($lead['mc_datos'] ?? ''), true);
             if (is_array($antes) && isset($antes['actividad'])) {
                 $r['datos']['actividad'] = $antes['actividad'];
+                $r['datos']['conteo'] = $antes['conteo'] ?? null;
             }
         }
         $this->pdo->prepare('UPDATE ' . self::TABLE . ' SET mc_estado = ?, mc_datos = ?, mc_revisado_en = ? WHERE id = ?')

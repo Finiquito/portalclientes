@@ -2231,9 +2231,14 @@ P\MailchimpConsulta::$transporte = function (string $url) use (&$mcLlamadas, &$m
             'stats' => ['avg_open_rate' => 0.62, 'avg_click_rate' => 0.18], 'tags' => [['name' => 'Landing tortas']], 'source' => 'Hosted Signup Form']];
     }
     if (str_ends_with($ruta, "/members/{$lola}/activity-feed")) {
-        return [200, ['activity' => [
-            ['activity_type' => 'open', 'created_at_timestamp' => '2026-09-02T15:00:00+00:00', 'campaign_title' => 'Bienvenida tortas'],
-            ['activity_type' => 'sent', 'created_at_timestamp' => '2026-09-02T12:00:00+00:00', 'campaign_title' => 'Bienvenida tortas'],
+        return [200, ['total_items' => 7, 'activity' => [
+            ['activity_type' => 'open', 'created_at_timestamp' => '2026-09-10T16:00:00+00:00', 'campaign_id' => 'c2', 'campaign_title' => 'Tortas de septiembre'],
+            ['activity_type' => 'sent', 'created_at_timestamp' => '2026-09-10T12:00:00+00:00', 'campaign_id' => 'c3', 'campaign_title' => 'Tortas de septiembre (B)'],
+            ['activity_type' => 'open', 'created_at_timestamp' => '2026-09-09T18:00:00+00:00', 'campaign_id' => 'c2', 'campaign_title' => 'Tortas de septiembre'],
+            ['activity_type' => 'sent', 'created_at_timestamp' => '2026-09-09T12:00:00+00:00', 'campaign_id' => 'c2', 'campaign_title' => 'Tortas de septiembre'],
+            ['activity_type' => 'click', 'created_at_timestamp' => '2026-09-02T15:05:00+00:00', 'campaign_id' => 'c1', 'campaign_title' => 'Bienvenida tortas'],
+            ['activity_type' => 'open', 'created_at_timestamp' => '2026-09-02T15:00:00+00:00', 'campaign_id' => 'c1', 'campaign_title' => 'Bienvenida tortas'],
+            ['activity_type' => 'sent', 'created_at_timestamp' => '2026-09-02T12:00:00+00:00', 'campaign_id' => 'c1', 'campaign_title' => 'Bienvenida tortas'],
         ]]];
     }
     if (str_ends_with($ruta, "/members/{$beto}")) {
@@ -2270,6 +2275,8 @@ $mcLlamadas = [];
 $mL = P\LeadService::mc($ls->find($idLola));
 check($mL !== null && $mL['estado'] === 'subscribed' && $mL['rating'] === 4 && $mL['aperturas'] === 62 && $mL['etiquetas'] === ['Landing tortas'], 'al abrir la ficha consulta Mailchimp: estado, calificación, aperturas y etiquetas');
 check(str_contains($html, 'Suscrito') && str_contains($html, 'Bienvenida tortas') && str_contains($html, 'Abrió') && str_contains($html, '★★★★'), 'la ficha muestra los últimos correos que recibió y abrió');
+check(($mL['conteo'] ?? null) === ['enviados' => 3, 'abiertos' => 2, 'clics' => 1, 'completo' => true], 'cuenta los correos distintos que recibió, abrió y en los que hizo clic (abrir dos veces cuenta una)');
+check(str_contains($html, '3 correos recibidos, abrió 2 e hizo clic en 1'), 'la ficha del equipo muestra cuántos correos recibió y abrió');
 check(count(array_filter($mcLlamadas, fn($u) => str_contains($u, 'us21.api.mailchimp.com/3.0/lists/aud123/members/'))) === 2, 'consulta sólo a esa persona, en la audiencia de la campaña');
 $n = count($mcLlamadas);
 $g->hacer('GET', $LA, 'ver', [$idLola], 'lead');
@@ -2280,6 +2287,10 @@ $ctkM = P\PortalSession::csrf();
 [$html] = $lp->correr('ver', [$idBeto]);
 $mB = P\LeadService::mc($ls->find($idBeto));
 check($mB['estado'] === 'unsubscribed' && $mB['motivo'] === 'No quiero más correos' && str_contains($html, 'Se dio de baja') && str_contains($html, 'Promo septiembre'), 'el cliente ve si se dio de baja, cuándo, por qué y desde qué correo');
+check(str_contains($html, 'Al menos 1 · abrió 0 (0%)'), 'con la actividad clásica (sólo lo último) el conteo dice «al menos»');
+[$html] = $lp->correr('ver', [$idLola]);
+check(str_contains($html, '3 · abrió 2 (67%) · hizo clic en 1'), 'el cliente ve cuántos correos recibió, cuántos abrió y el porcentaje');
+
 $_GET = [];
 [$html] = $lp->correr('lista');
 check(str_contains($html, 'Se dio de baja en Mailchimp') && str_contains($html, 'En Mailchimp'), 'la lista marca quién está y quién se dio de baja');
@@ -2291,7 +2302,7 @@ $mcLlamadas = [];
 $conCorreo = (int) $pdo->query("SELECT COUNT(*) FROM portal_leads WHERE proyecto_id = " . $pdo->quote($pW1) . " AND correo IS NOT NULL AND anonimizado_en IS NULL")->fetchColumn();
 $revisados = (int) $pdo->query("SELECT COUNT(*) FROM portal_leads WHERE proyecto_id = " . $pdo->quote($pW1) . " AND mc_revisado_en IS NOT NULL")->fetchColumn();
 check($revisados === min($conCorreo, 40) && !array_filter($mcLlamadas, fn($u) => str_contains($u, 'activity')), '«Revisar en Mailchimp» revisa la campaña de una vez (sin pedir la actividad de cada uno)');
-check(P\LeadService::mc($ls->find($idLola))['actividad'][0]['titulo'] === 'Bienvenida tortas', 'y conserva la actividad que ya tenía');
+check(P\LeadService::mc($ls->find($idLola))['actividad'][0]['titulo'] === 'Tortas de septiembre' && P\LeadService::mc($ls->find($idLola))['conteo']['enviados'] === 3, 'y conserva la actividad y el conteo que ya tenía');
 $otro = (string) $pdo->query("SELECT id FROM portal_leads WHERE proyecto_id = " . $pdo->quote($pW1) . " AND correo = 'vecino@x.cl'")->fetchColumn();
 check($otro === '' || $ls->find($otro)['mc_estado'] === 'no_esta', 'quien no está en la audiencia queda como «No está en Mailchimp»');
 
