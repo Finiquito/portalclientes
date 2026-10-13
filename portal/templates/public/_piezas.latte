@@ -1,0 +1,19 @@
+{* Piezas de agencia y cliente. Parámetros: agencia [nombre, logo], cliente (null = hueco) [nombre, logo, iniciales], animar *}
+<div class="piezas {if $cliente && $animar}anima{/if}">
+    <svg class="pieza p-agencia" viewBox="0 0 230 120" role="img" aria-label="{$agencia['nombre']}">
+        <path d="M6 1 H206 Q211 1 211 6 V42 H226 Q229 42 229 45 V75 Q229 78 226 78 H211 V114 Q211 119 206 119 H6 Q1 119 1 114 V6 Q1 1 6 1 Z"/>
+        {if $agencia['logo']}<image href="{$agencia['logo']}" x="20" y="22" width="172" height="76" preserveAspectRatio="xMidYMid meet"/>
+        {else}<text class="nombre" x="106" y="66" text-anchor="middle">{$agencia['nombre']|truncate:16}</text>{/if}
+    </svg>
+    {if $cliente}
+    <svg class="pieza p-cliente pieza-cliente" viewBox="0 0 212 120" role="img" aria-label="{$cliente['nombre']}">
+        <path d="M6 1 H206 Q211 1 211 6 V114 Q211 119 206 119 H6 Q1 119 1 114 V78 H15 Q18 78 18 75 V45 Q18 42 15 42 H1 V6 Q1 1 6 1 Z"/>
+        {if $cliente['logo']}<image href="{$cliente['logo']}" x="34" y="22" width="160" height="76" preserveAspectRatio="xMidYMid meet"/>
+        {else}<g class="ini"><circle cx="114" cy="60" r="27"/><text x="114" y="68" text-anchor="middle">{$cliente['iniciales']}</text></g>{/if}
+    </svg>
+    <span class="costura" aria-hidden="true"></span>
+    {if $animar}<svg class="traba" aria-hidden="true"><use href="#corazon"/></svg>{/if}
+    {else}
+    <svg class="pieza p-cliente hueco" viewBox="0 0 212 120" aria-hidden="true"><path d="M6 1 H206 Q211 1 211 6 V114 Q211 119 206 119 H6 Q1 119 1 114 V78 H15 Q18 78 18 75 V45 Q18 42 15 42 H1 V6 Q1 1 6 1 Z"/></svg>
+    {/if}
+</div>

@@ -125,6 +125,15 @@ class PortalPublicController
         $this->terminate();
     }
 
+    public function marcaIcono(): void
+    {
+        if (!$this->marca()->enviarIcono()) {
+            http_response_code(404);
+            echo 'No encontrado.';
+        }
+        $this->terminate();
+    }
+
     public function marcaCliente(string $id): void
     {
         if (!$this->marca()->enviarLogoCliente($id)) {
@@ -318,6 +327,7 @@ class PortalPublicController
             'vistaPrevia'   => PortalSession::vistaPrevia(),
             'hayRevisiones' => (int) ($this->fetchOne("SELECT COUNT(*) AS n FROM portal_entregas WHERE cliente_id = ? AND estado <> 'borrador'", [$clienteId])['n'] ?? 0) > 0,
             'puedeColaborar' => $this->esColaborador($contacto),
+            'favicon'       => $this->marca()->urlIcono(),
             'verLeads'      => $verLeads = $this->veLeads($contacto),
             'leadsNuevos'   => $verLeads ? (new LeadService($this->pdo()))->nuevosDelCliente($clienteId) : 0,
             'maxMb'         => (int) round($this->archivos()->limiteBytes($this->maxMb()) / 1048576),
@@ -344,10 +354,35 @@ class PortalPublicController
     // Login
     // ---------------------------------------------------------------------
 
+    /** Expresiones para cuando la pieza del cliente encaja (una al azar). */
+    public const EXPRESIONES = ['¡Va, va, va!', '¡Pulento!', '¡Chévere!', '¡Vale!', '¡Ta!', '¡Fenómeno!', '¡Venga!', '¡Guay!', '¡Bacano!', '¡Ya está!', '¡Ehpetacular!', '¡Ta bien!'];
+
+    /** Lo común de las pantallas de ingreso: la pieza de la agencia y el favicon. */
+    protected function datosIngreso(): array
+    {
+        $m = $this->marca();
+        return [
+            'agencia' => ['nombre' => $m->nombreEquipo(), 'logo' => $m->urlLogoAgencia('') ?: null],
+            'favicon' => $m->urlIcono(),
+        ];
+    }
+
+    /** Nombre, logo e iniciales del cliente de un contacto (para la pieza que encaja). */
+    protected function piezaCliente(array $contacto): ?array
+    {
+        $clienteId = (string) $contacto['cliente_id'];
+        $cliente = $this->fetchOne('SELECT nombre, empresa FROM portal_clientes WHERE id = ?', [$clienteId]);
+        if ($cliente === null) {
+            return null;
+        }
+        $nombre = trim($this->ajustes()->get('cliente', $clienteId, 'titulo')) ?: trim((string) ($cliente['empresa'] ?: $cliente['nombre']));
+        return ['nombre' => $nombre, 'logo' => $this->marca()->urlLogoCliente($clienteId, '') ?: null, 'iniciales' => (new Fmt())->iniciales($nombre)];
+    }
+
     public function loginForm(): void
     {
         $email = trim((string) ($_GET['email'] ?? ''));
-        $this->ctx->view('templates/public/login.latte', [
+        $this->ctx->view('templates/public/login.latte', $this->datosIngreso() + [
             'email' => filter_var($email, FILTER_VALIDATE_EMAIL) ? $email : '',
             'error' => $_GET['error'] ?? null,
             'csrf'  => PortalSession::csrf(),
@@ -378,6 +413,7 @@ class PortalPublicController
 
         PortalSession::iniciar();
         $_SESSION['portal_login_email'] = $email;
+        $_SESSION['portal_login_anima'] = 1;   // la pieza del cliente encaja una sola vez, al llegar
 
         $this->redirectTo('verificar');
     }
@@ -390,7 +426,13 @@ class PortalPublicController
             $this->redirectTo('login');
             return;
         }
-        $this->ctx->view('templates/public/verificar.latte', [
+        $animar = !empty($_SESSION['portal_login_anima']);
+        unset($_SESSION['portal_login_anima']);
+        $contacto = $this->contactos()->findByEmail((string) $email);
+        $this->ctx->view('templates/public/verificar.latte', $this->datosIngreso() + [
+            'cliente' => $contacto !== null ? $this->piezaCliente($contacto) : null,
+            'animar' => $animar,
+            'expresion' => self::EXPRESIONES[array_rand(self::EXPRESIONES)],
             'email' => $email,
             'error' => $_GET['error'] ?? null,
             'csrf'  => PortalSession::csrf(),

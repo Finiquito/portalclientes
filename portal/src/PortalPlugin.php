@@ -194,6 +194,7 @@ class PortalPlugin implements PluginInterface
         \Flight::route('GET /logout',                         [$publico, 'logout']);
         \Flight::route('POST /portal/vista-previa/salir',     [$publico, 'salirVistaPrevia']);
         \Flight::route('GET /portal/marca/agencia',           [$publico, 'marcaAgencia']);
+        \Flight::route('GET /portal/marca/icono',            [$publico, 'marcaIcono']);
         \Flight::route('GET /portal/marca/cliente/@id',       fn(string $id) => $publico->marcaCliente($id));
         \Flight::route('GET /portal/cron/correos',            [$publico, 'cronCorreos']);
 
@@ -290,7 +291,7 @@ class PortalPlugin implements PluginInterface
 
     public function getVersion(): string
     {
-        return '0.29.1';
+        return '0.30.0';
     }
 
     public function provides(): array

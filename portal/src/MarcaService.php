@@ -84,6 +84,58 @@ class MarcaService
         return $r === null ? '' : rtrim($base, '/') . '/portal/marca/agencia?v=' . (int) filemtime($r);
     }
 
+    // ---- Ícono (favicon) del portal --------------------------------------------------
+
+    /** @return string|null mensaje de error, o null si quedó guardado. Sólo PNG (SVG podría llevar código). */
+    public function guardarIcono(array $f): ?string
+    {
+        $tmp = (string) ($f['tmp_name'] ?? '');
+        if (strtolower(pathinfo((string) ($f['name'] ?? ''), PATHINFO_EXTENSION)) !== 'png') {
+            return 'El ícono debe ser PNG (cuadrado, de 64 a 512 px).';
+        }
+        if ($tmp === '' || !is_file($tmp) || (int) filesize($tmp) > 512 * 1024) {
+            return 'El ícono pesa más de 512 KB o no se pudo leer.';
+        }
+        $info = @getimagesize($tmp);
+        if ($info === false || ($info[2] ?? 0) !== IMAGETYPE_PNG) {
+            return 'El archivo no parece un PNG válido.';
+        }
+        if ((int) $info[0] < 32 || abs((int) $info[0] - (int) $info[1]) > 2) {
+            return 'El ícono debe ser cuadrado y de al menos 32 × 32 px.';
+        }
+        $destino = $this->dir() . '/icono.png';
+        $ok = is_uploaded_file($tmp) ? @move_uploaded_file($tmp, $destino) : @copy($tmp, $destino);
+        if (!$ok) {
+            return 'No se pudo guardar el ícono en el servidor.';
+        }
+        @chmod($destino, 0640);
+        return null;
+    }
+
+    public function quitarIcono(): void
+    {
+        @unlink($this->dir() . '/icono.png');
+    }
+
+    public function rutaIcono(): ?string
+    {
+        $r = $this->dir() . '/icono.png';
+        return is_file($r) ? $r : null;
+    }
+
+    /** URL del ícono con versión (para que el navegador lo renueve), o null si no hay. */
+    public function urlIcono(): ?string
+    {
+        $r = $this->rutaIcono();
+        return $r === null ? null : '/portal/marca/icono?v=' . (int) filemtime($r);
+    }
+
+    public function enviarIcono(): bool
+    {
+        $r = $this->rutaIcono();
+        return $r !== null && $this->emitir($r);
+    }
+
     // ---- Logo y color del cliente -----------------------------------------------
 
     public function colorCliente(string $clienteId): string

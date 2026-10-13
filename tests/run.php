@@ -2316,6 +2316,56 @@ check(P\MailchimpConsulta::deCliente($pdo, $cW) === null && $ps->find($pW1)['mc_
 check(!str_contains($html, 'En Mailchimp'), 'sin conexión, la ficha no muestra la sección');
 P\MailchimpConsulta::$transporte = null;
 
+// Pantallas de ingreso: piezas que encajan, corazón prismado y favicon
+seccion('Ingreso: piezas que encajan y favicon');
+unset($_SESSION[P\PortalSession::CONTACTO]);
+P\Notifier::$ahora = null;
+$ingreso = new LeadPrueba($ctx);
+[$html] = $ingreso->correr('loginForm');
+check(str_contains($html, 'Bienvenido') && str_contains($html, 'Este espacio es para ti') && str_contains($html, 'class="pieza p-cliente hueco"') && str_contains($html, 'proyectos.richgt.com'), 'el ingreso muestra la pieza de la agencia, el hueco del cliente y el pie de Prisma');
+(new P\AjustesService($pdo))->set('cliente', $cW, 'titulo', 'Pastelería Web');
+$tokIng = P\PortalSession::csrf();
+[, $r] = $ingreso->correr('requestCode', [], ['_csrf' => $tokIng, 'email' => 'dora@pasteleria.cl']);
+[$html] = $ingreso->correr('verifyForm');
+$expr = array_values(array_filter(P\PortalPublicController::EXPRESIONES, fn($e) => str_contains($html, htmlspecialchars($e, ENT_QUOTES)) || str_contains($html, $e)));
+check($r === '/verificar' && str_contains($html, 'Pastelería Web') && str_contains($html, 'piezas anima') && str_contains($html, 'class="traba"') && $expr !== [], 'si el correo es de un cliente, su pieza encaja con el corazón y una expresión al azar');
+check(!str_contains($html, 'class="pieza p-cliente hueco"'), 'y ya no queda el hueco');
+[$html] = $ingreso->correr('verifyForm');
+check(str_contains($html, 'Pastelería Web') && !str_contains($html, 'piezas anima') && !str_contains($html, 'class="traba"'), 'al recargar queda armado, sin repetir la animación');
+[, $r] = $ingreso->correr('requestCode', [], ['_csrf' => $tokIng, 'email' => 'nadie@ninguna.cl']);
+[$html] = $ingreso->correr('verifyForm');
+check(str_contains($html, 'class="pieza p-cliente hueco"') && !str_contains($html, 'Pastelería Web') && str_contains($html, 'Si <strong>nadie@ninguna.cl</strong> está registrado'), 'si el correo no es de un cliente, queda el hueco y el mensaje de siempre');
+
+// Favicon
+$marcaS = new P\MarcaService($pdo);
+check($marcaS->urlIcono() === null, 'sin ícono no se declara favicon');
+$pngTmp = tempnam(sys_get_temp_dir(), 'ico');
+$im = imagecreatetruecolor(64, 64);
+imagepng($im, $pngTmp);
+imagedestroy($im);
+check($marcaS->guardarIcono(['name' => 'icono.png', 'tmp_name' => $pngTmp]) === null && str_starts_with((string) $marcaS->urlIcono(), '/portal/marca/icono?v='), 'se sube un PNG cuadrado como ícono');
+$noCuadrado = tempnam(sys_get_temp_dir(), 'ico');
+$im = imagecreatetruecolor(120, 40);
+imagepng($im, $noCuadrado);
+imagedestroy($im);
+check($marcaS->guardarIcono(['name' => 'ancho.png', 'tmp_name' => $noCuadrado]) !== null, 'un ícono que no es cuadrado se rechaza');
+check($marcaS->guardarIcono(['name' => 'icono.svg', 'tmp_name' => $pngTmp]) !== null, 'sólo PNG (un SVG podría llevar código)');
+[$html] = $ingreso->correr('loginForm');
+check(str_contains($html, 'rel="icon"') && str_contains($html, '/portal/marca/icono?v='), 'el ingreso declara el favicon');
+$_SESSION[P\PortalSession::CONTACTO] = $jefa;
+[$html] = $ingreso->correr('lista');
+check(str_contains($html, 'rel="icon"'), 'y también las páginas del portal');
+$marcaS->quitarIcono();
+@unlink($pngTmp);
+@unlink($noCuadrado);
+unset($_SESSION[P\PortalSession::CONTACTO]);
+$ctlEq = new EquipoPrueba($ctx);
+$sesEq = $_SESSION[P\EquipoController::SESION] ?? null;
+unset($_SESSION[P\EquipoController::SESION]);
+[$html] = $ctlEq->correr(fn() => $ctlEq->entrarForm());
+check(str_contains($html, 'Hola, equipo') && str_contains($html, 'ing-logo') && !str_contains($html, 'class="piezas'), 'el panel del equipo muestra sólo el logo de la agencia, sin piezas');
+$_SESSION[P\EquipoController::SESION] = $sesEq;
+
 // ---------------------------------------------------------------------------
 echo "\n\n" . $GLOBALS['ok'] . ' comprobaciones OK, ' . count($GLOBALS['fallas']) . " fallas ({$motor}).\n";
 foreach ($GLOBALS['fallas'] as $f) {

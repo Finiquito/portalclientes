@@ -217,6 +217,20 @@
 
         <div class="pa-fila">
             <div>
+                <p class="pa-fila-et">Ícono del portal (favicon)</p>
+                <p class="pa-fila-ayuda">El ícono de la pestaña del navegador en el portal de clientes, el panel de equipo y las pantallas de ingreso. PNG cuadrado, de 64 a 512 px (máx. 512 KB).</p>
+            </div>
+            <div class="pa-fila-campo">
+                {if $correo['icono']}
+                    <img src="{$correo['icono']}" alt="Ícono actual" width="32" height="32" style="display:block;width:32px;height:32px;border:1px solid #e2e8f0;border-radius:6px;padding:2px;background:#fff">
+                    <label class="pa-check"><input type="checkbox" name="quitar_icono" value="1"> <span>Quitar el ícono</span></label>
+                {/if}
+                <input type="file" name="icono" class="form-input" accept=".png,image/png" aria-label="Subir ícono">
+            </div>
+        </div>
+
+        <div class="pa-fila">
+            <div>
                 <p class="pa-fila-et">Horario hábil del cliente</p>
                 <p class="pa-fila-ayuda">Los avisos al cliente salen de lunes a viernes en este horario de su país. Lo de fuera espera en cola.</p>
             </div>

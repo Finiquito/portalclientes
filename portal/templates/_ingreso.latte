@@ -1,0 +1,149 @@
+{* Pantallas de ingreso (portal del cliente y panel del equipo): grises, piezas blancas para los logos
+   y el naranjo de Prisma sólo en los detalles. Cada página llena el bloque «contenido». *}
+<!DOCTYPE html>
+<html lang="es" data-tema="auto">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="csrf" content="{$csrf}">
+    <meta name="robots" content="noindex, nofollow">
+    <title>{block titulo}Ingresar{/block}</title>
+    {if !empty($favicon)}<link rel="icon" type="image/png" href="{$favicon}">{/if}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
+    <script>{$portalBoot|noescape}</script>
+    <style n:syntax="off">
+    .ing {
+      --bg: #eceef1; --trama: rgba(20, 22, 30, .04); --surface: #ffffff; --ink: #1d1f26; --muted: #6c707b; --line: #d9dce2;
+      --pieza: #ffffff; --pieza-borde: #c7cbd3; --hueco: #aeb3bd; --signal: oklch(61% 0.22 33); --signal-suave: color-mix(in srgb, var(--signal) 12%, transparent);
+      --boton: #1d1f26; --boton-texto: #ffffff; --error: #c2341f;
+      --font: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+    html.dark .ing {
+      --bg: #17181c; --trama: rgba(255, 255, 255, .03); --surface: #202227; --ink: #eceef2; --muted: #a0a4ae; --line: #30333b;
+      --pieza-borde: #4a4e58; --hueco: #5c606b; --boton: #eceef2; --boton-texto: #17181c; --error: #ff8a73;
+    }
+    html.dark { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    .ing { min-height: 100dvh; display: grid; grid-template-rows: 1fr auto; justify-items: center; padding-inline: 16px; padding-block: 40px 18px;
+      background-color: var(--bg); color: var(--ink); font-family: var(--font); font-size: 15px; line-height: 1.5; -webkit-font-smoothing: antialiased;
+      background-image: linear-gradient(30deg, var(--trama) 1px, transparent 1px), linear-gradient(150deg, var(--trama) 1px, transparent 1px); background-size: 46px 26.5px; }
+    .ing-col { width: min(100%, 440px); display: grid; gap: 22px; align-content: center; justify-items: center; }
+    .ing a:focus-visible, .ing button:focus-visible, .ing input:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
+
+    /* Logo de la agencia sola (panel del equipo) */
+    .ing-logo { background: #fff; border: 1px solid var(--pieza-borde); border-radius: 8px; padding: 16px 24px; box-shadow: 0 10px 18px rgba(20, 22, 30, .10); }
+    .ing-logo img { display: block; width: 190px; height: 76px; object-fit: contain; }
+    .ing-logo span { display: block; min-width: 150px; text-align: center; font-weight: 800; font-size: 20px; color: #1d1f26; letter-spacing: -.01em; }
+
+    /* Piezas que encajan (diseño de 422 × 150; se achica sola) */
+    .piezas { position: relative; width: min(422px, 100%); aspect-ratio: 422 / 150; }
+    .piezas svg.pieza { position: absolute; top: 20%; height: 80%; overflow: visible; filter: drop-shadow(0 10px 18px rgba(20, 22, 30, .10)); }
+    .p-agencia { left: 0; width: 54.502%; }
+    .p-cliente { left: 49.763%; width: 50.237%; }
+    .pieza path { fill: var(--pieza); stroke: var(--pieza-borde); stroke-width: 1.25; }
+    .pieza .nombre { font: 800 19px var(--font); fill: #1d1f26; }
+    .pieza .ini circle { fill: #1d1f26; }
+    .pieza .ini text { fill: #fff; font: 800 22px var(--font); }
+    .hueco { filter: none !important; animation: respira 2.4s ease-in-out infinite; }
+    .hueco path { fill: none; stroke: var(--hueco); stroke-width: 1.5; stroke-dasharray: 6 6; }
+    @keyframes respira { 0%, 100% { opacity: .35; } 50% { opacity: 1; } }
+    .traba { position: absolute; left: calc(50% - 20px); top: 0; width: 40px; height: 34px; z-index: 2; color: var(--signal); filter: drop-shadow(0 3px 4px rgba(20, 22, 30, .18)); }
+    .costura { position: absolute; left: calc(50% - 1.5px); top: 21%; width: 3px; height: 78%; border-radius: 3px; background: var(--signal); opacity: 0; }
+    @media (prefers-reduced-motion: no-preference) {
+      .anima .pieza-cliente { animation: sube 620ms cubic-bezier(.2, .8, .3, 1) both, clic 260ms cubic-bezier(.3, 1.6, .5, 1) 600ms both; }
+      .anima .costura { animation: destello 560ms ease-out 640ms both; }
+      .anima .traba { animation: cae 460ms cubic-bezier(.3, 1.5, .5, 1) 780ms both; }
+      .anima ~ .ing-texto .t-nuevo { animation: aparece 420ms ease 900ms both; }
+    }
+    @media (prefers-reduced-motion: reduce) { .hueco { animation: none; } }
+    @keyframes sube { from { opacity: 0; transform: translate(14px, 70px); } 30% { opacity: 1; } to { opacity: 1; transform: translate(6px, 0); } }
+    @keyframes clic { from { transform: translate(6px, 0); } 60% { transform: translate(-2px, 0) scale(1.015); } to { transform: none; } }
+    @keyframes destello { 0% { opacity: 0; } 30% { opacity: .9; } 100% { opacity: 0; } }
+    @keyframes cae { from { opacity: 0; transform: translateY(-28px) scale(.5) rotate(-12deg); } 60% { opacity: 1; } to { opacity: 1; transform: none; } }
+    @keyframes aparece { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+    /* Textos */
+    .ing-texto { text-align: center; display: grid; gap: 8px; }
+    .ing-eyebrow { justify-self: center; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+    .ing-texto h1 { margin: 0; font-size: clamp(1.55rem, 5vw, 2.05rem); font-weight: 800; letter-spacing: -.025em; line-height: 1.15; text-wrap: balance; }
+    .ing-texto p { margin: 0; color: var(--muted); text-wrap: pretty; }
+    .ing-texto strong { color: var(--ink); overflow-wrap: anywhere; }
+    .exclama { color: var(--ink); font-weight: 800; }
+    .union { display: inline-block; width: .95em; height: .82em; margin-inline: .22em; vertical-align: -.06em; color: var(--signal); }
+    .union.espera { visibility: hidden; }
+
+    /* Formulario */
+    .ing-tarjeta { width: min(100%, 420px); background: var(--surface); border: 1px solid var(--line); border-radius: 22px; padding: 20px; display: grid; gap: 10px; box-shadow: 0 1px 0 rgba(20, 22, 30, .03), 0 22px 44px -30px rgba(20, 22, 30, .35); }
+    .ing-tarjeta label { font-size: 13px; font-weight: 700; }
+    .ing-tarjeta input { font: 500 16px var(--font); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 14px; padding: 13px 14px; width: 100%; }
+    .ing-tarjeta .codigo { letter-spacing: .5em; text-align: center; font-variant-numeric: tabular-nums; font-weight: 800; font-size: 24px; padding-block: 10px; }
+    .ing-tarjeta button { margin-top: 4px; font: 700 15px var(--font); color: var(--boton-texto); background: var(--boton); border: 0; border-radius: 14px; padding: 14px; cursor: pointer; }
+    .ing-tarjeta button[disabled] { opacity: .7; cursor: progress; }
+    .ing-error { margin: 0 0 4px; border-radius: 12px; padding: 10px 12px; font-size: 14px; font-weight: 600; color: var(--error); background: color-mix(in srgb, var(--error) 10%, transparent); }
+    .ing-ayuda { font-size: 13px; color: var(--muted); text-align: center; margin: 0; }
+    .ing-ayuda a { color: var(--ink); font-weight: 600; text-decoration-color: var(--signal); text-underline-offset: 3px; }
+
+    /* Pie con Prisma */
+    .ing-pie { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; justify-content: center; font-size: 12.5px; color: var(--muted); padding-top: 28px; }
+    .ing-pie svg { width: 58px; height: 15px; color: var(--ink); opacity: .75; }
+    .ing-pie a { color: var(--muted); text-decoration: none; border-bottom: 1px solid var(--line); }
+    .ing-pie a:hover { color: var(--ink); border-color: var(--signal); }
+    </style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+    <symbol id="corazon" viewBox="0 0 500 428.44438"><g fill="currentColor">
+      <polygon points="137.64891 174.6777 250.06312 415.5706 362.45844 174.76941 137.64891 174.6777"/>
+      <polygon points="207.30737 76.69505 145.30974 149.30219 354.66005 149.24608 292.81454 76.70422 207.30737 76.69505"/>
+      <polygon points="12.37999 151.23074 205.84275 381.97214 109.00159 172.88347 12.37999 151.23074"/>
+      <polygon points="487.73761 151.25664 391.13273 172.91422 294.1524 382.15016 487.73761 151.25664"/>
+      <polygon points="297.55205 47.62426 377.52655 29.76068 321.77367 11.70074 178.39302 11.70074 122.67035 29.73262 203.05915 47.67389 297.55205 47.62426"/>
+      <polygon points="178.15134 71.68619 88.54646 51.97767 121.79427 137.72598 178.15134 71.68619"/>
+      <polygon points="378.32279 137.74756 411.59973 51.98091 321.94198 71.64627 378.32279 137.74756"/>
+      <polygon points="495.45185 123.04951 434.49429 63.2 402.90908 144.23453 495.45185 123.04951"/>
+      <polygon points="65.60929 63.26203 4.54815 123.12342 97.21499 144.22805 65.60929 63.26203"/>
+    </g></symbol>
+    <symbol id="logo-prisma" viewBox="0 0 1072.5 277.777778">
+      <path fill="currentColor" d="M731.405194,240.891717l-38.473888.051478-.048856-90.276091c-.004302-7.949443-1.928782-15.158732-5.182179-22.04723-10.142504-21.474976-42.109137-20.157201-55.684987-6.486848-7.2756,7.326246-12.023623,17.704612-12.070224,28.51462l-.38918,90.278929-38.563533.008374c.387966-7.6203-.032889-14.295635-.013153-21.530506l.158952-58.268906-.291803-79.300051,36.815069-.221985.329671,17.949282c27.658418-28.305132,78.712464-27.888915,102.007264,5.29265,17.75734-17.474164,38.377549-27.012134,63.948395-25.481962,37.225181,2.263206,57.595716,27.382339,58.971448,64.301158l-.081233,97.395294-38.158463-.126781.021-94.314543c-.62389-9.724399-3.848684-18.718476-10.504753-25.633228-11.860406-12.321352-37.275371-11.604861-50.353634,1.044603-7.274786,7.036266-11.934767,17.20328-11.986717,27.740234l-.449197,91.111509Z"/>
+      <path fill="currentColor" d="M161.546354,165.574396c-14.984926,8.714058-31.251156,13.015151-48.451535,13.100242l-55.20909.273123-.067468,61.987018-39.502575.045795-.014108-209.616299,95.284207.237791c15.380007.038382,29.643009,4.037979,43.057735,10.619736,35.744279,18.876806,45.235938,62.24133,28.571557,97.413062-5.226734,11.031511-12.830832,19.38281-23.668724,25.939531ZM153.348365,101.706958c-.892851-14.936781-9.280322-27.548785-23.380955-32.779576-8.460161-3.100349-17.17017-4.485402-26.280854-4.498422l-45.851731-.06553.100729,81.138654,47.943907-.223391c6.645695-.030965,12.836615-1.367558,19.281882-2.629402,19.410885-4.924186,29.376464-21.043788,28.187022-40.942333Z"/>
+      <path fill="currentColor" d="M540.815218,223.427727c-26.81491,29.131207-95.581186,23.750229-127.943758.889572l14.194098-28.984193c22.129795,14.323555,53.428093,22.363237,77.827271,13.280666,8.217802-3.059069,12.669967-11.939965,8.412009-19.758922-9.792028-17.98126-75.725511-5.754621-92.324526-40.400205-7.424243-15.495935-4.821062-33.930875,6.47802-47.298136,22.131447-26.182379,71.002216-26.126316,102.828538-15.150592,5.510897,2.628109,10.721554,4.172871,15.68335,7.939521l-12.58288,28.738963c-19.28744-11.393011-42.177891-15.751907-64.25505-10.836953-8.103838,1.804127-14.646359,7.594587-14.904353,15.780457-.837662,26.578091,74.384253,8.960511,93.772714,46.651197,8.208179,15.956495,4.997237,35.913605-7.185433,49.148625Z"/>
+      <path fill="currentColor" d="M263.016869,161.073127l-.099456,79.854695-38.005273.051649.062677-159.314452,36.036929-.048782.252877,21.147177c13.136692-16.854865,34.124932-24.807905,55.732383-22.933721l-.032484,35.88131c-10.942574-2.079009-21.432446-.843101-31.310128,3.617262-9.493244,5.47277-16.469327,13.905124-19.525668,24.42802-1.628237,5.55259-2.903666,10.78831-3.111857,17.316841Z"/>
+      <polygon fill="currentColor" points="384.026578 240.845512 345.867772 240.920707 345.805232 81.65023 383.99448 81.631961 384.026578 240.845512"/>
+      <path fill="currentColor" d="M382.792207,18.608769c7.32548,7.011456,8.073129,17.775232,3.883136,26.198537-4.044754,8.131325-12.965425,12.608882-22.796656,12.283752-11.276943-.372941-20.649785-7.632311-22.669802-18.048307-2.16592-11.168333,3.966404-21.940191,15.078966-25.673808,8.963983-3.011734,19.250462-1.703111,26.504355,5.239826Z"/>
+      <path fill="currentColor" d="M1051.889979,202.680049l-78.806899-147.711183c-3.115337-5.8388-9.065053-9.115315-15.901378-8.696207-8.954344.513803-12.991978,7.825042-14.318707,10.227129l-70.983391,128.522794c-2.773867,5.021246-2.475988,11.207439.758848,15.760066l40.192594,56.559894c4.23273,5.955791,9.887096,8.88058,16.316924,8.566396,2.050776-.100208,4.180758-.530359,6.368154-1.296231l109.109165-38.2051.547946-.191522.487152-.315167c8.40764-5.43928,10.853409-14.553883,6.229592-23.220869ZM1030.021859,208.477381l-90.378193,31.505114,24.601046-154.913589,65.777147,123.408474Z"/>
+    </symbol>
+</defs></svg>
+<main class="ing">
+    <div class="ing-col">
+        {block contenido}{/block}
+    </div>
+    <footer class="ing-pie">
+        <span>Portal de clientes hecho con</span>
+        <svg role="img" aria-label="Prisma"><use href="#logo-prisma"/></svg>
+        <span aria-hidden="true">·</span>
+        <a href="https://proyectos.richgt.com" target="_blank" rel="noopener">proyectos.richgt.com</a>
+    </footer>
+</main>
+<script>{$portalJs|noescape}</script>
+<script n:syntax="off">
+(function () {
+  // El corazón que traba la unión baja después a su lugar en el título (uno solo).
+  var piezas = document.querySelector('.piezas.anima');
+  if (!piezas) return;
+  var traba = piezas.querySelector('.traba');
+  var destino = document.querySelector('.ing-texto .union');
+  if (!traba || !destino || !traba.animate) { if (destino) destino.classList.remove('espera'); if (traba) traba.style.visibility = 'hidden'; return; }
+  setTimeout(function () {
+    var a = traba.getBoundingClientRect(), d = destino.getBoundingClientRect();
+    var dx = (d.left + d.width / 2) - (a.left + a.width / 2), dy = (d.top + d.height / 2) - (a.top + a.height / 2);
+    var anim = traba.animate([{ transform: 'none' }, { transform: 'translate(' + dx + 'px,' + dy + 'px) scale(' + (d.width / a.width) + ')' }],
+      { duration: 650, easing: 'cubic-bezier(.55, 0, .2, 1)', fill: 'forwards' });
+    anim.onfinish = function () { destino.classList.remove('espera'); traba.style.visibility = 'hidden'; };
+  }, 1500);
+})();
+</script>
+</body>
+</html>

@@ -190,7 +190,7 @@ class ActividadAdminController
         }
         return [
             'modo' => $n->modo(), 'respetar' => $respetar, 'ini' => $ini, 'fin' => $fin, 'cronUltimo' => $cronUltimo,
-            'tieneLogo' => $marca->rutaLogoAgencia() !== null, 'diag' => $n->diagnostico(),
+            'tieneLogo' => $marca->rutaLogoAgencia() !== null, 'icono' => $marca->urlIcono(), 'diag' => $n->diagnostico(),
             'cronUrl' => Notifier::baseUrl() . '/portal/cron/correos?k=' . $token, 'cola' => $cola,
             'metodoHtml' => $n->diagnostico()['metodos'], 'smtp' => $n->smtpVista(),
         ];
@@ -209,6 +209,14 @@ class ActividadAdminController
         if ($subidos !== []) {
             $err = $marca->guardarLogoAgencia($subidos[0]);
             $aviso = $err !== null ? ' ' . $err : '';
+        }
+        if (!empty($_POST['quitar_icono'])) {
+            $marca->quitarIcono();
+        }
+        $icono = ArchivoService::normalizar($_FILES['icono'] ?? null);
+        if ($icono !== []) {
+            $err = $marca->guardarIcono($icono[0]);
+            $aviso .= $err !== null ? ' ' . $err : '';
         }
         $modo = (string) ($_POST['correo_modo'] ?? 'auto');
         $aj->set('global', 'portal', 'correo_modo', in_array($modo, ['auto', 'smtp', 'html', 'texto'], true) ? $modo : 'auto');

@@ -74,6 +74,23 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### v0.30.0: nuevas pantallas de ingreso y favicon
+- **Ingreso al portal del cliente**:
+  - En grises, con una trama isométrica suave.
+  - Arriba, la pieza de la agencia (blanca, con su logo) junto a un hueco punteado.
+  - Textos: «Portal de Clientes · Bienvenido · Este espacio es para ti».
+- **Al pedir el código**, si el correo es de un cliente:
+  - Su pieza sube y encaja.
+  - Un **corazón prismado** (naranjo de Prisma) cae sobre la unión y después baja a su lugar en el título «Agencia ♦ Cliente».
+  - Aparece una expresión al azar («¡Pulento!», «¡Chévere!», «¡Bacano!»…).
+  - La animación sale una sola vez; al recargar queda armado. Con «reducir movimiento» aparece armado sin moverse.
+  - Si el cliente no tiene logo, se usan sus iniciales.
+  - Si el correo no es de un cliente, queda el hueco y el mensaje de siempre.
+- **Ingreso del panel del equipo**: el mismo estilo, solo con el logo de la agencia.
+- **Pie**: «Portal de clientes hecho con Prisma · proyectos.richgt.com».
+- **Favicon**: se sube en Ajustes de la agencia (PNG cuadrado, de 32 a 512 px). Se usa en el portal, el panel y las pantallas de ingreso. No se aceptan SVG, porque podrían llevar código.
+- Las cuatro pantallas comparten `templates/_ingreso.latte`. Las piezas están en `templates/public/_piezas.latte`.
+
 ### v0.29.1
 - **Importar CSV** ahora reconoce la exportación de audiencias de **Mailchimp** en español:
   - Encabezados como «Dirección de correo electrónico» o «Número de teléfono».

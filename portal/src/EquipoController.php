@@ -134,6 +134,7 @@ class EquipoController
     {
         return [
             'marca'      => $this->marca(),
+            'favicon'    => (new MarcaService($this->pdo()))->urlIcono(),
             'csrf'       => PortalSession::csrf(),
             'portalBoot' => $this->asset('theme.js'),
             'portalJs'   => $this->asset('portal.js'),
@@ -188,6 +189,7 @@ class EquipoController
         return [
             'fmt'        => new Fmt(),
             'nSolicitudes' => $nSolicitudes,
+            'favicon'    => (new MarcaService($this->pdo()))->urlIcono(),
             'hayLeads'   => (int) ($leads['np'] ?? 0) > 0,
             'nLeads'     => (int) ($leads['nl'] ?? 0),
             'relojes'    => $this->relojes($u),
