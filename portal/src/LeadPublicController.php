@@ -172,12 +172,39 @@ class LeadPublicController extends PortalPublicController
             $this->redirectTo('portal/contactos-ganados');
             return;
         }
+        $svc = $this->leads();
+        $conMc = $svc->mailchimp((string) $l['proyecto_id']) !== null;
+        $mcError = null;
+        if ($conMc && LeadService::mcVencido($l) && (string) $l['correo'] !== '' && empty($l['anonimizado_en'])) {
+            $mcError = $svc->revisarMailchimp($l);
+            $l = $svc->delCliente($id, (string) $c['cliente_id']) ?? $l;
+        }
         $this->ctx->view('templates/public/lead.latte', $this->contexto($c, 'leads') + [
             'l'        => $l,
+            'mc'       => LeadService::mc($l),
+            'conMc'    => $conMc,
+            'mcError'  => $mcError,
+            'mcEventos' => MailchimpConsulta::EVENTOS,
             'estados'  => LeadService::ESTADOS,
             'chips'    => LeadService::CHIPS,
             'origenes' => LeadService::ORIGENES,
         ]);
+    }
+
+    /** «Revisar ahora» en Mailchimp, desde la ficha. */
+    public function revisarMc(string $id): void
+    {
+        $c = $this->requerirAcceso();
+        $this->exigirCsrf('portal/contactos-ganados/' . $id);
+        $l = $this->leads()->delCliente($id, (string) $c['cliente_id']);
+        if ($l === null || $this->leads()->proyecto((string) $l['proyecto_id']) === null) {
+            PortalSession::flash('error', 'No encontramos ese contacto.');
+            $this->redirectTo('portal/contactos-ganados');
+            return;
+        }
+        $error = $this->leads()->revisarMailchimp($l);
+        PortalSession::flash($error === null ? 'ok' : 'error', $error ?? 'Revisado en Mailchimp.');
+        $this->redirectTo('portal/contactos-ganados/' . $id);
     }
 
     public function guardar(string $id): void

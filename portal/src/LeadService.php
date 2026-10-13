@@ -103,7 +103,7 @@ class LeadService
     public function find(string $id): ?array
     {
         $st = $this->pdo->prepare(
-            'SELECT l.*, p.nombre AS proyecto_nombre, c.nombre AS cliente_nombre
+            'SELECT l.*, p.nombre AS proyecto_nombre, p.mc_audiencia, p.mc_audiencia_nombre, c.nombre AS cliente_nombre
              FROM ' . self::TABLE . ' l JOIN portal_proyectos p ON p.id = l.proyecto_id JOIN portal_clientes c ON c.id = l.cliente_id
              WHERE l.id = ?'
         );
@@ -471,6 +471,10 @@ class LeadService
         }
         $now = self::ahora();
         $cambia = $estado !== (string) $lead['estado'];
+        if ($d['correo'] !== (string) ($lead['correo'] ?? '')) {
+            // Otro correo: lo que dijo Mailchimp del anterior ya no vale.
+            $this->pdo->prepare('UPDATE ' . self::TABLE . ' SET mc_estado = NULL, mc_datos = NULL, mc_revisado_en = NULL WHERE id = ?')->execute([(string) $lead['id']]);
+        }
         $this->pdo->prepare(
             'UPDATE ' . self::TABLE . ' SET nombre = ?, correo = ?, telefono = ?, empresa = ?, estado = ?, notas = ?, proximo_paso = ?, proximo_paso_fecha = ?,
                 estado_en = ?, estado_por = ?, updated_at = ? WHERE id = ?'
@@ -517,6 +521,95 @@ class LeadService
         return $avisados;
     }
 
+    // ---- Mailchimp (sólo lectura) ----------------------------------------------------
+
+    /** Horas que vale una consulta antes de volver a preguntar sola. */
+    public const MC_HORAS = 24;
+
+    /** El cliente de Mailchimp del proyecto, si tiene clave y audiencia elegida. */
+    public function mailchimp(string $proyectoId): ?array
+    {
+        $st = $this->pdo->prepare('SELECT cliente_id, mc_audiencia, mc_audiencia_nombre FROM portal_proyectos WHERE id = ? AND con_leads = 1');
+        $st->execute([$proyectoId]);
+        $p = $st->fetch();
+        if ($p === false || (string) ($p['mc_audiencia'] ?? '') === '') {
+            return null;
+        }
+        $mc = MailchimpConsulta::deCliente($this->pdo, (string) $p['cliente_id']);
+        return $mc === null ? null : ['consulta' => $mc, 'audiencia' => (string) $p['mc_audiencia'], 'nombre' => (string) $p['mc_audiencia_nombre']];
+    }
+
+    /** ¿Hay que volver a preguntar? (nunca se revisó, o hace más de MC_HORAS) */
+    public static function mcVencido(array $lead): bool
+    {
+        $r = (string) ($lead['mc_revisado_en'] ?? '');
+        return $r === '' || $r < (new \DateTimeImmutable())->modify('-' . self::MC_HORAS . ' hours')->format('Y-m-d H:i:s');
+    }
+
+    /**
+     * Pregunta a Mailchimp por este contacto y guarda el resumen.
+     *
+     * @return string|null error (null si se pudo revisar)
+     */
+    public function revisarMailchimp(array $lead, bool $actividad = true): ?string
+    {
+        if (!empty($lead['anonimizado_en']) || (string) ($lead['correo'] ?? '') === '') {
+            return 'Sin correo no se puede revisar en Mailchimp.';
+        }
+        $mc = $this->mailchimp((string) $lead['proyecto_id']);
+        if ($mc === null) {
+            return 'Esta campaña no está conectada a Mailchimp.';
+        }
+        $r = $mc['consulta']->persona($mc['audiencia'], (string) $lead['correo'], $actividad);
+        if ($r['estado'] === 'error') {
+            return (string) ($r['datos']['error'] ?? 'No se pudo revisar en Mailchimp.');
+        }
+        // Sin actividad nueva (revisión en lote), se conserva la que ya teníamos.
+        if (!$actividad) {
+            $antes = json_decode((string) ($lead['mc_datos'] ?? ''), true);
+            if (is_array($antes) && isset($antes['actividad'])) {
+                $r['datos']['actividad'] = $antes['actividad'];
+            }
+        }
+        $this->pdo->prepare('UPDATE ' . self::TABLE . ' SET mc_estado = ?, mc_datos = ?, mc_revisado_en = ? WHERE id = ?')
+            ->execute([$r['estado'], json_encode($r['datos'], JSON_UNESCAPED_UNICODE), self::ahora(), (string) $lead['id']]);
+        return null;
+    }
+
+    /**
+     * Revisa en lote los contactos de una campaña que nunca se revisaron o están vencidos
+     * (sin la actividad, que se trae al abrir cada ficha).
+     *
+     * @return array{revisados: int, pendientes: int, error: ?string}
+     */
+    public function revisarProyecto(string $proyectoId, int $max = 40): array
+    {
+        $st = $this->pdo->prepare('SELECT * FROM ' . self::TABLE . ' WHERE proyecto_id = ? AND correo IS NOT NULL AND anonimizado_en IS NULL ORDER BY mc_revisado_en, created_at DESC');
+        $st->execute([$proyectoId]);
+        $porRevisar = array_values(array_filter($st->fetchAll(), [self::class, 'mcVencido']));
+        $n = 0;
+        $error = null;
+        foreach (array_slice($porRevisar, 0, $max) as $l) {
+            $error = $this->revisarMailchimp($l, false);
+            if ($error !== null) {
+                break;
+            }
+            $n++;
+        }
+        return ['revisados' => $n, 'pendientes' => count($porRevisar) - $n, 'error' => $error];
+    }
+
+    /** Resumen guardado, listo para mostrar. */
+    public static function mc(array $lead): ?array
+    {
+        $estado = (string) ($lead['mc_estado'] ?? '');
+        if ($estado === '' || !isset(MailchimpConsulta::ESTADOS[$estado])) {
+            return null;
+        }
+        $d = json_decode((string) ($lead['mc_datos'] ?? ''), true);
+        return ['estado' => $estado, 'etiqueta' => MailchimpConsulta::ESTADOS[$estado], 'revisado' => (string) $lead['mc_revisado_en']] + (is_array($d) ? $d : []);
+    }
+
     /**
      * Borra los datos personales y deja el registro (estado, origen, campaña y fechas) para que los
      * conteos sigan cuadrando.
@@ -525,7 +618,7 @@ class LeadService
     {
         $this->pdo->prepare(
             "UPDATE " . self::TABLE . " SET nombre = 'Contacto anonimizado', correo = NULL, telefono = NULL, empresa = NULL, notas = NULL,
-                proximo_paso = NULL, proximo_paso_fecha = NULL, anonimizado_en = ?, updated_at = ? WHERE id = ?"
+                proximo_paso = NULL, proximo_paso_fecha = NULL, mc_estado = NULL, mc_datos = NULL, mc_revisado_en = NULL, anonimizado_en = ?, updated_at = ? WHERE id = ?"
         )->execute([self::ahora(), self::ahora(), $id]);
     }
 

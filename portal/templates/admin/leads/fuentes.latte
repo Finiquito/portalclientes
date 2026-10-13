@@ -1,11 +1,11 @@
 {layout $plugin_ui_layout}
 
-{block page_title}Formularios y webhook{/block}
+{block page_title}Formularios, webhook y Mailchimp{/block}
 
 {block content}
 <link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=11">
 <div class="page-header">
-    <h1>Formularios y webhook</h1>
+    <h1>Formularios, webhook y Mailchimp</h1>
     <a href="{$admin_url('leads')}" class="btn">Contactos ganados</a>
 </div>
 
@@ -91,6 +91,46 @@
         <p class="form-hint mt-1">Sólo para el formulario directo: a dónde va la persona después de enviar. Si no pones una, ve una página de «¡Gracias!» simple.</p>
         <p class="mt-3"><button type="submit" class="btn btn-primary">Crear token</button></p>
     </form>
+
+    {* Mailchimp: sólo lectura, para contrastar a los contactos de esta campaña *}
+    {var $m = $mc[$p['cliente_id']] ?? ['clave' => false]}
+    <hr class="pa-hr">
+    <h3 class="pa-h2">Mailchimp <span class="pa-muted">· sólo consulta</span></h3>
+    <p class="pa-muted" style="margin:0 0 .75rem">Revisa si los contactos de esta campaña están en una audiencia de Mailchimp del cliente: si se dieron de baja, si rebotó el correo, su calificación y los últimos correos que recibieron. No se trae a nadie ni se cambia nada en Mailchimp.</p>
+    {if !$m['clave']}
+        <form method="post" action="{$admin_url('proyectos/' . $p['id'] . '/mailchimp/clave')}">
+            <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+            <label class="form-label">Clave de la API de Mailchimp de {$p['cliente_nombre']}</label>
+            <div class="pa-row"><input type="password" name="clave" class="form-input" style="flex:1;min-width:0" autocomplete="off" placeholder="xxxxxxxx…-us21" required><button type="submit" class="btn">Conectar</button></div>
+            <p class="form-hint mt-1">En Mailchimp: Perfil › Extras › API keys › Create a key. Pide al cliente una clave sólo para el portal: así la puede borrar cuando quiera. Se guarda cifrada y sirve para todas sus campañas.</p>
+        </form>
+    {elseif empty($m['ok'])}
+        {if !empty($p['mc_audiencia'])}<p style="margin:0 0 .5rem"><span class="pa-chip ok">Conectada a «{$p['mc_audiencia_nombre']}»</span></p>{/if}
+        <p style="margin:0;color:#e11d48">{$m['error'] ?? 'No se pudo conectar con Mailchimp.'} Si el problema sigue, el cliente pudo haber borrado la clave.</p>
+        <form method="post" action="{$admin_url('proyectos/' . $p['id'] . '/mailchimp/quitar')}" style="margin-top:.5rem" onsubmit="return confirm('¿Quitar la clave de Mailchimp de este cliente?')">
+            <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+            <button type="submit" class="btn btn-sm">Quitar la clave y poner otra</button>
+        </form>
+    {else}
+        <form method="post" action="{$admin_url('proyectos/' . $p['id'] . '/mailchimp/audiencia')}">
+            <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+            <label class="form-label">Audiencia de esta campaña</label>
+            <div class="pa-row">
+                <select name="audiencia" class="form-input" style="flex:1;min-width:0">
+                    <option value="">— Sin conectar —</option>
+                    {foreach $m['audiencias'] as $a}<option value="{$a['id']}" {if ($p['mc_audiencia'] ?? '') === $a['id']}selected{/if}>{$a['nombre']} · {$a['miembros']} contactos</option>{/foreach}
+                </select>
+                <button type="submit" class="btn">Guardar</button>
+            </div>
+        </form>
+        <div class="pa-row" style="margin-top:.75rem">
+            {if !empty($p['mc_audiencia'])}<span class="pa-chip ok">Conectada a «{$p['mc_audiencia_nombre']}»</span>{/if}
+            <form method="post" action="{$admin_url('proyectos/' . $p['id'] . '/mailchimp/quitar')}" onsubmit="return confirm('¿Quitar la clave de Mailchimp de este cliente? Se desconectan todas sus campañas.')">
+                <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+                <button type="submit" class="btn btn-sm">Quitar la clave de Mailchimp</button>
+            </form>
+        </div>
+    {/if}
 </div>
 {/foreach}
 

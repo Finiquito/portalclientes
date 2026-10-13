@@ -8,8 +8,9 @@
     <h1>Contactos ganados</h1>
     {if $proyectos}<div class="pa-row">
         {if $total > 0}<a href="{$admin_url('leads/exportar')}{if array_filter($filtros->todos())}?{http_build_query(array_filter($filtros->todos()))}{/if}" class="btn">Descargar CSV</a>{/if}
+        {if $mcProyecto}<form method="post" action="{$admin_url('proyectos/' . $filtros->get('proyecto') . '/mailchimp/revisar')}" style="display:inline"><input type="hidden" name="_csrf_token" value="{$csrf_token}"><button type="submit" class="btn">Revisar en Mailchimp</button></form>{/if}
         <a href="{$admin_url('leads/importar')}{if $filtros->get('proyecto')}?proyecto={$filtros->get('proyecto')}{/if}" class="btn">Importar CSV</a>
-        <a href="{$admin_url('leads/fuentes')}{if $filtros->get('proyecto')}?proyecto={$filtros->get('proyecto')}{/if}" class="btn">Formularios y webhook</a>
+        <a href="{$admin_url('leads/fuentes')}{if $filtros->get('proyecto')}?proyecto={$filtros->get('proyecto')}{/if}" class="btn">Formularios y Mailchimp</a>
         <a href="{$admin_url('leads/nuevo')}{if $filtros->get('proyecto')}?proyecto={$filtros->get('proyecto')}{/if}" class="btn btn-primary">Agregar contacto</a>
     </div>{/if}
 </div>
@@ -98,7 +99,7 @@
                     <span class="pa-proy"><span class="pa-dot" style="background: {($colorProy[$l['proyecto_id']] ?? '#94a3b8')|noescape}" aria-hidden="true"></span>{$l['proyecto_nombre']}</span>
                     <div class="pa-muted">{$l['cliente_nombre']}{if $l['campana']} · {$l['campana']}{/if}</div>
                 </td>
-                <td><span class="pa-chip {$chips[$l['estado']]}">{$estados[$l['estado']]}</span></td>
+                <td><span class="pa-chip {$chips[$l['estado']]}">{$estados[$l['estado']]}</span>{if $l['mc_estado'] && isset($mcEstados[$l['mc_estado']])}<div class="pa-muted" style="margin-top:.25rem">Mailchimp: {$mcEstados[$l['mc_estado']][0]}</div>{/if}</td>
                 <td>{if $l['proximo_paso'] && $abierto}{$l['proximo_paso']}{if $l['proximo_paso_fecha']}<div class="pa-muted" {if $l['proximo_paso_fecha'] < $hoy}style="color:#e11d48;font-weight:700"{/if}>{$fmt->fechaCorta($l['proximo_paso_fecha'])}</div>{/if}{else}<span class="pa-muted">—</span>{/if}</td>
                 <td>{$fmt->rel($l['created_at'])}<div class="pa-muted">{$origenes[$l['origen']] ?? $l['origen']}</div></td>
             </tr>

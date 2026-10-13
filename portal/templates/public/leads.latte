@@ -77,6 +77,7 @@
                                 {if count($proyectos) > 1}<span class="inline-flex items-center gap-1.5 font-semibold"><span aria-hidden="true" style="display:inline-block;width:.6rem;height:.6rem;border-radius:9999px;flex:none;background:{($colorProy[$l['proyecto_id']] ?? '#94a3b8')|noescape}"></span>{$l['proyecto_nombre']}</span>{/if}
                                 {if $l['campana']}<span>{$l['campana']}</span>{/if}
                                 <span>{$fmt->rel($l['created_at'])}</span>
+                                {if in_array($l['mc_estado'], ['unsubscribed', 'cleaned', 'subscribed'], true)}<span class="{$l['mc_estado'] === 'subscribed' ? '' : 'font-semibold text-warn'}">{['subscribed' => 'En Mailchimp', 'unsubscribed' => 'Se dio de baja en Mailchimp', 'cleaned' => 'Correo rebotado'][$l['mc_estado']]}</span>{/if}
                                 {if $l['proximo_paso_fecha'] && !in_array($l['estado'], ['ganado', 'perdido'], true)}<span class="inline-flex items-center gap-1 {$vencido ? 'font-bold text-danger' : ''}"><svg class="size-3.5"><use href="#i-clock"/></svg>{$fmt->fechaCorta($l['proximo_paso_fecha'])}</span>{/if}
                             </span>
                         </span>

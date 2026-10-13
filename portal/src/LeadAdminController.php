@@ -48,6 +48,8 @@ class LeadAdminController
         $leads = $f->get('estado') === '' ? $base : array_values(array_filter($base, fn(array $l): bool => $l['estado'] === $f->get('estado')));
 
         $this->ui->view('leads/index.latte', [
+            'mcProyecto'  => $f->get('proyecto') !== '' && $svc->mailchimp($f->get('proyecto')) !== null,
+            'mcEstados'   => MailchimpConsulta::ESTADOS,
             'leads'       => $leads,
             'porCampana'  => LeadService::porCampana($base),
             'conteo'      => LeadService::conteo($base),
@@ -119,8 +121,19 @@ class LeadAdminController
             $this->ui->redirect($this->ui->url('leads'), 'Contacto no encontrado.', 'error');
             return;
         }
+        $svc = $this->service();
+        $conMc = $svc->mailchimp((string) $l['proyecto_id']) !== null;
+        $mcError = null;
+        if ($conMc && LeadService::mcVencido($l) && (string) $l['correo'] !== '' && empty($l['anonimizado_en'])) {
+            $mcError = $svc->revisarMailchimp($l);
+            $l = $svc->find($id) ?? $l;
+        }
         $this->ui->view('leads/edit.latte', [
             'l'         => $l,
+            'mc'        => LeadService::mc($l),
+            'conMc'     => $conMc,
+            'mcError'   => $mcError,
+            'mcEventos' => MailchimpConsulta::EVENTOS,
             'proyectos' => [],
             'pre'       => [],
             'estados'   => LeadService::ESTADOS,
@@ -154,8 +167,17 @@ class LeadAdminController
         $sel = (string) ($_GET['proyecto'] ?? '');
         $proyectos = array_values(array_filter($this->proyectos(), fn(array $p): bool => $this->ui->gestionaProyecto((string) $p['id'])
             && ($sel === '' || $p['id'] === $sel)));
+        $mc = [];
         foreach ($proyectos as &$p) {
             $p['fuentes'] = $f->delProyecto((string) $p['id']);
+            $cid = (string) $p['cliente_id'];
+            if (!isset($mc[$cid])) {
+                $con = MailchimpConsulta::deCliente($this->pdo(), $cid);
+                $mc[$cid] = $con === null ? ['clave' => false] : ['clave' => true] + $con->audiencias();
+            }
+            $fila = $this->pdo()->prepare('SELECT mc_audiencia, mc_audiencia_nombre FROM portal_proyectos WHERE id = ?');
+            $fila->execute([(string) $p['id']]);
+            $p += (array) $fila->fetch();
         }
         unset($p);
         PortalSession::iniciar();
@@ -164,6 +186,7 @@ class LeadAdminController
         $base = Notifier::baseUrl();
         $this->ui->view('leads/fuentes.latte', [
             'proyectos' => $proyectos,
+            'mc'        => $mc,
             'nuevo'     => is_array($nuevo) ? $nuevo : null,
             'endpoint'  => $base . '/leads/f',
             'snippet'   => is_array($nuevo) ? LeadFuenteService::snippet($base . '/leads/f/' . $nuevo['token']) : '',
@@ -366,5 +389,101 @@ class LeadAdminController
         }
         $this->service()->eliminar($id);
         $this->ui->redirect($this->ui->url('leads') . '?proyecto=' . rawurlencode((string) $l['proyecto_id']), 'Contacto eliminado.');
+    }
+
+    // ---- Mailchimp (sólo lectura) ----------------------------------------------------
+
+    /** El proyecto con el módulo activo, si quien actúa lo administra. */
+    private function proyectoGestion(string $proyectoId): ?array
+    {
+        $p = $this->service()->proyecto($proyectoId);
+        return $p !== null && $this->ui->gestionaProyecto($proyectoId) ? $p : null;
+    }
+
+    public function mcClave(string $proyectoId): void
+    {
+        $p = $this->proyectoGestion($proyectoId);
+        $clave = trim((string) ($_POST['clave'] ?? ''));
+        if ($p === null) {
+            $this->volverFuentes($proyectoId, 'No puedes conectar ese proyecto.', 'error');
+            return;
+        }
+        if (!MailchimpConsulta::claveValida($clave)) {
+            $this->volverFuentes($proyectoId, 'Esa no parece una clave de API de Mailchimp (termina en «-us» y un número, por ejemplo «-us21»).', 'error');
+            return;
+        }
+        $r = (new MailchimpConsulta($clave))->audiencias();
+        if (!$r['ok']) {
+            $this->volverFuentes($proyectoId, (string) $r['error'], 'error');
+            return;
+        }
+        MailchimpConsulta::guardarClave($this->pdo(), (string) $p['cliente_id'], $clave);
+        $this->volverFuentes($proyectoId, 'Mailchimp conectado para ' . $p['cliente_nombre'] . '. Ahora elige la audiencia de esta campaña.');
+    }
+
+    public function mcQuitar(string $proyectoId): void
+    {
+        $p = $this->proyectoGestion($proyectoId);
+        if ($p === null) {
+            $this->volverFuentes($proyectoId, 'No puedes cambiar ese proyecto.', 'error');
+            return;
+        }
+        MailchimpConsulta::quitarClave($this->pdo(), (string) $p['cliente_id']);
+        $this->volverFuentes($proyectoId, 'Se quitó la clave de Mailchimp de ' . $p['cliente_nombre'] . ' y sus campañas quedaron desconectadas.');
+    }
+
+    public function mcAudiencia(string $proyectoId): void
+    {
+        $p = $this->proyectoGestion($proyectoId);
+        $mc = $p !== null ? MailchimpConsulta::deCliente($this->pdo(), (string) $p['cliente_id']) : null;
+        if ($p === null || $mc === null) {
+            $this->volverFuentes($proyectoId, 'Primero conecta Mailchimp.', 'error');
+            return;
+        }
+        $id = (string) ($_POST['audiencia'] ?? '');
+        $nombre = null;
+        if ($id !== '') {
+            $r = $mc->audiencias();
+            foreach ($r['audiencias'] ?? [] as $a) {
+                if ($a['id'] === $id) {
+                    $nombre = $a['nombre'];
+                }
+            }
+            if ($nombre === null) {
+                $this->volverFuentes($proyectoId, $r['error'] ?? 'Esa audiencia no está en la cuenta de Mailchimp.', 'error');
+                return;
+            }
+        }
+        $this->pdo()->prepare('UPDATE portal_proyectos SET mc_audiencia = ?, mc_audiencia_nombre = ? WHERE id = ?')->execute([$id ?: null, $nombre, $proyectoId]);
+        // Otra audiencia: lo revisado contra la anterior ya no vale.
+        $this->pdo()->prepare('UPDATE portal_leads SET mc_estado = NULL, mc_datos = NULL, mc_revisado_en = NULL WHERE proyecto_id = ?')->execute([$proyectoId]);
+        $this->volverFuentes($proyectoId, $id === '' ? 'Campaña desconectada de Mailchimp.' : 'Listo: los contactos de esta campaña se contrastan con «' . $nombre . '».');
+    }
+
+    /** Revisa en Mailchimp los contactos de la campaña (los que no se han revisado hoy). */
+    public function mcRevisarProyecto(string $proyectoId): void
+    {
+        $volver = $this->ui->url('leads') . '?proyecto=' . rawurlencode($proyectoId);
+        if ($this->service()->mailchimp($proyectoId) === null || $this->ui->filtrar([['p' => $proyectoId]], 'p') === []) {
+            $this->ui->redirect($volver, 'Esta campaña no está conectada a Mailchimp.', 'error');
+            return;
+        }
+        $r = $this->service()->revisarProyecto($proyectoId);
+        $msg = $r['revisados'] === 1 ? 'Se revisó 1 contacto en Mailchimp.' : "Se revisaron {$r['revisados']} contactos en Mailchimp.";
+        if ($r['pendientes'] > 0) {
+            $msg .= " Quedan {$r['pendientes']}: vuelve a apretar el botón para seguir.";
+        }
+        $this->ui->redirect($volver, $r['error'] !== null ? $msg . ' ' . $r['error'] : $msg, $r['error'] !== null && $r['revisados'] === 0 ? 'error' : 'success');
+    }
+
+    public function mcRevisar(string $id): void
+    {
+        $l = $this->lead($id);
+        if ($l === null) {
+            $this->ui->redirect($this->ui->url('leads'), 'Contacto no encontrado.', 'error');
+            return;
+        }
+        $error = $this->service()->revisarMailchimp($l);
+        $this->ui->redirect($this->ui->url('leads/' . $id), $error ?? 'Revisado en Mailchimp.', $error === null ? 'success' : 'error');
     }
 }

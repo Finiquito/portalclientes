@@ -77,6 +77,44 @@
 </div>
 {/if}
 
+{if $l && !empty($conMc)}
+<div class="card">
+    <h2 class="pa-h2">En Mailchimp <span class="pa-muted">· audiencia «{$l['mc_audiencia_nombre']}»</span></h2>
+    {if !empty($mcError)}<p style="margin:0 0 .5rem;color:#e11d48">{$mcError}</p>{/if}
+    {if !$l['correo'] || $l['anonimizado_en']}
+        <p class="pa-muted" style="margin:0">Sin correo no se puede revisar.</p>
+    {elseif !$mc}
+        <p class="pa-muted" style="margin:0">Todavía no se revisa.</p>
+    {else}
+        <p style="margin:0 0 .5rem"><span class="pa-chip {$mc['etiqueta'][1]}">{$mc['etiqueta'][0]}</span>
+            {if !empty($mc['rating'])} <span title="Calificación de Mailchimp" style="color:#d97706;letter-spacing:.1em">{str_repeat('★', $mc['rating'])}</span><span class="pa-muted" style="letter-spacing:.1em">{str_repeat('★', 5 - $mc['rating'])}</span>{/if}</p>
+        {if $mc['estado'] !== 'no_esta' && $mc['estado'] !== 'error'}
+        <p class="pa-muted" style="margin:0">
+            {if !empty($mc['alta'])}Se inscribió el {$fmt->fecha($mc['alta'])}{/if}
+            {if $mc['estado'] === 'unsubscribed' && !empty($mc['cambio'])} · se dio de baja el {$fmt->fecha($mc['cambio'])}{if !empty($mc['motivo'])} («{$mc['motivo']}»){/if}{/if}
+            {if isset($mc['aperturas']) && $mc['aperturas'] !== null} · abre el {$mc['aperturas']}% y hace clic en el {$mc['clics'] ?? 0}% de los correos{/if}
+            {if !empty($mc['origen'])} · origen en Mailchimp: {$mc['origen']}{/if}
+        </p>
+        {if !empty($mc['etiquetas'])}<p style="margin:.5rem 0 0">{foreach $mc['etiquetas'] as $t}<span class="pa-chip gris">{$t}</span> {/foreach}</p>{/if}
+        {if !empty($mc['actividad'])}
+            <table class="table" style="margin-top:.75rem">
+                <thead><tr><th>Últimos correos</th><th></th></tr></thead>
+                <tbody>{foreach $mc['actividad'] as $a}<tr><td><strong>{$mcEventos[$a['tipo']] ?? $a['tipo']}</strong>{if $a['titulo']} «{$a['titulo']}»{/if}</td><td class="pa-muted">{$fmt->rel($a['fecha'])}</td></tr>{/foreach}</tbody>
+            </table>
+        {/if}
+        {/if}
+        {if $mc['estado'] === 'error' && !empty($mc['error'])}<p class="pa-muted" style="margin:.5rem 0 0">{$mc['error']}</p>{/if}
+        <p class="pa-muted" style="margin:.5rem 0 0">Revisado {$fmt->rel($mc['revisado'])}. Sólo consultamos: no se cambia nada en Mailchimp.</p>
+    {/if}
+    {if $l['correo'] && !$l['anonimizado_en']}
+    <form method="post" action="{$admin_url('leads/' . $l['id'] . '/mailchimp')}" style="margin-top:.75rem">
+        <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+        <button type="submit" class="btn btn-sm">Revisar ahora</button>
+    </form>
+    {/if}
+</div>
+{/if}
+
 {if $l}
 <div class="card">
     <h2 class="pa-h2">Datos personales</h2>

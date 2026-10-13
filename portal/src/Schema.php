@@ -53,6 +53,14 @@ final class Schema
         ],
         'portal_proyectos' => [
             'con_leads' => 'SMALLINT NOT NULL DEFAULT 0',   // «Contactos ganados» activo en este proyecto
+            'mc_audiencia' => 'VARCHAR(32)',                // audiencia de Mailchimp con que se contrastan sus contactos
+            'mc_audiencia_nombre' => 'VARCHAR(255)',
+        ],
+        // Resumen de Mailchimp de cada contacto (sólo lectura: estado, fechas, calificación, actividad reciente).
+        'portal_leads' => [
+            'mc_estado'      => 'VARCHAR(16)',
+            'mc_datos'       => 'TEXT',
+            'mc_revisado_en' => 'VARCHAR(19)',
         ],
         'portal_clientes' => [
             'pais' => "VARCHAR(2) NOT NULL DEFAULT 'CL'",
@@ -86,6 +94,7 @@ final class Schema
         }
         self::$listo = true;
 
+        self::tablasLeads($pdo);   // antes de las columnas: portal_leads recibe columnas nuevas
         foreach (self::COLUMNAS as $tabla => $columnas) {
             if (self::existe($pdo, $tabla, implode(', ', array_keys($columnas)))) {
                 continue;
@@ -104,7 +113,6 @@ final class Schema
         self::tablasAvisos($pdo);
         self::tablaHitos($pdo);
         self::tablaPlantillas($pdo);
-        self::tablasLeads($pdo);
         self::ampliarTextos($pdo);
     }
 

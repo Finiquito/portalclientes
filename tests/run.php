@@ -2198,6 +2198,111 @@ check(str_contains($html, 'Anonimizado') && !str_contains($html, 'name="correo"'
 P\Notifier::$ahora = null;
 P\LeadAdminController::$sinSalir = false;
 
+// Mailchimp: sólo consulta (cuenta simulada)
+seccion('Contactos ganados: contrastar con Mailchimp');
+$mcLlamadas = [];
+$mcCaido = false;
+P\MailchimpConsulta::$transporte = function (string $url) use (&$mcLlamadas, &$mcCaido): array {
+    $mcLlamadas[] = $url;
+    if ($mcCaido) {
+        return [401, ['title' => 'API Key Invalid']];
+    }
+    $ruta = (string) parse_url($url, PHP_URL_PATH);
+    if (str_ends_with($ruta, '/3.0/lists')) {
+        return [200, ['lists' => [['id' => 'aud123', 'name' => 'Clientes Pastelería', 'stats' => ['member_count' => 120]]]]];
+    }
+    $lola = md5('lola@gmail.com');
+    $beto = md5('beto@make.com');
+    if (str_ends_with($ruta, "/members/{$lola}")) {
+        return [200, ['status' => 'subscribed', 'timestamp_opt' => '2026-09-01T13:00:00+00:00', 'last_changed' => '2026-09-01T13:00:00+00:00', 'member_rating' => 4,
+            'stats' => ['avg_open_rate' => 0.62, 'avg_click_rate' => 0.18], 'tags' => [['name' => 'Landing tortas']], 'source' => 'Hosted Signup Form']];
+    }
+    if (str_ends_with($ruta, "/members/{$lola}/activity-feed")) {
+        return [200, ['activity' => [
+            ['activity_type' => 'open', 'created_at_timestamp' => '2026-09-02T15:00:00+00:00', 'campaign_title' => 'Bienvenida tortas'],
+            ['activity_type' => 'sent', 'created_at_timestamp' => '2026-09-02T12:00:00+00:00', 'campaign_title' => 'Bienvenida tortas'],
+        ]]];
+    }
+    if (str_ends_with($ruta, "/members/{$beto}")) {
+        return [200, ['status' => 'unsubscribed', 'timestamp_opt' => '2026-08-01T10:00:00+00:00', 'last_changed' => '2026-09-20T10:00:00+00:00', 'member_rating' => 1, 'unsubscribe_reason' => 'No quiero más correos']];
+    }
+    if (str_ends_with($ruta, "/members/{$beto}/activity-feed")) {
+        return [404, []];   // cuenta sin activity-feed: se usa la actividad clásica
+    }
+    if (str_ends_with($ruta, "/members/{$beto}/activity")) {
+        return [200, ['activity' => [['action' => 'unsub', 'timestamp' => '2026-09-20T10:00:00+00:00', 'title' => 'Promo septiembre']]]];
+    }
+    return [404, ['title' => 'Resource Not Found']];
+};
+$claveMc = str_repeat('a1', 16) . '-us21';
+check(P\MailchimpConsulta::claveValida($claveMc) && !P\MailchimpConsulta::claveValida('abc'), 'reconoce el formato de la clave de Mailchimp');
+$_SESSION[P\EquipoController::SESION] = $coord;
+$tokM = P\PortalSession::csrf();
+[, $r] = $g->hacer('POST', $LA, 'mcClave', [$pW1], 'proyecto', 'cuenta', ['_csrf_token' => $tokM, 'clave' => 'no-sirve']);
+check(P\MailchimpConsulta::deCliente($pdo, $cW) === null, 'una clave con formato raro no se guarda');
+[, $r] = $g->hacer('POST', $LA, 'mcClave', [$pW1], 'proyecto', 'cuenta', ['_csrf_token' => $tokM, 'clave' => $claveMc]);
+$guardada = (new P\AjustesService($pdo))->get('cliente', $cW, 'mc_clave');
+check(str_starts_with($guardada, 'v1:') && !str_contains($guardada, $claveMc) && P\MailchimpConsulta::deCliente($pdo, $cW) !== null, 'la clave queda guardada cifrada en el cliente');
+[$html] = $g->hacer('GET', $LA, 'fuentes');
+check(str_contains($html, 'Clientes Pastelería · 120 contactos') && !str_contains($html, $claveMc), 'muestra las audiencias de la cuenta para elegir (y nunca la clave)');
+[, $r] = $g->hacer('POST', $LA, 'mcAudiencia', [$pW1], 'proyecto', 'cuenta', ['_csrf_token' => $tokM, 'audiencia' => 'otra999']);
+check(($ps->find($pW1)['mc_audiencia'] ?? null) === null, 'no acepta una audiencia que no está en la cuenta');
+[, $r] = $g->hacer('POST', $LA, 'mcAudiencia', [$pW1], 'proyecto', 'cuenta', ['_csrf_token' => $tokM, 'audiencia' => 'aud123']);
+check($ps->find($pW1)['mc_audiencia'] === 'aud123' && $ps->find($pW1)['mc_audiencia_nombre'] === 'Clientes Pastelería', 'cada campaña elige su audiencia');
+
+$idLola = (string) $pdo->query("SELECT id FROM portal_leads WHERE correo = 'lola@gmail.com'")->fetchColumn();
+$idBeto = (string) $pdo->query("SELECT id FROM portal_leads WHERE correo = 'beto@make.com'")->fetchColumn();
+$mcLlamadas = [];
+[$html] = $g->hacer('GET', $LA, 'ver', [$idLola], 'lead');
+$mL = P\LeadService::mc($ls->find($idLola));
+check($mL !== null && $mL['estado'] === 'subscribed' && $mL['rating'] === 4 && $mL['aperturas'] === 62 && $mL['etiquetas'] === ['Landing tortas'], 'al abrir la ficha consulta Mailchimp: estado, calificación, aperturas y etiquetas');
+check(str_contains($html, 'Suscrito') && str_contains($html, 'Bienvenida tortas') && str_contains($html, 'Abrió') && str_contains($html, '★★★★'), 'la ficha muestra los últimos correos que recibió y abrió');
+check(count(array_filter($mcLlamadas, fn($u) => str_contains($u, 'us21.api.mailchimp.com/3.0/lists/aud123/members/'))) === 2, 'consulta sólo a esa persona, en la audiencia de la campaña');
+$n = count($mcLlamadas);
+$g->hacer('GET', $LA, 'ver', [$idLola], 'lead');
+check(count($mcLlamadas) === $n, 'no vuelve a preguntar si se revisó hace menos de 24 horas');
+
+$_SESSION[P\PortalSession::CONTACTO] = $jefa;
+$ctkM = P\PortalSession::csrf();
+[$html] = $lp->correr('ver', [$idBeto]);
+$mB = P\LeadService::mc($ls->find($idBeto));
+check($mB['estado'] === 'unsubscribed' && $mB['motivo'] === 'No quiero más correos' && str_contains($html, 'Se dio de baja') && str_contains($html, 'Promo septiembre'), 'el cliente ve si se dio de baja, cuándo, por qué y desde qué correo');
+$_GET = [];
+[$html] = $lp->correr('lista');
+check(str_contains($html, 'Se dio de baja en Mailchimp') && str_contains($html, 'En Mailchimp'), 'la lista marca quién está y quién se dio de baja');
+
+$_SESSION[P\EquipoController::SESION] = $coord;
+$pdo->exec("UPDATE portal_leads SET mc_revisado_en = NULL WHERE proyecto_id = " . $pdo->quote($pW1));
+$mcLlamadas = [];
+[, $r] = $g->hacer('POST', $LA, 'mcRevisarProyecto', [$pW1], 'proyecto', false, ['_csrf_token' => $tokM]);
+$conCorreo = (int) $pdo->query("SELECT COUNT(*) FROM portal_leads WHERE proyecto_id = " . $pdo->quote($pW1) . " AND correo IS NOT NULL AND anonimizado_en IS NULL")->fetchColumn();
+$revisados = (int) $pdo->query("SELECT COUNT(*) FROM portal_leads WHERE proyecto_id = " . $pdo->quote($pW1) . " AND mc_revisado_en IS NOT NULL")->fetchColumn();
+check($revisados === min($conCorreo, 40) && !array_filter($mcLlamadas, fn($u) => str_contains($u, 'activity')), '«Revisar en Mailchimp» revisa la campaña de una vez (sin pedir la actividad de cada uno)');
+check(P\LeadService::mc($ls->find($idLola))['actividad'][0]['titulo'] === 'Bienvenida tortas', 'y conserva la actividad que ya tenía');
+$otro = (string) $pdo->query("SELECT id FROM portal_leads WHERE proyecto_id = " . $pdo->quote($pW1) . " AND correo = 'vecino@x.cl'")->fetchColumn();
+check($otro === '' || $ls->find($otro)['mc_estado'] === 'no_esta', 'quien no está en la audiencia queda como «No está en Mailchimp»');
+
+$ls->actualizar($ls->find($idLola), ['correo' => 'lola.nueva@gmail.com'], 'Coordina');
+check($ls->find($idLola)['mc_estado'] === null, 'si cambia el correo, lo de Mailchimp se vuelve a revisar');
+$ls->anonimizar($idBeto);
+check($ls->find($idBeto)['mc_datos'] === null && $ls->find($idBeto)['mc_estado'] === null, 'anonimizar también borra lo que dijo Mailchimp');
+
+$mcCaido = true;
+$pdo->exec("UPDATE portal_leads SET mc_revisado_en = NULL, mc_estado = NULL WHERE id = " . $pdo->quote($idLola));
+[$html] = $g->hacer('GET', $LA, 'ver', [$idLola], 'lead');
+check(str_contains($html, 'no es válida o fue revocada') && $ls->find($idLola)['mc_estado'] === null, 'si la clave fue revocada lo dice, y no guarda nada');
+$mcCaido = false;
+
+$_SESSION[P\EquipoController::SESION] = $ana;
+[, $r] = $g->hacer('POST', $LA, 'mcQuitar', [$pW1], 'proyecto', 'cuenta', ['_csrf_token' => $tokM]);
+check(P\MailchimpConsulta::deCliente($pdo, $cW) !== null, 'quien no lleva la cuenta no puede quitar ni poner la clave');
+$_SESSION[P\EquipoController::SESION] = $coord;
+[, $r] = $g->hacer('POST', $LA, 'mcQuitar', [$pW1], 'proyecto', 'cuenta', ['_csrf_token' => $tokM]);
+check(P\MailchimpConsulta::deCliente($pdo, $cW) === null && $ps->find($pW1)['mc_audiencia'] === null, 'quitar la clave desconecta todas las campañas del cliente');
+[$html] = $g->hacer('GET', $LA, 'ver', [$idLola], 'lead');
+check(!str_contains($html, 'En Mailchimp'), 'sin conexión, la ficha no muestra la sección');
+P\MailchimpConsulta::$transporte = null;
+
 // ---------------------------------------------------------------------------
 echo "\n\n" . $GLOBALS['ok'] . ' comprobaciones OK, ' . count($GLOBALS['fallas']) . " fallas ({$motor}).\n";
 foreach ($GLOBALS['fallas'] as $f) {

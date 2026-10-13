@@ -128,6 +128,11 @@ class EquipoGestion extends EquipoController
         $r('POST', 'proyectos/@id/importar/confirmar', LeadAdminController::class, 'importarConfirmar', 'proyecto', 'cuenta');
         $r('POST', 'leads/@id/anonimizar',          LeadAdminController::class, 'anonimizar', 'lead', 'cuenta');
         $r('POST', 'leads/@id/eliminar',            LeadAdminController::class, 'eliminar', 'lead', 'cuenta');
+        $r('POST', 'leads/@id/mailchimp',           LeadAdminController::class, 'mcRevisar', 'lead');
+        $r('POST', 'proyectos/@id/mailchimp/clave', LeadAdminController::class, 'mcClave', 'proyecto', 'cuenta');
+        $r('POST', 'proyectos/@id/mailchimp/quitar', LeadAdminController::class, 'mcQuitar', 'proyecto', 'cuenta');
+        $r('POST', 'proyectos/@id/mailchimp/audiencia', LeadAdminController::class, 'mcAudiencia', 'proyecto', 'cuenta');
+        $r('POST', 'proyectos/@id/mailchimp/revisar', LeadAdminController::class, 'mcRevisarProyecto', 'proyecto');
         $r('POST', 'proyectos/@id/fuentes',         LeadAdminController::class, 'fuenteCrear', 'proyecto', 'cuenta');
         $r('POST', 'proyectos/@id/fuentes/@fid',    LeadAdminController::class, 'fuenteEditar', 'proyecto', 'cuenta');
         $r('POST', 'proyectos/@id/fuentes/@fid/revocar', LeadAdminController::class, 'fuenteRevocar', 'proyecto', 'cuenta');

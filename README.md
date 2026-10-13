@@ -74,6 +74,25 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### v0.29.0: contactos ganados contrastados con Mailchimp (solo consulta)
+- **Qué hace**: revisa si los contactos de una campaña están en una audiencia de Mailchimp del cliente. Muestra:
+  - El estado: suscrito, sin confirmar, se dio de baja, correo rebotado o no está.
+  - La fecha de inscripción y la de baja, con el motivo si la persona lo indicó.
+  - La calificación de Mailchimp (estrellas) y el promedio de aperturas y clics.
+  - Las etiquetas.
+  - Los **últimos correos** que recibió, abrió o en los que hizo clic, con su nombre (por ejemplo, la bienvenida).
+- **Qué no hace**: no trae a nadie de Mailchimp ni cambia nada allá. Solo se consulta por los correos que ya están en el CRM.
+- **Conexión**: en «Formularios, webhook y Mailchimp», quien lleva la cuenta pega la clave de la API del cliente.
+  - La clave se guarda cifrada con `Cifrado` y no se vuelve a mostrar.
+  - Después se elige la audiencia de cada campaña.
+  - Quitar la clave desconecta todas las campañas de ese cliente.
+- **Cuándo se consulta**: al abrir la ficha, si la última revisión tiene más de 24 horas, o con «Revisar ahora».
+  - En la lista de la agencia, «Revisar en Mailchimp» revisa la campaña en lotes de 40, sin la actividad, que se trae al abrir cada ficha.
+  - Las listas marcan «En Mailchimp», «Se dio de baja» o «Correo rebotado».
+- **Datos**: se guarda solo el resumen (`mc_estado`, `mc_datos`, `mc_revisado_en`). Se borra al anonimizar, al cambiar el correo o al cambiar la audiencia.
+- **Por verificar con una cuenta real**: cómo aparecen los correos de automatizaciones (bienvenida, recorridos). Se usa el registro de actividad de Mailchimp y, si la cuenta no lo entrega, la actividad clásica. Mailchimp solo guarda lo reciente.
+- **Arreglo**: `Schema` crea las tablas de contactos antes de agregarles columnas, para instalaciones nuevas sin migración previa.
+
 ### v0.28.0: contactos ganados (etapa 3), planillas, exportar y datos personales
 - **Importar CSV** (agencia, en «Contactos ganados › Importar CSV»):
   - Lee la descarga de **Meta Lead Ads** (UTF-16, con tabuladores, teléfonos con `p:`), la de **formularios de Google Ads** y cualquier planilla con columnas de nombre, correo o teléfono, sea con «,», «;» o tabulador, en UTF-8 o Windows-1252.
