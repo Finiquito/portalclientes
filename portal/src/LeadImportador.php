@@ -51,6 +51,9 @@ final class LeadImportador
         if (array_intersect($c, ['ad_name', 'adset_name', 'form_name', 'is_organic', 'platform']) !== [] || in_array('full_name', $c, true) && in_array('campaign_name', $c, true)) {
             return 'csv_meta';
         }
+        if (array_intersect($c, ['member_rating', 'optin_time', 'confirm_time', 'leid', 'euid']) !== []) {
+            return 'csv_mailchimp';
+        }
         if (array_intersect($c, ['user_email', 'user_phone', 'gcl_id', 'gclid', 'lead_id', 'form_id']) !== []) {
             return 'csv_google';
         }
@@ -114,6 +117,16 @@ final class LeadImportador
             $d['_fila'] = (string) $n;
             $filas[] = $d;
             $fecha = trim((string) ($par['created_time'] ?? $par['Created time'] ?? $par['fecha'] ?? $par['Fecha'] ?? ''));
+            $optin = trim((string) ($par['OPTIN_TIME'] ?? '')) ?: trim((string) ($par['CONFIRM_TIME'] ?? ''));
+            if ($fecha === '' && $optin !== '') {
+                $fecha = $optin . ' UTC';   // Mailchimp exporta en UTC
+            }
+            // Clic de Google Ads (gclid) sin UTM: al menos se sabe que vino de Google.
+            if (trim((string) ($par['gclid'] ?? $par['GCLID'] ?? '')) !== '' && !isset($d['utm_source'])) {
+                $d['utm_source'] = 'google';
+                $d['utm_medium'] ??= 'cpc';
+            }
+            $filas[array_key_last($filas)] = $d;
             $creado[] = $fecha;
         }
         fclose($fh);

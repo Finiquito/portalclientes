@@ -47,6 +47,7 @@ class LeadService
         'webhook'    => 'Webhook',
         'csv_meta'   => 'Meta Lead Ads',
         'csv_google' => 'Google Ads',
+        'csv_mailchimp' => 'Mailchimp',
         'csv'        => 'Planilla',
     ];
 
@@ -228,10 +229,10 @@ class LeadService
     /** Teléfono con sólo dígitos y un + inicial (para comparar duplicados y llamar). */
     public static function telefono(string $t): string
     {
-        $t = trim($t);
+        $t = ltrim(trim($t), "'");   // Excel y Mailchimp exportan «'+569…» para que no lo tome como número
         $mas = str_starts_with($t, '+');
         $d = preg_replace('/\D+/', '', $t) ?? '';
-        return $d === '' ? '' : ($mas ? '+' : '') . $d;
+        return strlen($d) < 8 ? '' : ($mas ? '+' : '') . $d;   // «+56» solo no es un teléfono
     }
 
     /**

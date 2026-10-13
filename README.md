@@ -74,6 +74,15 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### v0.29.1
+- **Importar CSV** ahora reconoce la exportación de audiencias de **Mailchimp** en español:
+  - Encabezados como «Dirección de correo electrónico» o «Número de teléfono».
+  - Teléfonos que Excel o Mailchimp exportan con apóstrofo (`'+569…`).
+  - La fecha de inscripción (`OPTIN_TIME`).
+  - La columna «Origen», que se usa como campaña.
+  - El `gclid`, que marca la fuente como Google.
+- Un teléfono con menos de 8 dígitos (por ejemplo, solo «+56») se descarta. Si el contacto trae correo, entra igual.
+
 ### v0.29.0: contactos ganados contrastados con Mailchimp (solo consulta)
 - **Qué hace**: revisa si los contactos de una campaña están en una audiencia de Mailchimp del cliente. Muestra:
   - El estado: suscrito, sin confirmar, se dio de baja, correo rebotado o no está.

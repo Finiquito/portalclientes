@@ -331,7 +331,7 @@ class LeadAdminController
             'revision'  => $this->service()->revisar($proyectoId, $leido['filas']) + ['avisos' => $leido['errores'], 'total' => count($leido['filas'])],
             'origen'    => $leido['origen'],
             'archivo'   => mb_substr((string) ($a['name'] ?? ''), 0, 120),
-            'origenes'  => array_intersect_key(LeadService::ORIGENES, array_flip(['csv_meta', 'csv_google', 'csv'])),
+            'origenes'  => array_intersect_key(LeadService::ORIGENES, array_flip(['csv_meta', 'csv_google', 'csv_mailchimp', 'csv'])),
         ]);
     }
 
@@ -346,7 +346,7 @@ class LeadAdminController
             return;
         }
         $origen = (string) ($_POST['origen'] ?? $imp['origen']);
-        if (!in_array($origen, ['csv_meta', 'csv_google', 'csv'], true)) {
+        if (!in_array($origen, ['csv_meta', 'csv_google', 'csv_mailchimp', 'csv'], true)) {
             $origen = 'csv';
         }
         $campana = mb_substr(trim((string) ($_POST['campana'] ?? '')), 0, 255);

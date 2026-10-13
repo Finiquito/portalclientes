@@ -28,9 +28,11 @@ class LeadFuenteService
     private const ALIAS = [
         'nombre' => 'nombre', 'name' => 'nombre', 'full_name' => 'nombre', 'fullname' => 'nombre', 'nombre_completo' => 'nombre', 'your_name' => 'nombre',
         'correo' => 'correo', 'email' => 'correo', 'e_mail' => 'correo', 'mail' => 'correo', 'email_address' => 'correo', 'your_email' => 'correo',
+        'correo_electronico' => 'correo', 'direccion_de_correo_electronico' => 'correo', 'direccion_de_correo' => 'correo', 'email_adresse' => 'correo',
         'telefono' => 'telefono', 'phone' => 'telefono', 'phone_number' => 'telefono', 'tel' => 'telefono', 'celular' => 'telefono', 'movil' => 'telefono', 'whatsapp' => 'telefono',
+        'numero_de_telefono' => 'telefono', 'telefono_movil' => 'telefono', 'numero_de_celular' => 'telefono',
         'empresa' => 'empresa', 'company' => 'empresa', 'company_name' => 'empresa', 'compania' => 'empresa',
-        'campana' => 'campana', 'campaign' => 'campana', 'campaign_name' => 'campana',
+        'campana' => 'campana', 'campaign' => 'campana', 'campaign_name' => 'campana', 'origen' => 'campana', 'nombre_de_la_campana' => 'campana',
         'utm_source' => 'utm_source', 'utm_medium' => 'utm_medium', 'utm_campaign' => 'utm_campaign',
         'mensaje' => 'mensaje', 'message' => 'mensaje', 'comentario' => 'mensaje', 'comentarios' => 'mensaje', 'consulta' => 'mensaje',
     ];

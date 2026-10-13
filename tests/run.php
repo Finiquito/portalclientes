@@ -2117,6 +2117,19 @@ check($lg['origen'] === 'csv_google' && $lg['filas'][0]['correo'] === 'gabi@g.cl
 $l1252 = P\LeadImportador::leerTexto(mb_convert_encoding("nombre;correo\nMaría Núñez;maria@x.cl\n", 'Windows-1252', 'UTF-8'));
 check($l1252['origen'] === 'csv' && ($l1252['filas'][0]['nombre'] ?? '') === 'María Núñez', 'una planilla de Excel con «;» y acentos de Windows también');
 check(P\LeadImportador::leerTexto("producto,precio\npan,1000\n")['errores'] !== [], 'si no reconoce las columnas, lo dice');
+// Exportación de Mailchimp en español (como la baja la cuenta): encabezados en español, teléfonos con apóstrofo, dirección en varias líneas.
+$mcEs = "\"Dirección de correo electrónico\",Nombre,Dirección,\"Número de teléfono\",Origen,utm_source,utm_medium,utm_campaign,gclid,MEMBER_RATING,OPTIN_TIME,OPTIN_IP,CONFIRM_TIME,LAST_CHANGED,LEID,EUID,TAGS,SOURCE\n"
+    . "ana.prueba@ejemplo.cl,\"Ana Prueba\",,'+56911112222,landing-campana-form,,,,Cj0abc,2,\"2026-10-11 14:26:26\",1.2.3.4,\"2026-10-11 14:26:26\",\"2026-10-11 14:26:45\",1,a,\"\"\"landing-campana-form\"\"\",Make\n"
+    . "beto.prueba@ejemplo.cl,\"Beto Prueba\",,'+56,landing-campana-whatsapp,,,,,2,\"2026-10-12 17:27:40\",1.2.3.4,\"2026-10-12 17:27:40\",\"2026-10-12 17:27:40\",2,b,,Make\n"
+    . "casa@ejemplo.cl,Santiago,\"Calle 123\nPiso 2\nCastro\",,,,,,,2,\"2026-08-27 08:29:22\",1.2.3.4,\"2026-08-27 08:29:22\",\"2026-08-27 08:29:22\",3,c,,\"Admin Add\"\n";
+$lmc = P\LeadImportador::leerTexto($mcEs);
+$f0 = P\LeadService::limpiar($lmc['filas'][0]);
+$f1 = P\LeadService::limpiar($lmc['filas'][1]);
+check($lmc['origen'] === 'csv_mailchimp' && count($lmc['filas']) === 3, 'reconoce la exportación de Mailchimp en español (aunque una dirección traiga saltos de línea)');
+check($f0['correo'] === 'ana.prueba@ejemplo.cl' && $f0['telefono'] === '+56911112222' && $f0['campana'] === 'landing-campana-form' && $f0['utm_source'] === 'google', 'toma correo y teléfono en español, el «+» detrás del apóstrofo, «Origen» como campaña y Google si trae gclid');
+check($f1['telefono'] === '' && $f1['correo'] === 'beto.prueba@ejemplo.cl', 'un teléfono incompleto («+56») se descarta, pero el contacto entra por su correo');
+check(P\LeadService::fechaHora($lmc['creado'][0]) === '2026-10-11 14:26:26', 'usa la fecha de inscripción de Mailchimp (OPTIN_TIME, en UTC)');
+check($ls->revisar($pW1, $lmc['filas'])['nuevos'] === 3, 'las tres filas entran en la vista previa');
 $rv = $ls->revisar($pW1, $lm['filas']);
 check($rv['nuevos'] === 3 && $rv['duplicados'] === 2 && count($rv['errores']) === 1, 'la vista previa separa nuevos, repetidos (en la campaña o en el mismo archivo) y filas sin datos');
 
