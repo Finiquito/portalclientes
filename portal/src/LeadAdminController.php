@@ -234,4 +234,137 @@ class LeadAdminController
         $this->mostrarToken($fuenteId, $token);
         $this->volverFuentes($proyectoId, 'Token nuevo listo. El anterior dejó de funcionar: actualízalo en la landing o en Make.');
     }
+
+    // ---- Exportar, importar planillas y datos personales ------------------------------
+
+    /** En pruebas no se corta la request después de una descarga. */
+    public static bool $sinSalir = false;
+
+    protected function terminate(): void
+    {
+        if (!self::$sinSalir) {
+            exit;
+        }
+    }
+
+    public function exportar(): void
+    {
+        $f = FiltrosLista::desdeGet($this->ui->url('leads'), ['estado' => '', 'proyecto' => '', 'q' => ''], [
+            'estado' => array_keys(LeadService::ESTADOS), 'proyecto' => 'uuid', 'q' => 'texto',
+        ]);
+        $leads = $this->ui->filtrar($this->service()->lista(['proyecto_id' => $f->get('proyecto'), 'q' => $f->get('q'), 'estado' => $f->get('estado')]), 'proyecto_id');
+        if (!headers_sent()) {
+            header('Content-Type: text/csv; charset=utf-8');
+            header('Content-Disposition: attachment; filename="contactos-ganados-' . date('Y-m-d') . '.csv"');
+            header('Cache-Control: no-store');
+        }
+        echo LeadService::csv($leads, true);
+        $this->terminate();
+    }
+
+    private const SESION_IMPORT = 'portal_lead_import';
+
+    /** @return array<int, array<string, mixed>> proyectos con el módulo que esta persona administra */
+    private function proyectosGestion(): array
+    {
+        return array_values(array_filter($this->proyectos(), fn(array $p): bool => $this->ui->gestionaProyecto((string) $p['id'])));
+    }
+
+    public function importarForm(): void
+    {
+        $this->ui->view('leads/importar.latte', [
+            'proyectos' => $this->proyectosGestion(),
+            'sel'       => (string) ($_GET['proyecto'] ?? ''),
+            'revision'  => null,
+            'flash_success' => $this->ui->flash('success'),
+            'flash_error'   => $this->ui->flash('error'),
+        ]);
+    }
+
+    public function importarRevisar(string $proyectoId = ''): void
+    {
+        $proyectoId = $proyectoId !== '' ? $proyectoId : (string) ($_POST['proyecto'] ?? '');
+        $p = $this->service()->proyecto($proyectoId);
+        if ($p === null || !$this->ui->gestionaProyecto($proyectoId)) {
+            $this->ui->redirect($this->ui->url('leads/importar'), 'Elige un proyecto con contactos ganados.', 'error');
+            return;
+        }
+        $a = $_FILES['archivo'] ?? null;
+        if (!is_array($a) || (int) ($a['error'] ?? 1) !== UPLOAD_ERR_OK || !is_uploaded_file((string) $a['tmp_name']) && !self::$sinSalir) {
+            $this->ui->redirect($this->ui->url('leads/importar') . '?proyecto=' . rawurlencode($proyectoId), 'Sube el archivo .csv de la campaña.', 'error');
+            return;
+        }
+        $leido = LeadImportador::leerTexto((string) @file_get_contents((string) $a['tmp_name'], false, null, 0, LeadImportador::MAX_BYTES + 1));
+        if ($leido['filas'] === []) {
+            $this->ui->redirect($this->ui->url('leads/importar') . '?proyecto=' . rawurlencode($proyectoId), implode(' ', $leido['errores']) ?: 'La planilla no tiene filas.', 'error');
+            return;
+        }
+        PortalSession::iniciar();
+        $_SESSION[self::SESION_IMPORT] = ['proyecto' => $proyectoId, 'filas' => $leido['filas'], 'creado' => $leido['creado'], 'origen' => $leido['origen']];
+        $this->ui->view('leads/importar.latte', [
+            'proyectos' => $this->proyectosGestion(),
+            'sel'       => $proyectoId,
+            'proyecto'  => $p,
+            'revision'  => $this->service()->revisar($proyectoId, $leido['filas']) + ['avisos' => $leido['errores'], 'total' => count($leido['filas'])],
+            'origen'    => $leido['origen'],
+            'archivo'   => mb_substr((string) ($a['name'] ?? ''), 0, 120),
+            'origenes'  => array_intersect_key(LeadService::ORIGENES, array_flip(['csv_meta', 'csv_google', 'csv'])),
+        ]);
+    }
+
+    public function importarConfirmar(string $proyectoId): void
+    {
+        PortalSession::iniciar();
+        $imp = $_SESSION[self::SESION_IMPORT] ?? null;
+        unset($_SESSION[self::SESION_IMPORT]);
+        $p = $this->service()->proyecto($proyectoId);
+        if (!is_array($imp) || ($imp['proyecto'] ?? '') !== $proyectoId || $p === null || !$this->ui->gestionaProyecto($proyectoId)) {
+            $this->ui->redirect($this->ui->url('leads/importar'), 'La vista previa expiró. Vuelve a subir la planilla.', 'error');
+            return;
+        }
+        $origen = (string) ($_POST['origen'] ?? $imp['origen']);
+        if (!in_array($origen, ['csv_meta', 'csv_google', 'csv'], true)) {
+            $origen = 'csv';
+        }
+        $campana = mb_substr(trim((string) ($_POST['campana'] ?? '')), 0, 255);
+        $filas = array_map(fn(array $f): array => $campana !== '' && ($f['campana'] ?? '') === '' && ($f['utm_campaign'] ?? '') === '' ? $f + ['campana' => $campana] : $f, (array) $imp['filas']);
+        $n = $this->service()->importar($p, $filas, (array) $imp['creado'], $origen, $this->ui->firma());
+        if ($n['nuevos'] > 0 && !empty($_POST['avisar'])) {
+            try {
+                $this->service()->avisarCliente(new Notifier($this->ctx, $this->pdo()), (string) $p['cliente_id'], (string) $p['nombre']);
+            } catch (\Throwable $e) {
+                error_log('[portal] aviso de importación: ' . $e->getMessage());
+            }
+        }
+        $msg = $n['nuevos'] === 1 ? 'Importado 1 contacto nuevo.' : "Importados {$n['nuevos']} contactos nuevos.";
+        if ($n['duplicados'] > 0) {
+            $msg .= $n['duplicados'] === 1 ? ' 1 ya estaba y se saltó.' : " {$n['duplicados']} ya estaban y se saltaron.";
+        }
+        if ($n['errores'] > 0) {
+            $msg .= $n['errores'] === 1 ? ' 1 fila sin correo ni teléfono válido no se importó.' : " {$n['errores']} filas sin correo ni teléfono válidos no se importaron.";
+        }
+        $this->ui->redirect($this->ui->url('leads') . '?proyecto=' . rawurlencode($proyectoId), $msg);
+    }
+
+    public function anonimizar(string $id): void
+    {
+        $l = $this->lead($id);
+        if ($l === null || !$this->ui->gestionaProyecto((string) $l['proyecto_id'])) {
+            $this->ui->redirect($this->ui->url('leads'), 'No puedes cambiar ese contacto.', 'error');
+            return;
+        }
+        $this->service()->anonimizar($id);
+        $this->ui->redirect($this->ui->url('leads/' . $id), 'Se borraron sus datos personales. Queda sólo para los conteos.');
+    }
+
+    public function eliminar(string $id): void
+    {
+        $l = $this->lead($id);
+        if ($l === null || !$this->ui->gestionaProyecto((string) $l['proyecto_id'])) {
+            $this->ui->redirect($this->ui->url('leads'), 'No puedes cambiar ese contacto.', 'error');
+            return;
+        }
+        $this->service()->eliminar($id);
+        $this->ui->redirect($this->ui->url('leads') . '?proyecto=' . rawurlencode((string) $l['proyecto_id']), 'Contacto eliminado.');
+    }
 }

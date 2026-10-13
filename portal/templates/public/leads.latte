@@ -8,7 +8,10 @@
         <h1 class="text-3xl font-extrabold tracking-tight sm:text-4xl">Contactos ganados</h1>
         <p class="mt-1.5 text-muted">Las personas que llegan por tus campañas. Anota en qué va cada una y cuál es el próximo paso.</p>
     </div>
-    {if !$vistaPrevia}<a href="/portal/contactos-ganados/nuevo" class="btn btn-primary btn-sm"><svg class="size-4"><use href="#i-plus"/></svg> Agregar contacto</a>{/if}
+    <div class="flex flex-wrap gap-2">
+        {if $total > 0}<a href="{$exportar}" class="btn btn-ghost btn-sm"><svg class="size-4"><use href="#i-download"/></svg> Descargar CSV</a>{/if}
+        {if !$vistaPrevia}<a href="/portal/contactos-ganados/nuevo" class="btn btn-primary btn-sm"><svg class="size-4"><use href="#i-plus"/></svg> Agregar contacto</a>{/if}
+    </div>
 </header>
 
 {* Pestañas por estado *}

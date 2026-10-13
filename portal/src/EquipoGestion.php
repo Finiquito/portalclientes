@@ -122,6 +122,12 @@ class EquipoGestion extends EquipoController
         $r('GET',  'leads',                         LeadAdminController::class, 'index');
         $r('GET',  'leads/nuevo',                   LeadAdminController::class, 'create');
         $r('GET',  'leads/fuentes',                 LeadAdminController::class, 'fuentes');
+        $r('GET',  'leads/exportar',                LeadAdminController::class, 'exportar');
+        $r('GET',  'leads/importar',                LeadAdminController::class, 'importarForm');
+        $r('POST', 'leads/importar',                LeadAdminController::class, 'importarRevisar');
+        $r('POST', 'proyectos/@id/importar/confirmar', LeadAdminController::class, 'importarConfirmar', 'proyecto', 'cuenta');
+        $r('POST', 'leads/@id/anonimizar',          LeadAdminController::class, 'anonimizar', 'lead', 'cuenta');
+        $r('POST', 'leads/@id/eliminar',            LeadAdminController::class, 'eliminar', 'lead', 'cuenta');
         $r('POST', 'proyectos/@id/fuentes',         LeadAdminController::class, 'fuenteCrear', 'proyecto', 'cuenta');
         $r('POST', 'proyectos/@id/fuentes/@fid',    LeadAdminController::class, 'fuenteEditar', 'proyecto', 'cuenta');
         $r('POST', 'proyectos/@id/fuentes/@fid/revocar', LeadAdminController::class, 'fuenteRevocar', 'proyecto', 'cuenta');

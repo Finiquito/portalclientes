@@ -31,16 +31,13 @@ class LeadPublicController extends PortalPublicController
         return $c;
     }
 
-    public function lista(): void
+    /** Filtros de la lista (y de la exportación), sólo con valores válidos para este cliente. */
+    private function filtros(array $proyectos): array
     {
-        $c = $this->requerirAcceso();
-        $clienteId = (string) $c['cliente_id'];
-        $svc = $this->leads();
-        $proyectos = $svc->proyectosDe($clienteId);
         $f = [
             'proyecto_id' => (string) ($_GET['proyecto'] ?? ''),
             'estado'      => (string) ($_GET['estado'] ?? ''),
-            'campana'     => (string) ($_GET['campana'] ?? ''),
+            'campana'     => mb_substr((string) ($_GET['campana'] ?? ''), 0, 255),
             'q'           => mb_substr(trim((string) ($_GET['q'] ?? '')), 0, 100),
         ];
         if (!in_array($f['proyecto_id'], array_column($proyectos, 'id'), true)) {
@@ -49,6 +46,16 @@ class LeadPublicController extends PortalPublicController
         if (!isset(LeadService::ESTADOS[$f['estado']])) {
             $f['estado'] = '';
         }
+        return $f;
+    }
+
+    public function lista(): void
+    {
+        $c = $this->requerirAcceso();
+        $clienteId = (string) $c['cliente_id'];
+        $svc = $this->leads();
+        $proyectos = $svc->proyectosDe($clienteId);
+        $f = $this->filtros($proyectos);
         // Base sin el filtro de estado: sirve para los conteos de las pestañas y las campañas.
         $base = $svc->lista(['cliente_id' => $clienteId, 'proyecto_id' => $f['proyecto_id']]);
         $leads = $svc->lista(['cliente_id' => $clienteId] + $f);
@@ -64,7 +71,59 @@ class LeadPublicController extends PortalPublicController
             'chips'     => LeadService::CHIPS,
             'origenes'  => LeadService::ORIGENES,
             'hoy'       => (new \DateTimeImmutable('now', new \DateTimeZone(Zona::agencia())))->format('Y-m-d'),
+            'exportar'  => '/portal/contactos-ganados/exportar' . (($q = http_build_query(array_filter(['proyecto' => $f['proyecto_id'], 'estado' => $f['estado'], 'campana' => $f['campana'], 'q' => $f['q']]))) !== '' ? '?' . $q : ''),
         ]);
+    }
+
+    /** Descarga la lista (con los filtros que estén puestos) en CSV. */
+    public function exportar(): void
+    {
+        $c = $this->requerirAcceso();
+        $svc = $this->leads();
+        $f = $this->filtros($svc->proyectosDe((string) $c['cliente_id']));
+        $csv = LeadService::csv($svc->lista(['cliente_id' => (string) $c['cliente_id']] + $f));
+        if (!headers_sent()) {
+            header('Content-Type: text/csv; charset=utf-8');
+            header('Content-Disposition: attachment; filename="contactos-ganados-' . date('Y-m-d') . '.csv"');
+            header('Cache-Control: no-store');
+        }
+        echo $csv;
+        $this->terminate();
+    }
+
+    /** El lead del cliente, para anonimizar o eliminar (con CSRF y fuera de vista previa). */
+    private function leadParaBorrar(array $c, string $id): ?array
+    {
+        $this->exigirCsrf('portal/contactos-ganados/' . $id);
+        $l = $this->leads()->delCliente($id, (string) $c['cliente_id']);
+        if ($l === null || $this->leads()->proyecto((string) $l['proyecto_id']) === null) {
+            PortalSession::flash('error', 'No encontramos ese contacto.');
+            $this->redirectTo('portal/contactos-ganados');
+            return null;
+        }
+        return $l;
+    }
+
+    public function anonimizar(string $id): void
+    {
+        $c = $this->requerirAcceso();
+        if ($this->leadParaBorrar($c, $id) === null) {
+            return;
+        }
+        $this->leads()->anonimizar($id);
+        PortalSession::flash('ok', 'Listo: se borraron sus datos personales. Queda sólo para los conteos.');
+        $this->redirectTo('portal/contactos-ganados/' . $id);
+    }
+
+    public function eliminar(string $id): void
+    {
+        $c = $this->requerirAcceso();
+        if ($this->leadParaBorrar($c, $id) === null) {
+            return;
+        }
+        $this->leads()->eliminar($id);
+        PortalSession::flash('ok', 'Contacto eliminado.');
+        $this->redirectTo('portal/contactos-ganados');
     }
 
     public function nuevo(): void

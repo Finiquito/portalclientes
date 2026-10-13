@@ -47,6 +47,7 @@ class LeadService
         'webhook'    => 'Webhook',
         'csv_meta'   => 'Meta Lead Ads',
         'csv_google' => 'Google Ads',
+        'csv'        => 'Planilla',
     ];
 
     /** Un mismo correo (o teléfono) en el mismo proyecto dentro de este plazo no crea otro lead. */
@@ -276,7 +277,8 @@ class LeadService
             $origen = 'manual';
         }
 
-        $previo = $this->duplicado((string) $proyecto['id'], $d['correo'], $d['telefono']);
+        // Una planilla se puede volver a subir: ahí cuenta cualquier fecha, no sólo los últimos días.
+        $previo = $this->duplicado((string) $proyecto['id'], $d['correo'], $d['telefono'], str_starts_with($origen, 'csv') ? null : self::DIAS_DUPLICADO);
         $now = self::ahora();
         if ($previo !== null) {
             $this->pdo->prepare('UPDATE ' . self::TABLE . ' SET updated_at = ? WHERE id = ?')->execute([$now, $previo]);
@@ -284,6 +286,7 @@ class LeadService
         }
 
         $estado = (string) ($datos['estado'] ?? 'nuevo');
+        $llego = self::fechaHora((string) ($datos['creado_en'] ?? '')) ?? $now;   // de una planilla: cuándo llegó de verdad
         $id = typedock_uuid7();
         $this->pdo->prepare(
             'INSERT INTO ' . self::TABLE . ' (id, cliente_id, proyecto_id, fuente_id, nombre, correo, telefono, empresa, origen, campana,
@@ -294,15 +297,15 @@ class LeadService
             $d['nombre'], $d['correo'] ?: null, $d['telefono'] ?: null, $d['empresa'] ?: null, $origen,
             ($d['campana'] ?: $d['utm_campaign']) ?: null, $d['utm_source'] ?: null, $d['utm_medium'] ?: null, $d['utm_campaign'] ?: null,
             isset(self::ESTADOS[$estado]) ? $estado : 'nuevo', $d['notas'] ?: null, $d['proximo_paso'] ?: null,
-            self::fecha((string) ($datos['proximo_paso_fecha'] ?? '')), $now, mb_substr($creadoPor, 0, 255), mb_substr($creadoPor, 0, 255), $now, $now,
+            self::fecha((string) ($datos['proximo_paso_fecha'] ?? '')), null, null, mb_substr($creadoPor, 0, 255), $llego, $now,
         ]);
         return ['id' => $id];
     }
 
-    /** Id de un lead del mismo proyecto con ese correo o teléfono en los últimos DIAS_DUPLICADO días. */
-    public function duplicado(string $proyectoId, string $correo, string $telefono): ?string
+    /** Id de un lead del mismo proyecto con ese correo o teléfono en los últimos $dias días (null = cualquier fecha). */
+    public function duplicado(string $proyectoId, string $correo, string $telefono, ?int $dias = self::DIAS_DUPLICADO): ?string
     {
-        $desde = (new \DateTimeImmutable())->modify('-' . self::DIAS_DUPLICADO . ' days')->format('Y-m-d H:i:s');
+        $desde = $dias === null ? '0000-00-00 00:00:00' : (new \DateTimeImmutable())->modify('-' . $dias . ' days')->format('Y-m-d H:i:s');
         $cond = [];
         $args = [$proyectoId, $desde];
         if ($correo !== '') {
@@ -320,6 +323,120 @@ class LeadService
         $st->execute($args);
         $id = $st->fetchColumn();
         return $id !== false ? (string) $id : null;
+    }
+
+    /** Celda segura para Excel: lo que empieza con = + - @ (o tab/retorno) se lee como texto, no como fórmula. */
+    public static function celda(?string $v): string
+    {
+        $v = (string) $v;
+        return $v !== '' && strpbrk($v[0], "=+-@\t\r") !== false ? "'" . $v : $v;
+    }
+
+    /**
+     * Planilla de contactos (UTF-8 con BOM y «;», como la abre Excel en español).
+     *
+     * @param array<int, array<string, mixed>> $leads
+     */
+    public static function csv(array $leads, bool $conCliente = false): string
+    {
+        $fh = fopen('php://temp', 'r+');
+        $cab = ['Nombre', 'Correo', 'Teléfono', 'Empresa', 'Proyecto', 'Campaña', 'Origen', 'Estado', 'Próximo paso', 'Fecha próximo paso', 'Notas', 'Llegó', 'utm_source', 'utm_medium', 'utm_campaign'];
+        if ($conCliente) {
+            array_unshift($cab, 'Cliente');
+        }
+        fputcsv($fh, $cab, ';', '"', '');
+        foreach ($leads as $l) {
+            $fila = [
+                $l['nombre'], $l['correo'], $l['telefono'], $l['empresa'], $l['proyecto_nombre'] ?? '', $l['campana'],
+                self::ORIGENES[$l['origen']] ?? $l['origen'], self::ESTADOS[$l['estado']] ?? $l['estado'], $l['proximo_paso'], $l['proximo_paso_fecha'],
+                $l['notas'], $l['created_at'], $l['utm_source'], $l['utm_medium'], $l['utm_campaign'],
+            ];
+            if ($conCliente) {
+                array_unshift($fila, $l['cliente_nombre'] ?? '');
+            }
+            fputcsv($fh, array_map(fn($v) => self::celda(is_scalar($v) ? (string) $v : ''), $fila), ';', '"', '');
+        }
+        rewind($fh);
+        $out = "\xEF\xBB\xBF" . stream_get_contents($fh);
+        fclose($fh);
+        return $out;
+    }
+
+    /** Fecha y hora de una planilla (ISO de Meta, «2027-03-01 10:00», «01/03/2027»…), en la hora del servidor; nunca futura. */
+    public static function fechaHora(string $f): ?string
+    {
+        $f = trim($f);
+        if ($f === '') {
+            return null;
+        }
+        if (preg_match('#^(\d{1,2})[/-](\d{1,2})[/-](\d{4})(.*)$#', $f, $m) === 1) {
+            $f = sprintf('%04d-%02d-%02d%s', $m[3], $m[2], $m[1], $m[4]);
+        }
+        try {
+            $d = (new \DateTimeImmutable($f))->setTimezone(new \DateTimeZone(date_default_timezone_get()));
+        } catch (\Throwable) {
+            return null;
+        }
+        return $d > new \DateTimeImmutable() || (int) $d->format('Y') < 2000 ? null : $d->format('Y-m-d H:i:s');
+    }
+
+    /**
+     * Revisa las filas de una planilla antes de importar: cuáles entran, cuáles ya estaban
+     * (en la campaña o repetidas en el mismo archivo) y cuáles no sirven.
+     *
+     * @param array<int, array<string, string>> $filas de LeadImportador
+     * @return array{nuevos: int, duplicados: int, errores: array<int, string>, muestra: array<int, array<string, string>>}
+     */
+    public function revisar(string $proyectoId, array $filas): array
+    {
+        $vistos = [];
+        $out = ['nuevos' => 0, 'duplicados' => 0, 'errores' => [], 'muestra' => []];
+        foreach ($filas as $f) {
+            $d = self::limpiar($f);
+            $estado = 'nuevo';
+            if (($f['correo'] ?? '') !== '' && $d['correo'] === '') {
+                $estado = 'error';
+                $out['errores'][] = 'Fila ' . ($f['_fila'] ?? '?') . ': el correo «' . mb_substr((string) $f['correo'], 0, 60) . '» no es válido.';
+            } elseif ($d['correo'] === '' && $d['telefono'] === '') {
+                $estado = 'error';
+                $out['errores'][] = 'Fila ' . ($f['_fila'] ?? '?') . ': no tiene correo ni teléfono.';
+            } else {
+                $claves = array_filter(['c:' . $d['correo'], 't:' . $d['telefono']], fn($k) => strlen($k) > 2);
+                if (array_intersect($claves, array_keys($vistos)) !== [] || $this->duplicado($proyectoId, $d['correo'], $d['telefono'], null) !== null) {
+                    $estado = 'duplicado';
+                }
+                foreach ($claves as $k) {
+                    $vistos[$k] = true;
+                }
+            }
+            if ($estado === 'nuevo') {
+                $out['nuevos']++;
+            } elseif ($estado === 'duplicado') {
+                $out['duplicados']++;
+            }
+            if (count($out['muestra']) < 15) {
+                $out['muestra'][] = ['nombre' => $d['nombre'], 'correo' => $d['correo'], 'telefono' => $d['telefono'], 'campana' => $d['campana'] ?: $d['utm_campaign'], 'estado' => $estado];
+            }
+        }
+        return $out;
+    }
+
+    /**
+     * Importa las filas (las repetidas y las con error se saltan solas).
+     *
+     * @param array<string, mixed> $proyecto
+     * @param array<int, array<string, string>> $filas
+     * @param array<int, string> $creado fecha de llegada de cada fila (o vacío)
+     * @return array{nuevos: int, duplicados: int, errores: int}
+     */
+    public function importar(array $proyecto, array $filas, array $creado, string $origen, string $quien): array
+    {
+        $n = ['nuevos' => 0, 'duplicados' => 0, 'errores' => 0];
+        foreach ($filas as $i => $f) {
+            $r = $this->crear($proyecto, $f + ['creado_en' => (string) ($creado[$i] ?? '')], $origen, $quien);
+            $n[isset($r['error']) ? 'errores' : (!empty($r['duplicado']) ? 'duplicados' : 'nuevos')]++;
+        }
+        return $n;
     }
 
     private static function fecha(string $f): ?string

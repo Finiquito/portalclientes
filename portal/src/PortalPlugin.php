@@ -95,6 +95,12 @@ class PortalPlugin implements PluginInterface
         $ctx->registerAdminRoute('GET',  'leads',                [$leads, 'index']);
         $ctx->registerAdminRoute('GET',  'leads/nuevo',           [$leads, 'create']);
         $ctx->registerAdminRoute('GET',  'leads/fuentes',         [$leads, 'fuentes']);
+        $ctx->registerAdminRoute('GET',  'leads/exportar',        [$leads, 'exportar']);
+        $ctx->registerAdminRoute('GET',  'leads/importar',        [$leads, 'importarForm']);
+        $ctx->registerAdminRoute('POST', 'leads/importar',        fn() => $leads->importarRevisar());
+        $ctx->registerAdminRoute('POST', 'proyectos/@id/importar/confirmar', fn(string $id) => $leads->importarConfirmar($id));
+        $ctx->registerAdminRoute('POST', 'leads/@id/anonimizar',  fn(string $id) => $leads->anonimizar($id));
+        $ctx->registerAdminRoute('POST', 'leads/@id/eliminar',    fn(string $id) => $leads->eliminar($id));
         $ctx->registerAdminRoute('POST', 'proyectos/@id/fuentes', fn(string $id) => $leads->fuenteCrear($id));
         $ctx->registerAdminRoute('POST', 'proyectos/@id/fuentes/@fid', fn(string $id, string $fid) => $leads->fuenteEditar($id, $fid));
         $ctx->registerAdminRoute('POST', 'proyectos/@id/fuentes/@fid/revocar', fn(string $id, string $fid) => $leads->fuenteRevocar($id, $fid));
@@ -223,6 +229,9 @@ class PortalPlugin implements PluginInterface
         $leadsPub = new LeadPublicController($ctx);
         \Flight::route('GET /portal/contactos-ganados',           [$leadsPub, 'lista']);
         \Flight::route('GET /portal/contactos-ganados/nuevo',     [$leadsPub, 'nuevo']);
+        \Flight::route('GET /portal/contactos-ganados/exportar',  [$leadsPub, 'exportar']);
+        \Flight::route('POST /portal/contactos-ganados/@id/anonimizar', fn(string $id) => $leadsPub->anonimizar($id));
+        \Flight::route('POST /portal/contactos-ganados/@id/eliminar',   fn(string $id) => $leadsPub->eliminar($id));
         \Flight::route('POST /portal/contactos-ganados',          [$leadsPub, 'crear']);
         \Flight::route('GET /portal/contactos-ganados/@id',       fn(string $id) => $leadsPub->ver($id));
         \Flight::route('POST /portal/contactos-ganados/@id',      fn(string $id) => $leadsPub->guardar($id));
@@ -275,7 +284,7 @@ class PortalPlugin implements PluginInterface
 
     public function getVersion(): string
     {
-        return '0.27.0';
+        return '0.28.0';
     }
 
     public function provides(): array

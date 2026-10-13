@@ -74,6 +74,24 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### v0.28.0: contactos ganados (etapa 3), planillas, exportar y datos personales
+- **Importar CSV** (agencia, en «Contactos ganados › Importar CSV»):
+  - Lee la descarga de **Meta Lead Ads** (UTF-16, con tabuladores, teléfonos con `p:`), la de **formularios de Google Ads** y cualquier planilla con columnas de nombre, correo o teléfono, sea con «,», «;» o tabulador, en UTF-8 o Windows-1252.
+  - Antes de guardar muestra una **vista previa** con los nuevos, los que ya estaban (en la campaña o repetidos en el archivo) y las filas sin datos.
+  - Conserva la fecha en que llegó cada contacto. Una fecha futura no se acepta.
+  - Volver a subir la misma planilla no duplica nada, aunque los contactos sean antiguos.
+  - Envía un solo aviso al cliente por toda la importación, y se puede desmarcar.
+  - Lo hace Coordinación general o quien lleva la cuenta.
+- **Exportar CSV**:
+  - El cliente (colaboradores) y la agencia descargan con los filtros que tengan puestos. La agencia ve además la columna de cliente.
+  - El archivo va en UTF-8 con BOM y separado por «;», para que Excel en español lo abra bien.
+  - Una celda que empieza con `=`, `+`, `-` o `@` se escribe como texto, para que Excel no la ejecute como fórmula.
+- **Datos personales**, en la ficha de cada contacto:
+  - **Anonimizar** borra nombre, correo, teléfono, empresa, notas y próximo paso, pero el contacto sigue en los conteos de la campaña.
+  - **Eliminar** lo borra por completo. Las dos acciones piden confirmación.
+  - En el portal las hacen los colaboradores; en la agencia, quien lleva la cuenta.
+- **Arreglo**: un contacto recién creado ya no muestra «Último cambio» con el nombre de quien lo agregó; esa línea aparece solo cuando alguien cambia el estado.
+
 ### v0.27.0: contactos ganados (etapa 2), formularios y webhook (Make)
 - **Formularios y webhook** (en «Contactos ganados»): cada campaña puede tener varios formularios, cada uno con su token.
   - El token se muestra una sola vez; en la base queda solo su huella (SHA-256).
@@ -114,6 +132,40 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
   - No se duplica el mismo correo o teléfono en la misma campaña dentro de 30 días.
   - Toda consulta va acotada por cliente o proyecto.
 - **Migración `0012_leads.sql`**: también la garantiza `Schema.php`. Incluye las tablas de fuentes y de intentos para la etapa 2 (webhook).
+
+### v0.16 a v0.25 (resumen)
+- **v0.25.0**:
+  - Rol **Coordinación de cuentas**: lleva dos o tres clientes con sus equipos y es responsable de cada cuenta.
+  - Listas de clientes y proyectos agrupadas por cuenta, con buscador y filtros.
+  - Cuadro «Cuentas» en Inicio.
+  - Revisión de errores de pantallas.
+- **v0.24**:
+  - País por persona: un contacto puede vivir en otro país que su empresa, y sus correos y horarios usan su hora.
+  - Con rol Coordinación ya no se muestran las asignaciones.
+- **v0.23**:
+  - Aviso «Guardando…» y «guardado» visible en todos los formularios.
+  - Las piezas con versión nueva (v2 o más) quedan marcadas y se avisa al cliente.
+  - Clientes en China.
+- **v0.22**:
+  - Plantillas de proyecto (Sitio web, Branding, Campaña digital).
+  - En la línea de tiempo se distinguen las tareas del cliente y las de la agencia.
+  - Sección «Proyecto» en el portal del cliente, con etapas y línea de tiempo.
+- **v0.21**:
+  - Línea de tiempo más fácil de armar.
+  - Fases con sus hitos, reuniones y entregas.
+  - La lista de proyectos se ordena por el último movimiento.
+- **v0.20**: línea de tiempo del proyecto (Gantt) con hitos, dependencias y fechas estimadas.
+- **v0.19**:
+  - Editor de láminas con una fila por lámina.
+  - Portada en los reels.
+  - Los correos en espera salen después de entregar la página.
+  - Los avisos que ya no hacen falta no se envían.
+- **v0.18**:
+  - Avisos por persona: agrupados, resumen de la mañana y reuniones con convocados.
+  - Ajustes ordenados.
+  - Importar grilla con IA desde el panel.
+- **v0.17**: gestión de la agencia desde el panel `/equipo`.
+- **v0.16**: brief de cada pieza (objetivo, láminas, notas), importar grillas con IA y pines sobre imágenes y PDF.
 
 ### v0.15.1
 

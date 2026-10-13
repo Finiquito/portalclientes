@@ -1,0 +1,95 @@
+{layout $plugin_ui_layout}
+
+{block page_title}Importar contactos{/block}
+
+{block content}
+<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=11">
+<div class="page-header">
+    <h1>Importar contactos</h1>
+    <a href="{$admin_url('leads')}" class="btn">Contactos ganados</a>
+</div>
+
+{if !empty($flash_success)}<div class="alert alert-success">{$flash_success}</div>{/if}
+{if !empty($flash_error)}<div class="alert alert-error">{$flash_error}</div>{/if}
+
+{if !$proyectos}
+    <div class="card"><p class="pa-muted" style="margin:0">No hay proyectos con contactos ganados que administres. Activa «Con contactos ganados» en el proyecto de la campaña.</p></div>
+{elseif !$revision}
+<div class="card">
+    <form method="post" action="{$admin_url('leads/importar')}" enctype="multipart/form-data">
+        <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+        <label class="form-label">Proyecto</label>
+        <select name="proyecto" class="form-input" required>
+            {if count($proyectos) > 1}<option value="">Elige un proyecto</option>{/if}
+            {foreach $proyectos as $p}<option value="{$p['id']}" {if $sel === $p['id']}selected{/if}>{$p['cliente_nombre']} · {$p['nombre']}</option>{/foreach}
+        </select>
+
+        <label class="form-label mt-3">Planilla (.csv)</label>
+        <input type="file" name="archivo" accept=".csv,text/csv,text/plain" class="form-input" required>
+        <p class="form-hint mt-1">
+            Sirve la descarga de <strong>Meta Lead Ads</strong> (Administrador de anuncios › Formularios › Descargar CSV), la de <strong>formularios de Google Ads</strong> o cualquier planilla con columnas de nombre, correo o teléfono.
+            Antes de importar ves una vista previa: los que ya estaban no se duplican.
+        </p>
+        <p class="mt-4"><button type="submit" class="btn btn-primary">Revisar planilla</button></p>
+    </form>
+</div>
+{else}
+<div class="card">
+    <h2 class="pa-h2">Vista previa · {$archivo}</h2>
+    <p style="margin:0">
+        <span class="pa-chip ok">{$revision['nuevos']} {$revision['nuevos'] === 1 ? 'nuevo' : 'nuevos'}</span>
+        <span class="pa-chip gris">{$revision['duplicados']} {$revision['duplicados'] === 1 ? 'ya estaba' : 'ya estaban'}</span>
+        {if $revision['errores']}<span class="pa-chip danger">{count($revision['errores'])} con problemas</span>{/if}
+        <span class="pa-muted">de {$revision['total']} filas · {$proyecto['cliente_nombre']} · {$proyecto['nombre']}</span>
+    </p>
+    {if $revision['avisos'] || $revision['errores']}
+        <ul class="pa-muted" style="margin:.75rem 0 0;padding-left:1.2rem">
+            {foreach array_slice(array_merge($revision['avisos'], $revision['errores']), 0, 12) as $e}<li>{$e}</li>{/foreach}
+            {if count($revision['errores']) > 12}<li>… y {count($revision['errores']) - 12} más.</li>{/if}
+        </ul>
+    {/if}
+
+    <div style="overflow-x:auto;margin-top:1rem">
+    <table class="table">
+        <thead><tr><th>Nombre</th><th>Correo / teléfono</th><th>Campaña</th><th></th></tr></thead>
+        <tbody>
+        {foreach $revision['muestra'] as $m}
+            <tr>
+                <td>{$m['nombre'] ?: '—'}</td>
+                <td>{$m['correo'] ?: $m['telefono'] ?: '—'}</td>
+                <td>{$m['campana'] ?: '—'}</td>
+                <td>{if $m['estado'] === 'nuevo'}<span class="pa-chip ok">Nuevo</span>{elseif $m['estado'] === 'duplicado'}<span class="pa-chip gris">Ya estaba</span>{else}<span class="pa-chip danger">No entra</span>{/if}</td>
+            </tr>
+        {/foreach}
+        </tbody>
+    </table>
+    </div>
+    {if $revision['total'] > count($revision['muestra'])}<p class="pa-muted" style="margin:.5rem 0 0">Se muestran las primeras {count($revision['muestra'])} filas.</p>{/if}
+
+    {if $revision['nuevos'] > 0}
+    <form method="post" action="{$admin_url('proyectos/' . $proyecto['id'] . '/importar/confirmar')}" style="margin-top:1.25rem">
+        <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+        <div class="pa-grid-2">
+            <div>
+                <label class="form-label">Origen</label>
+                <select name="origen" class="form-input">
+                    {foreach $origenes as $k => $txt}<option value="{$k}" {if $origen === $k}selected{/if}>{$txt}</option>{/foreach}
+                </select>
+            </div>
+            <div>
+                <label class="form-label">Campaña (para las filas que no la traen)</label>
+                <input type="text" name="campana" maxlength="255" class="form-input" placeholder="Ej.: Meta · Masa madre octubre">
+            </div>
+        </div>
+        <label class="pa-check mt-3"><input type="checkbox" name="avisar" value="1" checked> <span>Avisar al cliente que llegaron contactos nuevos (un solo correo, sin datos personales)</span></label>
+        <p class="mt-4 pa-row">
+            <button type="submit" class="btn btn-primary">Importar {$revision['nuevos']} {$revision['nuevos'] === 1 ? 'contacto' : 'contactos'}</button>
+            <a href="{$admin_url('leads/importar')}?proyecto={$proyecto['id']}" class="btn">Cancelar</a>
+        </p>
+    </form>
+    {else}
+        <p style="margin-top:1rem"><a href="{$admin_url('leads/importar')}?proyecto={$proyecto['id']}" class="btn">Subir otra planilla</a></p>
+    {/if}
+</div>
+{/if}
+{/block}

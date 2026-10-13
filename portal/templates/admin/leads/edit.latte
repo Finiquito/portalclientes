@@ -76,4 +76,23 @@
     </form>
 </div>
 {/if}
+
+{if $l}
+<div class="card">
+    <h2 class="pa-h2">Datos personales</h2>
+    <p class="pa-muted" style="margin:0 0 .75rem">Si la persona pide que se borren sus datos: <strong>anonimizar</strong> borra nombre, correo, teléfono, empresa y notas, pero lo deja en los conteos. <strong>Eliminar</strong> lo borra por completo.</p>
+    <div class="pa-row">
+        {if !$anonimo}
+        <form method="post" action="{$admin_url('leads/' . $l['id'] . '/anonimizar')}" onsubmit="return confirm('¿Anonimizar este contacto? Sus datos personales se borran y no se pueden recuperar.')">
+            <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+            <button type="submit" class="btn btn-sm">Anonimizar</button>
+        </form>
+        {/if}
+        <form method="post" action="{$admin_url('leads/' . $l['id'] . '/eliminar')}" onsubmit="return confirm('¿Eliminar este contacto por completo? No se puede deshacer.')">
+            <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+            <button type="submit" class="btn btn-sm">Eliminar</button>
+        </form>
+    </div>
+</div>
+{/if}
 {/block}

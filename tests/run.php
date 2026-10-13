@@ -2097,6 +2097,107 @@ $_SESSION[P\PortalSession::CONTACTO] = $jefa;
 check(str_contains($html, 'name="avisos_leads"'), 'en Ajustes del portal aparece «Avisarme cuando llegue un contacto nuevo»');
 P\Notifier::$ahora = null;
 
+// Contactos ganados: planillas (Meta / Google), exportar y datos personales
+seccion('Contactos ganados: planillas, exportar y datos personales');
+P\LeadAdminController::$sinSalir = true;
+$meta = "id\tcreated_time\tad_name\tcampaign_name\tform_name\tplatform\tfull_name\temail\tphone_number\n"
+    . "l:1\t2026-02-20T10:15:00-03:00\tAviso 1\tTortas Meta\tForm\tig\tRita Ríos\trita@x.cl\tp:+56911112222\n"
+    . "l:2\t2026-02-21T11:00:00-03:00\tAviso 1\tTortas Meta\tForm\tfb\tTomás Paz\tTOMAS@x.cl\tp:+56933334444\n"
+    . "l:3\t2026-02-21T12:00:00-03:00\tAviso 2\tTortas Meta\tForm\tfb\tRita otra vez\trita@x.cl\t\n"
+    . "l:4\t2026-02-22T09:00:00-03:00\tAviso 2\tTortas Meta\tForm\tig\tSin datos\t\t\n"
+    . "l:5\t2026-02-22T09:30:00-03:00\tAviso 2\tTortas Meta\tForm\tig\tLola de nuevo\tlola@gmail.com\t\n"
+    . "l:6\t2026-02-23T09:30:00-03:00\tAviso 2\tTortas Meta\tForm\tig\t=HYPERLINK(\"http://x\")\tformula@x.cl\t\n";
+$metaUtf16 = "\xFF\xFE" . mb_convert_encoding($meta, 'UTF-16LE', 'UTF-8');
+$lm = P\LeadImportador::leerTexto($metaUtf16);
+check($lm['origen'] === 'csv_meta' && count($lm['filas']) === 6, 'lee la descarga de Meta Lead Ads (UTF-16, con tabuladores)');
+check($lm['filas'][0]['nombre'] === 'Rita Ríos' && $lm['filas'][0]['telefono'] === '+56911112222' && $lm['filas'][0]['campana'] === 'Tortas Meta', 'saca el «p:» de los teléfonos de Meta y respeta las tildes');
+$lg = P\LeadImportador::leerTexto("Full Name,User Email,User Phone,Campaign\nGabi Google,gabi@g.cl,+56 9 5555 0000,Search tortas\n");
+check(P\LeadService::fechaHora('2999-01-01 10:00') === null && P\LeadService::fechaHora('20/02/2026 10:00') === '2026-02-20 10:00:00', 'fechas de planilla: dd/mm/aaaa sirve, una fecha futura no');
+check($lg['origen'] === 'csv_google' && $lg['filas'][0]['correo'] === 'gabi@g.cl' && $lg['filas'][0]['telefono'] === '+56 9 5555 0000', 'lee la descarga de formularios de Google Ads');
+$l1252 = P\LeadImportador::leerTexto(mb_convert_encoding("nombre;correo\nMaría Núñez;maria@x.cl\n", 'Windows-1252', 'UTF-8'));
+check($l1252['origen'] === 'csv' && ($l1252['filas'][0]['nombre'] ?? '') === 'María Núñez', 'una planilla de Excel con «;» y acentos de Windows también');
+check(P\LeadImportador::leerTexto("producto,precio\npan,1000\n")['errores'] !== [], 'si no reconoce las columnas, lo dice');
+$rv = $ls->revisar($pW1, $lm['filas']);
+check($rv['nuevos'] === 3 && $rv['duplicados'] === 2 && count($rv['errores']) === 1, 'la vista previa separa nuevos, repetidos (en la campaña o en el mismo archivo) y filas sin datos');
+
+$_SESSION[P\EquipoController::SESION] = $coord;
+$tokI = P\PortalSession::csrf();
+$tmp = tempnam(sys_get_temp_dir(), 'meta');
+file_put_contents($tmp, $metaUtf16);
+$_FILES = ['archivo' => ['name' => 'leads-meta.csv', 'tmp_name' => $tmp, 'error' => UPLOAD_ERR_OK, 'size' => filesize($tmp)]];
+$antes = $contarW();
+[$html, $r] = $g->hacer('POST', $LA, 'importarRevisar', [], null, false, ['_csrf_token' => $tokI, 'proyecto' => $pW1]);
+check($r === null && str_contains($html, '3 nuevos') && str_contains($html, 'Meta Lead Ads') && $contarW() === $antes, 'subir la planilla muestra la vista previa sin guardar nada');
+$_FILES = [];
+$ctx->correos = [];
+P\Notifier::$ahora = new DateTimeImmutable('2027-03-10 15:00', new DateTimeZone('UTC'));
+$pdo->exec("DELETE FROM portal_correos_cola");
+$pdo->exec("DELETE FROM portal_ajustes WHERE clave LIKE 'ultimo_aviso:%'");
+[, $r] = $g->hacer('POST', $LA, 'importarConfirmar', [$pW1], 'proyecto', 'cuenta', ['_csrf_token' => $tokI, 'origen' => 'csv_meta', 'campana' => '', 'avisar' => '1']);
+$rita = $pdo->query("SELECT * FROM portal_leads WHERE correo = 'rita@x.cl'")->fetch();
+check($r === '/equipo/leads?proyecto=' . $pW1 && $contarW() === $antes + 3, 'al confirmar entran sólo los nuevos');
+check($rita && $rita['origen'] === 'csv_meta' && $rita['creado_por'] === 'Coordina' && substr((string) $rita['created_at'], 0, 10) === '2026-02-20', 'quedan con origen Meta y la fecha en que llegaron de verdad');
+check(count(array_filter($ctx->correos, fn($c) => $c['to'] === 'dora@pasteleria.cl')) === 1, 'el cliente recibe un solo aviso por toda la importación');
+$_FILES = ['archivo' => ['name' => 'leads-meta.csv', 'tmp_name' => $tmp, 'error' => UPLOAD_ERR_OK, 'size' => filesize($tmp)]];
+[$html] = $g->hacer('POST', $LA, 'importarRevisar', [], null, false, ['_csrf_token' => $tokI, 'proyecto' => $pW1]);
+check(str_contains($html, '0 nuevos') && !str_contains($html, 'Importar 0'), 'volver a subir la misma planilla no duplica nada (aunque sean contactos antiguos)');
+$_FILES = [];
+[, $r] = $g->hacer('POST', $LA, 'importarConfirmar', [$pW1], 'proyecto', 'cuenta', ['_csrf_token' => $tokI]);
+check(str_contains((string) $r, '/equipo/leads') && $contarW() === $antes + 3, 'confirmar dos veces no vuelve a importar');
+$_SESSION[P\EquipoController::SESION] = $vale;
+$_FILES = ['archivo' => ['name' => 'leads-meta.csv', 'tmp_name' => $tmp, 'error' => UPLOAD_ERR_OK, 'size' => filesize($tmp)]];
+[, $r] = $g->hacer('POST', $LA, 'importarRevisar', [], null, false, ['_csrf_token' => $tokI, 'proyecto' => $pW1]);
+check(str_contains((string) $r, '/equipo/leads/importar') && !isset($_SESSION['portal_lead_import']), 'quien no lleva esa cuenta no importa en ella');
+$_FILES = [];
+@unlink($tmp);
+
+// Exportar
+$_SESSION[P\PortalSession::CONTACTO] = $jefa;
+$_GET = [];
+[$csv] = $lp->correr('exportar');
+check(str_starts_with($csv, "\xEF\xBB\xBF") && str_contains($csv, 'Nombre;Correo;Teléfono') && str_contains($csv, 'rita@x.cl') && !str_contains($csv, 'marta@correo.cl'), 'el cliente descarga sus contactos en CSV (y sólo los suyos)');
+check(str_contains($csv, "'=HYPERLINK") && !preg_match('/;"?=HYPERLINK/', $csv), 'una celda que parece fórmula se exporta como texto');
+$_GET = ['q' => 'rita'];
+[$csv] = $lp->correr('exportar');
+check(str_contains($csv, 'rita@x.cl') && !str_contains($csv, 'tomas@x.cl'), 'exporta con los filtros que tiene puestos');
+$_GET = [];
+$_SESSION[P\EquipoController::SESION] = $coord;
+[$csv] = $g->hacer('GET', $LA, 'exportar');
+check(str_contains($csv, 'Cliente;Nombre') && str_contains($csv, 'Pastelería Web'), 'la agencia exporta con la columna de cliente');
+$_SESSION[P\EquipoController::SESION] = $vale;
+[$csv] = $g->hacer('GET', $LA, 'exportar');
+check(!str_contains($csv, 'rita@x.cl'), 'y cada quien sólo lo de sus clientes');
+
+// Anonimizar y eliminar
+$_SESSION[P\PortalSession::CONTACTO] = $jefa;
+$ctkA = P\PortalSession::csrf();
+$idRita = (string) $rita['id'];
+[, $r] = $lp->correr('anonimizar', [$idRita], ['_csrf' => $ctkA]);
+$ra = $ls->find($idRita);
+check($ra['correo'] === null && $ra['telefono'] === null && $ra['notas'] === null && $ra['anonimizado_en'] !== null && $ra['nombre'] === 'Contacto anonimizado', 'anonimizar borra los datos personales');
+check($ra['campana'] === 'Tortas Meta' && P\LeadService::porCampana($ls->lista(['cliente_id' => $cW]))[0]['total'] === $contarW(), 'y sigue contando en la campaña');
+[, $r] = $lp->correr('guardar', [$idRita], ['_csrf' => $ctkA, 'correo' => 'volvio@x.cl']);
+check($ls->find($idRita)['correo'] === null, 'un contacto anonimizado ya no se puede editar');
+$idMarta = (string) $pdo->query("SELECT id FROM portal_leads WHERE correo = 'marta@correo.cl'")->fetchColumn();
+if ($idMarta === '') { $idMarta = (string) $pdo->query("SELECT id FROM portal_leads WHERE cliente_id <> " . $pdo->quote($cW) . " LIMIT 1")->fetchColumn(); }
+[, $r] = $lp->correr('eliminar', [$idMarta], ['_csrf' => $ctkA]);
+check($idMarta === '' || $ls->find($idMarta) !== null, 'no puede eliminar contactos de otro cliente');
+[, $r] = $lp->correr('eliminar', [$idRita], ['_csrf' => $ctkA]);
+check($ls->find($idRita) === null && $r === '/portal/contactos-ganados', 'eliminar lo borra por completo');
+$idTomas = (string) $pdo->query("SELECT id FROM portal_leads WHERE correo = 'tomas@x.cl'")->fetchColumn();
+[, $r] = $lp->correr('eliminar', [$idTomas], []);
+check($ls->find($idTomas) !== null, 'sin token de sesión no se elimina');
+$_SESSION[P\EquipoController::SESION] = $ana;
+[, $r] = $g->hacer('POST', $LA, 'eliminar', [$idTomas], 'lead', 'cuenta', ['_csrf_token' => $tokI]);
+check($ls->find($idTomas) !== null, 'en la agencia, borrar o anonimizar lo hace quien lleva la cuenta');
+$_SESSION[P\EquipoController::SESION] = $coord;
+[, $r] = $g->hacer('POST', $LA, 'anonimizar', [$idTomas], 'lead', 'cuenta', ['_csrf_token' => $tokI]);
+check($ls->find($idTomas)['anonimizado_en'] !== null, 'Coordinación anonimiza desde el panel');
+[$html] = $g->hacer('GET', $LA, 'ver', [$idTomas], 'lead');
+check(str_contains($html, 'Anonimizado') && !str_contains($html, 'name="correo"'), 'la ficha anonimizada ya no muestra el formulario');
+P\Notifier::$ahora = null;
+P\LeadAdminController::$sinSalir = false;
+
 // ---------------------------------------------------------------------------
 echo "\n\n" . $GLOBALS['ok'] . ' comprobaciones OK, ' . count($GLOBALS['fallas']) . " fallas ({$motor}).\n";
 foreach ($GLOBALS['fallas'] as $f) {

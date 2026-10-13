@@ -76,6 +76,27 @@
 
         <button type="submit" class="btn btn-primary">Guardar</button>
     </form>
+
+    {* Datos personales: lo que pide la ley si la persona lo solicita *}
+    <section class="card card-pad reveal" style="--i:2" aria-labelledby="h-datos">
+        <h2 id="h-datos" class="font-extrabold">Datos personales</h2>
+        <p class="mt-1 text-sm text-muted">Si esta persona te pide que borres sus datos: <strong class="text-ink">anonimizar</strong> borra nombre, correo, teléfono, empresa y notas, pero lo deja en los conteos de la campaña. <strong class="text-ink">Eliminar</strong> lo borra por completo.</p>
+        <div class="mt-3 flex flex-wrap gap-2">
+            <form method="post" action="/portal/contactos-ganados/{$l['id']}/anonimizar" data-confirm="¿Anonimizar a {$l['nombre']}? Sus datos personales se borran y no se pueden recuperar.">
+                <input type="hidden" name="_csrf" value="{$csrf}">
+                <button type="submit" class="btn btn-ghost btn-sm">Anonimizar</button>
+            </form>
+            <form method="post" action="/portal/contactos-ganados/{$l['id']}/eliminar" data-confirm="¿Eliminar a {$l['nombre']}? Se borra por completo y no se puede deshacer.">
+                <input type="hidden" name="_csrf" value="{$csrf}">
+                <button type="submit" class="btn btn-ghost btn-sm text-danger">Eliminar</button>
+            </form>
+        </div>
+    </section>
+    {else}
+    <form method="post" action="/portal/contactos-ganados/{$l['id']}/eliminar" class="reveal" data-confirm="¿Eliminar este registro por completo?">
+        <input type="hidden" name="_csrf" value="{$csrf}">
+        <button type="submit" class="btn btn-ghost btn-sm text-danger">Eliminar el registro</button>
+    </form>
     {/if}
 </div>
 
