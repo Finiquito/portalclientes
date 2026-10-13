@@ -74,6 +74,10 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### v0.30.3
+- **Correos de Mailchimp en la lista de contactos ganados**, para verlo de un vistazo: en el portal del cliente y en el panel cada contacto muestra «9 correos · abrió 6» junto a su estado en Mailchimp.
+- **«Revisar en Mailchimp»** (lista del panel) ahora trae también la actividad de cada contacto, para que la lista tenga esos números. Revisa de a 20 por vez; si quedan más, se aprieta de nuevo.
+
 ### v0.30.2
 - **Mailchimp en la ficha de cada contacto**: ahora dice cuántos correos distintos ha recibido (campañas y automatizaciones, como la bienvenida), cuántos abrió (con el porcentaje) y en cuántos hizo clic. Abrir el mismo correo varias veces cuenta una vez. Se calcula con la actividad que guarda Mailchimp; si la cuenta sólo entrega lo más reciente, dice «al menos».
 

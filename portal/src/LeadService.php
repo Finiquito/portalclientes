@@ -584,7 +584,7 @@ class LeadService
      *
      * @return array{revisados: int, pendientes: int, error: ?string}
      */
-    public function revisarProyecto(string $proyectoId, int $max = 40): array
+    public function revisarProyecto(string $proyectoId, int $max = 20): array
     {
         $st = $this->pdo->prepare('SELECT * FROM ' . self::TABLE . ' WHERE proyecto_id = ? AND correo IS NOT NULL AND anonimizado_en IS NULL ORDER BY mc_revisado_en, created_at DESC');
         $st->execute([$proyectoId]);
@@ -592,13 +592,27 @@ class LeadService
         $n = 0;
         $error = null;
         foreach (array_slice($porRevisar, 0, $max) as $l) {
-            $error = $this->revisarMailchimp($l, false);
+            $error = $this->revisarMailchimp($l);   // con actividad: la lista muestra cuántos correos recibió y abrió
             if ($error !== null) {
                 break;
             }
             $n++;
         }
         return ['revisados' => $n, 'pendientes' => count($porRevisar) - $n, 'error' => $error];
+    }
+
+    /** Para la lista: «9 correos · abrió 6». Null si todavía no se sabe. */
+    public static function mcCorreos(array $lead): ?string
+    {
+        $c = (self::mc($lead) ?? [])['conteo'] ?? null;
+        if (!is_array($c)) {
+            return null;
+        }
+        $n = (int) $c['enviados'];
+        if ($n === 0) {
+            return 'Sin correos aún';
+        }
+        return (empty($c['completo']) ? 'Al menos ' : '') . $n . ($n === 1 ? ' correo' : ' correos') . ' · abrió ' . (int) $c['abiertos'];
     }
 
     /** Resumen guardado, listo para mostrar. */

@@ -78,6 +78,7 @@
                                 {if $l['campana']}<span>{$l['campana']}</span>{/if}
                                 <span>{$fmt->rel($l['created_at'])}</span>
                                 {if in_array($l['mc_estado'], ['unsubscribed', 'cleaned', 'subscribed'], true)}<span class="{$l['mc_estado'] === 'subscribed' ? '' : 'font-semibold text-warn'}">{['subscribed' => 'En Mailchimp', 'unsubscribed' => 'Se dio de baja en Mailchimp', 'cleaned' => 'Correo rebotado'][$l['mc_estado']]}</span>{/if}
+                                {var $correos = \TypeDock\Plugin\Portal\LeadService::mcCorreos($l)}{if $correos}<span class="inline-flex items-center gap-1"><svg class="size-3.5"><use href="#i-mail"/></svg>{$correos}</span>{/if}
                                 {if $l['proximo_paso_fecha'] && !in_array($l['estado'], ['ganado', 'perdido'], true)}<span class="inline-flex items-center gap-1 {$vencido ? 'font-bold text-danger' : ''}"><svg class="size-3.5"><use href="#i-clock"/></svg>{$fmt->fechaCorta($l['proximo_paso_fecha'])}</span>{/if}
                             </span>
                         </span>
