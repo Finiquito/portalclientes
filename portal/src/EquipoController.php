@@ -174,9 +174,22 @@ class EquipoController
             $nSolicitudes = 0;
         }
 
+        // Contactos ganados: el menú aparece si alguno de sus proyectos tiene el módulo activo.
+        [$wl, $pl] = $this->acceso($u)->filtroProyecto('p.id');
+        try {
+            $leads = $this->fetchOne(
+                "SELECT COUNT(DISTINCT p.id) AS np, COUNT(l.id) AS nl FROM portal_proyectos p LEFT JOIN portal_leads l ON l.proyecto_id = p.id AND l.estado = 'nuevo'
+                 WHERE p.con_leads = 1 AND " . $wl, $pl
+            ) ?? [];
+        } catch (\Throwable) {
+            $leads = [];
+        }
+
         return [
             'fmt'        => new Fmt(),
             'nSolicitudes' => $nSolicitudes,
+            'hayLeads'   => (int) ($leads['np'] ?? 0) > 0,
+            'nLeads'     => (int) ($leads['nl'] ?? 0),
             'relojes'    => $this->relojes($u),
             'usuario'    => $u,
             'marca'      => $this->marca(),

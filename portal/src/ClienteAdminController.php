@@ -232,6 +232,7 @@ class ClienteAdminController
     {
         // Las FK borran las filas; los archivos físicos y los ajustes se limpian a mano.
         (new EntregaService($this->pdo()))->borrarDeCliente($id);
+        (new LeadService($this->pdo()))->borrarDeCliente($id);
         (new ArchivoService($this->pdo()))->borrarFisicosDeCliente($id);
         $this->ajustes()->borrarDeCliente($id);
         $this->service()->delete($id);

@@ -54,6 +54,8 @@
             <option value="cerrado" {if $estadoActual === 'cerrado'}selected{/if}>Cerrado</option>
         </select>
 
+        <label class="pa-check mt-3"><input type="checkbox" name="con_leads" value="1" {if (int) ($proyecto['con_leads'] ?? 0) === 1}checked{/if}> <span><strong>Con contactos ganados</strong> (leads): el cliente ve en su portal los contactos que llegan por esta campaña y puede darles seguimiento.</span></label>
+
         <p class="mt-4">
             <button type="submit" class="btn btn-primary">Guardar</button>
         </p>

@@ -1812,6 +1812,134 @@ check($pls->lista() === [], 'si se borran todas, las de ejemplo no vuelven solas
 P\Notifier::$ahora = null;
 P\Notifier::$ahora = null;
 
+// Contactos ganados (leads)
+seccion('Contactos ganados');
+final class LeadPrueba extends P\LeadPublicController
+{
+    public ?string $redir = null;
+
+    protected function redirectTo(string $path, array $query = []): void
+    {
+        $this->redir = $this->publicUrl($path, $query);
+        throw new RuntimeException('redirect');
+    }
+
+    protected function terminate(): void
+    {
+        throw new RuntimeException('fin');
+    }
+
+    /** @return array{0: string, 1: ?string} */
+    public function correr(string $metodo, array $args = [], array $post = []): array
+    {
+        $_POST = $post;
+        $this->redir = null;
+        ob_start();
+        try {
+            $this->{$metodo}(...$args);
+        } catch (RuntimeException $e) {
+            if (!in_array($e->getMessage(), ['redirect', 'fin'], true)) {
+                ob_end_clean();
+                throw $e;
+            }
+        }
+        return [(string) ob_get_clean(), $this->redir];
+    }
+}
+$ls = new P\LeadService($pdo);
+$cLd = $cs->create(['nombre' => 'Tienda Leads', 'pais' => 'CL']);
+$cOt = $cs->create(['nombre' => 'Otra Tienda', 'pais' => 'CL']);
+$pLd = $ps->create(['cliente_id' => $cLd, 'nombre' => 'Campaña otoño', 'con_leads' => 1]);
+$pSn = $ps->create(['cliente_id' => $cLd, 'nombre' => 'Sitio web']);
+$pOt = $ps->create(['cliente_id' => $cOt, 'nombre' => 'Campaña ajena', 'con_leads' => 1]);
+$colab = $ctSvc->create(['cliente_id' => $cLd, 'nombre' => 'Rosa Colabora', 'email' => 'rosa@tienda.cl', 'rol' => 'aprobador']);
+$lector = $ctSvc->create(['cliente_id' => $cLd, 'nombre' => 'Luis Lee', 'email' => 'luis@tienda.cl', 'rol' => 'viewer']);
+check((int) $ps->find($pLd)['con_leads'] === 1 && (int) $ps->find($pSn)['con_leads'] === 0, 'el proyecto guarda si tiene contactos ganados');
+check($ls->clienteTieneLeads($cLd) && $ls->proyecto($pSn) === null, 'sólo los proyectos con el módulo activo reciben contactos');
+
+$prLd = $ls->proyecto($pLd);
+check(isset($ls->crear($prLd, ['nombre' => 'Sin datos'], 'manual', 'x')['error']), 'sin correo ni teléfono no se crea');
+check(($ls->crear($prLd, ['correo' => 'no-es-correo'], 'manual', 'x')['error'] ?? '') === 'El correo no es válido.', 'un correo inválido se avisa');
+$r1 = $ls->crear($prLd, ['nombre' => "Marta\x07 Pérez", 'correo' => ' MARTA@Correo.cl ', 'telefono' => '+56 9 1234-5678', 'utm_campaign' => 'otono_2027', 'utm_source' => 'meta', 'estado' => 'inventado'], 'formulario', 'Formulario');
+$m = $ls->find((string) $r1['id']);
+check($m['correo'] === 'marta@correo.cl' && $m['telefono'] === '+56912345678' && $m['nombre'] === 'Marta Pérez', 'limpia el correo, el teléfono y los caracteres raros');
+check($m['estado'] === 'nuevo' && $m['campana'] === 'otono_2027' && $m['cliente_id'] === $cLd, 'llega como «nuevo», con la campaña del UTM y el cliente del proyecto');
+$r2 = $ls->crear($prLd, ['nombre' => 'Marta otra vez', 'correo' => 'marta@correo.cl'], 'formulario', 'Formulario');
+check(!empty($r2['duplicado']) && $r2['id'] === $r1['id'] && count($ls->lista(['proyecto_id' => $pLd])) === 1, 'el mismo correo en la misma campaña no se duplica');
+$r3 = $ls->crear($prLd, ['nombre' => 'Jorge Ruiz', 'telefono' => '+56 9 8765 4321', 'empresa' => 'Ferretería 100%', 'campana' => 'Referidos'], 'manual', 'Rosa');
+$ls->crear($ls->proyecto($pOt), ['nombre' => 'Cliente Ajeno', 'correo' => 'ajeno@otra.cl'], 'manual', 'x');
+check(count($ls->lista(['cliente_id' => $cLd, 'q' => 'ferre'])) === 1 && count($ls->lista(['cliente_id' => $cLd, 'q' => '%'])) === 1, 'la búsqueda encuentra por empresa y trata «%» como texto');
+check(count($ls->lista(['cliente_id' => $cLd])) === 2, 'la lista de un cliente no trae contactos de otro');
+$gr = P\LeadService::porCampana($ls->lista());
+$gLd = array_values(array_filter($gr, fn($x) => $x['proyecto_id'] === $pLd))[0] ?? null;
+check($gLd !== null && $gLd['total'] === 2 && count($gLd['campanas']) === 2 && $gLd['estados']['nuevo'] === 2, 'el consolidado agrupa por proyecto y campaña con el conteo por estado');
+
+// Portal del cliente
+$lp = new LeadPrueba($ctx);
+$_SESSION[P\PortalSession::CONTACTO] = $lector;
+[, $r] = $lp->correr('lista');
+check($r === '/portal', 'quien sólo puede leer no ve los contactos ganados');
+$_SESSION[P\PortalSession::CONTACTO] = $colab;
+$ctkL = P\PortalSession::csrf();
+[$html, $r] = $lp->correr('lista');
+check($r === null && str_contains($html, 'Marta Pérez') && str_contains($html, 'Jorge Ruiz') && !str_contains($html, 'Cliente Ajeno'), 'el colaborador ve los contactos de su empresa y no los de otra');
+check(str_contains($html, '/portal/contactos-ganados') && str_contains($html, 'Contactos ganados'), 'aparece en el menú del portal');
+$idAjeno = (string) $pdo->query("SELECT id FROM portal_leads WHERE nombre = 'Cliente Ajeno'")->fetchColumn();
+[, $r] = $lp->correr('ver', [$idAjeno]);
+check($r === '/portal/contactos-ganados', 'el contacto de otro cliente no se abre');
+[, $r] = $lp->correr('guardar', [$idAjeno], ['_csrf' => $ctkL, 'estado' => 'ganado']);
+check($ls->find($idAjeno)['estado'] === 'nuevo', 'ni se puede cambiar');
+[$html] = $lp->correr('ver', [(string) $r1['id']]);
+check(str_contains($html, 'Seguimiento') && str_contains($html, 'otono_2027') && str_contains($html, 'Formulario'), 'la ficha muestra seguimiento y de dónde llegó');
+[, $r] = $lp->correr('guardar', [(string) $r1['id']], ['estado' => 'contactado']);
+check($ls->find((string) $r1['id'])['estado'] === 'nuevo', 'sin token de sesión no se guarda');
+[, $r] = $lp->correr('guardar', [(string) $r1['id']], ['_csrf' => $ctkL, 'estado' => 'contactado', 'notas' => 'Le interesa el plan anual', 'proximo_paso' => 'Enviar cotización', 'proximo_paso_fecha' => '2027-05-10']);
+$m = $ls->find((string) $r1['id']);
+check($m['estado'] === 'contactado' && $m['estado_por'] === 'Rosa Colabora' && $m['notas'] === 'Le interesa el plan anual' && $m['proximo_paso_fecha'] === '2027-05-10', 'el cliente cambia el estado, anota y deja el próximo paso (queda quién lo cambió)');
+check($m['correo'] === 'marta@correo.cl', 'guardar el seguimiento no borra los datos de contacto');
+[, $r] = $lp->correr('crear', [], ['_csrf' => $ctkL, 'proyecto_id' => $pOt, 'nombre' => 'Colado', 'correo' => 'colado@x.cl']);
+check($r === '/portal/contactos-ganados/nuevo' && (int) $pdo->query("SELECT COUNT(*) FROM portal_leads WHERE nombre = 'Colado'")->fetchColumn() === 0, 'no puede agregar contactos a la campaña de otro cliente');
+[, $r] = $lp->correr('crear', [], ['_csrf' => $ctkL, 'proyecto_id' => $pLd, 'nombre' => 'Pepa WhatsApp', 'telefono' => '+56 9 5555 1111']);
+$idPepa = (string) $pdo->query("SELECT id FROM portal_leads WHERE nombre = 'Pepa WhatsApp'")->fetchColumn();
+check($idPepa !== '' && $r === '/portal/contactos-ganados/' . $idPepa && $ls->find($idPepa)['creado_por'] === 'Rosa Colabora', 'el cliente agrega un contacto a mano');
+$_GET = ['estado' => 'contactado'];
+[$html] = $lp->correr('lista');
+check(str_contains($html, 'Marta Pérez') && !str_contains($html, 'Pepa WhatsApp'), 'filtra por estado');
+$_GET = [];
+
+// Agencia: consolidado, ficha y permisos
+$_SESSION[P\EquipoController::SESION] = $coord;
+$tokL = P\PortalSession::csrf();
+$LA = P\LeadAdminController::class;
+[$html, $r] = $g->hacer('GET', $LA, 'index');
+check($r === null && str_contains($html, 'Por campaña') && str_contains($html, 'Campaña otoño') && str_contains($html, 'Referidos') && str_contains($html, 'Cliente Ajeno'), 'Coordinación ve el consolidado por campaña de todos los clientes');
+[$html, $r] = $g->hacer('GET', $LA, 'ver', [(string) $r1['id']], 'lead');
+check($r === null && str_contains($html, 'Rosa Colabora') && str_contains($html, 'Le interesa el plan anual'), 'la agencia ve la ficha con el seguimiento del cliente');
+[, $r] = $g->hacer('POST', $LA, 'store', [], null, false, ['_csrf_token' => $tokL, 'proyecto_id' => $pLd, 'nombre' => 'Desde la agencia', 'correo' => 'agencia@lead.cl', 'campana' => 'Feria']);
+$idAg = (string) $pdo->query("SELECT id FROM portal_leads WHERE nombre = 'Desde la agencia'")->fetchColumn();
+check($idAg !== '' && $r === '/equipo/leads/' . $idAg && $ls->find($idAg)['creado_por'] === 'Coordina', 'la agencia agrega contactos a mano');
+[, $r] = $g->hacer('POST', $LA, 'store', [], null, false, ['_csrf_token' => $tokL, 'proyecto_id' => $pSn, 'nombre' => 'Sin módulo', 'correo' => 'sin@modulo.cl']);
+check($r === '/equipo/leads/nuevo' && (int) $pdo->query("SELECT COUNT(*) FROM portal_leads WHERE nombre = 'Sin módulo'")->fetchColumn() === 0, 'no se agregan contactos a un proyecto sin el módulo');
+[, $r] = $g->hacer('POST', $LA, 'update', [$idAg], 'lead', false, ['_csrf_token' => $tokL, 'estado' => 'ganado', 'notas' => 'Compró']);
+check($ls->find($idAg)['estado'] === 'ganado' && $ls->find($idAg)['estado_por'] === 'Coordina', 'la agencia cambia el estado y queda su nombre');
+$_SESSION[P\EquipoController::SESION] = $vale;
+[$html] = $g->hacer('GET', $LA, 'index');
+check(!str_contains($html, 'Marta Pérez') && !str_contains($html, 'Cliente Ajeno'), 'quien no lleva esos clientes no ve sus contactos');
+[, $r] = $g->hacer('GET', $LA, 'ver', [(string) $r1['id']], 'lead');
+check($r === '/equipo', 'ni abre su ficha');
+$_SESSION[P\EquipoController::SESION] = $coord;
+
+// Apagar el módulo y borrar el proyecto
+[, $r] = $g->hacer('POST', P\ProyectoAdminController::class, 'update', [$pLd], 'proyecto', false, ['_csrf_token' => $tokL, 'cliente_id' => $cLd, 'nombre' => 'Campaña otoño', 'estado' => 'activo']);
+check((int) $ps->find($pLd)['con_leads'] === 0 && !$ls->clienteTieneLeads($cLd), 'al desmarcar «Con contactos ganados» el módulo se apaga');
+$_SESSION[P\PortalSession::CONTACTO] = $colab;
+[, $r] = $lp->correr('lista');
+check($r === '/portal', 'y el cliente deja de verlo (los datos quedan guardados)');
+check(count($ls->lista(['cliente_id' => $cLd])) === 0 && (int) $pdo->query("SELECT COUNT(*) FROM portal_leads WHERE proyecto_id = " . $pdo->quote($pLd))->fetchColumn() === 4, 'mientras está apagado no aparecen en las listas');
+(new P\ProyectoService($pdo))->update($pLd, ['cliente_id' => $cLd, 'nombre' => 'Campaña otoño', 'estado' => 'activo', 'con_leads' => 1]);
+[, $r] = $g->hacer('POST', P\ProyectoAdminController::class, 'destroy', [$pLd], 'proyecto', 'cuenta', ['_csrf_token' => $tokL]);
+check((int) $pdo->query("SELECT COUNT(*) FROM portal_leads WHERE proyecto_id = " . $pdo->quote($pLd))->fetchColumn() === 0, 'al borrar el proyecto se borran sus contactos');
+
 // ---------------------------------------------------------------------------
 echo "\n\n" . $GLOBALS['ok'] . ' comprobaciones OK, ' . count($GLOBALS['fallas']) . " fallas ({$motor}).\n";
 foreach ($GLOBALS['fallas'] as $f) {

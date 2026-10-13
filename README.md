@@ -74,6 +74,24 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### v0.26.0: contactos ganados (etapa 1)
+- **Contactos ganados (leads)**: un mini-CRM por campaña con las personas que llegan a los clientes de la agencia. Usa una tabla propia (`portal_leads`) y no tiene relación con los contactos del portal.
+- **Interruptor por proyecto**: «Con contactos ganados» en el formulario del proyecto. Al apagarlo, el cliente deja de ver los contactos, pero quedan guardados.
+- **Portal del cliente** (`/portal/contactos-ganados`, solo para colaboradores):
+  - Lista con pestañas por estado, búsqueda y filtro por campaña.
+  - Ficha con estado, notas y próximo paso con fecha. Queda registrado quién hizo el último cambio de estado.
+  - Ingreso manual.
+  - En el celular se entra desde una tarjeta en Inicio.
+- **Agencia** (admin «Portal · Contactos ganados» y panel `/equipo/leads`):
+  - Consolidado por proyecto y campaña, con el conteo por estado.
+  - Lista, ficha e ingreso manual.
+  - Cada persona ve solo los proyectos que tiene asignados.
+- **Datos**:
+  - Solo nombre, correo, teléfono y empresa, más el origen y los UTM.
+  - No se duplica el mismo correo o teléfono en la misma campaña dentro de 30 días.
+  - Toda consulta va acotada por cliente o proyecto.
+- **Migración `0012_leads.sql`**: también la garantiza `Schema.php`. Incluye las tablas de fuentes y de intentos para la etapa 2 (webhook).
+
 ### v0.15.1
 
 - **La revisión de contenidos se envía sola:** cuando el cliente aprueba o pide cambios en la última pieza pendiente, la entrega pasa a «Aprobada» o «Respondida» y el equipo recibe un solo aviso con el resumen. Con una pieza pasa de inmediato; con varias, al decidir la última. Mientras queden piezas por revisar, el cliente puede cambiar sus decisiones. El botón «Enviar revisión» se mantiene solo para entregas que hayan quedado completas desde antes.

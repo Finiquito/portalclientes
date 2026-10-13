@@ -11,7 +11,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
-    <link rel="stylesheet" href="/plugins/portal/assets/portal.css?v=26">
+    <link rel="stylesheet" href="/plugins/portal/assets/portal.css?v=27">
     <script>{$portalBoot|noescape}</script>
 </head>
 <body class="min-h-dvh bg-bg font-sans text-ink antialiased">
@@ -27,6 +27,9 @@
     ['solicitudes', '/equipo/solicitudes', 'i-plus',  'Solicitudes'],
     ['actividad',  '/equipo/actividad', 'i-bolt',     'Actividad', 'escritorio'],
 ]}
+{if !empty($hayLeads)}
+    {var $items = array_merge(array_slice($items, 0, 7), [['leads', '/equipo/leads', 'i-flag', 'Contactos ganados', 'escritorio']], array_slice($items, 7))}
+{/if}
 {* Solo Coordinación: gestión de la agencia. *}
 {var $itemsAgencia = [
     ['personas', '/equipo/personas', 'i-team', 'Equipo'],
@@ -81,6 +84,7 @@
                             <span class="flex-1">{$it[3]}</span>
                             {if $it[0] === 'inicio' && $nTurno > 0}<span class="chip chip-brand">{$nTurno}</span>{/if}
                             {if $it[0] === 'solicitudes' && $nSolicitudes > 0}<span class="chip chip-brand">{$nSolicitudes}</span>{/if}
+                            {if $it[0] === 'leads' && ($nLeads ?? 0) > 0}<span class="chip chip-brand">{$nLeads}</span>{/if}
                         </a>
                     {/foreach}
                 </nav>

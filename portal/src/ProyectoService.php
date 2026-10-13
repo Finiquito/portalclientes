@@ -60,14 +60,15 @@ class ProyectoService
         $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
 
         $this->pdo->prepare(
-            'INSERT INTO ' . self::TABLE . ' (id, cliente_id, nombre, descripcion, estado, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?)'
+            'INSERT INTO ' . self::TABLE . ' (id, cliente_id, nombre, descripcion, estado, con_leads, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
         )->execute([
             $id,
             (string) ($payload['cliente_id'] ?? ''),
             (string) ($payload['nombre'] ?? ''),
             (string) ($payload['descripcion'] ?? ''),
             (string) ($payload['estado'] ?? 'activo'),
+            empty($payload['con_leads']) ? 0 : 1,
             $now,
             $now,
         ]);
@@ -81,12 +82,13 @@ class ProyectoService
         $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
 
         $this->pdo->prepare(
-            'UPDATE ' . self::TABLE . ' SET cliente_id = ?, nombre = ?, descripcion = ?, estado = ?, updated_at = ? WHERE id = ?'
+            'UPDATE ' . self::TABLE . ' SET cliente_id = ?, nombre = ?, descripcion = ?, estado = ?, con_leads = ?, updated_at = ? WHERE id = ?'
         )->execute([
             (string) ($payload['cliente_id'] ?? ''),
             (string) ($payload['nombre'] ?? ''),
             (string) ($payload['descripcion'] ?? ''),
             (string) ($payload['estado'] ?? 'activo'),
+            empty($payload['con_leads']) ? 0 : 1,
             $now,
             $id,
         ]);

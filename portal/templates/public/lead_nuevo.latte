@@ -1,0 +1,49 @@
+{layout '_layout.latte'}
+
+{block title}Agregar contacto{/block}
+
+{block content}
+<a href="/portal/contactos-ganados" class="reveal mb-3 inline-flex items-center gap-1.5 text-sm font-semibold text-muted transition hover:text-ink">
+    <svg class="size-4"><use href="#i-back"/></svg> Contactos ganados
+</a>
+
+<header class="reveal pb-5 pt-1">
+    <h1 class="text-3xl font-extrabold tracking-tight sm:text-4xl">Agregar contacto</h1>
+    <p class="mt-1.5 text-muted">Para alguien que te escribió por otro lado (WhatsApp, una llamada, la tienda). Basta con un correo o un teléfono.</p>
+</header>
+
+<form method="post" action="/portal/contactos-ganados" data-once class="card card-pad reveal max-w-3xl space-y-5" style="--i:1">
+    <input type="hidden" name="_csrf" value="{$csrf}">
+
+    {if count($proyectos) === 1}
+        <input type="hidden" name="proyecto_id" value="{$proyectos[0]['id']}">
+    {else}
+        <div>
+            <label for="n-proyecto" class="label">Proyecto</label>
+            <select id="n-proyecto" name="proyecto_id" class="field" required>
+                <option value="">Elige un proyecto</option>
+                {foreach $proyectos as $p}<option value="{$p['id']}" {if $proyectoSel === $p['id']}selected{/if}>{$p['nombre']}</option>{/foreach}
+            </select>
+        </div>
+    {/if}
+
+    <div class="grid gap-4 sm:grid-cols-2">
+        <div><label for="n-nombre" class="label">Nombre</label><input id="n-nombre" name="nombre" type="text" maxlength="255" class="field" value="{$previo['nombre'] ?? ''}" autocomplete="off"></div>
+        <div><label for="n-empresa" class="label">Empresa <span class="font-normal text-muted">(opcional)</span></label><input id="n-empresa" name="empresa" type="text" maxlength="255" class="field" value="{$previo['empresa'] ?? ''}" autocomplete="off"></div>
+        <div><label for="n-correo" class="label">Correo</label><input id="n-correo" name="correo" type="email" maxlength="255" class="field" value="{$previo['correo'] ?? ''}" autocomplete="off"></div>
+        <div><label for="n-tel" class="label">Teléfono</label><input id="n-tel" name="telefono" type="tel" maxlength="64" class="field" value="{$previo['telefono'] ?? ''}" autocomplete="off" placeholder="+56 9 …"></div>
+    </div>
+
+    <div>
+        <label for="n-campana" class="label">Campaña o de dónde llegó <span class="font-normal text-muted">(opcional)</span></label>
+        <input id="n-campana" name="campana" type="text" maxlength="255" class="field" value="{$previo['campana'] ?? ''}" placeholder="Ej.: Instagram, referido, feria">
+    </div>
+
+    <div>
+        <label for="n-notas" class="label">Notas <span class="font-normal text-muted">(opcional)</span></label>
+        <textarea id="n-notas" name="notas" rows="3" maxlength="5000" data-autogrow class="field">{$previo['notas'] ?? ''}</textarea>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Agregar</button>
+</form>
+{/block}

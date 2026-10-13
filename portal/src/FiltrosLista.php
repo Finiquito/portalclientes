@@ -18,7 +18,7 @@ final class FiltrosLista
 
     /**
      * @param array<string, string> $defecto clave => valor por defecto
-     * @param array<string, array<int, string>|string> $permitidos clave => valores válidos, o 'uuid'
+     * @param array<string, array<int, string>|string> $permitidos clave => valores válidos, 'uuid' o 'texto' (búsqueda libre, hasta 100 caracteres)
      */
     public static function desdeGet(string $base, array $defecto, array $permitidos): self
     {
@@ -28,6 +28,7 @@ final class FiltrosLista
             $ok = match (true) {
                 $x === ''                             => false,
                 ($permitidos[$k] ?? null) === 'uuid'  => preg_match('/^[0-9a-f-]{36}$/i', $x) === 1,
+                ($permitidos[$k] ?? null) === 'texto' => mb_strlen($x) <= 100,
                 is_array($permitidos[$k] ?? null)     => in_array($x, $permitidos[$k], true),
                 default                               => false,
             };

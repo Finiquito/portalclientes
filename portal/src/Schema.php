@@ -51,6 +51,9 @@ final class Schema
         'portal_entregas' => [
             'fase_id' => 'VARCHAR(36)',
         ],
+        'portal_proyectos' => [
+            'con_leads' => 'SMALLINT NOT NULL DEFAULT 0',   // «Contactos ganados» activo en este proyecto
+        ],
         'portal_clientes' => [
             'pais' => "VARCHAR(2) NOT NULL DEFAULT 'CL'",
             'responsable_id' => 'VARCHAR(36)',   // quien lleva la cuenta (Coordinación de cuentas o general)
@@ -101,6 +104,7 @@ final class Schema
         self::tablasAvisos($pdo);
         self::tablaHitos($pdo);
         self::tablaPlantillas($pdo);
+        self::tablasLeads($pdo);
         self::ampliarTextos($pdo);
     }
 
@@ -251,6 +255,21 @@ final class Schema
             }
         }
         PlantillaService::sembrar($pdo);   // la primera vez: las de ejemplo
+    }
+
+    /** Contactos ganados, sus fuentes y el registro de intentos (migración 0012). */
+    private static function tablasLeads(\PDO $pdo): void
+    {
+        if (self::existe($pdo, 'portal_leads', 'id, cliente_id, proyecto_id, estado, anonimizado_en')
+            && self::existe($pdo, 'portal_lead_fuentes', 'id, token_hash, activa')
+            && self::existe($pdo, 'portal_lead_intentos', 'id, ip_hash')) {
+            return;
+        }
+        $sql = (string) @file_get_contents(dirname(__DIR__) . '/migrations/0012_leads.sql');
+        $sql = preg_replace('/^\s*--.*$/m', '', $sql) ?? '';
+        foreach (array_filter(array_map('trim', explode(';', $sql))) as $stmt) {
+            $pdo->exec($stmt);
+        }
     }
 
     /** Sólo para pruebas. */

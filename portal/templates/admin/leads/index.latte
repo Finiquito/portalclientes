@@ -1,0 +1,107 @@
+{layout $plugin_ui_layout}
+
+{block page_title}Contactos ganados{/block}
+
+{block content}
+<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=11">
+<div class="page-header">
+    <h1>Contactos ganados</h1>
+    {if $proyectos}<a href="{$admin_url('leads/nuevo')}{if $filtros->get('proyecto')}?proyecto={$filtros->get('proyecto')}{/if}" class="btn btn-primary">Agregar contacto</a>{/if}
+</div>
+
+{if $flash_success}<div class="alert alert-success">{$flash_success}</div>{/if}
+{if $flash_error}<div class="alert alert-error">{$flash_error}</div>{/if}
+
+{if !$proyectos}
+    <div class="card">
+        <p style="margin:0"><strong>Todavía no hay proyectos con contactos ganados.</strong></p>
+        <p class="pa-muted" style="margin:.4rem 0 0">Edita el proyecto de la campaña y marca «Con contactos ganados». Desde ahí el cliente ve en su portal las personas que llegan y les da seguimiento.</p>
+        <p style="margin:.9rem 0 0"><a href="{$admin_url('proyectos')}" class="btn">Ir a proyectos</a></p>
+    </div>
+{else}
+
+<div class="pa-filtros">
+    <div class="pa-pills" role="navigation" aria-label="Estado">
+        <a href="{$filtros->url(['estado' => ''])}" class="pa-pill" {if $filtros->es('estado', '')}aria-current="true"{/if}>Todos <span class="pa-n">{$total}</span></a>
+        {foreach $estados as $k => $txt}
+            <a href="{$filtros->url(['estado' => $k])}" class="pa-pill" {if $filtros->es('estado', $k)}aria-current="true"{/if}>{$txt} <span class="pa-n">{$conteo[$k]}</span></a>
+        {/foreach}
+    </div>
+    <form method="get" action="{$filtros->url(['proyecto' => '', 'q' => ''])}" class="pa-selects" data-auto>
+        <input type="hidden" name="estado" value="{$filtros->get('estado')}">
+        <label for="f-proy">Proyecto</label>
+        <select id="f-proy" name="proyecto" class="form-input" style="width:auto">
+            <option value="">Todos los proyectos</option>
+            {foreach $proyectos as $p}
+                <option value="{$p['id']}" {if $filtros->es('proyecto', $p['id'])}selected{/if}>{$p['cliente_nombre']} · {$p['nombre']}</option>
+            {/foreach}
+        </select>
+        <label for="f-q">Buscar</label>
+        <input id="f-q" type="search" name="q" value="{$filtros->get('q')}" class="form-input" style="width:auto" placeholder="Nombre, correo, teléfono…">
+        <button type="submit" class="btn btn-sm">Filtrar</button>
+        {if $filtros->get('proyecto') || $filtros->get('q')}<a href="{$filtros->url(['proyecto' => '', 'q' => ''])}" class="pa-muted">Quitar filtros</a>{/if}
+    </form>
+</div>
+
+{* Consolidado: por proyecto y campaña *}
+{if $porCampana}
+<div class="card" style="overflow-x:auto">
+    <h2 class="pa-h2">Por campaña</h2>
+    <table class="table">
+        <thead><tr><th>Proyecto · campaña</th><th>Total</th>{foreach $estados as $k => $txt}<th>{$txt}</th>{/foreach}</tr></thead>
+        <tbody>
+        {foreach $porCampana as $g}
+            <tr>
+                <td>
+                    <a href="{$filtros->url(['proyecto' => $g['proyecto_id']])}" class="pa-proy"><span class="pa-dot" style="background: {($colorProy[$g['proyecto_id']] ?? '#94a3b8')|noescape}" aria-hidden="true"></span><strong>{$g['proyecto']}</strong></a>
+                    <div class="pa-muted">{$g['cliente']}</div>
+                </td>
+                <td><strong>{$g['total']}</strong></td>
+                {foreach $estados as $k => $txt}<td>{$g['estados'][$k] ?: '—'}</td>{/foreach}
+            </tr>
+            {if count($g['campanas']) > 1 || $g['campanas'][0]['campana'] !== ''}
+                {foreach $g['campanas'] as $c}
+                    <tr>
+                        <td style="padding-left:1.75rem" class="pa-muted">{$c['campana'] ?: 'Sin campaña'}</td>
+                        <td class="pa-muted">{$c['total']}</td>
+                        {foreach $estados as $k => $txt}<td class="pa-muted">{$c['estados'][$k] ?: '—'}</td>{/foreach}
+                    </tr>
+                {/foreach}
+            {/if}
+        {/foreach}
+        </tbody>
+    </table>
+</div>
+{/if}
+
+{if empty($leads)}
+    <div class="card"><p class="pa-muted" style="margin:0">{if $total === 0}Todavía no llegan contactos a estas campañas.{else}No hay contactos con estos filtros.{/if}</p></div>
+{else}
+<div class="card" style="overflow-x:auto">
+    <table class="table">
+        <thead><tr><th>Contacto</th><th>Proyecto</th><th>Estado</th><th>Próximo paso</th><th>Llegó</th></tr></thead>
+        <tbody>
+        {foreach $leads as $l}
+            {var $abierto = !in_array($l['estado'], ['ganado', 'perdido'], true)}
+            <tr {if $l['estado'] === 'nuevo'}class="pa-new"{/if}>
+                <td>
+                    <a href="{$admin_url('leads/' . $l['id'])}"><strong>{$l['nombre']}</strong></a>
+                    <div class="pa-muted">{$l['correo'] ?: $l['telefono']}</div>
+                    {if $l['empresa'] && $l['empresa'] !== $l['nombre']}<div class="pa-muted">{$l['empresa']}</div>{/if}
+                </td>
+                <td>
+                    <span class="pa-proy"><span class="pa-dot" style="background: {($colorProy[$l['proyecto_id']] ?? '#94a3b8')|noescape}" aria-hidden="true"></span>{$l['proyecto_nombre']}</span>
+                    <div class="pa-muted">{$l['cliente_nombre']}{if $l['campana']} · {$l['campana']}{/if}</div>
+                </td>
+                <td><span class="pa-chip {$chips[$l['estado']]}">{$estados[$l['estado']]}</span></td>
+                <td>{if $l['proximo_paso'] && $abierto}{$l['proximo_paso']}{if $l['proximo_paso_fecha']}<div class="pa-muted" {if $l['proximo_paso_fecha'] < $hoy}style="color:#e11d48;font-weight:700"{/if}>{$fmt->fechaCorta($l['proximo_paso_fecha'])}</div>{/if}{else}<span class="pa-muted">—</span>{/if}</td>
+                <td>{$fmt->rel($l['created_at'])}<div class="pa-muted">{$origenes[$l['origen']] ?? $l['origen']}</div></td>
+            </tr>
+        {/foreach}
+        </tbody>
+    </table>
+</div>
+{/if}
+{/if}
+{include '../_filtros.js.latte'}
+{/block}

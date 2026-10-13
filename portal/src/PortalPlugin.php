@@ -91,6 +91,13 @@ class PortalPlugin implements PluginInterface
         $ctx->registerAdminRoute('POST', 'solicitudes/@id/comentarios',    fn(string $id) => $solicitudes->comentar($id));
         $ctx->registerAdminRoute('POST', 'solicitudes/@id/borrar',         fn(string $id) => $solicitudes->destroy($id));
 
+        $leads = new LeadAdminController($ctx);
+        $ctx->registerAdminRoute('GET',  'leads',                [$leads, 'index']);
+        $ctx->registerAdminRoute('GET',  'leads/nuevo',           [$leads, 'create']);
+        $ctx->registerAdminRoute('POST', 'leads',                 [$leads, 'store']);
+        $ctx->registerAdminRoute('GET',  'leads/@id',             fn(string $id) => $leads->ver($id));
+        $ctx->registerAdminRoute('POST', 'leads/@id',             fn(string $id) => $leads->update($id));
+
         $fases = new FaseAdminController($ctx);
         $ctx->registerAdminRoute('GET',  'fases',                [$fases, 'index']);
         $ctx->registerAdminRoute('GET',  'fases/nuevo',           [$fases, 'create']);
@@ -204,6 +211,12 @@ class PortalPlugin implements PluginInterface
         \Flight::route('GET /portal/solicitudes/@id',             fn(string $id) => $sol->ver($id));
         \Flight::route('POST /portal/solicitudes/@id/comentarios', fn(string $id) => $sol->comentar($id));
         \Flight::route('POST /portal/solicitudes/@id/decidir',    fn(string $id) => $sol->decidir($id));
+        $leadsPub = new LeadPublicController($ctx);
+        \Flight::route('GET /portal/contactos-ganados',           [$leadsPub, 'lista']);
+        \Flight::route('GET /portal/contactos-ganados/nuevo',     [$leadsPub, 'nuevo']);
+        \Flight::route('POST /portal/contactos-ganados',          [$leadsPub, 'crear']);
+        \Flight::route('GET /portal/contactos-ganados/@id',       fn(string $id) => $leadsPub->ver($id));
+        \Flight::route('POST /portal/contactos-ganados/@id',      fn(string $id) => $leadsPub->guardar($id));
         \Flight::route('GET /portal/ayuda',                   [$publico, 'ayuda']);
         \Flight::route('POST /portal/primeros-pasos/ocultar', [$publico, 'ocultarPrimerosPasos']);
         \Flight::route('GET /portal/ajustes',                 [$publico, 'ajustesForm']);
@@ -238,6 +251,7 @@ class PortalPlugin implements PluginInterface
         $ctx->addAdminMenuItem('Portal · Fases', 'fases');
         $ctx->addAdminMenuItem('Portal · Reuniones', 'reuniones');
         $ctx->addAdminMenuItem('Portal · Solicitudes', 'solicitudes');
+        $ctx->addAdminMenuItem('Portal · Contactos ganados', 'leads');
         $ctx->addAdminMenuItem('Portal · Tareas', 'tareas');
         $ctx->addAdminMenuItem('Portal · Actividad', 'actividad');
         $ctx->addAdminMenuItem('Portal · Ajustes', 'ajustes');
@@ -252,7 +266,7 @@ class PortalPlugin implements PluginInterface
 
     public function getVersion(): string
     {
-        return '0.15.1';
+        return '0.26.0';
     }
 
     public function provides(): array

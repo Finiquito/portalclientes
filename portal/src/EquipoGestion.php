@@ -118,6 +118,13 @@ class EquipoGestion extends EquipoController
         $r('POST', 'solicitudes/@id/comentarios',   SolicitudAdminController::class, 'comentar', 'solicitud');
         $r('POST', 'solicitudes/@id/borrar',        SolicitudAdminController::class, 'destroy', 'solicitud', 'cuenta');
 
+        // Contactos ganados (leads) de los proyectos con el módulo activo.
+        $r('GET',  'leads',                         LeadAdminController::class, 'index');
+        $r('GET',  'leads/nuevo',                   LeadAdminController::class, 'create');
+        $r('POST', 'leads',                         LeadAdminController::class, 'store');
+        $r('GET',  'leads/@id',                     LeadAdminController::class, 'ver', 'lead');
+        $r('POST', 'leads/@id',                     LeadAdminController::class, 'update', 'lead');
+
         // Personas del equipo y sus asignaciones (solo Coordinación).
         $r('GET',  'personas',                      EquipoAdminController::class, 'index', null, true);
         $r('GET',  'personas/nuevo',                EquipoAdminController::class, 'create', null, true);
@@ -217,6 +224,7 @@ class EquipoGestion extends EquipoController
             'cliente'   => $acc->gestionaCliente($id),
             'proyecto'  => $acc->gestionaProyecto($id),
             'solicitud' => ($f = $this->fetchOne('SELECT cliente_id FROM portal_solicitudes WHERE id = ?', [$id])) !== null && $acc->gestionaCliente((string) $f['cliente_id']),
+            'lead'      => ($f = $this->fetchOne('SELECT cliente_id FROM portal_leads WHERE id = ?', [$id])) !== null && $acc->gestionaCliente((string) $f['cliente_id']),
             default     => false,
         };
     }
@@ -229,7 +237,7 @@ class EquipoGestion extends EquipoController
         }
         $tablas = [
             'tarea' => 'portal_tareas', 'reunion' => 'portal_reuniones', 'entrega' => 'portal_entregas',
-            'contenido' => 'portal_contenidos', 'fase' => 'portal_fases'
+            'contenido' => 'portal_contenidos', 'fase' => 'portal_fases', 'lead' => 'portal_leads',
         ];
         switch ($tipo) {
             case 'proyecto':
@@ -275,6 +283,7 @@ class EquipoGestion extends EquipoController
             'entregas'  => 'contenidos',
             'reuniones' => 'reuniones',
             'solicitudes' => 'solicitudes',
+            'leads'     => 'leads',
             'proyectos', 'cronograma', 'fases', 'plantillas' => 'proyectos',
             'equipo'    => 'personas',
             'ajustes'   => 'agencia',

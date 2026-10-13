@@ -88,6 +88,7 @@ class ProyectoAdminController
         $pdo = $this->ctx->db()->pdo();
         (new EntregaService($pdo))->borrarDeProyecto($id);
         (new SolicitudService($pdo))->borrarDeProyecto($id);
+        (new LeadService($pdo))->borrarDeProyecto($id);
         (new ComentarioService($pdo))->borrarDeProyecto($id);
         (new ArchivoService($pdo))->borrarFisicosDeProyecto($id);
         $this->service()->delete($id);

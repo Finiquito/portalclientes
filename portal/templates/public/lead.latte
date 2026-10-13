@@ -1,0 +1,96 @@
+{layout '_layout.latte'}
+
+{block title}{$l['nombre']}{/block}
+
+{block content}
+{var $anonimo = !empty($l['anonimizado_en'])}
+<a href="/portal/contactos-ganados" class="reveal mb-3 inline-flex items-center gap-1.5 text-sm font-semibold text-muted transition hover:text-ink">
+    <svg class="size-4"><use href="#i-back"/></svg> Contactos ganados
+</a>
+
+<div class="lg:grid lg:grid-cols-[minmax(0,1fr)_17rem] lg:gap-6">
+<div class="flex min-w-0 flex-col gap-5">
+
+    <section class="card card-pad reveal">
+        <div class="flex items-start gap-4">
+            <span class="avatar size-12! flex-none text-base!">{$fmt->iniciales($l['nombre'])}</span>
+            <div class="min-w-0 flex-1">
+                <div class="flex flex-wrap items-center gap-2">
+                    <span class="chip {$chips[$l['estado']]}">{$estados[$l['estado']]}</span>
+                    {if $l['campana']}<span class="chip chip-muted">{$l['campana']}</span>{/if}
+                </div>
+                <h1 class="mt-2 break-words text-2xl font-extrabold leading-tight tracking-tight sm:text-3xl">{$l['nombre']}</h1>
+                {if $l['empresa'] && $l['empresa'] !== $l['nombre']}<p class="mt-0.5 text-muted">{$l['empresa']}</p>{/if}
+            </div>
+        </div>
+        {if $anonimo}
+            <p class="mt-4 rounded-2xl bg-surface2 px-4 py-3 text-sm text-muted">Este contacto fue anonimizado el {$fmt->fecha($l['anonimizado_en'])}: sus datos personales se borraron y sólo queda para los conteos.</p>
+        {else}
+            <div class="mt-4 flex flex-wrap gap-2">
+                {if $l['correo']}<a href="mailto:{$l['correo']}" class="btn btn-ghost btn-sm min-w-0"><svg class="size-4 flex-none"><use href="#i-mail"/></svg> <span class="break-all">{$l['correo']}</span></a>{/if}
+                {if $l['telefono']}<a href="tel:{$l['telefono']}" class="btn btn-ghost btn-sm">{$l['telefono']}</a>{/if}
+            </div>
+        {/if}
+    </section>
+
+    {if !$anonimo}
+    <form method="post" action="/portal/contactos-ganados/{$l['id']}" class="card card-pad reveal space-y-5" style="--i:1">
+        <input type="hidden" name="_csrf" value="{$csrf}">
+        <h2 class="text-lg font-extrabold tracking-tight">Seguimiento</h2>
+
+        <fieldset>
+            <legend class="label">Estado</legend>
+            <div class="grid grid-cols-2 gap-2.5 sm:grid-cols-5">
+                {foreach $estados as $k => $nombre}
+                    <label class="opcion"><input type="radio" name="estado" value="{$k}" class="sr-only" {if $l['estado'] === $k}checked{/if}><span class="font-semibold">{$nombre}</span></label>
+                {/foreach}
+            </div>
+            {if $l['estado_por'] && $l['estado_en']}<p class="mt-2 text-xs text-muted">Último cambio: {$l['estado_por']}, {$fmt->rel($l['estado_en'])}.</p>{/if}
+        </fieldset>
+
+        <div class="grid gap-4 sm:grid-cols-[minmax(0,1fr)_11rem]">
+            <div>
+                <label for="l-paso" class="label">Próximo paso</label>
+                <input id="l-paso" name="proximo_paso" type="text" maxlength="255" class="field" value="{$l['proximo_paso']}" placeholder="Ej.: llamarla para enviar cotización">
+            </div>
+            <div>
+                <label for="l-fecha" class="label">¿Cuándo?</label>
+                <input id="l-fecha" name="proximo_paso_fecha" type="date" class="field" value="{$l['proximo_paso_fecha']}">
+            </div>
+        </div>
+
+        <div>
+            <label for="l-notas" class="label">Notas</label>
+            <textarea id="l-notas" name="notas" rows="4" maxlength="5000" data-autogrow class="field" placeholder="Lo que conversaron, qué le interesa…">{$l['notas']}</textarea>
+        </div>
+
+        <details class="rounded-2xl border border-line px-4 py-3">
+            <summary class="cursor-pointer text-sm font-semibold">Corregir datos de contacto</summary>
+            <div class="mt-4 grid gap-4 sm:grid-cols-2">
+                <div><label for="l-nombre" class="label">Nombre</label><input id="l-nombre" name="nombre" type="text" maxlength="255" class="field" value="{$l['nombre']}"></div>
+                <div><label for="l-empresa" class="label">Empresa</label><input id="l-empresa" name="empresa" type="text" maxlength="255" class="field" value="{$l['empresa']}"></div>
+                <div><label for="l-correo" class="label">Correo</label><input id="l-correo" name="correo" type="email" maxlength="255" class="field" value="{$l['correo']}"></div>
+                <div><label for="l-tel" class="label">Teléfono</label><input id="l-tel" name="telefono" type="tel" maxlength="64" class="field" value="{$l['telefono']}"></div>
+            </div>
+        </details>
+
+        <button type="submit" class="btn btn-primary">Guardar</button>
+    </form>
+    {/if}
+</div>
+
+<aside class="mt-5 lg:mt-0">
+    <section class="card card-pad reveal text-sm" style="--i:2">
+        <h2 class="font-extrabold">De dónde llegó</h2>
+        <dl class="mt-3 space-y-2.5">
+            <div><dt class="text-xs text-muted">Proyecto</dt><dd class="font-semibold">{$l['proyecto_nombre']}</dd></div>
+            <div><dt class="text-xs text-muted">Origen</dt><dd class="font-semibold">{$origenes[$l['origen']] ?? $l['origen']}</dd></div>
+            {if $l['campana']}<div><dt class="text-xs text-muted">Campaña</dt><dd class="break-words font-semibold">{$l['campana']}</dd></div>{/if}
+            {if $l['utm_source'] || $l['utm_medium']}<div><dt class="text-xs text-muted">Fuente / medio</dt><dd class="break-words font-semibold">{$l['utm_source'] ?: '—'} / {$l['utm_medium'] ?: '—'}</dd></div>{/if}
+            <div><dt class="text-xs text-muted">Llegó</dt><dd class="font-semibold">{$fmt->fecha($l['created_at'])}</dd></div>
+            {if $l['creado_por'] && $l['origen'] === 'manual'}<div><dt class="text-xs text-muted">Lo agregó</dt><dd class="font-semibold">{$l['creado_por']}</dd></div>{/if}
+        </dl>
+    </section>
+</aside>
+</div>
+{/block}

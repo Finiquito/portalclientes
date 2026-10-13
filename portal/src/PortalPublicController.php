@@ -228,6 +228,12 @@ class PortalPublicController
         return ($contacto['rol'] ?? 'viewer') === 'aprobador';
     }
 
+    /** Contactos ganados: los ven los colaboradores, si algún proyecto del cliente tiene el módulo activo. */
+    protected function veLeads(array $contacto): bool
+    {
+        return $this->esColaborador($contacto) && (new LeadService($this->pdo()))->clienteTieneLeads((string) $contacto['cliente_id']);
+    }
+
     /** Corta la request si el token CSRF no coincide. */
     protected function exigirCsrf(string $volverA): void
     {
@@ -312,6 +318,8 @@ class PortalPublicController
             'vistaPrevia'   => PortalSession::vistaPrevia(),
             'hayRevisiones' => (int) ($this->fetchOne("SELECT COUNT(*) AS n FROM portal_entregas WHERE cliente_id = ? AND estado <> 'borrador'", [$clienteId])['n'] ?? 0) > 0,
             'puedeColaborar' => $this->esColaborador($contacto),
+            'verLeads'      => $verLeads = $this->veLeads($contacto),
+            'leadsNuevos'   => $verLeads ? (new LeadService($this->pdo()))->nuevosDelCliente($clienteId) : 0,
             'maxMb'         => (int) round($this->archivos()->limiteBytes($this->maxMb()) / 1048576),
             'portalBoot'    => $this->asset('theme.js'),
             'portalJs'      => $this->asset('portal.js'),

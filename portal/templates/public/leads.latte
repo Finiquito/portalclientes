@@ -1,0 +1,89 @@
+{layout '_layout.latte'}
+
+{block title}Contactos ganados{/block}
+
+{block content}
+<header class="reveal flex flex-wrap items-end justify-between gap-4 pb-5 pt-1">
+    <div>
+        <h1 class="text-3xl font-extrabold tracking-tight sm:text-4xl">Contactos ganados</h1>
+        <p class="mt-1.5 text-muted">Las personas que llegan por tus campañas. Anota en qué va cada una y cuál es el próximo paso.</p>
+    </div>
+    {if !$vistaPrevia}<a href="/portal/contactos-ganados/nuevo" class="btn btn-primary btn-sm"><svg class="size-4"><use href="#i-plus"/></svg> Agregar contacto</a>{/if}
+</header>
+
+{* Pestañas por estado *}
+{var $q = array_filter(['proyecto' => $f['proyecto_id'], 'campana' => $f['campana'], 'q' => $f['q']])}
+<nav class="scroll-x reveal -mx-1 flex gap-2 px-1 pb-4" style="--i:1" aria-label="Filtrar por estado">
+    <a href="/portal/contactos-ganados{if $q}?{http_build_query($q)}{/if}" class="btn btn-sm {$f['estado'] === '' ? 'btn-primary' : 'btn-ghost'}" {if $f['estado'] === ''}aria-current="true"{/if}>
+        Todos <span class="rounded-full px-1.5 text-xs {$f['estado'] === '' ? 'bg-white/25' : 'bg-surface2 text-muted'}">{$total}</span>
+    </a>
+    {foreach $estados as $k => $nombre}
+        <a href="/portal/contactos-ganados?{http_build_query($q + ['estado' => $k])}" class="btn btn-sm {$f['estado'] === $k ? 'btn-primary' : 'btn-ghost'}" {if $f['estado'] === $k}aria-current="true"{/if}>
+            {$nombre} <span class="rounded-full px-1.5 text-xs {$f['estado'] === $k ? 'bg-white/25' : 'bg-surface2 text-muted'}">{$conteo[$k]}</span>
+        </a>
+    {/foreach}
+</nav>
+
+{* Búsqueda y filtros *}
+<form method="get" action="/portal/contactos-ganados" class="reveal mb-4 flex flex-wrap items-end gap-3" style="--i:2" role="search">
+    {if $f['estado'] !== ''}<input type="hidden" name="estado" value="{$f['estado']}">{/if}
+    <div class="min-w-[12rem] flex-1">
+        <label for="l-q" class="label">Buscar</label>
+        <input id="l-q" type="search" name="q" value="{$f['q']}" class="field" placeholder="Nombre, correo, teléfono o empresa">
+    </div>
+    {if count($proyectos) > 1}
+    <div>
+        <label for="l-p" class="label">Proyecto</label>
+        <select id="l-p" name="proyecto" class="field">
+            <option value="">Todos los proyectos</option>
+            {foreach $proyectos as $p}<option value="{$p['id']}" {if $f['proyecto_id'] === $p['id']}selected{/if}>{$p['nombre']}</option>{/foreach}
+        </select>
+    </div>
+    {/if}
+    {if $campanas}
+    <div>
+        <label for="l-c" class="label">Campaña</label>
+        <select id="l-c" name="campana" class="field">
+            <option value="">Todas</option>
+            {foreach $campanas as $cp}<option value="{$cp}" {if $f['campana'] === $cp}selected{/if}>{$cp}</option>{/foreach}
+        </select>
+    </div>
+    {/if}
+    <button type="submit" class="btn btn-ghost btn-sm">Filtrar</button>
+    {if $f['q'] !== '' || $f['campana'] !== '' || $f['proyecto_id'] !== ''}<a href="/portal/contactos-ganados{if $f['estado'] !== ''}?estado={$f['estado']}{/if}" class="btn btn-ghost btn-sm">Limpiar</a>{/if}
+</form>
+
+<section class="card reveal overflow-hidden" style="--i:3">
+    {if empty($leads)}
+        <div class="flex flex-col items-center px-6 py-14 text-center">
+            <span class="flex size-14 items-center justify-center rounded-2xl bg-brand-soft text-brand-ink"><svg class="size-7"><use href="#i-users"/></svg></span>
+            <p class="mt-4 font-bold">{if $total === 0}Todavía no llegan contactos{else}Nada con esos filtros{/if}</p>
+            <p class="mt-1 max-w-xs text-sm text-muted">{if $total === 0}Cuando alguien deje sus datos en tu campaña, aparece aquí y te avisamos por correo.{else}Prueba con otra búsqueda o estado.{/if}</p>
+        </div>
+    {else}
+        <ul class="divide-y divide-line/70 p-1.5 sm:p-2">
+            {foreach $leads as $l}
+                {var $vencido = $l['proximo_paso_fecha'] && $l['proximo_paso_fecha'] < $hoy && !in_array($l['estado'], ['ganado', 'perdido'], true)}
+                <li>
+                    <a href="/portal/contactos-ganados/{$l['id']}" class="group flex items-center gap-3 rounded-2xl p-3 transition hover:bg-surface2 sm:p-3.5">
+                        <span class="avatar flex-none">{$fmt->iniciales($l['nombre'])}</span>
+                        <span class="min-w-0 flex-1">
+                            <span class="block truncate font-semibold">{$l['nombre']}{if $l['empresa'] && $l['empresa'] !== $l['nombre']} <span class="font-normal text-muted">· {$l['empresa']}</span>{/if}</span>
+                            <span class="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-muted">
+                                {if $l['correo']}<span class="break-all">{$l['correo']}</span>{elseif $l['telefono']}<span>{$l['telefono']}</span>{/if}
+                                {if count($proyectos) > 1}<span class="inline-flex items-center gap-1.5 font-semibold"><span aria-hidden="true" style="display:inline-block;width:.6rem;height:.6rem;border-radius:9999px;flex:none;background:{($colorProy[$l['proyecto_id']] ?? '#94a3b8')|noescape}"></span>{$l['proyecto_nombre']}</span>{/if}
+                                {if $l['campana']}<span>{$l['campana']}</span>{/if}
+                                <span>{$fmt->rel($l['created_at'])}</span>
+                                {if $l['proximo_paso_fecha'] && !in_array($l['estado'], ['ganado', 'perdido'], true)}<span class="inline-flex items-center gap-1 {$vencido ? 'font-bold text-danger' : ''}"><svg class="size-3.5"><use href="#i-clock"/></svg>{$fmt->fechaCorta($l['proximo_paso_fecha'])}</span>{/if}
+                            </span>
+                        </span>
+                        <span class="chip {$chips[$l['estado']]} hidden sm:inline-flex">{$estados[$l['estado']]}</span>
+                        <svg class="size-4 flex-none text-muted transition group-hover:translate-x-0.5"><use href="#i-chevron"/></svg>
+                    </a>
+                    <span class="chip {$chips[$l['estado']]} -mt-1 mb-2.5 ml-[4.25rem] sm:hidden">{$estados[$l['estado']]}</span>
+                </li>
+            {/foreach}
+        </ul>
+    {/if}
+</section>
+{/block}

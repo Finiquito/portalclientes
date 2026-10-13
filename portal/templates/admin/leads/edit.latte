@@ -1,0 +1,79 @@
+{layout $plugin_ui_layout}
+
+{block page_title}{if $l}{$l['nombre']}{else}Agregar contacto{/if}{/block}
+
+{block content}
+<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=11">
+{var $anonimo = $l && !empty($l['anonimizado_en'])}
+<div class="page-header">
+    <h1>{if $l}{$l['nombre']}{else}Agregar contacto{/if}</h1>
+    <a href="{$admin_url('leads')}" class="btn">Volver</a>
+</div>
+
+{if !empty($flash_success)}<div class="alert alert-success">{$flash_success}</div>{/if}
+{if !empty($flash_error)}<div class="alert alert-error">{$flash_error}</div>{/if}
+
+{if $l}
+<div class="card">
+    <p style="display:flex;flex-wrap:wrap;gap:.4rem;margin:0 0 .75rem">
+        <span class="pa-chip {$chips[$l['estado']]}">{$estados[$l['estado']]}</span>
+        <span class="pa-chip gris">{$origenes[$l['origen']] ?? $l['origen']}</span>
+        {if $l['campana']}<span class="pa-chip gris">{$l['campana']}</span>{/if}
+    </p>
+    <p class="pa-muted" style="margin:0">
+        {$l['cliente_nombre']} · {$l['proyecto_nombre']} · llegó {$fmt->rel($l['created_at'])}
+        {if $l['creado_por'] && $l['origen'] === 'manual'} · lo agregó {$l['creado_por']}{/if}
+        {if $l['utm_source'] || $l['utm_medium']} · {$l['utm_source'] ?: '—'} / {$l['utm_medium'] ?: '—'}{/if}
+    </p>
+    {if $l['estado_por'] && $l['estado_en']}<p class="pa-muted" style="margin:.4rem 0 0">Último cambio de estado: {$l['estado_por']}, {$fmt->rel($l['estado_en'])}.</p>{/if}
+    {if $anonimo}<p class="pa-muted" style="margin:.75rem 0 0"><strong>Anonimizado</strong> el {$fmt->fecha($l['anonimizado_en'])}: sus datos personales se borraron.</p>{/if}
+</div>
+{/if}
+
+{if !$anonimo}
+<div class="card">
+    <form method="post" action="{if $l}{$admin_url('leads/' . $l['id'])}{else}{$admin_url('leads')}{/if}">
+        <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+
+        {if !$l}
+            <label class="form-label">Proyecto</label>
+            <select name="proyecto_id" class="form-input" required>
+                {if count($proyectos) > 1}<option value="">Elige un proyecto</option>{/if}
+                {foreach $proyectos as $p}<option value="{$p['id']}" {if $pre['proyecto_id'] === $p['id']}selected{/if}>{$p['cliente_nombre']} · {$p['nombre']}</option>{/foreach}
+            </select>
+        {/if}
+
+        <div class="pa-grid-2">
+            <div><label class="form-label {if !$l}mt-3{/if}">Nombre</label><input type="text" name="nombre" maxlength="255" class="form-input" value="{$l['nombre'] ?? ''}"></div>
+            <div><label class="form-label {if !$l}mt-3{/if}">Empresa</label><input type="text" name="empresa" maxlength="255" class="form-input" value="{$l['empresa'] ?? ''}"></div>
+            <div><label class="form-label">Correo</label><input type="email" name="correo" maxlength="255" class="form-input" value="{$l['correo'] ?? ''}"></div>
+            <div><label class="form-label">Teléfono</label><input type="tel" name="telefono" maxlength="64" class="form-input" value="{$l['telefono'] ?? ''}"></div>
+        </div>
+        <p class="form-hint mt-1">Basta con un correo o un teléfono.</p>
+
+        {if !$l}
+            <label class="form-label mt-3">Campaña o de dónde llegó</label>
+            <input type="text" name="campana" maxlength="255" class="form-input" placeholder="Ej.: Instagram, referido, feria">
+        {/if}
+
+        <label class="form-label mt-3">Estado</label>
+        <div class="pa-radios">
+            {foreach $estados as $k => $txt}
+                <label><input type="radio" name="estado" value="{$k}" {if ($l['estado'] ?? 'nuevo') === $k}checked{/if}> {$txt}</label>
+            {/foreach}
+        </div>
+
+        <div class="pa-grid-2">
+            <div><label class="form-label mt-3">Próximo paso</label><input type="text" name="proximo_paso" maxlength="255" class="form-input" value="{$l['proximo_paso'] ?? ''}"></div>
+            <div><label class="form-label mt-3">¿Cuándo?</label><input type="date" name="proximo_paso_fecha" class="form-input" value="{$l['proximo_paso_fecha'] ?? ''}"></div>
+        </div>
+
+        <label class="form-label mt-3">Notas</label>
+        <textarea name="notas" rows="4" maxlength="5000" class="form-input">{$l['notas'] ?? ''}</textarea>
+        <p class="form-hint mt-1">El cliente ve estas notas en su portal.</p>
+
+        <p class="mt-4"><button type="submit" class="btn btn-primary">{if $l}Guardar{else}Agregar{/if}</button></p>
+    </form>
+</div>
+{/if}
+{/block}
