@@ -94,6 +94,11 @@ class PortalPlugin implements PluginInterface
         $leads = new LeadAdminController($ctx);
         $ctx->registerAdminRoute('GET',  'leads',                [$leads, 'index']);
         $ctx->registerAdminRoute('GET',  'leads/nuevo',           [$leads, 'create']);
+        $ctx->registerAdminRoute('GET',  'leads/fuentes',         [$leads, 'fuentes']);
+        $ctx->registerAdminRoute('POST', 'proyectos/@id/fuentes', fn(string $id) => $leads->fuenteCrear($id));
+        $ctx->registerAdminRoute('POST', 'proyectos/@id/fuentes/@fid', fn(string $id, string $fid) => $leads->fuenteEditar($id, $fid));
+        $ctx->registerAdminRoute('POST', 'proyectos/@id/fuentes/@fid/revocar', fn(string $id, string $fid) => $leads->fuenteRevocar($id, $fid));
+        $ctx->registerAdminRoute('POST', 'proyectos/@id/fuentes/@fid/rotar', fn(string $id, string $fid) => $leads->fuenteRotar($id, $fid));
         $ctx->registerAdminRoute('POST', 'leads',                 [$leads, 'store']);
         $ctx->registerAdminRoute('GET',  'leads/@id',             fn(string $id) => $leads->ver($id));
         $ctx->registerAdminRoute('POST', 'leads/@id',             fn(string $id) => $leads->update($id));
@@ -211,6 +216,10 @@ class PortalPlugin implements PluginInterface
         \Flight::route('GET /portal/solicitudes/@id',             fn(string $id) => $sol->ver($id));
         \Flight::route('POST /portal/solicitudes/@id/comentarios', fn(string $id) => $sol->comentar($id));
         \Flight::route('POST /portal/solicitudes/@id/decidir',    fn(string $id) => $sol->decidir($id));
+        // Entrada pública de contactos ganados (formularios de landing y webhooks como Make).
+        $entrada = new LeadEntradaController($ctx);
+        \Flight::route('POST /leads/f/@token',                   fn(string $token) => $entrada->recibir($token));
+        \Flight::route('POST /leads/f',                          fn() => $entrada->recibir());
         $leadsPub = new LeadPublicController($ctx);
         \Flight::route('GET /portal/contactos-ganados',           [$leadsPub, 'lista']);
         \Flight::route('GET /portal/contactos-ganados/nuevo',     [$leadsPub, 'nuevo']);
@@ -266,7 +275,7 @@ class PortalPlugin implements PluginInterface
 
     public function getVersion(): string
     {
-        return '0.26.0';
+        return '0.27.0';
     }
 
     public function provides(): array

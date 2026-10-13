@@ -430,6 +430,47 @@ class Notifier
     }
 
     /**
+     * Aviso que se agrupa: si ya hay uno igual esperando en la cola para ese contacto (misma
+     * marca de vigencia), se reemplaza su contenido en vez de sumar otro correo; y entre dos
+     * envíos pasan al menos $minutosEntre minutos (los que lleguen entremedio salen juntos).
+     * Respeta el horario hábil de la persona.
+     *
+     * @param array<string, mixed> $contacto id, email
+     */
+    public function agrupado(array $contacto, string $clienteId, string $marca, string $asunto, string $html, string $texto, int $minutosEntre = 60): void
+    {
+        Schema::asegurar($this->pdo);
+        $cid = (string) $contacto['id'];
+        $st = $this->pdo->prepare('SELECT id FROM ' . self::COLA . " WHERE contacto_id = ? AND vigencia = ? AND estado = 'pendiente'");
+        $st->execute([$cid, $marca]);
+        $pend = $st->fetchColumn();
+        if ($pend !== false) {
+            $this->pdo->prepare('UPDATE ' . self::COLA . ' SET asunto = ?, texto = ?, html = ? WHERE id = ?')
+                ->execute([mb_substr($asunto, 0, 500), $texto, $html, (string) $pend]);
+            return;
+        }
+        $clave = 'ultimo_aviso:' . $marca;
+        $cuando = $this->cuandoEnviar($clienteId, false, $cid);
+        $ultimo = $this->ajustes()->get('contacto', $cid, $clave);
+        if ($ultimo !== '') {
+            try {
+                $siguiente = (new \DateTimeImmutable($ultimo, new \DateTimeZone('UTC')))->modify('+' . $minutosEntre . ' minutes');
+                if ($siguiente > $cuando) {
+                    $cuando = $siguiente;
+                }
+            } catch (\Throwable) {
+            }
+        }
+        if ($cuando <= $this->ahoraUtc()) {
+            $this->enviarCorreo((string) $contacto['email'], $asunto, $html, $texto, true);
+        } else {
+            $this->encolar($clienteId, $cid, (string) $contacto['email'], $asunto, $texto, $html, $cuando, null, $marca);
+        }
+        // Se anota cuándo sale (ahora o cuando le toque en la cola) para espaciar el siguiente.
+        $this->ajustes()->set('contacto', $cid, $clave, max($cuando, $this->ahoraUtc())->format('Y-m-d H:i:s'));
+    }
+
+    /**
      * Envía lo que ya llegó a su hora. Seguro de llamar en cualquier request: no hace nada si no hay pendientes.
      *
      * @return int cantidad enviada

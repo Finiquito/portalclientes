@@ -121,6 +121,11 @@ class EquipoGestion extends EquipoController
         // Contactos ganados (leads) de los proyectos con el módulo activo.
         $r('GET',  'leads',                         LeadAdminController::class, 'index');
         $r('GET',  'leads/nuevo',                   LeadAdminController::class, 'create');
+        $r('GET',  'leads/fuentes',                 LeadAdminController::class, 'fuentes');
+        $r('POST', 'proyectos/@id/fuentes',         LeadAdminController::class, 'fuenteCrear', 'proyecto', 'cuenta');
+        $r('POST', 'proyectos/@id/fuentes/@fid',    LeadAdminController::class, 'fuenteEditar', 'proyecto', 'cuenta');
+        $r('POST', 'proyectos/@id/fuentes/@fid/revocar', LeadAdminController::class, 'fuenteRevocar', 'proyecto', 'cuenta');
+        $r('POST', 'proyectos/@id/fuentes/@fid/rotar', LeadAdminController::class, 'fuenteRotar', 'proyecto', 'cuenta');
         $r('POST', 'leads',                         LeadAdminController::class, 'store');
         $r('GET',  'leads/@id',                     LeadAdminController::class, 'ver', 'lead');
         $r('POST', 'leads/@id',                     LeadAdminController::class, 'update', 'lead');

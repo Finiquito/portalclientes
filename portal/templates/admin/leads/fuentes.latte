@@ -1,0 +1,109 @@
+{layout $plugin_ui_layout}
+
+{block page_title}Formularios y webhook{/block}
+
+{block content}
+<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=11">
+<div class="page-header">
+    <h1>Formularios y webhook</h1>
+    <a href="{$admin_url('leads')}" class="btn">Contactos ganados</a>
+</div>
+
+{if $flash_success}<div class="alert alert-success">{$flash_success}</div>{/if}
+{if $flash_error}<div class="alert alert-error">{$flash_error}</div>{/if}
+
+{if $nuevo}
+<div class="card pa-new">
+    <h2 class="pa-h2">Token nuevo: cópialo ahora</h2>
+    <p class="pa-muted" style="margin:0 0 .75rem">Por seguridad, guardamos sólo una huella del token: después de salir de esta página no se puede volver a ver. Si lo pierdes, genera otro.</p>
+    <label class="form-label">Token</label>
+    <div class="pa-row"><input type="text" readonly class="form-input" style="font-family:monospace;flex:1;min-width:0" value="{$nuevo['token']}" data-copiar><button type="button" class="btn btn-sm" data-copiar-btn>Copiar</button></div>
+
+    <h3 class="pa-h2" style="margin-top:1.25rem">Opción A · Make, Zapier u otro webhook</h3>
+    <ol class="pa-muted" style="margin:0;padding-left:1.2rem;line-height:1.7">
+        <li>En Make, después del módulo que recibe el formulario, agrega <strong>HTTP › Make a request</strong>.</li>
+        <li>URL: <code>{$endpoint}</code> · Método: <strong>POST</strong>.</li>
+        <li>Encabezado: <code>X-Portal-Token</code> con el token de arriba.</li>
+        <li>Body type: <strong>Raw</strong> · Content type: <strong>JSON (application/json)</strong>, con los campos que tengas:
+            <code>{l}"nombre": "…", "correo": "…", "telefono": "…", "empresa": "…", "campana": "…", "utm_source": "…", "mensaje": "…"{r}</code></li>
+        <li>Responde <code>201</code> si lo guardó, <code>422</code> si falta correo o teléfono, <code>429</code> si hubo demasiados envíos.</li>
+    </ol>
+    <p class="pa-muted" style="margin:.5rem 0 0">También entiende los nombres en inglés (<code>name</code>, <code>email</code>, <code>phone_number</code>, <code>full_name</code>, <code>campaign_name</code>…). Lo que no reconoce no se guarda.</p>
+
+    <h3 class="pa-h2" style="margin-top:1.25rem">Opción B · Formulario directo en la landing</h3>
+    <p class="pa-muted" style="margin:0 0 .5rem">Pega este HTML y dale tu estilo. No quites el campo oculto ni el script: frenan el spam y guardan los UTM de la campaña.</p>
+    <textarea readonly class="form-input" rows="13" style="font-family:monospace;font-size:.8rem" data-copiar>{$snippet}</textarea>
+    <p style="margin:.5rem 0 0"><button type="button" class="btn btn-sm" data-copiar-btn>Copiar HTML</button></p>
+</div>
+{/if}
+
+{if !$proyectos}
+    <div class="card"><p class="pa-muted" style="margin:0">No hay proyectos con contactos ganados que administres. Activa «Con contactos ganados» en el proyecto de la campaña.</p></div>
+{/if}
+
+{foreach $proyectos as $p}
+<div class="card">
+    <h2 class="pa-h2"><span class="pa-proy"><span class="pa-dot" style="background: {($colorProy[$p['id']] ?? '#94a3b8')|noescape}" aria-hidden="true"></span>{$p['nombre']}</span> <span class="pa-muted">· {$p['cliente_nombre']}</span></h2>
+
+    {if $p['fuentes']}
+    <div style="overflow-x:auto">
+    <table class="table">
+        <thead><tr><th>Formulario</th><th>Estado</th><th>Contactos</th><th>Último uso</th><th></th></tr></thead>
+        <tbody>
+        {foreach $p['fuentes'] as $f}
+            <tr>
+                <td>
+                    <strong>{$f['nombre']}</strong>
+                    {if $f['url_gracias']}<div class="pa-muted" style="word-break:break-all">Gracias: {$f['url_gracias']}</div>{/if}
+                </td>
+                <td>{if (int) $f['activa'] === 1}<span class="pa-chip ok">Activo</span>{else}<span class="pa-chip gris">Revocado</span>{/if}</td>
+                <td>{$f['total']}</td>
+                <td>{$f['ultimo_uso_en'] ? $fmt->rel($f['ultimo_uso_en']) : '—'}</td>
+                <td>
+                    <div class="pa-row" style="justify-content:flex-end">
+                        <form method="post" action="{$admin_url('proyectos/' . $p['id'] . '/fuentes/' . $f['id'] . '/rotar')}" onsubmit="return confirm('El token actual dejará de funcionar. ¿Generar uno nuevo?')">
+                            <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+                            <button type="submit" class="btn btn-sm">{(int) $f['activa'] === 1 ? 'Token nuevo' : 'Reactivar con token nuevo'}</button>
+                        </form>
+                        {if (int) $f['activa'] === 1}
+                        <form method="post" action="{$admin_url('proyectos/' . $p['id'] . '/fuentes/' . $f['id'] . '/revocar')}" onsubmit="return confirm('Este formulario dejará de recibir contactos. ¿Revocar?')">
+                            <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+                            <button type="submit" class="btn btn-sm">Revocar</button>
+                        </form>
+                        {/if}
+                    </div>
+                </td>
+            </tr>
+        {/foreach}
+        </tbody>
+    </table>
+    </div>
+    {else}
+        <p class="pa-muted" style="margin:0 0 .5rem">Todavía no hay formularios conectados a esta campaña.</p>
+    {/if}
+
+    <form method="post" action="{$admin_url('proyectos/' . $p['id'] . '/fuentes')}" style="margin-top:1rem">
+        <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+        <div class="pa-grid-2">
+            <div><label class="form-label">Nombre del formulario</label><input type="text" name="nombre" maxlength="255" class="form-input" placeholder="Ej.: Landing masa madre · Make" required></div>
+            <div><label class="form-label">Página de gracias (opcional)</label><input type="url" name="url_gracias" maxlength="500" class="form-input" placeholder="https://…/gracias"></div>
+        </div>
+        <p class="form-hint mt-1">Sólo para el formulario directo: a dónde va la persona después de enviar. Si no pones una, ve una página de «¡Gracias!» simple.</p>
+        <p class="mt-3"><button type="submit" class="btn btn-primary">Crear token</button></p>
+    </form>
+</div>
+{/foreach}
+
+<script n:syntax="off">
+document.querySelectorAll('[data-copiar-btn]').forEach(function (b) {
+  b.addEventListener('click', function () {
+    var c = b.closest('.pa-row, p').previousElementSibling;
+    var campo = b.parentNode.querySelector('[data-copiar]') || (c && c.matches('[data-copiar]') ? c : null);
+    if (!campo) return;
+    campo.select();
+    (navigator.clipboard ? navigator.clipboard.writeText(campo.value) : Promise.reject()).catch(function () { document.execCommand('copy'); });
+    var t = b.textContent; b.textContent = 'Copiado'; setTimeout(function () { b.textContent = t; }, 1500);
+  });
+});
+</script>
+{/block}

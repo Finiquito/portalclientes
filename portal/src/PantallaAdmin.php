@@ -68,6 +68,11 @@ final class PantallaAdmin implements Pantalla
         return true;   // el admin de TypeDock administra todo
     }
 
+    public function gestionaProyecto(string $proyectoId): bool
+    {
+        return true;
+    }
+
     public function flash(string $tipo): ?string
     {
         return $this->ctx->getFlash($tipo);

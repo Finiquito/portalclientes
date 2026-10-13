@@ -30,6 +30,9 @@ interface Pantalla
     /** ¿Coordinación general (o admin del portal)? Elige quién lleva cada cuenta. */
     public function esGeneral(): bool;
 
+    /** ¿Administra ese proyecto? (Coordinación general o quien lleva la cuenta del cliente) */
+    public function gestionaProyecto(string $proyectoId): bool;
+
     /**
      * Deja sólo las filas que este usuario puede ver.
      *

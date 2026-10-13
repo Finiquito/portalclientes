@@ -74,6 +74,29 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### v0.27.0: contactos ganados (etapa 2), formularios y webhook (Make)
+- **Formularios y webhook** (en «Contactos ganados»): cada campaña puede tener varios formularios, cada uno con su token.
+  - El token se muestra una sola vez; en la base queda solo su huella (SHA-256).
+  - Se puede revocar o cambiar por uno nuevo, y se ve cuántos contactos trajo y cuándo se usó por última vez.
+  - Los maneja Coordinación general o quien lleva la cuenta del cliente.
+- **Endpoint público**:
+  - `POST /leads/f` con la cabecera `X-Portal-Token`: es la forma recomendada para Make y Zapier.
+  - `POST /leads/f/{token}`: para el formulario directo de la landing.
+  - Acepta JSON o un formulario normal. Responde `201`, `422`, `404`, `413` o `429`. Si viene de un formulario, lleva a la página de gracias de la fuente o a una propia.
+  - Entiende los nombres de campo en español y en inglés (`name`, `email`, `phone_number`, `full_name`, `campaign_name`, `first_name` y `last_name`…). Lo que no reconoce no se guarda.
+- **Contra el spam**:
+  - Campo trampa `sitio_web` y tiempo mínimo de llenado de 2 s. A los bots se les responde «gracias» sin guardar nada.
+  - Tope de 10 formularios por IP por hora; no aplica al webhook, porque Make comparte IPs.
+  - Tope de 500 contactos por fuente al día.
+  - Límite de 20 KB por envío.
+  - Registro corto de intentos, que se borra a los 2 días.
+- **Aviso al cliente**:
+  - Les llega a los colaboradores, en su horario hábil, sin datos de la persona.
+  - Si llegan varios seguidos, se agrupan en un solo correo con el total (como mucho uno por hora).
+  - Si los atienden antes de que salga, el correo no se envía.
+  - Cada persona puede apagarlo en Ajustes («Avisarme cuando llegue un contacto nuevo»).
+- **Arreglo**: la hora de llegada de los contactos ahora se guarda como en el resto del portal.
+
 ### v0.26.0: contactos ganados (etapa 1)
 - **Contactos ganados (leads)**: un mini-CRM por campaña con las personas que llegan a los clientes de la agencia. Usa una tabla propia (`portal_leads`) y no tiene relación con los contactos del portal.
 - **Interruptor por proyecto**: «Con contactos ganados» en el formulario del proyecto. Al apagarlo, el cliente deja de ver los contactos, pero quedan guardados.

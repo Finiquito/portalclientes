@@ -91,6 +91,11 @@ final class PantallaEquipo implements Pantalla
         return $this->acceso->todo();
     }
 
+    public function gestionaProyecto(string $proyectoId): bool
+    {
+        return $this->acceso->todo() || $this->acceso->gestionaProyecto($proyectoId);
+    }
+
     public function acceso(): EquipoAcceso
     {
         return $this->acceso;

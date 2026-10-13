@@ -1940,6 +1940,163 @@ check(count($ls->lista(['cliente_id' => $cLd])) === 0 && (int) $pdo->query("SELE
 [, $r] = $g->hacer('POST', P\ProyectoAdminController::class, 'destroy', [$pLd], 'proyecto', 'cuenta', ['_csrf_token' => $tokL]);
 check((int) $pdo->query("SELECT COUNT(*) FROM portal_leads WHERE proyecto_id = " . $pdo->quote($pLd))->fetchColumn() === 0, 'al borrar el proyecto se borran sus contactos');
 
+// Contactos ganados: formularios, webhook (Make), spam y aviso al cliente
+seccion('Contactos ganados: formularios, webhook y aviso');
+final class EntradaPrueba extends P\LeadEntradaController
+{
+    public ?array $resp = null;
+    public string $crudo = '';
+
+    protected function cuerpo(): string
+    {
+        return $this->crudo;
+    }
+
+    protected function responder(bool $ok, int $codigo, string $mensaje, ?array $fuente = null): void
+    {
+        $this->resp = ['ok' => $ok, 'codigo' => $codigo, 'mensaje' => $mensaje, 'gracias' => $fuente['url_gracias'] ?? null];
+        throw new RuntimeException('fin');
+    }
+
+    /** @param array<string, mixed>|string $datos arreglo = formulario; texto = JSON */
+    public function enviar(string $token, array|string $datos, string $ip = '10.0.0.1', bool $cabecera = false): array
+    {
+        $_SERVER['REMOTE_ADDR'] = $ip;
+        $_SERVER['CONTENT_TYPE'] = is_string($datos) ? 'application/json' : 'application/x-www-form-urlencoded';
+        $_SERVER['CONTENT_LENGTH'] = is_string($datos) ? strlen($datos) : 100;
+        unset($_SERVER['HTTP_X_PORTAL_TOKEN']);
+        if ($cabecera) {
+            $_SERVER['HTTP_X_PORTAL_TOKEN'] = $token;
+        }
+        $_POST = is_array($datos) ? $datos : [];
+        $this->crudo = is_string($datos) ? $datos : '';
+        $this->resp = null;
+        try {
+            $this->recibir($cabecera ? '' : $token);
+        } catch (RuntimeException $e) {
+            if ($e->getMessage() !== 'fin') {
+                throw $e;
+            }
+        }
+        unset($_SERVER['CONTENT_TYPE'], $_SERVER['CONTENT_LENGTH'], $_SERVER['HTTP_X_PORTAL_TOKEN']);
+        $_POST = [];
+        return $this->resp ?? [];
+    }
+}
+$fs = new P\LeadFuenteService($pdo);
+$cW = $cs->create(['nombre' => 'Pastelería Web', 'pais' => 'CL']);
+$pW1 = $ps->create(['cliente_id' => $cW, 'nombre' => 'Tortas de verano', 'con_leads' => 1]);
+$pW2 = $ps->create(['cliente_id' => $cW, 'nombre' => 'Sin leads']);
+$jefa = $ctSvc->create(['cliente_id' => $cW, 'nombre' => 'Dora Dueña', 'email' => 'dora@pasteleria.cl', 'rol' => 'aprobador']);
+$callada = $ctSvc->create(['cliente_id' => $cW, 'nombre' => 'Sara Silencio', 'email' => 'sara@pasteleria.cl', 'rol' => 'aprobador']);
+$mirona = $ctSvc->create(['cliente_id' => $cW, 'nombre' => 'Vera Mira', 'email' => 'vera@pasteleria.cl', 'rol' => 'viewer']);
+(new P\AjustesService($pdo))->set('contacto', $callada, 'avisos_leads', '0');
+
+$fu = $fs->crear($ls->proyecto($pW1), 'Landing tortas', 'https://pasteleria.cl/gracias');
+$fuente = $fs->find($fu['id']);
+check(P\LeadFuenteService::tokenValido($fu['token']) && $fuente['token_hash'] === hash('sha256', $fu['token']) && !str_contains(json_encode($fuente), $fu['token']), 'el token se entrega una vez y en la base queda sólo su huella');
+check(P\LeadFuenteService::urlGracias('javascript:alert(1)') === null && P\LeadFuenteService::urlGracias('https://x.cl/ok') === 'https://x.cl/ok', 'la página de gracias sólo acepta http(s)');
+
+$m = P\LeadFuenteService::mapear(['Full Name' => 'Ana Torres', 'E-mail' => 'ana@x.cl', 'phone_number' => '+56 9 1111 2222', 'campaign_name' => 'Verano', 'clave' => 'secreta', 'otro' => ['a' => 1], 'message' => 'Quiero una torta']);
+check($m['nombre'] === 'Ana Torres' && $m['correo'] === 'ana@x.cl' && $m['telefono'] === '+56 9 1111 2222' && $m['campana'] === 'Verano' && !isset($m['clave']) && $m['notas'] === 'Mensaje: Quiero una torta', 'reconoce los nombres de campo de Make y Meta, y descarta lo que no pidió');
+check(P\LeadFuenteService::mapear(['first_name' => 'Juan', 'last_name' => 'Pérez'])['nombre'] === 'Juan Pérez', 'arma el nombre con nombre y apellido');
+check(P\LeadFuenteService::esBot(['sitio_web' => 'http://spam']) && P\LeadFuenteService::esBot(['t' => 1000], 1500) && !P\LeadFuenteService::esBot(['t' => 1000], 9000) && !P\LeadFuenteService::esBot([]), 'campo trampa y tiempo mínimo delatan a los bots');
+
+P\Notifier::$ahora = new DateTimeImmutable('2027-03-10 15:00', new DateTimeZone('UTC'));   // miércoles, 12:00 en Chile
+$ctx->correos = [];
+$en = new EntradaPrueba($ctx);
+$contarW = fn(): int => (int) $pdo->query("SELECT COUNT(*) FROM portal_leads WHERE cliente_id = " . $pdo->quote($cW))->fetchColumn();
+
+$r = $en->enviar($fu['token'], ['nombre' => 'Lola Torta', 'correo' => 'lola@gmail.com', 'utm_source' => 'meta', 'utm_campaign' => 'tortas', 't' => (string) (floor(microtime(true) * 1000) - 8000)]);
+$lola = $pdo->query("SELECT * FROM portal_leads WHERE correo = 'lola@gmail.com'")->fetch();
+check($r['ok'] && $r['codigo'] === 201 && $r['gracias'] === 'https://pasteleria.cl/gracias', 'el formulario de la landing guarda y lleva a la página de gracias');
+check($lola && abs(strtotime((string) $lola['created_at']) - time()) < 120, 'la hora de llegada se guarda como el resto del portal (no «hace 3 h» recién llegado)');
+check($lola && $lola['origen'] === 'formulario' && $lola['proyecto_id'] === $pW1 && $lola['fuente_id'] === $fu['id'] && $lola['campana'] === 'tortas', 'queda en su campaña, con su fuente y los UTM');
+check((int) $fs->find($fu['id'])['total'] === 1 && $fs->find($fu['id'])['ultimo_uso_en'] !== null, 'la fuente cuenta los contactos y su último uso');
+$aDora = array_values(array_filter($ctx->correos, fn($c) => $c['to'] === 'dora@pasteleria.cl'));
+check(count($aDora) === 1 && str_contains($aDora[0]['subject'], 'Tortas de verano') && !str_contains($aDora[0]['body'], 'lola'), 'avisa a la colaboradora, sin datos de la persona en el correo');
+check(!in_array('sara@pasteleria.cl', array_column($ctx->correos, 'to'), true) && !in_array('vera@pasteleria.cl', array_column($ctx->correos, 'to'), true), 'no avisa a quien lo apagó ni a quien sólo puede leer');
+
+$r = $en->enviar($fu['token'], '{"name":"Beto Make","email":"beto@make.com","campaign_name":"Meta tortas"}', '10.0.0.9', true);
+$beto = $pdo->query("SELECT * FROM portal_leads WHERE correo = 'beto@make.com'")->fetch();
+check($r['ok'] && $r['codigo'] === 201 && $beto && $beto['origen'] === 'webhook' && $beto['campana'] === 'Meta tortas', 'Make envía JSON con el token en la cabecera X-Portal-Token');
+$enCola = $pdo->query("SELECT asunto FROM portal_correos_cola WHERE destino = 'dora@pasteleria.cl' AND estado = 'pendiente'")->fetchAll(PDO::FETCH_COLUMN);
+check(count(array_filter($ctx->correos, fn($c) => $c['to'] === 'dora@pasteleria.cl')) === 1 && count($enCola) === 1 && str_contains($enCola[0], '2 contactos nuevos'), 'el segundo no sale al tiro: espera agrupado con el total');
+$en->enviar($fu['token'], '{"name":"Caro Make","email":"caro@make.com"}', '10.0.0.9', true);
+$enCola = $pdo->query("SELECT asunto FROM portal_correos_cola WHERE destino = 'dora@pasteleria.cl' AND estado = 'pendiente'")->fetchAll(PDO::FETCH_COLUMN);
+check(count($enCola) === 1 && str_contains($enCola[0], '3 contactos nuevos'), 'el siguiente actualiza el mismo correo en espera (3 contactos)');
+$pdo->exec("UPDATE portal_leads SET estado = 'contactado' WHERE cliente_id = " . $pdo->quote($cW));
+check(!P\Vigencia::sigue($pdo, P\Vigencia::leads($cW)), 'si ya los atendió antes de que salga, el aviso se descarta');
+
+$n0 = $contarW();
+$r = $en->enviar($fu['token'], ['nombre' => 'Bot', 'correo' => 'bot@spam.ru', 'sitio_web' => 'http://spam.ru']);
+check($r['ok'] && $contarW() === $n0, 'un bot recibe «gracias» pero no se guarda nada');
+$r = $en->enviar($fu['token'], ['nombre' => 'Rápido', 'correo' => 'rapido@x.cl', 't' => (string) floor(microtime(true) * 1000)]);
+check($r['ok'] && $contarW() === $n0, 'un formulario enviado en menos de 2 segundos tampoco');
+$r = $en->enviar($fu['token'], ['nombre' => 'Sin contacto']);
+check(!$r['ok'] && $r['codigo'] === 422 && $contarW() === $n0, 'sin correo ni teléfono responde 422');
+$r = $en->enviar($fu['token'], '{"email": "x@x.cl",', '10.0.0.9', true);
+check(!$r['ok'] && $r['codigo'] === 422, 'un JSON roto responde 422');
+$r = $en->enviar('pl_' . str_repeat('0', 40), ['correo' => 'otro@x.cl']);
+check(!$r['ok'] && $r['codigo'] === 404, 'un token que no existe responde 404');
+$r = $en->enviar('../../etc', ['correo' => 'otro@x.cl']);
+check(!$r['ok'] && $r['codigo'] === 404, 'un token con forma rara ni se busca');
+
+for ($i = 0; $i < P\LeadFuenteService::MAX_IP_HORA; $i++) {
+    $en->enviar($fu['token'], ['correo' => "masivo{$i}@x.cl"], '10.0.0.66');
+}
+$r = $en->enviar($fu['token'], ['correo' => 'uno-mas@x.cl'], '10.0.0.66');
+check(!$r['ok'] && $r['codigo'] === 429, 'una misma IP no puede mandar más de ' . P\LeadFuenteService::MAX_IP_HORA . ' formularios por hora');
+$r = $en->enviar($fu['token'], ['correo' => 'vecino@x.cl'], '10.0.0.67');
+check($r['ok'], 'otra IP sigue pudiendo');
+$r = $en->enviar($fu['token'], '{"email":"desde-make-11@x.cl"}', '10.0.0.66', true);
+check($r['ok'], 'el tope por IP no se aplica al webhook (Make comparte IPs)');
+
+$fs->revocar($fu['id']);
+$r = $en->enviar($fu['token'], ['correo' => 'tarde@x.cl']);
+check(!$r['ok'] && $r['codigo'] === 404, 'un token revocado deja de funcionar');
+$nuevoTok = $fs->rotar($fu['id']);
+$r1x = $en->enviar($fu['token'], ['correo' => 'viejo@x.cl'], '10.0.0.70');
+$r2x = $en->enviar($nuevoTok, ['correo' => 'nuevo@x.cl'], '10.0.0.70');
+check(!$r1x['ok'] && $r2x['ok'], 'al generar un token nuevo, el anterior ya no sirve y el nuevo sí');
+(new P\ProyectoService($pdo))->update($pW1, ['cliente_id' => $cW, 'nombre' => 'Tortas de verano', 'estado' => 'activo']);
+$r = $en->enviar($nuevoTok, ['correo' => 'apagado@x.cl'], '10.0.0.71');
+check(!$r['ok'] && $r['codigo'] === 404, 'si el proyecto apaga «Con contactos ganados», el formulario deja de recibir');
+(new P\ProyectoService($pdo))->update($pW1, ['cliente_id' => $cW, 'nombre' => 'Tortas de verano', 'estado' => 'activo', 'con_leads' => 1]);
+
+// Pantallas de la agencia: crear, revocar y rotar
+$_SESSION[P\EquipoController::SESION] = $coord;
+$tokF = P\PortalSession::csrf();
+[, $r] = $g->hacer('POST', $LA, 'fuenteCrear', [$pW1], 'proyecto', 'cuenta', ['_csrf_token' => $tokF, 'nombre' => 'Make Meta Ads', 'url_gracias' => '']);
+[$html] = $g->hacer('GET', $LA, 'fuentes');
+preg_match('/value="(pl_[0-9a-f]{40})"/', $html, $mt);
+check($r === '/equipo/leads/fuentes?proyecto=' . $pW1 && isset($mt[1]) && str_contains($html, 'X-Portal-Token') && str_contains($html, 'name="sitio_web"'), 'al crear el token se muestra una vez, con las instrucciones de Make y el HTML del formulario');
+[$html] = $g->hacer('GET', $LA, 'fuentes');
+check(!str_contains($html, $mt[1] ?? 'x') && str_contains($html, 'Make Meta Ads'), 'al volver a la página el token ya no aparece');
+[, $r] = $g->hacer('POST', $LA, 'fuenteCrear', [$pW2], 'proyecto', 'cuenta', ['_csrf_token' => $tokF, 'nombre' => 'No va']);
+check(count($fs->delProyecto($pW2)) === 0, 'no se crean tokens en proyectos sin el módulo');
+$fMake = $fs->delProyecto($pW1)[1];
+[, $r] = $g->hacer('POST', $LA, 'fuenteRevocar', [$pLd, (string) $fMake['id']], 'proyecto', 'cuenta', ['_csrf_token' => $tokF]);
+check((int) $fs->find((string) $fMake['id'])['activa'] === 1, 'no se revoca una fuente desde otro proyecto');
+[, $r] = $g->hacer('POST', $LA, 'fuenteRevocar', [$pW1, (string) $fMake['id']], 'proyecto', 'cuenta', ['_csrf_token' => $tokF]);
+check((int) $fs->find((string) $fMake['id'])['activa'] === 0, 'Coordinación revoca un token');
+$_SESSION[P\EquipoController::SESION] = $ana;
+$eq->asignar($ana, $cW, $pW1);
+[, $r] = $g->hacer('POST', $LA, 'fuenteRotar', [$pW1, (string) $fMake['id']], 'proyecto', 'cuenta', ['_csrf_token' => $tokF]);
+check($r === '/equipo' && (int) $fs->find((string) $fMake['id'])['activa'] === 0, 'quien no lleva la cuenta no maneja los tokens (aunque vea los contactos)');
+[$html] = $g->hacer('GET', $LA, 'index');
+check(str_contains($html, 'Lola Torta'), 'pero sí ve los contactos de su proyecto');
+$_SESSION[P\EquipoController::SESION] = $coord;
+
+// Preferencia en Ajustes del portal
+$_SESSION[P\PortalSession::CONTACTO] = $jefa;
+[$html] = (new class($ctx) extends P\PortalPublicController {
+    protected function terminate(): void { throw new RuntimeException('fin'); }
+    public function correr(): array { ob_start(); try { $this->ajustesForm(); } catch (RuntimeException) {} return [(string) ob_get_clean()]; }
+})->correr();
+check(str_contains($html, 'name="avisos_leads"'), 'en Ajustes del portal aparece «Avisarme cuando llegue un contacto nuevo»');
+P\Notifier::$ahora = null;
+
 // ---------------------------------------------------------------------------
 echo "\n\n" . $GLOBALS['ok'] . ' comprobaciones OK, ' . count($GLOBALS['fallas']) . " fallas ({$motor}).\n";
 foreach ($GLOBALS['fallas'] as $f) {

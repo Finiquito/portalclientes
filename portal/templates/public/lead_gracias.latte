@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow">
+    <title>{$ok ? 'Gracias' : 'No se pudo enviar'}</title>
+    <link rel="stylesheet" href="/plugins/portal/assets/portal.css?v=27">
+</head>
+<body class="min-h-dvh bg-bg font-sans text-ink antialiased">
+<main class="flex min-h-dvh items-center justify-center px-4 py-10">
+    <div class="card card-pad w-full max-w-md text-center">
+        <span class="mx-auto flex size-12 items-center justify-center rounded-2xl {$ok ? 'bg-ok/10 text-ok' : 'bg-danger/10 text-danger'}">
+            <svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{if $ok}<path d="M5 12.5l4.5 4.5L19 7.5"/>{else}<path d="M12 8v5M12 16.5v.5"/><circle cx="12" cy="12" r="9"/>{/if}</svg>
+        </span>
+        <h1 class="mt-4 text-2xl font-extrabold tracking-tight">{$ok ? '¡Gracias!' : 'No se pudo enviar'}</h1>
+        <p class="mt-2 text-muted">{$ok ? 'Recibimos tus datos. Te contactaremos pronto.' : $mensaje}</p>
+        <p class="mt-5"><a href="javascript:history.back()" class="btn btn-ghost btn-sm">Volver</a></p>
+    </div>
+</main>
+</body>
+</html>

@@ -62,7 +62,7 @@ class LeadService
 
     private static function ahora(): string
     {
-        return (new \DateTimeImmutable('now', new \DateTimeZone(Zona::agencia())))->format('Y-m-d H:i:s');
+        return (new \DateTimeImmutable())->format('Y-m-d H:i:s');
     }
 
     // ---- Proyectos con contactos ganados ------------------------------------------
@@ -302,7 +302,7 @@ class LeadService
     /** Id de un lead del mismo proyecto con ese correo o teléfono en los últimos DIAS_DUPLICADO días. */
     public function duplicado(string $proyectoId, string $correo, string $telefono): ?string
     {
-        $desde = (new \DateTimeImmutable('now', new \DateTimeZone(Zona::agencia())))->modify('-' . self::DIAS_DUPLICADO . ' days')->format('Y-m-d H:i:s');
+        $desde = (new \DateTimeImmutable())->modify('-' . self::DIAS_DUPLICADO . ' days')->format('Y-m-d H:i:s');
         $cond = [];
         $args = [$proyectoId, $desde];
         if ($correo !== '') {
@@ -364,6 +364,40 @@ class LeadService
             $cambia ? $now : $lead['estado_en'], $cambia ? mb_substr($quien, 0, 255) : $lead['estado_por'], $now, (string) $lead['id'],
         ]);
         return null;
+    }
+
+    /**
+     * Avisa a los colaboradores del cliente que llegaron contactos nuevos. El correo no lleva
+     * datos de la persona (sólo cuántos hay y el enlace al portal) y se agrupa: si llegan varios
+     * seguidos, sale uno con el total. Cada contacto puede apagarlo en sus Ajustes.
+     *
+     * @return int a cuántas personas se les avisó
+     */
+    public function avisarCliente(Notifier $n, string $clienteId, string $proyectoNombre): int
+    {
+        $total = $this->nuevosDelCliente($clienteId);
+        if ($total === 0) {
+            return 0;
+        }
+        $st = $this->pdo->prepare("SELECT id, nombre, email FROM portal_contactos WHERE cliente_id = ? AND rol = 'aprobador' AND email IS NOT NULL AND email <> ''");
+        $st->execute([$clienteId]);
+        $aj = new AjustesService($this->pdo);
+        $asunto = $total === 1 ? 'Llegó un contacto nuevo · ' . $proyectoNombre : "Tienes {$total} contactos nuevos por atender";
+        $cuerpo = $total === 1
+            ? "Llegó un contacto nuevo por tu campaña «{$proyectoNombre}». Revísalo en el portal y anota el próximo paso."
+            : "Tienes {$total} contactos nuevos por atender en tus campañas. Revísalos en el portal y anota el próximo paso de cada uno.";
+        $avisados = 0;
+        foreach ($st->fetchAll() as $c) {
+            $pref = $aj->todos('contacto', (string) $c['id']);
+            if (($pref['avisos_email'] ?? '1') === '0' || ($pref['avisos_leads'] ?? '1') === '0') {
+                continue;
+            }
+            [$html, $texto] = $n->componer($asunto, $cuerpo, ['etiqueta' => 'Contactos ganados', 'boton' => 'Ver contactos'], 'Hola ' . $n->primerNombre((string) $c['nombre']) . ',',
+                $n->absoluta('/portal/contactos-ganados'), $clienteId, ['Puedes desactivar este aviso en Ajustes dentro del portal.']);
+            $n->agrupado($c, $clienteId, Vigencia::leads($clienteId), $asunto, $html, $texto);
+            $avisados++;
+        }
+        return $avisados;
     }
 
     /**

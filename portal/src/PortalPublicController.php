@@ -1134,6 +1134,7 @@ class PortalPublicController
                 'frase_propia' => $pref['frase_propia'] ?? '',
                 'avisos_email' => ($pref['avisos_email'] ?? '1') !== '0',
                 'resumen_diario' => ($pref['resumen_diario'] ?? '0') === '1',
+                'avisos_leads' => ($pref['avisos_leads'] ?? '1') !== '0',
             ],
         ]);
     }
@@ -1151,7 +1152,9 @@ class PortalPublicController
             'avisos_email' => !empty($_POST['avisos_email']) ? '1' : '0',
             'resumen_diario' => !empty($_POST['resumen_diario']) ? '1' : '0',
             'paso_avisos'  => '1',
-        ]);
+        ] + (!$this->veLeads($c) ? [] : [
+            'avisos_leads' => !empty($_POST['avisos_leads']) ? '1' : '0',
+        ]));
 
         PortalSession::flash('ok', 'Guardamos tus preferencias.');
         $this->redirectTo('portal/ajustes');
