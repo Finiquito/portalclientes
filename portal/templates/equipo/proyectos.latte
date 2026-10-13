@@ -17,11 +17,25 @@
 {var $tabs = [['activo', 'Activos'], ['pausado', 'En pausa'], ['cerrado', 'Cerrados'], ['todos', 'Todos']]}
 <nav class="scroll-x reveal -mx-1 flex gap-2 px-1 pb-4" style="--i:1" aria-label="Filtrar proyectos">
     {foreach $tabs as $tab}
-        <a href="/equipo/proyectos?f={$tab[0]}" class="btn btn-sm {$filtro === $tab[0] ? 'btn-primary' : 'btn-ghost'}" {if $filtro === $tab[0]}aria-current="true"{/if}>
+        <a href="/equipo/proyectos?f={$tab[0]}&amp;ver={$ver}" class="btn btn-sm {$filtro === $tab[0] ? 'btn-primary' : 'btn-ghost'}" {if $filtro === $tab[0]}aria-current="true"{/if}>
             {$tab[1]}
             <span class="rounded-full px-1.5 text-xs {$filtro === $tab[0] ? 'bg-white/25' : 'bg-surface2 text-muted'}">{count($grupos[$tab[0]])}</span>
         </a>
     {/foreach}
+    {if count($responsables) > 0}
+    <form method="get" class="flex items-center">
+        <input type="hidden" name="f" value="{$filtro}">
+        <select name="ver" class="field h-9! w-auto! py-0! text-sm" onchange="this.form.submit()" aria-label="De quién es la cuenta">
+            <option value="todas" {if $ver === 'todas'}selected{/if}>Todas las cuentas</option>
+            {if $tengo}<option value="mias" {if $ver === 'mias'}selected{/if}>Mis cuentas</option>{/if}
+            {foreach $responsables as $rid => $rn}
+                {continueIf $rid === $usuario['id']}
+                <option value="{$rid}" {if $ver === $rid}selected{/if}>Cuentas de {$rn}</option>
+            {/foreach}
+        </select>
+    </form>
+    {/if}
+    <input type="search" class="field h-9! min-w-[12rem] flex-1 py-0! text-sm sm:max-w-xs" placeholder="Buscar proyecto o cliente…" data-buscar aria-label="Buscar">
 </nav>
 
 {if empty($lista)}
@@ -30,8 +44,32 @@
         <p class="mt-1 text-sm text-muted">{$puedeCrear ? 'Crea uno con «Nuevo proyecto».' : 'Pídele a Coordinación que te asigne proyectos.'}</p>
     </div>
 {else}
-    <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        {foreach $lista as $p}{include '_proyecto_card.latte', p: $p, fmt: $fmt, conCliente: true}{/foreach}
-    </div>
+    {foreach $porCuenta as $g}
+    <details class="mb-6" open data-grupo>
+        <summary class="mb-3 flex cursor-pointer list-none items-center gap-2 text-sm font-extrabold uppercase tracking-wide text-muted [&::-webkit-details-marker]:hidden">
+            <svg class="size-4 transition [details[open]>summary>&]:rotate-90"><use href="#i-chevron"/></svg>
+            {if $g['mio']}Mis cuentas{elseif $g['id'] === ''}{$g['nombre']}{else}Cuentas de {$g['nombre']}{/if}
+            <span class="rounded-full bg-surface2 px-2 text-xs normal-case tracking-normal">{count($g['proyectos'])}</span>
+        </summary>
+        <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {foreach $g['proyectos'] as $p}<div data-proyecto-item data-buscar-en="{mb_strtolower($p['nombre'] . ' ' . $p['cliente_nombre'])}">{include '_proyecto_card.latte', p: $p, fmt: $fmt, conCliente: true}</div>{/foreach}
+        </div>
+    </details>
+    {/foreach}
+    {if !$porCuenta}<div class="card card-pad text-center text-sm text-muted">No hay proyectos de esa cuenta aquí. <a href="?f={$filtro}&amp;ver=todas" class="font-semibold text-brand-ink hover:underline">Ver todas las cuentas</a></div>{/if}
+    <p class="card card-pad text-center text-sm text-muted" data-sin-resultados hidden>Ningún proyecto coincide con la búsqueda.</p>
+    <script>
+    (() => {
+        const q = document.querySelector('[data-buscar]');
+        if (!q) return;
+        q.addEventListener('input', () => {
+            const t = q.value.trim().toLowerCase();
+            let n = 0;
+            document.querySelectorAll('[data-proyecto-item]').forEach((c) => { const ok = !t || c.dataset.buscarEn.includes(t); c.hidden = !ok; if (ok) n++; });
+            document.querySelectorAll('[data-grupo]').forEach((g) => { g.hidden = !g.querySelector('[data-proyecto-item]:not([hidden])'); if (t) g.open = true; });
+            document.querySelector('[data-sin-resultados]').hidden = n > 0;
+        });
+    })();
+    </script>
 {/if}
 {/block}

@@ -47,8 +47,22 @@ class ClienteService
             $now,
             $now,
         ]);
+        $this->guardarResponsable($id, $payload);
 
         return $id;
+    }
+
+    /** Quién lleva la cuenta; sólo si viene en el formulario (vacío = nadie). @param array<string, mixed> $payload */
+    public function guardarResponsable(string $id, array $payload): void
+    {
+        if (!array_key_exists('responsable_id', $payload)) {
+            return;
+        }
+        Schema::asegurar($this->pdo);
+        $r = trim((string) $payload['responsable_id']);
+        $st = $this->pdo->prepare("SELECT 1 FROM portal_equipo WHERE id = ? AND activo = 1 AND rol IN ('coordinador', 'cuentas')");
+        $st->execute([$r]);
+        $this->pdo->prepare('UPDATE ' . self::TABLE . ' SET responsable_id = ? WHERE id = ?')->execute([$r !== '' && $st->fetchColumn() !== false ? $r : null, $id]);
     }
 
     /** @param array<string, mixed> $payload */
@@ -66,6 +80,7 @@ class ClienteService
             $now,
             $id,
         ]);
+        $this->guardarResponsable($id, $payload);
     }
 
     public function delete(string $id): void

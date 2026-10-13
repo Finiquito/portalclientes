@@ -7,7 +7,9 @@ namespace TypeDock\Plugin\Portal;
  * Qué puede ver un usuario de agencia. Regla única para todo el front /equipo:
  * nunca se confía en un id de la URL sin pasarlo por aquí.
  *
- *  - rol 'coordinador': todos los clientes y proyectos.
+ *  - rol 'coordinador' (Coordinación general): todos los clientes y proyectos; administra todo.
+ *  - rol 'cuentas' (Coordinación de cuentas): los clientes de los que es responsable (completos)
+ *    más lo asignado; administra sólo los suyos (cliente, proyectos, equipo del cliente).
  *  - rol 'equipo': clientes asignados completos + proyectos asignados sueltos.
  */
 final class EquipoAcceso
@@ -24,6 +26,55 @@ final class EquipoAcceso
         return ($this->usuario['rol'] ?? '') === 'coordinador';
     }
 
+    public function esCuentas(): bool
+    {
+        return ($this->usuario['rol'] ?? '') === 'cuentas';
+    }
+
+    /** ¿Puede crear clientes? Coordinación general y de cuentas (el cliente queda a su cargo). */
+    public function puedeCrearClientes(): bool
+    {
+        return $this->todo() || $this->esCuentas();
+    }
+
+    /** ¿Administra este cliente? (editarlo, su portal, sus proyectos, su equipo). */
+    public function gestionaCliente(string $clienteId): bool
+    {
+        if ($this->todo()) {
+            return true;
+        }
+        if (!$this->esCuentas() || $clienteId === '') {
+            return false;
+        }
+        return in_array($clienteId, $this->clientesACargo(), true);
+    }
+
+    public function gestionaProyecto(string $proyectoId): bool
+    {
+        $st = $this->pdo->prepare('SELECT cliente_id FROM portal_proyectos WHERE id = ?');
+        $st->execute([$proyectoId]);
+        $c = $st->fetchColumn();
+        return $c !== false && $this->gestionaCliente((string) $c);
+    }
+
+    /** @var array<int, string>|null */
+    private ?array $aCargo = null;
+
+    /** @return array<int, string> clientes de los que es responsable */
+    public function clientesACargo(): array
+    {
+        if ($this->aCargo === null) {
+            try {
+                $st = $this->pdo->prepare('SELECT id FROM portal_clientes WHERE responsable_id = ?');
+                $st->execute([(string) ($this->usuario['id'] ?? '')]);
+                $this->aCargo = array_map('strval', $st->fetchAll(\PDO::FETCH_COLUMN));
+            } catch (\Throwable) {
+                $this->aCargo = [];
+            }
+        }
+        return $this->aCargo;
+    }
+
     /** @return array<int, string>|null ids de proyectos visibles; null = sin restricción. */
     public function proyectoIds(): ?array
     {
@@ -38,7 +89,14 @@ final class EquipoAcceso
                  WHERE a.usuario_id = ?'
             );
             $stmt->execute([(string) $this->usuario['id']]);
-            $this->proyectos = array_values(array_unique(array_map('strval', $stmt->fetchAll(\PDO::FETCH_COLUMN))));
+            $ids = array_map('strval', $stmt->fetchAll(\PDO::FETCH_COLUMN));
+            if ($this->clientesACargo() !== []) {   // sus cuentas, completas
+                $ph = implode(',', array_fill(0, count($this->clientesACargo()), '?'));
+                $st2 = $this->pdo->prepare("SELECT id FROM portal_proyectos WHERE cliente_id IN ({$ph})");
+                $st2->execute($this->clientesACargo());
+                array_push($ids, ...array_map('strval', $st2->fetchAll(\PDO::FETCH_COLUMN)));
+            }
+            $this->proyectos = array_values(array_unique($ids));
             $this->cargado = true;
         }
         return $this->proyectos;
@@ -52,7 +110,7 @@ final class EquipoAcceso
         }
         $stmt = $this->pdo->prepare('SELECT DISTINCT cliente_id FROM portal_equipo_asignaciones WHERE usuario_id = ?');
         $stmt->execute([(string) $this->usuario['id']]);
-        return array_map('strval', $stmt->fetchAll(\PDO::FETCH_COLUMN));
+        return array_values(array_unique([...array_map('strval', $stmt->fetchAll(\PDO::FETCH_COLUMN)), ...$this->clientesACargo()]));
     }
 
     public function puedeVerProyecto(string $proyectoId): bool

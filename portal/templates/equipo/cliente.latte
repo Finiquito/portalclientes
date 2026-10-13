@@ -14,6 +14,7 @@
     <div class="min-w-0">
         <h1 class="truncate text-[1.75rem] font-extrabold leading-tight tracking-tight sm:text-4xl">{$cliente['nombre']}</h1>
         <p class="mt-1 text-sm text-muted">{$cliente['empresa']}{if $cliente['empresa'] && $pais} · {/if}{if $pais}<span aria-hidden="true">{\TypeDock\Plugin\Portal\Fmt::bandera((string) $cliente['pais'])}</span> {$pais[0]} · son las <strong class="tabular-nums text-ink" data-reloj="{$pais[1]}">{(new \DateTimeImmutable('now', new \DateTimeZone($pais[1])))->format('H:i')}</strong>{/if}</p>
+        <p class="mt-1 text-sm text-muted">Lleva la cuenta: <strong class="text-ink">{$responsable ? $responsable['nombre'] : 'nadie todavía'}</strong>{if !$responsable && $usuario['rol'] === 'coordinador'} · <a href="/equipo/clientes/{$cliente['id']}/editar" class="font-semibold text-brand-ink hover:underline">elegir</a>{/if}</p>
     </div>
 </section>
 
@@ -27,7 +28,7 @@
             <button type="submit" class="btn btn-ghost btn-sm" title="Abre su portal en modo de sólo lectura"><svg class="size-4"><use href="#i-eye"/></svg> Ver su portal</button>
         </form>
     {/if}
-    {if $usuario['rol'] === 'coordinador'}<a href="/equipo/clientes/{$cliente['id']}/editar" class="btn btn-ghost btn-sm"><svg class="size-4"><use href="#i-edit"/></svg> Editar cliente y su portal</a>{/if}
+    {if $gestiona}<a href="/equipo/clientes/{$cliente['id']}/editar" class="btn btn-ghost btn-sm"><svg class="size-4"><use href="#i-edit"/></svg> Editar cliente y su portal</a>{/if}
 </div>
 
 {var $sinInvitar = array_values(array_filter($contactos, fn($x) => !$x['invitado_en'] && !$x['primer_acceso']))}
@@ -88,7 +89,7 @@
             {/if}
         </section>
 
-        {include '_quien.latte', gente: $quien['gente'], disponibles: $quien['disponibles'], base: '/equipo/clientes/' . $cliente['id'] . '/equipo', puede: $usuario['rol'] === 'coordinador', csrf: $csrf, fmt: $fmt}
+        {include '_quien.latte', gente: $quien['gente'], disponibles: $quien['disponibles'], base: '/equipo/clientes/' . $cliente['id'] . '/equipo', puede: $gestiona, csrf: $csrf, fmt: $fmt, general: $usuario['rol'] === 'coordinador'}
 
         <section class="card card-pad">
             <h2 class="text-base font-extrabold tracking-tight">Actividad reciente</h2>

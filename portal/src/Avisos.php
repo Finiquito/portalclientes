@@ -109,18 +109,22 @@ final class Avisos
         } elseif ($proyectoId === null && $clienteId === null) {
             $filas = $responsable !== null ? [$eq->find($responsable) + ['asignado' => 1]] : [];
         } else {
+            Schema::asegurar($this->pdo);
+            // Asignado = tiene el cliente o el proyecto asignado, o lleva la cuenta de ese cliente.
             if ($proyectoId !== null) {
                 $on = 'a.cliente_id = p.cliente_id AND (a.proyecto_id IS NULL OR a.proyecto_id = p.id)';
-                $from = 'portal_equipo e JOIN portal_proyectos p ON p.id = ? LEFT JOIN portal_equipo_asignaciones a ON a.usuario_id = e.id AND ' . $on;
+                $from = 'portal_equipo e JOIN portal_proyectos p ON p.id = ? JOIN portal_clientes c ON c.id = p.cliente_id
+                         LEFT JOIN portal_equipo_asignaciones a ON a.usuario_id = e.id AND ' . $on;
                 $params = [$proyectoId];
             } else {
-                $from = 'portal_equipo e LEFT JOIN portal_equipo_asignaciones a ON a.usuario_id = e.id AND a.cliente_id = ?';
+                $from = 'portal_equipo e JOIN portal_clientes c ON c.id = ? LEFT JOIN portal_equipo_asignaciones a ON a.usuario_id = e.id AND a.cliente_id = c.id';
                 $params = [$clienteId];
             }
+            $asig = "MAX(CASE WHEN a.id IS NOT NULL OR c.responsable_id = e.id THEN 1 ELSE 0 END)";
             $st = $this->pdo->prepare(
-                "SELECT e.id, e.nombre, e.email, e.rol, e.activo, MAX(CASE WHEN a.id IS NULL THEN 0 ELSE 1 END) AS asignado
+                "SELECT e.id, e.nombre, e.email, e.rol, e.activo, {$asig} AS asignado
                  FROM {$from} WHERE e.activo = 1 GROUP BY e.id, e.nombre, e.email, e.rol, e.activo
-                 HAVING e.rol = 'coordinador' OR MAX(CASE WHEN a.id IS NULL THEN 0 ELSE 1 END) = 1"
+                 HAVING e.rol = 'coordinador' OR {$asig} = 1"
             );
             $st->execute($params);
             $filas = $st->fetchAll();

@@ -76,6 +76,7 @@ class EquipoAdminController
             'arbol'        => $this->arbol(),
             'clientesFull' => array_values(array_map(fn($a) => $a['cliente_id'], array_filter($asig, fn($a) => $a['proyecto_id'] === null))),
             'proyAsig'     => array_values(array_filter(array_map(fn($a) => $a['proyecto_id'], $asig))),
+            'aCargo'       => $u !== null ? $this->aCargo((string) $u['id']) : [],
             'flash_success' => $this->ui->flash('success'),
             'flash_error'   => $this->ui->flash('error'),
         ]);
@@ -160,5 +161,14 @@ class EquipoAdminController
             error_log('[portal] invitación equipo: ' . $e->getMessage());
             return false;
         }
+    }
+
+    /** @return array<int, string> nombres de los clientes de los que es responsable */
+    private function aCargo(string $usuarioId): array
+    {
+        Schema::asegurar($this->pdo());
+        $st = $this->pdo()->prepare('SELECT nombre FROM portal_clientes WHERE responsable_id = ? ORDER BY nombre');
+        $st->execute([$usuarioId]);
+        return array_map('strval', $st->fetchAll(\PDO::FETCH_COLUMN));
     }
 }

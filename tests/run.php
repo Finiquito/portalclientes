@@ -360,7 +360,7 @@ final class GestionPrueba extends P\EquipoGestion
     }
 
     /** @return array{0: string, 1: ?string} */
-    public function hacer(string $metodo, string $clase, string $accion, array $args = [], ?string $tipo = null, bool $coord = false, array $post = []): array
+    public function hacer(string $metodo, string $clase, string $accion, array $args = [], ?string $tipo = null, bool|string $coord = false, array $post = []): array
     {
         $_SERVER['REQUEST_METHOD'] = $metodo;
         $_POST = $post;
@@ -1709,6 +1709,50 @@ check(str_contains((string) file_get_contents(dirname(__DIR__) . '/portal/templa
 check(str_contains($html, 'data-quien="equipo"') && str_contains($html, 'data-ver="cliente"'), 'la línea marca de quién es cada tarea y se puede filtrar');
 
 check(P\HorarioHabil::zonaDe('CN') === 'Asia/Shanghai' && P\HorarioHabil::nombreDe('CN') === 'China', 'se puede tener clientes en China, con su hora');
+
+// Coordinación de cuentas: lleva algunos clientes y sus equipos
+seccion('Coordinación de cuentas');
+$vale = $eq->create(['nombre' => 'Vale Cuentas', 'email' => 'vale@agencia.cl', 'rol' => 'cuentas', 'activo' => 1]);
+$cV = $cs->create(['nombre' => 'Cuenta de Vale', 'pais' => 'CL', 'responsable_id' => $vale]);
+$pV = $ps->create(['cliente_id' => $cV, 'nombre' => 'Proyecto de Vale']);
+$cOtro = $cs->create(['nombre' => 'Cuenta ajena', 'pais' => 'CL']);
+$accV = new P\EquipoAcceso($pdo, $eq->find($vale));
+check($accV->puedeVerCliente($cV) && $accV->puedeVerProyecto($pV) && !$accV->puedeVerCliente($cOtro), 've completos los clientes que lleva, y no los demás');
+check($accV->gestionaCliente($cV) && !$accV->gestionaCliente($cOtro) && !$accV->todo() && $accV->puedeCrearClientes(), 'administra sólo sus cuentas y puede crear clientes');
+$_SESSION[P\EquipoController::SESION] = $vale;
+$tokV = P\PortalSession::csrf();
+$Cl = P\ClienteAdminController::class;
+[$html, $r] = $g->hacer('GET', $Cl, 'edit', [$cV], 'cliente', 'cuenta');
+check($r === null && str_contains($html, 'Cuenta de Vale'), 'edita su cliente');
+[, $r] = $g->hacer('GET', $Cl, 'edit', [$cOtro], 'cliente', 'cuenta');
+check($r === '/equipo', 'no edita clientes que no lleva');
+[, $r] = $g->hacer('POST', $Cl, 'update', [$cV], 'cliente', 'cuenta', ['_csrf_token' => $tokV, 'nombre' => 'Cuenta de Vale', 'pais' => 'CL', 'responsable_id' => $coord]);
+check(($cs->find($cV)['responsable_id'] ?? '') === $vale, 'no puede pasarle la cuenta a otra persona (eso lo hace Coordinación general)');
+[, $r] = $g->hacer('POST', $Cl, 'store', [], null, 'crear', ['_csrf_token' => $tokV, 'nombre' => 'Nuevo de Vale', 'pais' => 'CL', 'responsable_id' => $coord]);
+$cNuevo = (string) $pdo->query("SELECT id FROM portal_clientes WHERE nombre = 'Nuevo de Vale'")->fetchColumn();
+check($cNuevo !== '' && ($cs->find($cNuevo)['responsable_id'] ?? '') === $vale, 'el cliente que crea queda a su cargo');
+[$html, $r] = $panel($g, 'cliente', [$cNuevo]);
+check($r === null && str_contains($html, 'Nuevo de Vale') && str_contains($html, 'Editar cliente'), 've su cliente nuevo aunque todavía no tenga proyectos');
+[, $r] = $panel($g, 'asignarCliente', [$cV], ['_csrf' => $tokV, 'persona_id' => $beto['id']], 'POST');
+check(in_array($beto['id'], array_column($eq->delCliente($cV), 'id'), true), 'arma el equipo de su cuenta');
+[, $r] = $panel($g, 'asignarCliente', [$cOtro], ['_csrf' => $tokV, 'persona_id' => $beto['id']], 'POST');
+check(!in_array($beto['id'], array_column($eq->delCliente($cOtro), 'id'), true), 'no asigna personas en cuentas ajenas');
+[, $r] = $panel($g, 'asignarCliente', [$cV], ['_csrf' => $tokV, 'persona_id' => $coord], 'POST');
+check(!in_array($coord, array_column($eq->delCliente($cV), 'id'), true), 'sólo se asignan personas con rol Equipo');
+[, $r] = $g->hacer('GET', P\EquipoAdminController::class, 'index', [], null, true);
+check($r === '/equipo', 'no entra a la sección Equipo (personas)');
+[, $r] = $g->hacer('GET', P\ActividadAdminController::class, 'ajustesForm', [], null, true);
+check($r === '/equipo', 'no entra a los ajustes de la agencia');
+[$html] = $panel($g, 'clientes');
+check(str_contains($html, 'Mis cuentas') && str_contains($html, 'Cuenta de Vale') && !str_contains($html, 'Cuenta ajena') && str_contains($html, 'Nuevo cliente'), 'su lista de clientes parte por «Mis cuentas»');
+$dest = array_column((new P\Avisos($ctx, $pdo, new P\Notifier($ctx, $pdo)))->destinatarios($pV, $cV), 'id');
+check(in_array($vale, $dest, true), 'le llegan los avisos de sus cuentas');
+check(in_array($vale, array_column($eq->delProyecto($pV), 'id'), true), 'aparece entre las personas del proyecto');
+$_SESSION[P\EquipoController::SESION] = $coord;
+[$html] = $panel($g, 'clientes');
+check(str_contains($html, 'Cuentas de Vale Cuentas') && str_contains($html, 'Sin responsable de cuenta'), 'Coordinación general ve los clientes agrupados por cuenta');
+[$html] = $panel($g, 'inicio');
+check(str_contains($html, 'h-cuentas') && str_contains($html, 'Vale Cuentas'), 'el Inicio de Coordinación general muestra el cuadro «Cuentas»');
 
 // País por persona: una socia en otro país que su empresa
 seccion('País por persona');

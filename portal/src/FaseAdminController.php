@@ -93,7 +93,7 @@ class FaseAdminController
     public function update(string $id): void
     {
         $this->service()->update($id, $_POST);
-        $this->ui->redirect($this->ui->url('fases'), 'Fase actualizada.');
+        $this->ui->redirect($this->ui->url('fases/' . $id), 'Fase actualizada.');
     }
 
     public function destroy(string $id): void

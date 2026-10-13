@@ -27,6 +27,9 @@ interface Pantalla
     /** Id del usuario de agencia que actúa (null en el admin de TypeDock). */
     public function autorId(): ?string;
 
+    /** ¿Coordinación general (o admin del portal)? Elige quién lleva cada cuenta. */
+    public function esGeneral(): bool;
+
     /**
      * Deja sólo las filas que este usuario puede ver.
      *

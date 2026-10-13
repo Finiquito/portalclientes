@@ -11,8 +11,15 @@ class EquipoService
 {
     public const ROLES = [
         'equipo'      => 'Equipo (sólo lo asignado)',
-        'coordinador' => 'Coordinación (todos los clientes)',
+        'cuentas'     => 'Coordinación de cuentas (sus clientes y sus equipos)',
+        'coordinador' => 'Coordinación general (todos los clientes)',
     ];
+
+    /** Nombre corto del rol, para mostrar junto al nombre. */
+    public static function rolCorto(string $rol): string
+    {
+        return ['coordinador' => 'Coordinación general', 'cuentas' => 'Coordinación de cuentas'][$rol] ?? 'Equipo';
+    }
 
     public function __construct(private readonly \PDO $pdo) {}
 
@@ -281,9 +288,11 @@ class EquipoService
         } elseif ($clienteId !== null && $clienteId !== '') {
             $stmt = $this->pdo->prepare(
                 "SELECT DISTINCT e.id, e.nombre, e.email, e.cargo FROM portal_equipo e
-                 LEFT JOIN portal_equipo_asignaciones a ON a.usuario_id = e.id AND a.cliente_id = ?
-                 WHERE e.activo = 1 AND (e.rol = 'coordinador' OR a.id IS NOT NULL) ORDER BY e.nombre"
+                 JOIN portal_clientes c ON c.id = ?
+                 LEFT JOIN portal_equipo_asignaciones a ON a.usuario_id = e.id AND a.cliente_id = c.id
+                 WHERE e.activo = 1 AND (e.rol = 'coordinador' OR a.id IS NOT NULL OR c.responsable_id = e.id) ORDER BY e.nombre"
             );
+            Schema::asegurar($this->pdo);
             $stmt->execute([$clienteId]);
             $lista = $stmt->fetchAll();
         } else {
@@ -299,11 +308,13 @@ class EquipoService
         $stmt = $this->pdo->prepare(
             "SELECT DISTINCT e.id, e.nombre, e.email, e.cargo FROM portal_equipo e
              JOIN portal_proyectos p ON p.id = ?
+             JOIN portal_clientes c ON c.id = p.cliente_id
              LEFT JOIN portal_equipo_asignaciones a ON a.usuario_id = e.id
                AND a.cliente_id = p.cliente_id AND (a.proyecto_id IS NULL OR a.proyecto_id = p.id)
-             WHERE e.activo = 1 AND (e.rol = 'coordinador' OR a.id IS NOT NULL)
+             WHERE e.activo = 1 AND (e.rol = 'coordinador' OR a.id IS NOT NULL OR c.responsable_id = e.id)
              ORDER BY e.nombre"
         );
+        Schema::asegurar($this->pdo);
         $stmt->execute([$proyectoId]);
         return $stmt->fetchAll();
     }

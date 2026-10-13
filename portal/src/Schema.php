@@ -53,6 +53,7 @@ final class Schema
         ],
         'portal_clientes' => [
             'pais' => "VARCHAR(2) NOT NULL DEFAULT 'CL'",
+            'responsable_id' => 'VARCHAR(36)',   // quien lleva la cuenta (Coordinación de cuentas o general)
         ],
         'portal_contactos' => [
             'pais'          => 'VARCHAR(2)',      // si vive en otro país que su empresa (vacío = el del cliente)

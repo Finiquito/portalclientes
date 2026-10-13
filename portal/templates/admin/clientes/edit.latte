@@ -3,7 +3,7 @@
 {block page_title}{if $cliente}Editar cliente{else}Nuevo cliente{/if}{/block}
 
 {block content}
-<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=10">
+<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=11">
 
 <div class="page-header">
     <h1>{if $cliente}Editar cliente{else}Nuevo cliente{/if}</h1>
@@ -25,6 +25,21 @@
 
         <label class="form-label mt-3">Email de contacto</label>
         <input type="email" name="email" class="form-input" value="{$cliente['email'] ?? ''}">
+
+        <label class="form-label mt-3">Responsable de la cuenta</label>
+        {if $eligeResponsable ?? false}
+            <select name="responsable_id" class="form-input" style="max-width:26rem">
+                <option value="">— Nadie todavía —</option>
+                {foreach $coordinaciones as $co}
+                    <option value="{$co['id']}" {if ($cliente['responsable_id'] ?? '') === $co['id']}selected{/if}>{$co['nombre']} · {\TypeDock\Plugin\Portal\EquipoService::rolCorto($co['rol'])}</option>
+                {/foreach}
+            </select>
+            <p class="form-hint mt-1">Quien lleva la cuenta administra este cliente: edita sus datos y su portal, sus proyectos y arma su equipo. Puede ser alguien de Coordinación de cuentas o general.</p>
+        {else}
+            {var $respNombre = ''}
+            {foreach $coordinaciones ?? [] as $co}{if ($cliente['responsable_id'] ?? '') === $co['id']}{var $respNombre = $co['nombre']}{/if}{/foreach}
+            <p class="pa-muted" style="margin:.2rem 0 0">{$cliente ? ($respNombre ?: 'Nadie todavía') : 'Tú: el cliente queda a tu cargo.'}</p>
+        {/if}
 
         <label class="form-label mt-3">País del cliente</label>
         <select name="pais" class="form-input" style="max-width:26rem">

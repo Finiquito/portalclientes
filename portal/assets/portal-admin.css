@@ -306,3 +306,11 @@ a.pa-g-hito { cursor: pointer; text-decoration: none !important; }
 .pa-plantilla-fases li.quien-cliente { --c-quien: #e8590c; }
 .pa-plantilla-fases li.hito { font-weight: 650; }
 .pa-grid-2[hidden], .pa-chip[hidden] { display: none; }
+
+/* Celular: las filas de archivos/piezas pasan sus botones abajo en vez de salirse de la pantalla */
+@media (max-width: 640px) {
+  .pa-file { flex-wrap: wrap; }
+  .pa-file .pa-meta { flex: 1 1 calc(100% - 4rem); }
+}
+.pa-files > li, .pa-file { min-width: 0; }   /* en una grilla, un título largo no ensancha la fila */
+[hidden] { display: none !important; }   /* que ninguna clase con display le gane al atributo hidden */

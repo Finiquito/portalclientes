@@ -11,7 +11,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
-    <link rel="stylesheet" href="/plugins/portal/assets/portal.css?v=25">
+    <link rel="stylesheet" href="/plugins/portal/assets/portal.css?v=26">
     <script>{$portalBoot|noescape}</script>
 </head>
 <body class="min-h-dvh bg-bg font-sans text-ink antialiased">
@@ -122,7 +122,7 @@
                             <span class="avatar flex-none">{$fmt->iniciales($usuario['nombre'])}</span>
                             <span class="min-w-0 flex-1 leading-snug">
                                 <span class="block break-words text-sm font-bold">{$usuario['nombre']}</span>
-                                <span class="block text-xs text-muted">{$usuario['cargo'] ?: ($usuario['rol'] === 'coordinador' ? 'Coordinación' : 'Equipo')}</span>
+                                <span class="block text-xs text-muted">{$usuario['cargo'] ?: \TypeDock\Plugin\Portal\EquipoService::rolCorto((string) $usuario['rol'])}</span>
                             </span>
                         </div>
                         <div class="mt-3 grid grid-cols-2 gap-2">

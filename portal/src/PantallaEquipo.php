@@ -86,6 +86,11 @@ final class PantallaEquipo implements Pantalla
         return array_values(array_filter($filas, static fn(array $f): bool => isset($ids[(string) ($f[$columna] ?? '')])));
     }
 
+    public function esGeneral(): bool
+    {
+        return $this->acceso->todo();
+    }
+
     public function acceso(): EquipoAcceso
     {
         return $this->acceso;

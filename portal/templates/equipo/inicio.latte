@@ -148,13 +148,32 @@
         {/if}
     </section>
 
+    {if $cuentas}
+    <section class="card card-pad reveal" style="--i:6" aria-labelledby="h-cuentas">
+        <h2 id="h-cuentas" class="text-base font-extrabold tracking-tight">Cuentas</h2>
+        <p class="mt-1 text-xs text-muted">Quién lleva cada grupo de clientes y cómo va.</p>
+        <ul class="mt-4 space-y-3">
+            {foreach $cuentas as $cu}
+                <li><a href="/equipo/clientes?ver={$cu['id'] !== '' ? $cu['id'] : 'todas'}&amp;estado=activos" class="flex items-center gap-3 rounded-xl transition hover:opacity-80">
+                    <span class="avatar avatar-team flex-none">{$cu['id'] !== '' ? $fmt->iniciales($cu['nombre']) : '—'}</span>
+                    <span class="min-w-0 flex-1 leading-snug">
+                        <span class="block truncate text-sm font-semibold">{$cu['nombre']}</span>
+                        <span class="block truncate text-xs text-muted">{$cu['clientes']} {$cu['clientes'] === 1 ? 'cliente activo' : 'clientes activos'}{if $cu['respuestas'] > 0} · <span class="font-bold text-brand-ink">{$cu['respuestas']} {$cu['respuestas'] === 1 ? 'respuesta' : 'respuestas'} del cliente</span>{/if}</span>
+                    </span>
+                    <span class="flex-none text-right text-xs leading-snug {$cu['atrasadas'] > 0 ? 'font-bold text-danger' : 'text-muted'}">{$cu['atrasadas'] > 0 ? $cu['atrasadas'] . ($cu['atrasadas'] === 1 ? ' atrasada' : ' atrasadas') : 'al día'}</span>
+                </a></li>
+            {/foreach}
+        </ul>
+    </section>
+    {/if}
+
     {if $carga}
     <section class="card card-pad reveal" style="--i:6" aria-labelledby="h-carga">
-        <h2 id="h-carga" class="text-base font-extrabold tracking-tight">Carga del equipo</h2>
-        <p class="mt-1 text-xs text-muted">Tareas abiertas a nombre de cada persona.</p>
+        <h2 id="h-carga" class="text-base font-extrabold tracking-tight">{$cargaDeCuentas ? 'Carga en tus cuentas' : 'Carga del equipo'}</h2>
+        <p class="mt-1 text-xs text-muted">{$cargaDeCuentas ? 'Tareas abiertas de tus clientes, a nombre de cada persona.' : 'Tareas abiertas a nombre de cada persona.'}</p>
         <ul class="mt-4 space-y-3">
             {foreach $carga as $g}
-                <li><a href="/equipo/personas/{$g['id']}" class="flex items-center gap-3 rounded-xl transition hover:opacity-80">
+                <li><a href="/equipo/personas/{$g['id']}" n:tag="$cargaDeCuentas ? 'div' : 'a'" class="flex items-center gap-3 rounded-xl transition hover:opacity-80">
                     <span class="avatar avatar-team flex-none">{$fmt->iniciales($g['nombre'])}</span>
                     <span class="min-w-0 flex-1 leading-snug">
                         <span class="block truncate text-sm font-semibold">{$g['nombre']}</span>

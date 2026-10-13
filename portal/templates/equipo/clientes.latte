@@ -6,21 +6,58 @@
 <section class="reveal flex flex-wrap items-end justify-between gap-3 pb-6 pt-1">
     <div>
     <h1 class="text-[2rem] font-extrabold leading-tight tracking-tight sm:text-4xl">Clientes</h1>
-    <p class="mt-2 text-muted">{$usuario['rol'] === 'coordinador' ? 'Todos los clientes de la agencia.' : 'Los clientes y proyectos que tienes asignados.'}</p>
+    <p class="mt-2 text-muted">{$usuario['rol'] === 'coordinador' ? 'Todos los clientes de la agencia, agrupados por quien lleva la cuenta.' : ($usuario['rol'] === 'cuentas' ? 'Tus cuentas y los clientes en que trabajas.' : 'Los clientes y proyectos que tienes asignados.')}</p>
     </div>
-    {if $usuario['rol'] === 'coordinador'}<a href="/equipo/clientes/nuevo" class="btn btn-primary btn-sm">Nuevo cliente</a>{/if}
+    {if $puedeCrearCliente}<a href="/equipo/clientes/nuevo" class="btn btn-primary btn-sm">Nuevo cliente</a>{/if}
 </section>
+
+{if !empty($clientes)}
+{* Filtros: estado y de quién es la cuenta; el buscador filtra en la página *}
+<form method="get" class="reveal mb-5 flex flex-wrap items-center gap-2" style="--i:1" data-filtros-clientes>
+    {foreach [['activos', 'Con proyectos activos'], ['sin', 'Sin proyectos activos'], ['todos', 'Todos']] as $t}
+        <a href="?estado={$t[0]}&amp;ver={$filtros['ver']}" class="btn btn-sm {$filtros['estado'] === $t[0] ? 'btn-primary' : 'btn-ghost'}" {if $filtros['estado'] === $t[0]}aria-current="true"{/if}>
+            {$t[1]} <span class="rounded-full px-1.5 text-xs {$filtros['estado'] === $t[0] ? 'bg-white/25' : 'bg-surface2 text-muted'}">{$filtros['conteo'][$t[0]]}</span>
+        </a>
+    {/foreach}
+    <input type="hidden" name="estado" value="{$filtros['estado']}">
+    {if count($filtros['responsables']) > 0}
+    <select name="ver" class="field h-9! w-auto! py-0! text-sm" onchange="this.form.submit()" aria-label="De quién es la cuenta">
+        <option value="todas" {if $filtros['ver'] === 'todas'}selected{/if}>Todas las cuentas</option>
+        {if $filtros['tengo']}<option value="mias" {if $filtros['ver'] === 'mias'}selected{/if}>Mis cuentas</option>{/if}
+        {foreach $filtros['responsables'] as $rid => $rn}
+            {continueIf $rid === $usuario['id']}
+            <option value="{$rid}" {if $filtros['ver'] === $rid}selected{/if}>Cuentas de {$rn}</option>
+        {/foreach}
+    </select>
+    {/if}
+    <input type="search" class="field h-9! min-w-[12rem] flex-1 py-0! text-sm sm:max-w-xs" placeholder="Buscar cliente o proyecto…" data-buscar aria-label="Buscar">
+</form>
+{/if}
 
 {if empty($clientes)}
     <div class="card card-pad reveal text-center">
         <p class="font-bold">Todavía no tienes clientes asignados</p>
-        <p class="mt-1 text-sm text-muted">Pídele a quien administra el portal que te asigne clientes o proyectos.</p>
+        <p class="mt-1 text-sm text-muted">Pídele a quien lleva la cuenta o a Coordinación general que te asigne clientes o proyectos.</p>
+    </div>
+{elseif empty($grupos)}
+    <div class="card card-pad reveal text-center">
+        <p class="font-bold">No hay clientes con estos filtros</p>
+        <p class="mt-1 text-sm text-muted"><a href="?estado=todos&amp;ver=todas" class="font-semibold text-brand-ink hover:underline">Ver todos</a></p>
     </div>
 {else}
+{foreach $grupos as $gi => $g}
+<details class="reveal mb-6" open data-grupo style="--i:{$gi + 2}">
+    <summary class="mb-3 flex cursor-pointer list-none items-center gap-2 text-sm font-extrabold uppercase tracking-wide text-muted [&::-webkit-details-marker]:hidden">
+        <svg class="size-4 transition [details[open]>summary>&]:rotate-90"><use href="#i-chevron"/></svg>
+        {if $g['mio']}Mis cuentas{elseif $g['id'] === ''}{$g['nombre']}{else}Cuentas de {$g['nombre']}{/if}
+        <span class="rounded-full bg-surface2 px-2 text-xs normal-case tracking-normal">{count($g['clientes'])}</span>
+    </summary>
 <div class="grid gap-5 lg:grid-cols-2">
-    {foreach $clientes as $i => $c}
+    {foreach $g['clientes'] as $i => $c}
         {var $m = $marcas[$c['id']]}
-        <section class="card card-pad reveal" style="--i:{$i + 1}">
+        {var $verProy = $filtros['estado'] === 'activos' ? array_values(array_filter($c['proyectos'], fn($pp) => $pp['estado'] === 'activo')) : $c['proyectos']}
+        {var $otros = count($c['proyectos']) - count($verProy)}
+        <section class="card card-pad" data-cliente-item data-buscar-en="{mb_strtolower($c['nombre'] . ' ' . ($c['empresa'] ?? '') . ' ' . implode(' ', array_column($c['proyectos'], 'nombre')))}">
             <a href="/equipo/clientes/{$c['id']}" class="flex items-center gap-3">
                 {if $m['logo']}
                     <img src="{$m['logo']}" alt="" class="size-11 flex-none rounded-xl border border-line bg-white object-contain p-1">
@@ -33,15 +70,32 @@
                 </span>
                 <svg class="size-4 flex-none text-muted"><use href="#i-chevron"/></svg>
             </a>
-            {if empty($c['proyectos'])}
-                <p class="mt-4 text-sm text-muted">Sin proyectos.</p>
+            {if empty($verProy)}
+                <p class="mt-4 text-sm text-muted">{$c['proyectos'] ? 'Sin proyectos activos.' : 'Sin proyectos.'}</p>
             {else}
                 <div class="mt-4 grid gap-3">
-                    {foreach $c['proyectos'] as $p}{include '_proyecto_card.latte', p: $p, fmt: $fmt}{/foreach}
+                    {foreach $verProy as $p}{include '_proyecto_card.latte', p: $p, fmt: $fmt}{/foreach}
                 </div>
             {/if}
+            {if $otros > 0}<p class="mt-3 text-xs text-muted">+ {$otros} {$otros === 1 ? 'proyecto en pausa o cerrado' : 'proyectos en pausa o cerrados'} · <a href="/equipo/clientes/{$c['id']}" class="font-semibold text-brand-ink hover:underline">ver</a></p>{/if}
         </section>
     {/foreach}
 </div>
+</details>
+{/foreach}
+<p class="card card-pad text-center text-sm text-muted" data-sin-resultados hidden>Ningún cliente coincide con la búsqueda.</p>
+<script>
+(() => {
+    const q = document.querySelector('[data-buscar]');
+    if (!q) return;
+    q.addEventListener('input', () => {
+        const t = q.value.trim().toLowerCase();
+        let n = 0;
+        document.querySelectorAll('[data-cliente-item]').forEach((c) => { const ok = !t || c.dataset.buscarEn.includes(t); c.hidden = !ok; if (ok) n++; });
+        document.querySelectorAll('[data-grupo]').forEach((g) => { g.hidden = !g.querySelector('[data-cliente-item]:not([hidden])'); if (t) g.open = true; });
+        document.querySelector('[data-sin-resultados]').hidden = n > 0;
+    });
+})();
+</script>
 {/if}
 {/block}

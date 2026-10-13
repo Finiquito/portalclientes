@@ -63,6 +63,11 @@ final class PantallaAdmin implements Pantalla
         $this->ctx->redirect($url, $mensaje, $tipo);
     }
 
+    public function esGeneral(): bool
+    {
+        return true;   // el admin de TypeDock administra todo
+    }
+
     public function flash(string $tipo): ?string
     {
         return $this->ctx->getFlash($tipo);

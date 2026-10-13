@@ -41,10 +41,18 @@ class ClienteAdminController
         ]);
     }
 
+    /** @return array<int, array<string, mixed>> quienes pueden llevar una cuenta */
+    private function coordinaciones(): array
+    {
+        return array_values(array_filter((new EquipoService($this->pdo()))->activos(), fn($p) => in_array($p['rol'], ['coordinador', 'cuentas'], true)));
+    }
+
     public function create(): void
     {
         $this->ui->view('clientes/edit.latte', [
             'cliente'  => null,
+            'coordinaciones' => $this->coordinaciones(),
+            'eligeResponsable' => $this->ui->esGeneral(),
             // Personas que pueden quedar a cargo desde el alta (Coordinación ya ve todo).
             'personas' => array_values(array_filter((new EquipoService($this->pdo()))->activos(), fn($p) => $p['rol'] !== 'coordinador')),
         ]);
@@ -64,6 +72,10 @@ class ClienteAdminController
         if ($contactoEmail !== '' && (new ContactoService($this->pdo()))->findByEmail($contactoEmail) !== null) {
             $this->ui->redirect($this->ui->url('clientes/nuevo'), 'Ya existe un contacto con el correo ' . $contactoEmail . '. Usa otro o agrégalo después desde el cliente.', 'error');
             return;
+        }
+        // Coordinación de cuentas: el cliente que crea queda a su cargo.
+        if (!$this->ui->esGeneral()) {
+            $_POST['responsable_id'] = (string) $this->ui->autorId();
         }
         $id = $this->service()->create($_POST);
         $hechos = [];
@@ -128,6 +140,8 @@ class ClienteAdminController
 
         $this->ui->view('clientes/edit.latte', [
             'cliente'       => $cliente,
+            'coordinaciones' => $this->coordinaciones(),
+            'eligeResponsable' => $this->ui->esGeneral(),
             'cfg'           => [
                 'titulo' => $cfg['titulo'] ?? '',
                 'color'  => AjustesService::colorValido($cfg['color'] ?? ''),
@@ -141,6 +155,9 @@ class ClienteAdminController
 
     public function update(string $id): void
     {
+        if (!$this->ui->esGeneral()) {
+            unset($_POST['responsable_id']);   // sólo Coordinación general cambia quién lleva la cuenta
+        }
         $this->service()->update($id, $_POST);
         $this->ui->redirect($this->ui->url('clientes/' . $id), 'Cliente actualizado.');
     }

@@ -24,18 +24,19 @@ class EquipoGestion extends EquipoController
     /** Registra las rutas de gestión. Van antes que las vistas propias del panel (…/nuevo gana a …/@id). */
     public function registrar(): void
     {
-        $r = function (string $metodo, string $ruta, string $clase, string $accion, ?string $tipo = null, bool $coord = false): void {
+        // $coord: true = sólo Coordinación general; 'crear' = general o de cuentas; 'cuenta' = general o quien lleva ese cliente.
+        $r = function (string $metodo, string $ruta, string $clase, string $accion, ?string $tipo = null, bool|string $coord = false): void {
             \Flight::route($metodo . ' /equipo/' . $ruta, function (string ...$args) use ($clase, $accion, $tipo, $coord): void {
                 $this->gestionar($clase, $accion, array_values($args), $tipo, $coord);
             });
         };
 
         // Clientes (Coordinación): la ficha de lectura es /equipo/clientes/@id.
-        $r('GET',  'clientes/nuevo',                ClienteAdminController::class, 'create', null, true);
-        $r('POST', 'clientes',                      ClienteAdminController::class, 'store', null, true);
-        $r('GET',  'clientes/@id/editar',           ClienteAdminController::class, 'edit', 'cliente', true);
-        $r('POST', 'clientes/@id/editar',           ClienteAdminController::class, 'update', 'cliente', true);
-        $r('POST', 'clientes/@id/personalizar',     ClienteAdminController::class, 'personalizar', 'cliente', true);
+        $r('GET',  'clientes/nuevo',                ClienteAdminController::class, 'create', null, 'crear');
+        $r('POST', 'clientes',                      ClienteAdminController::class, 'store', null, 'crear');
+        $r('GET',  'clientes/@id/editar',           ClienteAdminController::class, 'edit', 'cliente', 'cuenta');
+        $r('POST', 'clientes/@id/editar',           ClienteAdminController::class, 'update', 'cliente', 'cuenta');
+        $r('POST', 'clientes/@id/personalizar',     ClienteAdminController::class, 'personalizar', 'cliente', 'cuenta');
         $r('POST', 'clientes/@id/borrar',           ClienteAdminController::class, 'destroy', 'cliente', true);
 
         // Proyectos: la vista de lectura es /equipo/proyectos/@id.
@@ -43,7 +44,7 @@ class EquipoGestion extends EquipoController
         $r('POST', 'proyectos',                     ProyectoAdminController::class, 'store');
         $r('GET',  'proyectos/@id/editar',          ProyectoAdminController::class, 'edit', 'proyecto');
         $r('POST', 'proyectos/@id/editar',          ProyectoAdminController::class, 'update', 'proyecto');
-        $r('POST', 'proyectos/@id/borrar',          ProyectoAdminController::class, 'destroy', 'proyecto', true);
+        $r('POST', 'proyectos/@id/borrar',          ProyectoAdminController::class, 'destroy', 'proyecto', 'cuenta');
         $r('GET',  'proyectos/@id/linea',           CronogramaAdminController::class, 'ver', 'proyecto');
         $r('POST', 'proyectos/@id/linea/mover',     CronogramaAdminController::class, 'mover', 'proyecto');
         $r('POST', 'proyectos/@id/linea/hitos',     CronogramaAdminController::class, 'hitoGuardar', 'proyecto');
@@ -115,7 +116,7 @@ class EquipoGestion extends EquipoController
         $r('POST', 'solicitudes/@id/cotizar',       SolicitudAdminController::class, 'cotizar', 'solicitud');
         $r('POST', 'solicitudes/@id/cerrar',        SolicitudAdminController::class, 'cerrar', 'solicitud');
         $r('POST', 'solicitudes/@id/comentarios',   SolicitudAdminController::class, 'comentar', 'solicitud');
-        $r('POST', 'solicitudes/@id/borrar',        SolicitudAdminController::class, 'destroy', 'solicitud', true);
+        $r('POST', 'solicitudes/@id/borrar',        SolicitudAdminController::class, 'destroy', 'solicitud', 'cuenta');
 
         // Personas del equipo y sus asignaciones (solo Coordinación).
         $r('GET',  'personas',                      EquipoAdminController::class, 'index', null, true);
@@ -153,13 +154,21 @@ class EquipoGestion extends EquipoController
      * @param class-string $clase
      * @param array<int, string> $args el primero es el id del registro cuando $tipo no es null
      */
-    public function gestionar(string $clase, string $accion, array $args, ?string $tipo = null, bool $soloCoordinacion = false): void
+    public function gestionar(string $clase, string $accion, array $args, ?string $tipo = null, bool|string $soloCoordinacion = false): void
     {
         $u   = $this->requerirUsuario();
         $acc = $this->acceso($u);
 
-        if ($soloCoordinacion && !$acc->todo()) {
-            $this->denegar('Esa acción la hace Coordinación o un admin del portal.');
+        $permitida = match (true) {
+            $soloCoordinacion === true    => $acc->todo(),
+            $soloCoordinacion === 'crear' => $acc->puedeCrearClientes(),
+            $soloCoordinacion === 'cuenta' => $this->gestiona($acc, (string) $tipo, (string) ($args[0] ?? '')),
+            default => true,
+        };
+        if (!$permitida) {
+            $this->denegar($soloCoordinacion === 'cuenta'
+                ? 'Esa acción la hace quien lleva la cuenta de este cliente o Coordinación general.'
+                : 'Esa acción la hace Coordinación general o un admin del portal.');
             return;
         }
         if ($tipo !== null && !$this->permitido($acc, $tipo, (string) ($args[0] ?? ''))) {
@@ -196,6 +205,20 @@ class EquipoGestion extends EquipoController
     {
         PortalSession::flash('error', $msg);
         $this->irA('/equipo');
+    }
+
+    /** ¿Administra el cliente al que pertenece este registro? (Coordinación general o quien lleva la cuenta) */
+    public function gestiona(EquipoAcceso $acc, string $tipo, string $id): bool
+    {
+        if ($acc->todo()) {
+            return true;
+        }
+        return match ($tipo) {
+            'cliente'   => $acc->gestionaCliente($id),
+            'proyecto'  => $acc->gestionaProyecto($id),
+            'solicitud' => ($f = $this->fetchOne('SELECT cliente_id FROM portal_solicitudes WHERE id = ?', [$id])) !== null && $acc->gestionaCliente((string) $f['cliente_id']),
+            default     => false,
+        };
     }
 
     /** ¿El registro $id de tipo $tipo cae dentro de lo que ve el usuario? */
