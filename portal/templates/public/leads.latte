@@ -64,7 +64,52 @@
             <p class="mt-1 max-w-xs text-sm text-muted">{if $total === 0}Cuando alguien deje sus datos en tu campaña, aparece aquí y te avisamos por correo.{else}Prueba con otra búsqueda o estado.{/if}</p>
         </div>
     {else}
-        <ul class="divide-y divide-line/70 p-1.5 sm:p-2">
+        {* Escritorio: tabla, como la del panel del equipo *}
+        <div class="hidden overflow-x-auto p-2 lg:block">
+            <table class="w-full border-collapse text-sm">
+                <thead>
+                    <tr class="text-left text-xs font-bold text-muted">
+                        <th class="whitespace-nowrap border-b border-line px-3 py-2.5">Contacto</th>
+                        <th class="whitespace-nowrap border-b border-line px-3 py-2.5">Campaña</th>
+                        <th class="whitespace-nowrap border-b border-line px-3 py-2.5">Estado</th>
+                        <th class="whitespace-nowrap border-b border-line px-3 py-2.5">Mailchimp</th>
+                        <th class="whitespace-nowrap border-b border-line px-3 py-2.5">Llegó</th>
+                        <th class="whitespace-nowrap border-b border-line px-3 py-2.5">Próximo paso</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {foreach $leads as $l}
+                    {var $abierto = !in_array($l['estado'], ['ganado', 'perdido'], true)}
+                    {var $vencido = $l['proximo_paso_fecha'] && $l['proximo_paso_fecha'] < $hoy && $abierto}
+                    {var $correos = \TypeDock\Plugin\Portal\LeadService::mcCorreos($l)}
+                    <tr class="group cursor-pointer align-top transition hover:bg-surface2 [&:not(:last-child)>td]:border-b [&>td]:border-line" onclick="if(!event.target.closest('a'))location.href=this.querySelector('a').href">
+                        <td class="px-3 py-3">
+                            <a href="/portal/contactos-ganados/{$l['id']}" class="font-semibold group-hover:underline">{$l['nombre']}</a>
+                            <span class="block break-all text-xs text-muted">{$l['correo'] ?: $l['telefono']}</span>
+                            {if $l['empresa'] && $l['empresa'] !== $l['nombre']}<span class="block text-xs text-muted">{$l['empresa']}</span>{/if}
+                        </td>
+                        <td class="px-3 py-3">
+                            {if count($proyectos) > 1}<span class="inline-flex items-center gap-1.5 font-semibold"><span aria-hidden="true" style="display:inline-block;width:.6rem;height:.6rem;border-radius:9999px;flex:none;background:{($colorProy[$l['proyecto_id']] ?? '#94a3b8')|noescape}"></span>{$l['proyecto_nombre']}</span>{/if}
+                            <span class="block {count($proyectos) > 1 ? 'text-xs text-muted' : ''}">{$l['campana'] ?: 'Sin campaña'}</span>
+                        </td>
+                        <td class="px-3 py-3"><span class="chip {$chips[$l['estado']]}">{$estados[$l['estado']]}</span></td>
+                        <td class="px-3 py-3">
+                            {if $l['mc_estado'] && isset($mcEstados[$l['mc_estado']])}
+                                <span class="{in_array($l['mc_estado'], ['unsubscribed', 'cleaned'], true) ? 'font-semibold text-warn' : ''}">{$mcEstados[$l['mc_estado']][0]}</span>
+                                {if $correos}<span class="mt-0.5 flex items-center gap-1 text-xs text-muted"><svg class="size-3.5"><use href="#i-mail"/></svg>{$correos}</span>{/if}
+                            {else}<span class="text-muted">—</span>{/if}
+                        </td>
+                        <td class="whitespace-nowrap px-3 py-3">{$fmt->rel($l['created_at'])}<span class="block text-xs text-muted">{$origenes[$l['origen']] ?? $l['origen']}</span></td>
+                        <td class="px-3 py-3">
+                            {if $l['proximo_paso'] && $abierto}{$l['proximo_paso']}{if $l['proximo_paso_fecha']}<span class="mt-0.5 flex items-center gap-1 text-xs {$vencido ? 'font-bold text-danger' : 'text-muted'}"><svg class="size-3.5"><use href="#i-clock"/></svg>{$fmt->fechaCorta($l['proximo_paso_fecha'])}</span>{/if}{else}<span class="text-muted">—</span>{/if}
+                        </td>
+                    </tr>
+                {/foreach}
+                </tbody>
+            </table>
+        </div>
+        {* Celular y tablet: la lista de tarjetas *}
+        <ul class="divide-y divide-line/70 p-1.5 sm:p-2 lg:hidden">
             {foreach $leads as $l}
                 {var $vencido = $l['proximo_paso_fecha'] && $l['proximo_paso_fecha'] < $hoy && !in_array($l['estado'], ['ganado', 'perdido'], true)}
                 <li>
@@ -79,8 +124,10 @@
                                 <span>{$fmt->rel($l['created_at'])}</span>
                                 {if in_array($l['mc_estado'], ['unsubscribed', 'cleaned', 'subscribed'], true)}<span class="{$l['mc_estado'] === 'subscribed' ? '' : 'font-semibold text-warn'}">{['subscribed' => 'En Mailchimp', 'unsubscribed' => 'Se dio de baja en Mailchimp', 'cleaned' => 'Correo rebotado'][$l['mc_estado']]}</span>{/if}
                                 {var $correos = \TypeDock\Plugin\Portal\LeadService::mcCorreos($l)}{if $correos}<span class="inline-flex items-center gap-1"><svg class="size-3.5"><use href="#i-mail"/></svg>{$correos}</span>{/if}
-                                {if $l['proximo_paso_fecha'] && !in_array($l['estado'], ['ganado', 'perdido'], true)}<span class="inline-flex items-center gap-1 {$vencido ? 'font-bold text-danger' : ''}"><svg class="size-3.5"><use href="#i-clock"/></svg>{$fmt->fechaCorta($l['proximo_paso_fecha'])}</span>{/if}
                             </span>
+                            {if ($l['proximo_paso'] || $l['proximo_paso_fecha']) && !in_array($l['estado'], ['ganado', 'perdido'], true)}
+                                <span class="mt-1.5 flex items-start gap-1.5 text-xs {$vencido ? 'font-bold text-danger' : 'text-ink'}"><svg class="mt-px size-3.5 flex-none"><use href="#i-clock"/></svg><span>{if $l['proximo_paso']}{$l['proximo_paso']}{/if}{if $l['proximo_paso'] && $l['proximo_paso_fecha']} · {/if}{if $l['proximo_paso_fecha']}{$fmt->fechaCorta($l['proximo_paso_fecha'])}{/if}</span></span>
+                            {/if}
                         </span>
                         <span class="chip {$chips[$l['estado']]} hidden sm:inline-flex">{$estados[$l['estado']]}</span>
                         <svg class="size-4 flex-none text-muted transition group-hover:translate-x-0.5"><use href="#i-chevron"/></svg>

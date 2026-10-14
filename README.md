@@ -74,6 +74,10 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### v0.31.1
+- **Contactos ganados del cliente en tabla** (pantallas grandes), igual que la del panel del equipo: Contacto, Campaña, Estado, Mailchimp (estado y «9 correos · abrió 6»), Llegó (cuándo y por dónde) y Próximo paso al final (en rojo si venció). Toda la fila abre la ficha.
+- En celular y tablet siguen las tarjetas, ahora con el texto del próximo paso además de la fecha.
+
 ### v0.31.0: qué es nuevo en Solicitudes y Novedades más clara
 - **Número de Solicitudes** en la barra del cliente: ahora cuenta las solicitudes que le toca revisar o aprobar (cotización lista, o la tarea que salió de la solicitud está «En revisión») y las que tienen respuestas o cambios del equipo que esa persona todavía no ha visto. Al abrirla deja de ser nueva; si le toca revisar, sigue contando hasta que se resuelva.
 - **Lista de solicitudes**: punto en las que tienen algo nuevo y estado más claro («Te toca revisar», «Aplicando tus cambios», «Lista», con «· nueva» cuando corresponde). La ficha también dice «Te toca revisar».

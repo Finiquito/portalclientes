@@ -70,6 +70,7 @@ class LeadPublicController extends PortalPublicController
             'estados'   => LeadService::ESTADOS,
             'chips'     => LeadService::CHIPS,
             'origenes'  => LeadService::ORIGENES,
+            'mcEstados' => MailchimpConsulta::ESTADOS,
             'hoy'       => (new \DateTimeImmutable('now', new \DateTimeZone(Zona::agencia())))->format('Y-m-d'),
             'exportar'  => '/portal/contactos-ganados/exportar' . (($q = http_build_query(array_filter(['proyecto' => $f['proyecto_id'], 'estado' => $f['estado'], 'campana' => $f['campana'], 'q' => $f['q']]))) !== '' ? '?' . $q : ''),
         ]);
