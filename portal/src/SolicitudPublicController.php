@@ -36,6 +36,7 @@ class SolicitudPublicController extends PortalPublicController
         $cerradas = array_values(array_filter($todas, fn(array $s): bool => !in_array($s, $abiertas, true)));
 
         $this->ctx->view('templates/public/solicitudes.latte', $this->contexto($c, 'solicitudes') + [
+            'marcas'   => (new NovedadesService($this->pdo()))->solicitudes((string) $c['cliente_id'], (string) $c['id']),
             'abiertas' => $abiertas,
             'cerradas' => $cerradas,
             'tipos'    => SolicitudService::TIPOS,
@@ -175,6 +176,10 @@ class SolicitudPublicController extends PortalPublicController
             PortalSession::flash('error', 'No encontramos esa solicitud.');
             $this->redirectTo('portal/solicitudes');
             return;
+        }
+        $this->marcarVisto($c, 'solicitud', $id);
+        if ($s['tarea_id']) {
+            $this->marcarVisto($c, 'tarea', (string) $s['tarea_id']);
         }
         $this->ctx->view('templates/public/solicitud.latte', $this->contexto($c, 'solicitudes') + [
             's'           => $s,

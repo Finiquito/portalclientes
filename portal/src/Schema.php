@@ -113,6 +113,7 @@ final class Schema
         self::tablasAvisos($pdo);
         self::tablaHitos($pdo);
         self::tablaPlantillas($pdo);
+        self::tablaVistos($pdo);
         self::ampliarTextos($pdo);
     }
 
@@ -263,6 +264,19 @@ final class Schema
             }
         }
         PlantillaService::sembrar($pdo);   // la primera vez: las de ejemplo
+    }
+
+    /** Qué vio cada persona del cliente (migración 0013). */
+    private static function tablaVistos(\PDO $pdo): void
+    {
+        if (self::existe($pdo, 'portal_vistos', 'contacto_id, entidad_tipo, entidad_id, visto_en')) {
+            return;
+        }
+        $sql = (string) @file_get_contents(dirname(__DIR__) . '/migrations/0013_vistos.sql');
+        $sql = preg_replace('/^\s*--.*$/m', '', $sql) ?? '';
+        foreach (array_filter(array_map('trim', explode(';', $sql))) as $stmt) {
+            $pdo->exec($stmt);
+        }
     }
 
     /** Contactos ganados, sus fuentes y el registro de intentos (migración 0012). */

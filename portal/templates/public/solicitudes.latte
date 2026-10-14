@@ -30,13 +30,13 @@
     {else}
         <ul class="divide-y divide-line/70 p-1.5 sm:p-2">
             {foreach $g[1] as $s}
-                {var $e = $estadosS[$s['estado']] ?? ['—', 'muted']}
-                {if $s['estado'] === 'en_curso' && $s['tarea_estado'] === 'hecha'}{var $e = ['Lista', 'ok']}{/if}
+                {var $e = \TypeDock\Plugin\Portal\NovedadesService::estadoSolicitud($s)}
+                {var $nueva = !empty($marcas[$s['id']]['nueva'])}
                 <li>
                     <a href="/portal/solicitudes/{$s['id']}" class="group flex items-center gap-3 rounded-2xl p-3 transition hover:bg-surface2 sm:p-3.5">
                         <span class="flex size-11 flex-none items-center justify-center rounded-xl {$s['tipo'] === 'problema' ? 'bg-danger/10 text-danger' : 'bg-brand-soft text-brand-ink'}"><svg class="size-5"><use href="#{$tipos[$s['tipo']][2]}"/></svg></span>
                         <span class="min-w-0 flex-1">
-                            <span class="block truncate font-semibold">{$s['titulo']}</span>
+                            <span class="flex items-center gap-2 font-semibold">{if $nueva}<span class="size-2 flex-none rounded-full bg-brand" aria-hidden="true"></span>{/if}<span class="truncate">{$s['titulo']}</span></span>
                             <span class="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-muted">
                                 <span>{$tipos[$s['tipo']][0]}</span>
                                 {if $multiples}<span class="inline-flex items-center gap-1.5 font-semibold"><span aria-hidden="true" style="display:inline-block;width:.6rem;height:.6rem;border-radius:9999px;flex:none;background:{($colorProy[$s['proyecto_id']] ?? '#94a3b8')|noescape}"></span>{$s['proyecto_nombre'] ?: 'Proyecto nuevo'}</span>{/if}
@@ -45,10 +45,10 @@
                                 {if $s['n_comentarios'] > 0}<span class="inline-flex items-center gap-1"><svg class="size-3.5"><use href="#i-chat"/></svg>{$s['n_comentarios']}</span>{/if}
                             </span>
                         </span>
-                        <span class="chip chip-{$e[1]} hidden sm:inline-flex">{$e[0]}</span>
+                        <span class="chip chip-{$e[1]} hidden sm:inline-flex">{$e[0]}{if $nueva} · nueva{/if}</span>
                         <svg class="size-4 flex-none text-muted transition group-hover:translate-x-0.5"><use href="#i-chevron"/></svg>
                     </a>
-                    <span class="chip chip-{$e[1]} -mt-1 mb-2.5 ml-[4.5rem] sm:hidden">{$e[0]}</span>
+                    <span class="chip chip-{$e[1]} -mt-1 mb-2.5 ml-[4.5rem] sm:hidden">{$e[0]}{if $nueva} · nueva{/if}</span>
                 </li>
             {/foreach}
         </ul>

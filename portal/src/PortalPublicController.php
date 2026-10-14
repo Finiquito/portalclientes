@@ -322,7 +322,8 @@ class PortalPublicController
                  WHERE p.cliente_id = ? AND r.publicada = 1 AND r.fecha >= ?',
                 [$clienteId, (new \DateTimeImmutable('now', new \DateTimeZone(Zona::agencia())))->format('Y-m-d')]
             ), fn(array $r): bool => ReunionService::estado($r) === 'proxima')),
-            'solicitudesCliente' => (int) ($this->fetchOne("SELECT COUNT(*) AS n FROM portal_solicitudes WHERE cliente_id = ? AND estado = 'cotizada'", [$clienteId])['n'] ?? 0),
+            // Las que le toca revisar o aprobar, más las que tienen respuestas que no ha visto.
+            'solicitudesCliente' => (new NovedadesService($this->pdo()))->contarSolicitudes($clienteId, (string) $contacto['id']),
             'paisCliente'   => Zona::paisPersona($this->pdo(), $clienteId, (string) $contacto['id']),   // el de la persona si vive en otro país
             'vistaPrevia'   => PortalSession::vistaPrevia(),
             'hayRevisiones' => (int) ($this->fetchOne("SELECT COUNT(*) AS n FROM portal_entregas WHERE cliente_id = ? AND estado <> 'borrador'", [$clienteId])['n'] ?? 0) > 0,
@@ -564,7 +565,8 @@ class PortalPublicController
             'enRevision'  => $enRevision,
             'nArchivos'   => $nArchivos,
             'reuniones'   => $reuniones,
-            'actividad'   => $this->actividad()->deCliente($clienteId, 8),
+            'novedades'   => (new NovedadesService($this->pdo()))->cuadro($clienteId, (string) $c['id']),
+            'seccionesN'  => NovedadesService::SECCIONES,
             'multiples'   => count($proyectos) > 1,
             'pasos'       => $this->primerosPasos($c, $pref, $meTocan),
         ]));
@@ -666,6 +668,7 @@ class PortalPublicController
         }
 
         $this->marcarPaso($c, 'tarea');
+        $this->marcarVisto($c, 'tarea', $id);
         $archivos = $this->archivos()->deEntidad('tarea', $id);
         $delEquipo = array_values(array_filter($archivos, fn($a) => $a['subido_por_tipo'] === 'equipo'));
         $tuyos     = array_values(array_filter($archivos, fn($a) => $a['subido_por_tipo'] !== 'equipo'));
@@ -1096,6 +1099,14 @@ class PortalPublicController
     // ---------------------------------------------------------------------
 
     /** Primeros pasos que el contacto va completando (se guardan en sus ajustes). */
+    /** Anota que esta persona abrió algo (para marcar lo nuevo). Mirar como el cliente no cuenta. */
+    protected function marcarVisto(array $contacto, string $tipo, string $id): void
+    {
+        if (PortalSession::vistaPrevia() === null) {
+            (new NovedadesService($this->pdo()))->marcar((string) $contacto['id'], $tipo, $id);
+        }
+    }
+
     protected function marcarPaso(array $contacto, string $paso): void
     {
         if (PortalSession::vistaPrevia() !== null) {

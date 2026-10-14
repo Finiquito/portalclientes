@@ -56,6 +56,7 @@ class EntregaPublicController extends PortalPublicController
             $this->redirectTo('portal/entregas');
             return;
         }
+        $this->marcarVisto($c, 'entrega', $id);
         $lista = $this->contenidosSvc()->listar($id);
         $portadas = [];
         $reacc = [];
@@ -99,6 +100,7 @@ class EntregaPublicController extends PortalPublicController
             $this->redirectTo('portal/entregas');
             return;
         }
+        $this->marcarVisto($c, 'contenido', $id);
 
         $versiones = $this->contenidosSvc()->versiones($id);
         $vigente = (int) $x['version_actual'];

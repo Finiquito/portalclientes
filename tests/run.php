@@ -2335,6 +2335,52 @@ check(!str_contains($html, 'En Mailchimp'), 'sin conexión, la ficha no muestra 
 P\MailchimpConsulta::$transporte = null;
 
 // Pantallas de ingreso: piezas que encajan, corazón prismado y favicon
+seccion('Solicitudes: qué es nuevo y qué te toca, y Novedades por ítem');
+$nov = new P\NovedadesService($pdo);
+$_SESSION[P\PortalSession::CONTACTO] = $contacto;
+$base = $nov->contarSolicitudes($c1, $contacto);
+$sN = $ss->crear(['id' => $contacto, 'cliente_id' => $c1, 'nombre' => 'Clara Cliente'], ['tipo' => 'pedido', 'proyecto_id' => $p1a, 'titulo' => 'Landing de verano', 'urgencia' => 'sin_apuro']);
+$sNid = (string) $sN['id'];
+check($nov->contarSolicitudes($c1, $contacto) === $base, 'pedir algo no suma al número (no hay nada nuevo para quien la pidió)');
+$_SESSION[P\EquipoController::SESION] = $ana;
+$tokN = P\PortalSession::csrf();
+$g->hacer('POST', $S, 'aceptar', [$sNid], 'solicitud', false, ['_csrf_token' => $tokN, 'titulo' => 'Landing de verano']);
+$tN = (string) $ss->find($sNid)['tarea_id'];
+$_SESSION[P\PortalSession::CONTACTO] = $contacto;
+$marcas = $nov->solicitudes($c1, $contacto);
+check($marcas[$sNid] === ['toca' => false, 'nueva' => true] && $nov->contarSolicitudes($c1, $contacto) === $base + 1, 'cuando el equipo la toma, queda como nueva y suma al número de Solicitudes');
+[$html] = $sp->correr('lista');
+check(str_contains($html, 'En curso · nueva'), 'en la lista dice «nueva» junto al estado');
+$sp->correr('ver', [$sNid]);
+check($nov->solicitudes($c1, $contacto)[$sNid]['nueva'] === false && $nov->contarSolicitudes($c1, $contacto) === $base, 'al abrirla deja de ser nueva y baja el número');
+$otroC = (new P\ContactoService($pdo))->create(['cliente_id' => $c1, 'nombre' => 'Pedro Uno', 'email' => 'pedro@uno.cl', 'rol' => 'colaborador']);
+check($nov->solicitudes($c1, $otroC)[$sNid]['nueva'] === true, 'lo visto es de cada persona: a otra del mismo cliente le sigue apareciendo');
+
+sleep(1);   // las marcas de hora van al segundo
+$ts->cambiarEstado($tN, 'entregada');
+(new P\ActividadService($pdo))->registrar($c1, $p1a, 'equipo', 'Ana', 'estado', 'tarea', $tN, 'Landing de verano', 'En revisión');
+(new P\ActividadService($pdo))->registrar($c1, $p1a, 'equipo', 'Ana', 'subio_archivo', 'tarea', $tN, 'Landing de verano', 'landing.pdf');
+$m = $nov->solicitudes($c1, $contacto)[$sNid];
+check($m['toca'] && $m['nueva'] && $nov->contarSolicitudes($c1, $contacto) === $base + 1, 'la tarea pasa a «En revisión»: le toca revisar y hay novedad (cuenta una vez)');
+[$html] = $sp->correr('lista');
+check(str_contains($html, 'Te toca revisar · nueva'), 'la lista dice «Te toca revisar»');
+$pubN = new PublicoPrueba($ctx);
+ob_start();
+try { $pubN->dashboard(); } catch (RuntimeException) {}
+$html = (string) ob_get_clean();
+$ini = strpos($html, '>Novedades<');
+$cuadro = substr($html, (int) $ini, 6000);
+check($ini !== false && str_contains($cuadro, '>Solicitudes</h3>') && str_contains($cuadro, 'Landing de verano') && str_contains($cuadro, 'Te toca revisar'), 'Novedades agrupa por sección y muestra la solicitud con su estado actual');
+check(substr_count($cuadro, 'Landing de verano') === 1 && preg_match('#<span>Cambió de estado · [^<]*1 archivo#u', $cuadro) === 1 && str_contains($cuadro, 'te respondimos'), 'una sola línea por solicitud (la tarea va dentro) con el resumen de lo que pasó');
+check(str_contains($cuadro, 'title="Nuevo desde tu última visita"'), 'lo que no ha visto lleva el punto de nuevo');
+$sp->correr('ver', [$sNid]);
+$m = $nov->solicitudes($c1, $contacto)[$sNid];
+check($m['toca'] && !$m['nueva'] && $nov->contarSolicitudes($c1, $contacto) === $base + 1, 'abierta, sigue contando mientras le toque revisar');
+$ts->cambiarEstado($tN, 'hecha');
+check($nov->contarSolicitudes($c1, $contacto) === $base, 'lista y vista: ya no cuenta');
+check(P\NovedadesService::estadoSolicitud($ss->find($sNid)) === ['Lista', 'ok'], 'el estado que ve el cliente es «Lista»');
+check(P\NovedadesService::resumen([['accion' => 'comento', 'actor_tipo' => 'equipo', 'actor_nombre' => 'Ana'], ['accion' => 'comento', 'actor_tipo' => 'contacto', 'actor_nombre' => 'Clara Cliente'], ['accion' => 'aprobo', 'actor_tipo' => 'contacto', 'actor_nombre' => 'Clara Cliente']]) === 'Clara aprobó · 2 comentarios', 'el resumen junta comentarios y archivos en números');
+
 seccion('Ingreso: piezas que encajan y favicon');
 unset($_SESSION[P\PortalSession::CONTACTO]);
 P\Notifier::$ahora = null;

@@ -4,8 +4,7 @@
 
 {block content}
 {var $t = $tipos[$s['tipo']]}
-{var $e = $estadosS[$s['estado']] ?? ['—', 'muted']}
-{if $s['estado'] === 'en_curso' && $s['tarea_estado'] === 'hecha'}{var $e = ['Lista', 'ok']}{/if}
+{var $e = \TypeDock\Plugin\Portal\NovedadesService::estadoSolicitud($s)}
 
 <a href="/portal/solicitudes" class="reveal mb-3 inline-flex items-center gap-1.5 text-sm font-semibold text-muted transition hover:text-ink">
     <svg class="size-4"><use href="#i-back"/></svg> Solicitudes
@@ -36,12 +35,12 @@
 
         {* Dónde va *}
         <div class="mt-5 flex items-start gap-3 rounded-2xl px-4 py-3 text-sm
-            {$e[1] === 'ok' ? 'bg-ok/10 text-ok' : ($s['estado'] === 'cotizada' ? 'bg-brand-soft text-brand-ink' : 'bg-surface2 text-muted')}">
-            <svg class="mt-0.5 size-5 flex-none"><use href="#{$e[1] === 'ok' ? 'i-check' : ($s['estado'] === 'cotizada' ? 'i-sparkles' : 'i-clock')}"/></svg>
+            {$e[1] === 'ok' ? 'bg-ok/10 text-ok' : (\TypeDock\Plugin\Portal\NovedadesService::meToca($s) ? 'bg-brand-soft text-brand-ink' : 'bg-surface2 text-muted')}">
+            <svg class="mt-0.5 size-5 flex-none"><use href="#{$e[1] === 'ok' ? 'i-check' : (\TypeDock\Plugin\Portal\NovedadesService::meToca($s) ? 'i-sparkles' : 'i-clock')}"/></svg>
             <p class="font-semibold leading-snug">
                 {switch $s['estado']}
                     {case 'nueva'}La recibimos{if $s['tipo'] === 'problema'} y avisamos al equipo de inmediato{/if}. Te avisamos cuando la tomemos.
-                    {case 'en_curso'}{if $s['tarea_estado'] === 'hecha'}¡Lista! La terminamos.{else}La tomamos: ya es una tarea del equipo.{/if}
+                    {case 'en_curso'}{if $s['tarea_estado'] === 'hecha'}¡Lista! La terminamos.{elseif $s['tarea_estado'] === 'entregada'}Te toca revisar: entra a la tarea y cuéntanos si está bien o qué cambiamos.{elseif $s['tarea_estado'] === 'cambios'}Estamos aplicando los cambios que pediste.{else}La tomamos: ya es una tarea del equipo.{/if}
                     {case 'cotizada'}Tu cotización está lista. Revísala abajo y cuéntanos si la aprobamos.
                     {case 'aprobada'}Aprobaste el presupuesto. Ya le avisamos al equipo para empezar.
                     {case 'no_aprobada'}No aprobaste esta cotización. Si quieres ajustarla, escríbenos abajo.

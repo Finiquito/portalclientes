@@ -74,6 +74,12 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### v0.31.0: qué es nuevo en Solicitudes y Novedades más clara
+- **Número de Solicitudes** en la barra del cliente: ahora cuenta las solicitudes que le toca revisar o aprobar (cotización lista, o la tarea que salió de la solicitud está «En revisión») y las que tienen respuestas o cambios del equipo que esa persona todavía no ha visto. Al abrirla deja de ser nueva; si le toca revisar, sigue contando hasta que se resuelva.
+- **Lista de solicitudes**: punto en las que tienen algo nuevo y estado más claro («Te toca revisar», «Aplicando tus cambios», «Lista», con «· nueva» cuando corresponde). La ficha también dice «Te toca revisar».
+- **Novedades en Inicio**: una línea por cosa (no por evento), separada en Solicitudes, Revisiones, Tareas y Reuniones, con su estado actual y un resumen («Cambió de estado · te respondimos · 1 archivo»). Las tareas que nacieron de una solicitud aparecen dentro de la solicitud. Punto en lo que no ha visto desde que lo abrió.
+- Lo visto es por persona (tabla `portal_vistos`, migración 0013, se crea sola). Mirar el portal «como el cliente» desde el panel no marca nada como visto.
+
 ### v0.30.3
 - **Correos de Mailchimp en la lista de contactos ganados**, para verlo de un vistazo: en el portal del cliente y en el panel cada contacto muestra «9 correos · abrió 6» junto a su estado en Mailchimp.
 - **«Revisar en Mailchimp»** (lista del panel) ahora trae también la actividad de cada contacto, para que la lista tenga esos números. Revisa de a 20 por vez; si quedan más, se aprieta de nuevo.

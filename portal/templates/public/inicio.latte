@@ -163,33 +163,31 @@
 
     <section class="card card-pad reveal" style="--i:4">
         <h2 class="text-base font-extrabold tracking-tight">Novedades</h2>
-        {if empty($actividad)}
+        {if empty($novedades)}
             <p class="mt-3 text-sm text-muted">Aquí verás lo que vaya pasando en tu proyecto: comentarios, archivos y aprobaciones.</p>
         {else}
-            <ul class="mt-4 space-y-4">
-                {foreach $actividad as $a}
-                    <li class="flex gap-3">
-                        <span class="mt-0.5 flex size-8 flex-none items-center justify-center rounded-full {$a['actor_tipo'] === 'equipo' ? 'bg-ink text-bg' : 'bg-brand-soft text-brand-ink'}">
-                            <svg class="size-4"><use href="#{$fmt->iconoActividad($a['accion'])}"/></svg>
-                        </span>
-                        <p class="min-w-0 flex-1 text-sm leading-snug">
-                            <span class="font-semibold">{$fmt->actividad($a)}</span>
-                            {if $a['titulo']}
-                                {if $a['entidad_tipo'] === 'tarea'}
-                                    <a href="/portal/tareas/{$a['entidad_id']}" class="text-brand-ink underline-offset-2 hover:underline">«{$a['titulo']}»</a>
-                                {elseif $a['entidad_tipo'] === 'contenido'}
-                                    <a href="/portal/contenidos/{$a['entidad_id']}" class="text-brand-ink underline-offset-2 hover:underline">«{$a['titulo']}»</a>
-                                {elseif $a['entidad_tipo'] === 'solicitud'}
-                                    <a href="/portal/solicitudes/{$a['entidad_id']}" class="text-brand-ink underline-offset-2 hover:underline">«{$a['titulo']}»</a>
-                                {elseif $a['entidad_tipo'] === 'entrega'}
-                                    <a href="/portal/entregas/{$a['entidad_id']}" class="text-brand-ink underline-offset-2 hover:underline">«{$a['titulo']}»</a>
-                                {else}«{$a['titulo']}»{/if}
-                            {/if}
-                            <span class="mt-0.5 block text-xs text-muted">{$fmt->rel($a['created_at'])}</span>
-                        </p>
-                    </li>
-                {/foreach}
-            </ul>
+            {foreach $novedades as $sec => $items}
+                <h3 class="{$iterator->first ? 'mt-3' : 'mt-5'} text-xs font-bold uppercase tracking-wide text-muted">{$seccionesN[$sec]}</h3>
+                <ul class="mt-1.5 space-y-0.5">
+                    {foreach $items as $n}
+                        <li>
+                            <a {if $n['url']}href="{$n['url']}"{/if} class="group -mx-2 block rounded-xl px-2 py-2 transition {$n['url'] ? 'hover:bg-surface2' : ''}">
+                                <span class="flex items-start gap-2">
+                                    <span class="mt-[0.4rem] size-2 flex-none rounded-full {$n['nueva'] ? 'bg-brand' : 'bg-transparent'}" {if $n['nueva']}title="Nuevo desde tu última visita"{/if} aria-hidden="true"></span>
+                                    <span class="min-w-0 flex-1">
+                                        <span class="block text-sm font-semibold leading-snug">{$n['titulo'] ?: 'Sin título'}{if $n['nueva']}<span class="sr-only"> (nuevo)</span>{/if}</span>
+                                        <span class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
+                                            {if $n['estado']}<span class="chip chip-{$n['estado'][1]}">{$n['estado'][0]}</span>{/if}
+                                            {if $n['resumen']}<span>{$n['resumen']}</span>{/if}
+                                            <span>{$fmt->rel($n['fecha'])}</span>
+                                        </span>
+                                    </span>
+                                </span>
+                            </a>
+                        </li>
+                    {/foreach}
+                </ul>
+            {/foreach}
         {/if}
     </section>
 
