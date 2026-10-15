@@ -2572,6 +2572,30 @@ check(count($csS->archivos($vS1)) === 3 && $r === '/equipo/entregas/' . $eS . '#
 P\ArchivoService::$mover = null;
 check(P\TiposContenido::numerosArchivo('post3_lamina2.png') === [3, 2] && P\TiposContenido::numerosArchivo('portada.png') === null && P\TiposContenido::numeroTitulo('Reel 4 · Algo') === 4, 'lee el número de pieza y de lámina en el nombre del archivo y en el título');
 
+seccion('Plantillas: compilan sin avisos (el TypeDock real convierte un aviso en error)');
+$dirT = dirname(__DIR__) . '/portal/templates';
+$motorT = new Latte\Engine();
+$avisosT = [];
+set_error_handler(function (int $n, string $m) use (&$avisosT): bool { $avisosT[] = $m; return true; });
+$nT = 0;
+foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($dirT)) as $f) {
+    if ($f->getExtension() !== 'latte') {
+        continue;
+    }
+    $nT++;
+    $antes = count($avisosT);
+    try {
+        $motorT->compile($f->getPathname());
+    } catch (Throwable $e) {
+        $avisosT[] = $e->getMessage();
+    }
+    if (count($avisosT) > $antes) {
+        $avisosT[count($avisosT) - 1] = str_replace($dirT, '', $f->getPathname()) . ': ' . end($avisosT);
+    }
+}
+restore_error_handler();
+check($nT > 50 && $avisosT === [], 'las ' . $nT . ' plantillas compilan con Latte ' . Latte\Engine::Version . ' sin errores ni avisos' . ($avisosT ? ': ' . implode(' | ', array_slice($avisosT, 0, 3)) : ''));
+
 seccion('Ingreso: piezas que encajan y favicon');
 unset($_SESSION[P\PortalSession::CONTACTO]);
 P\Notifier::$ahora = null;

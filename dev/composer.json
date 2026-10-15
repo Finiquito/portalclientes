@@ -2,7 +2,7 @@
     "name": "richgt/portal-dev",
     "type": "project",
     "require": {
-        "latte/latte": "3.0.20",
+        "latte/latte": "3.1.6",
         "flightphp/core": "^3.19"
     }
 }

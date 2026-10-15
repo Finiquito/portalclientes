@@ -129,7 +129,7 @@
     {/if}
 
     {* ---- Una sola puerta para agregar ---- *}
-    <form method="post" action="{$admin_url('entregas/' . $entrega['id'] . '/soltar')}" enctype="multipart/form-data" class="pa-soltar mt-3" id="soltar" data-soltar data-piezas="{json_encode($piezasJs, JSON_UNESCAPED_UNICODE)}">
+    <form method="post" action="{$admin_url('entregas/' . $entrega['id'] . '/soltar')}" enctype="multipart/form-data" class="pa-soltar mt-3" id="soltar" data-soltar data-piezas="{json_encode($piezasJs)}">
         <input type="hidden" name="_csrf_token" value="{$csrf_token}">
         <div class="pa-dz" data-dz tabindex="-1">
             <span class="pa-dz-ico" aria-hidden="true">+</span>

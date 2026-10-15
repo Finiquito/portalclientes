@@ -74,6 +74,10 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### v0.34.1
+- **Arreglo**: «Nueva entrega» y abrir una entrega daban «Algo falló de nuestro lado» en TypeDock. La plantilla usaba una constante de PHP sin barra inicial (`JSON_UNESCAPED_UNICODE`); Latte 3.1 lo marca como obsoleto y TypeDock convierte ese aviso en error. Se quitó.
+- El entorno de desarrollo pasa a Latte 3.1.6 y las pruebas compilan todas las plantillas y fallan ante cualquier aviso, para que esto no vuelva a pasar.
+
 ### v0.34.0: subir contenidos a una entrega (panel de la agencia)
 - **La lista muestra lo que falta**: cada pieza trae sus láminas en miniatura y avisos como «Faltan 2 de 5 láminas», «Sin imágenes», «Sin copy», «Sin archivo» o «Sin link», según su tipo.
 - **Una sola zona para agregar** en vez de las cuatro cajas: se arrastran (o eligen) imágenes, videos, PDF, la grilla en Word o una planilla .csv, y antes de crear nada aparece **«Revisa antes de crear»**: cada archivo con su miniatura, lo que reconocimos (por ejemplo «Post 3 · lámina 2» por el nombre `3-2.jpg`) y qué hacer con él: sumarlo a una pieza, crear un contenido nuevo, juntarlo con otros en un carrusel nuevo o no subirlo. La grilla en Word va directo a su vista previa de siempre. Sin JavaScript el servidor decide solo con el número del nombre.
