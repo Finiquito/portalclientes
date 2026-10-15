@@ -48,6 +48,10 @@ function portal_dev_contexto(PDO $pdo): TypeDock\Core\PluginContext
         define('PORTAL_UPLOAD_DIR', getenv('PORTAL_UPLOAD_DIR') ?: __DIR__ . '/storage/portal_uploads');
     }
     $ctx = new TypeDock\Core\PluginContext($pdo, dirname(__DIR__) . '/portal', $cache);
+    if (getenv('PORTAL_IA_DEMO')) {
+        require_once __DIR__ . '/demo-ia.php';
+        portal_dev_demo_ia($ctx);
+    }
     (new TypeDock\Plugin\Portal\PortalPlugin())->register($ctx);
     return $ctx;
 }
