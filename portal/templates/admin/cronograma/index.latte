@@ -3,7 +3,7 @@
 {block page_title}Línea de tiempo · {$proyecto['nombre']}{/block}
 
 {block content}
-<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=13">
+<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=14">
 {var $volver = ($enPanel ?? false) ? '/equipo/proyectos/' . $proyecto['id'] : $admin_url('proyectos/' . $proyecto['id'])}
 {var $q = '?proyecto_id=' . $proyecto['id'] . '&linea=1'}
 {var $conFecha = array_filter($d['tareas'], fn($t) => $t['ini'] !== null)}

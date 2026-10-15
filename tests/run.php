@@ -2512,6 +2512,66 @@ $html = (string) ob_get_clean();
 check(str_contains($html, 'Mostrando') && str_contains($html, 'name="por"') && str_contains($html, 'Más nuevas primero'), 'el portal del cliente también pagina sus tareas, con el selector de cantidad y de orden');
 $_GET = [];
 
+seccion('Subida de contenidos: una sola zona, revisar antes de crear y lo que falta en cada pieza');
+$esS = new P\EntregaService($pdo);
+$csS = new P\ContenidoService($pdo);
+$eS = $esS->create(['proyecto_id' => $p1a, 'titulo' => 'Subida nueva']);
+[$cS1, $vS1] = $csS->crear($esS->find($eS), ['tipo' => 'post', 'titulo' => 'Post 1 · Antes', 'copy' => 'Hola', 'laminas' => "Portada\nDetalle\nCierre"]);
+[$cS2, $vS2] = $csS->crear($esS->find($eS), ['tipo' => 'post', 'titulo' => 'Post 2 · Después']);
+[$cS3] = $csS->crear($esS->find($eS), ['tipo' => 'brandbook', 'titulo' => 'Brandbook']);
+$eOtra = $esS->create(['proyecto_id' => $p1a, 'titulo' => 'Otra entrega']);
+[$cOtra] = $csS->crear($esS->find($eOtra), ['tipo' => 'post', 'titulo' => 'Post 1 · Ajeno']);
+$_SESSION[P\EquipoController::SESION] = $coord;
+$tokS = P\PortalSession::csrf();
+$ES = P\EntregaAdminController::class;
+[$html] = $g->hacer('GET', $ES, 'edit', [$eS], 'entrega');
+check(str_contains($html, 'Sin imágenes') && str_contains($html, 'Sin copy') && str_contains($html, 'Sin archivo') && str_contains($html, 'data-soltar') && !str_contains($html, 'Imágenes por número'), 'la lista muestra lo que le falta a cada pieza y hay una sola zona para agregar');
+check(str_contains($html, '¿Qué vas a subir?') && str_contains($html, 'data-campos=') && str_contains($html, 'Leer una grilla'), 'crear a mano empieza por el tipo; la grilla queda a mano');
+
+$pdfMin = "%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj 2 0 obj<</Type/Pages/Kids[]/Count 0>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n";
+$armar = function (array $nombres) use ($png, $pdfMin): array {
+    $f = [];
+    foreach ($nombres as $nom) {
+        $tmp = tempnam(sys_get_temp_dir(), 'su');
+        $data = str_ends_with($nom, '.pdf') ? $pdfMin : $png;
+        file_put_contents($tmp, $data);
+        $f['name'][] = $nom; $f['type'][] = str_ends_with($nom, '.pdf') ? 'application/pdf' : 'image/png'; $f['tmp_name'][] = $tmp; $f['error'][] = UPLOAD_ERR_OK; $f['size'][] = strlen($data);
+    }
+    return $f;
+};
+P\ArchivoService::$mover = fn(string $a, string $b) => copy($a, $b);
+$antes = count($csS->listar($eS));
+$_FILES = ['archivos' => $armar(['1-2.png', '1-1.png', 'playa.png', 'cafe.png', 'informe.pdf', 'otra.png'])];
+[, $r] = $g->hacer('POST', $ES, 'soltar', [$eS], 'entrega', false, ['_csrf_token' => $tokS,
+    'destino' => ['pieza:' . $cS1, 'pieza:' . $cS1, 'carrusel', 'carrusel', 'nuevo', 'pieza:' . $cOtra], 'titulo_carrusel' => 'Post 3 · Playa y café', 'cuenta' => '@uno']);
+$_FILES = [];
+$a1 = $csS->archivos($vS1);
+check(count($a1) === 2 && $a1[0]['nombre_original'] === '1-1.png' && $a1[1]['nombre_original'] === '1-2.png', 'lo que va a una pieza se suma en el orden de sus láminas');
+$despues = $csS->listar($eS);
+$nuevoC = array_values(array_filter($despues, fn($c) => $c['titulo'] === 'Post 3 · Playa y café'))[0] ?? null;
+check($nuevoC !== null && $nuevoC['tipo'] === 'post' && count($csS->archivos((string) $nuevoC['version_id'])) === 2 && $nuevoC['cuenta'] === '@uno', 'las marcadas como carrusel quedan en un solo post nuevo, con su título y cuenta');
+$pdfC = array_values(array_filter($despues, fn($c) => $c['titulo'] === 'informe'))[0] ?? null;
+check($pdfC !== null && $pdfC['tipo'] === 'brandbook', 'un PDF suelto queda como documento nuevo');
+$otraC = array_values(array_filter($despues, fn($c) => $c['titulo'] === 'otra'))[0] ?? null;
+check($otraC !== null && count($csS->archivos((string) $csS->find($cOtra)['version_id'])) === 0, 'una pieza de otra entrega no recibe archivos (el archivo queda como contenido nuevo)');
+check(count($despues) === $antes + 3 && str_contains(json_encode(P\PortalSession::tomarFlash(), JSON_UNESCAPED_UNICODE), '2 archivos sumados a 1 pieza'), 'el aviso resume qué pasó con cada cosa');
+
+// Sin JavaScript: el número del nombre decide.
+$_FILES = ['archivos' => $armar(['2.png', 'suelta.png'])];
+$g->hacer('POST', $ES, 'soltar', [$eS], 'entrega', false, ['_csrf_token' => $tokS]);
+$_FILES = [];
+check(count($csS->archivos($vS2)) === 1 && count(array_filter($csS->listar($eS), fn($c) => $c['titulo'] === 'suelta')) === 1, 'sin elegir destino, «2.png» va a la pieza 2 y la que no tiene número queda como contenido nuevo');
+[$html] = $g->hacer('GET', $ES, 'edit', [$eS], 'entrega');
+check(str_contains($html, '2 de 3 láminas') === false && str_contains($html, 'Faltan 1 de 3 láminas'), 'la pieza con 3 láminas previstas y 2 imágenes dice cuántas faltan');
+
+// Soltar encima de una pieza: se suma y se vuelve a la lista.
+$_FILES = ['archivos' => $armar(['cierre.png'])];
+[, $r] = $g->hacer('POST', $ES, 'agregarArchivos', [$cS1], 'contenido', false, ['_csrf_token' => $tokS, 'volver' => '/equipo/entregas/' . $eS]);
+$_FILES = [];
+check(count($csS->archivos($vS1)) === 3 && $r === '/equipo/entregas/' . $eS . '#pieza-' . $cS1, 'soltar archivos sobre una pieza se los suma y vuelve a la lista, en esa pieza');
+P\ArchivoService::$mover = null;
+check(P\TiposContenido::numerosArchivo('post3_lamina2.png') === [3, 2] && P\TiposContenido::numerosArchivo('portada.png') === null && P\TiposContenido::numeroTitulo('Reel 4 · Algo') === 4, 'lee el número de pieza y de lámina en el nombre del archivo y en el título');
+
 seccion('Ingreso: piezas que encajan y favicon');
 unset($_SESSION[P\PortalSession::CONTACTO]);
 P\Notifier::$ahora = null;

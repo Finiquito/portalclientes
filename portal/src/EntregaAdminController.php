@@ -157,16 +157,33 @@ class EntregaAdminController
         $lista = $this->contenidos()->listar($id);
         $portadas = [];
         $resumen  = [];
-        foreach ($lista as $c) {
+        $miniaturas = [];
+        $faltas = [];
+        $piezasJs = [];
+        $fmt = new Fmt();
+        foreach ($lista as $i => $c) {
+            $info = ['imagenes' => 0, 'videos' => 0, 'pdfs' => 0, 'archivos' => 0];
             if ($c['version_id'] !== null) {
                 foreach ($this->contenidos()->archivos((string) $c['version_id']) as $a) {
-                    if ((new Fmt())->esImagen($a['mime'])) {
-                        $portadas[$c['id']] = $a['id'];
-                        break;
+                    $info['archivos']++;
+                    if ($fmt->esImagen($a['mime'])) {
+                        $info['imagenes']++;
+                        $portadas[$c['id']] ??= $a['id'];
+                        if (count($miniaturas[$c['id']] ?? []) < 4) {
+                            $miniaturas[$c['id']][] = $a['id'];
+                        }
+                    } elseif (TiposContenido::esVideo($a['mime'])) {
+                        $info['videos']++;
+                    } elseif ($a['mime'] === 'application/pdf') {
+                        $info['pdfs']++;
                     }
                 }
                 $resumen[$c['id']] = $this->contenidos()->reacciones((string) $c['version_id']);
             }
+            $info['total_img'] = $info['imagenes'];
+            $faltas[$c['id']] = ['chips' => TiposContenido::faltas($c, $info), 'imagenes' => $info['imagenes']];
+            // Para la zona de subida: a qué pieza va cada archivo según el número de su nombre.
+            $piezasJs[] = ['id' => (string) $c['id'], 'n' => TiposContenido::numeroTitulo((string) $c['titulo']) ?? $i + 1, 'titulo' => (string) $c['titulo']];
         }
         $this->ui->view('entregas/edit.latte', [
             'entrega' => $e, 'proyectos' => [], 'contenidos' => $lista, 'fmt' => new Fmt(),
@@ -174,6 +191,8 @@ class EntregaAdminController
             'estados' => TiposContenido::ESTADOS_ENTREGA, 'tipos' => TiposContenido::TIPOS,
             'estadosContenido' => TiposContenido::ESTADOS_CONTENIDO, 'reacciones' => TiposContenido::REACCIONES,
             'portadas' => $portadas, 'resumenReacc' => $resumen, 'maxMb' => $this->maxMb(),
+            'miniaturas' => $miniaturas, 'faltas' => $faltas, 'piezasJs' => $piezasJs,
+            'tiposCampos' => self::CAMPOS_POR_TIPO,
             'iaActiva' => (new IaService($this->pdo()))->activa(),
         ] + $this->flashes());
     }
@@ -343,6 +362,147 @@ class EntregaAdminController
             $msg .= ' Avisos: ' . implode(' · ', array_slice($avisos, 0, 6));
         }
         return ['creados' => $creados, 'mensaje' => $msg];
+    }
+
+    /**
+     * Qué campos pide cada tipo al crear uno a mano: 2 = se pide, 1 = opcional (en «Más detalles»), 0 = no aparece.
+     * Objetivo, pilar, láminas y notas van siempre en «Más detalles».
+     */
+    public const CAMPOS_POR_TIPO = [
+        'archivos' => ['post' => 2, 'reel' => 1, 'story' => 2, 'grafica' => 2, 'logo' => 2, 'mockup' => 2, 'brandbook' => 2, 'presentacion' => 1, 'web' => 1, 'otro' => 2],
+        'enlace'   => ['post' => 0, 'reel' => 2, 'story' => 0, 'grafica' => 0, 'logo' => 0, 'mockup' => 0, 'brandbook' => 0, 'presentacion' => 1, 'web' => 2, 'otro' => 1],
+        'copy'     => ['post' => 2, 'reel' => 2, 'story' => 0, 'grafica' => 1, 'logo' => 0, 'mockup' => 0, 'brandbook' => 0, 'presentacion' => 0, 'web' => 0, 'otro' => 1],
+        'cuenta'   => ['post' => 2, 'reel' => 2, 'story' => 2, 'grafica' => 0, 'logo' => 0, 'mockup' => 0, 'brandbook' => 0, 'presentacion' => 0, 'web' => 0, 'otro' => 0],
+        'fecha'    => ['post' => 2, 'reel' => 2, 'story' => 2, 'grafica' => 1, 'logo' => 0, 'mockup' => 0, 'brandbook' => 0, 'presentacion' => 0, 'web' => 0, 'otro' => 1],
+    ];
+
+    /**
+     * Zona única de subida. Llegan los archivos y, por cada uno (en el mismo orden), su destino
+     * elegido en «Revisa antes de crear»:
+     *   pieza:<id>  se suma a esa pieza (como lámina, ordenada por el número del nombre);
+     *   nuevo       un contenido propio (tipo según el archivo);
+     *   carrusel    junto con los demás «carrusel» en un post nuevo;
+     *   omitir      no se sube.
+     * Sin destino (sin JavaScript) se decide solo: número de pieza en el nombre o contenido nuevo.
+     * Una grilla en Word o texto va al lector de grillas; una planilla .csv se despliega por filas.
+     */
+    public function soltar(string $id): void
+    {
+        $e = $this->entregas()->find($id);
+        if ($e === null) {
+            $this->ui->redirect($this->url('entregas'), 'Entrega no encontrada.', 'error');
+            return;
+        }
+        $volver = $this->url('entregas/' . $id) . '#contenidos';
+        if (ArchivoService::postExcedido()) {
+            $this->ui->redirect($volver, 'Los archivos superan lo que acepta el servidor de una vez (' . ini_get('post_max_size') . '). Súbelos en grupos más chicos.', 'error');
+            return;
+        }
+        $lista = array_slice(ArchivoService::normalizar($_FILES['archivos'] ?? null), 0, 80);
+        $destinos = array_values(array_map('strval', (array) ($_POST['destino'] ?? [])));
+
+        // La grilla se lee con su propia vista previa.
+        foreach ($lista as $f) {
+            if (in_array(strtolower(pathinfo((string) ($f['name'] ?? ''), PATHINFO_EXTENSION)), ['docx', 'txt', 'md'], true)) {
+                $_FILES['grilla'] = $f;
+                (new GrillaAdminController($this->ctx, $this->ui))->subir($id);
+                return;
+            }
+        }
+        if (trim((string) ($_POST['texto'] ?? '')) !== '') {
+            (new GrillaAdminController($this->ctx, $this->ui))->subir($id);
+            return;
+        }
+        if ($lista === []) {
+            $this->ui->redirect($volver, 'Elige o suelta al menos un archivo.', 'error');
+            return;
+        }
+
+        $contenidos = $this->contenidos()->listar($id);
+        $porId = array_column($contenidos, null, 'id');
+        $porNumero = [];
+        foreach ($contenidos as $i => $c) {
+            $porNumero[TiposContenido::numeroTitulo((string) $c['titulo']) ?? $i + 1] ??= $c;
+        }
+        $cuenta = mb_substr(trim((string) ($_POST['cuenta'] ?? '')), 0, 120);
+
+        $aPieza = [];
+        $nuevos = [];
+        $carrusel = [];
+        $planillas = [];
+        $omitidos = 0;
+        foreach ($lista as $i => $f) {
+            $nombre = (string) ($f['name'] ?? '');
+            $ext = strtolower(pathinfo($nombre, PATHINFO_EXTENSION));
+            if ($ext === 'csv') {
+                $planillas[] = $f;
+                continue;
+            }
+            $d = $destinos[$i] ?? '';
+            $nums = TiposContenido::numerosArchivo($nombre);
+            if ($d === '') {
+                $c = $nums !== null ? ($porNumero[$nums[0]] ?? null) : null;
+                $d = $c !== null ? 'pieza:' . $c['id'] : 'nuevo';
+            }
+            if ($d === 'omitir') {
+                $omitidos++;
+            } elseif (str_starts_with($d, 'pieza:') && isset($porId[substr($d, 6)]) && $porId[substr($d, 6)]['version_id'] !== null) {
+                $aPieza[substr($d, 6)][] = [$nums[1] ?? 0, $nombre, $f];
+            } elseif ($d === 'carrusel') {
+                $carrusel[] = $f;
+            } else {
+                $nuevos[] = $f;
+            }
+        }
+
+        $autor = $this->autor();
+        $partes = [];
+        $errores = [];
+        $laminas = 0;
+        foreach ($aPieza as $cid => $fs) {
+            usort($fs, fn($a, $b) => [$a[0], $a[1]] <=> [$b[0], $b[1]]);
+            $r = $this->archivos()->guardarVarios(array_column($fs, 2), (string) $e['cliente_id'], (string) $e['proyecto_id'], 'version', (string) $porId[$cid]['version_id'], $autor, $this->maxMb());
+            $laminas += count($r['ok']);
+            $errores = array_merge($errores, $r['errores']);
+        }
+        if ($laminas > 0) {
+            $partes[] = ($laminas === 1 ? '1 archivo sumado' : $laminas . ' archivos sumados') . ' a ' . (count($aPieza) === 1 ? '1 pieza' : count($aPieza) . ' piezas');
+        }
+        $creados = 0;
+        if ($carrusel !== []) {
+            usort($carrusel, fn($a, $b) => strnatcasecmp((string) $a['name'], (string) $b['name']));
+            $titulo = mb_substr(trim((string) ($_POST['titulo_carrusel'] ?? '')), 0, 255) ?: 'Carrusel nuevo';
+            [$cid, $vid] = $this->contenidos()->crear($e, ['tipo' => 'post', 'titulo' => $titulo, 'cuenta' => $cuenta]);
+            $r = $this->archivos()->guardarVarios($carrusel, (string) $e['cliente_id'], (string) $e['proyecto_id'], 'version', $vid, $autor, $this->maxMb());
+            $errores = array_merge($errores, $r['errores']);
+            if ($r['ok'] === []) {
+                $this->contenidos()->borrar($cid);
+            } else {
+                $creados++;
+                $partes[] = '1 carrusel de ' . count($r['ok']) . ' láminas';
+            }
+        }
+        $antes = $creados;
+        if ($nuevos !== [] || $planillas !== []) {
+            $r = $this->expandir($e, array_merge($planillas, $nuevos), '', $cuenta);
+            $creados += $r['creados'];
+            if ($r['creados'] > 0) {
+                $partes[] = ($r['creados'] === 1 ? '1 contenido nuevo' : $r['creados'] . ' contenidos nuevos');
+            } elseif (str_contains($r['mensaje'], 'Avisos:')) {
+                $errores[] = trim(substr($r['mensaje'], (int) strpos($r['mensaje'], 'Avisos:') + 7));
+            }
+        }
+        if ($laminas > 0 || $creados > $antes || $creados > 0) {
+            $this->reabrirSiCorresponde($e);
+        }
+        $msg = $partes !== [] ? 'Listo: ' . implode(' · ', $partes) . '.' : 'No se subió nada.';
+        if ($omitidos > 0) {
+            $msg .= ' ' . ($omitidos === 1 ? '1 archivo quedó fuera' : $omitidos . ' archivos quedaron fuera') . ', como elegiste.';
+        }
+        if ($errores !== []) {
+            $msg .= ' Revisa: ' . implode(' · ', array_slice($errores, 0, 6));
+        }
+        $this->ui->redirect($volver, $msg, $partes !== [] && $errores === [] ? 'success' : 'error');
     }
 
     private static function tipoPorExtension(string $ext): string
@@ -679,18 +839,26 @@ class EntregaAdminController
             return;
         }
         $volver = $this->url('contenidos/' . $id);
+        // Desde la lista de la entrega (soltar imágenes encima de una pieza) se vuelve a la lista.
+        $aLista = $this->url('entregas/' . $c['entrega_id']);
+        if (str_starts_with((string) ($_POST['volver'] ?? ''), $aLista)) {
+            $volver = $aLista . '#pieza-' . $id;
+        }
         if (ArchivoService::postExcedido()) {
             $this->ui->redirect($volver, 'Los archivos superan el máximo del servidor (post_max_size).', 'error');
             return;
         }
-        $lista = array_slice(ArchivoService::normalizar($_FILES['archivos'] ?? null), 0, 10);
+        $lista = array_slice(ArchivoService::normalizar($_FILES['archivos'] ?? null), 0, 30);
         if ($lista === []) {
             $this->ui->redirect($volver, 'Elige al menos un archivo.', 'error');
             return;
         }
         $r = $this->archivos()->guardarVarios($lista, (string) $c['cliente_id'], (string) $c['proyecto_id'], 'version', (string) $c['version_id'], $this->autor(), $this->maxMb());
         $n = count($r['ok']);
-        $this->ui->redirect($volver, $r['errores'] === [] ? ($n === 1 ? 'Archivo subido.' : "{$n} archivos subidos.") : ($n > 0 ? "Se subieron {$n}, pero: " : 'No se pudo subir: ') . implode(' · ', $r['errores']), $r['errores'] === [] ? 'success' : 'error');
+        if ($n > 0) {
+            $this->entregas()->reabrir((string) $c['entrega_id']);
+        }
+        $this->ui->redirect($volver, $r['errores'] === [] ? ($n === 1 ? 'Archivo subido a «' . $c['titulo'] . '».' : "{$n} archivos subidos a «{$c['titulo']}».") : ($n > 0 ? "Se subieron {$n}, pero: " : 'No se pudo subir: ') . implode(' · ', $r['errores']), $r['errores'] === [] ? 'success' : 'error');
     }
 
     // ---- Conversación -----------------------------------------------------

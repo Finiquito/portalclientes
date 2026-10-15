@@ -155,6 +155,67 @@ final class TiposContenido
         ));
     }
 
+    /**
+     * Qué le falta a una pieza, para la lista del equipo: [[texto, tono], …].
+     * $info: imagenes, videos, pdfs, archivos (cantidades de la versión vigente).
+     *
+     * @param array<string, mixed> $c contenido (con copy, enlace y laminas de la versión vigente)
+     * @param array{imagenes: int, videos: int, pdfs: int, archivos: int} $info
+     * @return array<int, array{0: string, 1: string}>
+     */
+    public static function faltas(array $c, array $info): array
+    {
+        $modo = self::visor((string) $c['tipo']);
+        $enlace = trim((string) ($c['enlace'] ?? '')) !== '';
+        $copy = trim((string) ($c['copy'] ?? '')) !== '';
+        $lam = count(self::laminas($c['laminas'] ?? null));
+        $img = (int) $info['imagenes'];
+        $out = [];
+        switch ($modo) {
+            case 'ig':
+                if ($img === 0) {
+                    $out[] = ['Sin imágenes', 'danger'];
+                } elseif ($lam > $img) {
+                    $out[] = ['Faltan ' . ($lam - $img) . ' de ' . $lam . ' láminas', 'warn'];
+                } else {
+                    $out[] = [$img === 1 ? '1 imagen' : $img . ' láminas', 'ok'];
+                }
+                $out[] = $copy ? ['Copy ✓', ''] : ['Sin copy', 'warn'];
+                break;
+            case 'reel':
+                $out[] = ($info['videos'] > 0 || $enlace) ? ['Video ✓', 'ok'] : ['Sin video', $lam > 0 ? 'warn' : 'danger'];
+                $out[] = $copy ? ['Copy ✓', ''] : ['Sin copy', 'warn'];
+                break;
+            case 'documento':
+                $out[] = ($info['pdfs'] > 0 || $enlace) ? [$info['pdfs'] > 0 ? 'PDF ✓' : 'Link ✓', 'ok'] : ['Sin archivo', 'danger'];
+                break;
+            case 'sitio':
+                $out[] = $enlace ? ['Link ✓', 'ok'] : ['Sin link', 'danger'];
+                break;
+            case 'generico':
+                $out[] = ($info['archivos'] > 0 || $enlace) ? ['Con archivo', 'ok'] : ['Sin archivo', 'danger'];
+                break;
+            default:   // story, imagen, identidad, galería
+                $out[] = ($img + $info['videos']) > 0 ? [($img + $info['videos']) === 1 ? '1 archivo' : ($img + $info['videos']) . ' archivos', 'ok'] : ['Sin imágenes', 'danger'];
+        }
+        return $out;
+    }
+
+    /** Número de pieza y de lámina en un nombre de archivo: «3-2.jpg» → [3, 2]; «post4.png» → [4, 0]; sin número → null. */
+    public static function numerosArchivo(string $nombre): ?array
+    {
+        if (preg_match_all('/\d+/', pathinfo($nombre, PATHINFO_FILENAME), $m) === 0) {
+            return null;
+        }
+        return [(int) $m[0][0], (int) ($m[0][1] ?? 0)];
+    }
+
+    /** Número de una pieza según su título («Post 3 · …», «Reel 2») o, si no tiene, null. */
+    public static function numeroTitulo(string $titulo): ?int
+    {
+        return preg_match('/^\s*(?:post|reel|story|pieza|historia|carrusel|video)?\s*(\d+)\b/iu', $titulo, $m) === 1 ? (int) $m[1] : null;
+    }
+
     public static function visor(string $tipo): string
     {
         return self::TIPOS[$tipo][1] ?? 'generico';

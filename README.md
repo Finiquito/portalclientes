@@ -74,6 +74,13 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### v0.34.0: subir contenidos a una entrega (panel de la agencia)
+- **La lista muestra lo que falta**: cada pieza trae sus láminas en miniatura y avisos como «Faltan 2 de 5 láminas», «Sin imágenes», «Sin copy», «Sin archivo» o «Sin link», según su tipo.
+- **Una sola zona para agregar** en vez de las cuatro cajas: se arrastran (o eligen) imágenes, videos, PDF, la grilla en Word o una planilla .csv, y antes de crear nada aparece **«Revisa antes de crear»**: cada archivo con su miniatura, lo que reconocimos (por ejemplo «Post 3 · lámina 2» por el nombre `3-2.jpg`) y qué hacer con él: sumarlo a una pieza, crear un contenido nuevo, juntarlo con otros en un carrusel nuevo o no subirlo. La grilla en Word va directo a su vista previa de siempre. Sin JavaScript el servidor decide solo con el número del nombre.
+- **Soltar sobre una pieza**: arrastrar archivos encima de una pieza de la lista (o «+ Archivos») se los suma y vuelve a la misma pieza.
+- **Crear uno a mano empieza por el tipo**: tarjetas de tipo y un formulario que pide sólo lo de ese tipo (un PDF pide archivo y título; un post, láminas, copy, cuenta y fecha). Lo opcional va en «Más detalles», y al lado se ve cómo lo verá el cliente.
+- El portal del cliente no cambia.
+
 ### v0.33.1: el cliente se reconoce de un vistazo
 - En las listas del equipo (Tareas, Contenidos, Reuniones, Solicitudes, Contactos ganados, Formularios y Mensajes) la columna pasa a ser **«Cliente · proyecto»**: mini logo del cliente (o sus iniciales sobre su color) con el nombre del cliente, y debajo el proyecto. Además, una **barrita del color del cliente** al borde de cada fila.
 - Cada cliente tiene un color propio: el de su marca; si no tiene, o si otro cliente ya tiene uno casi igual, uno de una paleta de 14 tonos, eligiendo el más distinto a los que ya se usan. Antes el punto era por proyecto y se repetía entre clientes (el primer proyecto de todos salía morado).

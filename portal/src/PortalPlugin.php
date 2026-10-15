@@ -165,6 +165,7 @@ class PortalPlugin implements PluginInterface
         $ctx->registerAdminRoute('POST', 'entregas/@id/borrador',           fn(string $id) => $entregas->borrador($id));
         $ctx->registerAdminRoute('POST', 'entregas/@id/contenidos',         fn(string $id) => $entregas->agregarContenido($id));
         $ctx->registerAdminRoute('POST', 'entregas/@id/masivo',             fn(string $id) => $entregas->subidaMasiva($id));
+        $ctx->registerAdminRoute('POST', 'entregas/@id/soltar',             fn(string $id) => $entregas->soltar($id));
         $grilla = new GrillaAdminController($ctx);
         $ctx->registerAdminRoute('POST', 'entregas/@id/grilla',             fn(string $id) => $grilla->subir($id));
         $ctx->registerAdminRoute('GET',  'entregas/@id/grilla/@token',      fn(string $id, string $token) => $grilla->ver($id, $token));
@@ -294,7 +295,7 @@ class PortalPlugin implements PluginInterface
 
     public function getVersion(): string
     {
-        return '0.33.1';
+        return '0.34.0';
     }
 
     public function provides(): array

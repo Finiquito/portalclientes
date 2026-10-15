@@ -94,6 +94,7 @@ class EquipoGestion extends EquipoController
         $r('POST', 'entregas/@id/borrador',         EntregaAdminController::class, 'borrador', 'entrega');
         $r('POST', 'entregas/@id/contenidos',       EntregaAdminController::class, 'agregarContenido', 'entrega');
         $r('POST', 'entregas/@id/masivo',           EntregaAdminController::class, 'subidaMasiva', 'entrega');
+        $r('POST', 'entregas/@id/soltar',           EntregaAdminController::class, 'soltar', 'entrega');
         $r('POST', 'entregas/@id/grilla',           GrillaAdminController::class, 'subir', 'entrega');
         $r('GET',  'entregas/@id/grilla/@token',    GrillaAdminController::class, 'ver', 'entrega');
         $r('POST', 'entregas/@id/grilla/@token/tanda/@n', GrillaAdminController::class, 'tanda', 'entrega');

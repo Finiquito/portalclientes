@@ -3,7 +3,7 @@
 {block page_title}{if $entrega}{$entrega['titulo']}{else}Nueva entrega{/if}{/block}
 
 {block content}
-<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=13">
+<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=14">
 
 <div class="page-header">
     <h1>{if $entrega}Entrega: {$entrega['titulo']}{else}Nueva entrega{/if}</h1>
@@ -82,32 +82,44 @@
 </div>
 
 <div class="card mt-4" id="contenidos">
-    <h2 class="pa-h2">Contenidos <span class="pa-chip">{count($contenidos)}</span></h2>
+    <div class="pa-row" style="justify-content:space-between">
+        <h2 class="pa-h2" style="margin:0">Contenidos <span class="pa-chip">{count($contenidos)}</span></h2>
+        {if $contenidos}<span class="pa-muted" style="font-size:.8rem">Suelta imágenes encima de una pieza para sumarle láminas.</span>{/if}
+    </div>
 
-    {if empty($contenidos)}
-        <p class="pa-muted">Aún no hay contenidos. Agrégalos abajo: uno por uno, o sube muchas imágenes de una vez.</p>
-    {else}
-    <ul class="pa-files">
+    {if $contenidos}
+    <ul class="pa-files pa-piezas mt-3">
         {foreach $contenidos as $c}
         {var $cs = $estadosContenido[$c['estado']] ?? ['—', 'muted']}
         {var $ct = ['muted' => '', 'ok' => 'ok', 'warn' => 'warn', 'danger' => 'danger', 'info' => 'info'][$cs[1]] ?? ''}
         {var $rc = $resumenReacc[$c['id']] ?? null}
-        <li class="pa-file">
-            {if isset($portadas[$c['id']])}
-                <img src="{$admin_url('archivos/' . $portadas[$c['id']])}?t=1" alt="" loading="lazy">
-            {else}
-                <span class="pa-ico">{$c['tipo']}</span>
-            {/if}
+        {var $fl = $faltas[$c['id']] ?? ['chips' => [], 'imagenes' => 0]}
+        {var $mins = $miniaturas[$c['id']] ?? []}
+        <li class="pa-file pa-pieza" id="pieza-{$c['id']}" data-pieza="{$c['id']}" data-pieza-titulo="{$c['titulo']}">
+            <a href="{$admin_url('contenidos/' . $c['id'])}" class="pa-mini" aria-label="Abrir {$c['titulo']}">
+                {if $mins}
+                    {foreach $mins as $k => $aid}<img src="{$admin_url('archivos/' . $aid)}?t=1" alt="" loading="lazy" style="--k:{$k}">{/foreach}
+                    {if $fl['imagenes'] > count($mins)}<span class="pa-mini-mas">+{$fl['imagenes'] - count($mins)}</span>{/if}
+                {else}
+                    <span class="pa-ico">{['post' => 'Post', 'reel' => 'Reel', 'story' => 'Story', 'grafica' => 'Gráfica', 'logo' => 'Logo', 'mockup' => 'Mockup', 'brandbook' => 'PDF', 'presentacion' => 'PDF', 'web' => 'Web'][$c['tipo']] ?? 'Archivo'}</span>
+                {/if}
+            </a>
             <div class="pa-meta">
                 <a class="pa-name" href="{$admin_url('contenidos/' . $c['id'])}">{$c['titulo']}</a>
-                <span class="pa-muted">
-                    {$tipos[$c['tipo']][0] ?? $c['tipo']} · v{$c['version_actual']}{if $c['fecha_publicacion']} · publica {$fmt->fecha($c['fecha_publicacion'])}{/if}
-                    · <span class="pa-chip {$ct}">{$cs[0]}</span>
-                    {if $rc && $rc['total'] > 0}
-                        {foreach $reacciones as $k => $r}{if $rc['conteo'][$k] > 0} {$r[0]}{$rc['conteo'][$k]}{/if}{/foreach}
-                    {/if}
+                <span class="pa-muted pa-pieza-meta">
+                    <span>{$tipos[$c['tipo']][0] ?? $c['tipo']} · v{$c['version_actual']}{if $c['fecha_publicacion']} · publica {$fmt->fecha($c['fecha_publicacion'])}{/if}</span>
+                    {foreach $fl['chips'] as $ch}<span class="pa-chip {$ch[1]}">{$ch[0]}</span>{/foreach}
+                    <span class="pa-chip {$ct}" title="Lo que respondió el cliente">{$cs[0]}</span>
+                    {if $rc && $rc['total'] > 0}{foreach $reacciones as $k => $r}{if $rc['conteo'][$k] > 0} {$r[0]}{$rc['conteo'][$k]}{/if}{/foreach}{/if}
                 </span>
             </div>
+            {if $c['version_id']}
+            <form method="post" action="{$admin_url('contenidos/' . $c['id'] . '/archivos')}" enctype="multipart/form-data" class="pa-pieza-subir" data-pieza-form>
+                <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+                <input type="hidden" name="volver" value="{$admin_url('entregas/' . $entrega['id'])}">
+                <label class="btn btn-sm" title="Sumar archivos a esta pieza">+ Archivos<input type="file" name="archivos[]" multiple accept="image/*,video/mp4,application/pdf" class="pa-oculto" data-pieza-input></label>
+            </form>
+            {/if}
             <form method="post" action="{$admin_url('contenidos/' . $c['id'] . '/mover')}"><input type="hidden" name="_csrf_token" value="{$csrf_token}"><input type="hidden" name="dir" value="arriba"><button type="submit" class="btn btn-sm" aria-label="Subir">↑</button></form>
             <form method="post" action="{$admin_url('contenidos/' . $c['id'] . '/mover')}"><input type="hidden" name="_csrf_token" value="{$csrf_token}"><input type="hidden" name="dir" value="abajo"><button type="submit" class="btn btn-sm" aria-label="Bajar">↓</button></form>
             <a href="{$admin_url('contenidos/' . $c['id'])}" class="btn btn-sm">Abrir</a>
@@ -115,91 +127,100 @@
         {/foreach}
     </ul>
     {/if}
+
+    {* ---- Una sola puerta para agregar ---- *}
+    <form method="post" action="{$admin_url('entregas/' . $entrega['id'] . '/soltar')}" enctype="multipart/form-data" class="pa-soltar mt-3" id="soltar" data-soltar data-piezas="{json_encode($piezasJs, JSON_UNESCAPED_UNICODE)}">
+        <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+        <div class="pa-dz" data-dz tabindex="-1">
+            <span class="pa-dz-ico" aria-hidden="true">+</span>
+            <strong>Agregar contenidos</strong>
+            <span class="pa-muted">Arrastra aquí imágenes, videos, PDF, la grilla en Word o una planilla .csv. Antes de crear nada te mostramos qué va a pasar con cada archivo.</span>
+            <div class="pa-row" style="justify-content:center">
+                <label class="btn btn-primary">Elegir archivos<input type="file" name="archivos[]" multiple class="pa-oculto" data-dz-input accept="image/*,video/mp4,video/quicktime,application/pdf,.docx,.txt,.md,.csv,.zip,.pptx,.key,.ai,.psd,.svg"></label>
+                <a href="#a-mano" class="btn" data-abrir="a-mano">Crear uno a mano</a>
+                <a href="#grilla" class="btn" data-abrir="grilla">Pegar la grilla</a>
+            </div>
+            <span class="pa-muted" style="font-size:.75rem">Hasta 80 archivos, {$maxMb} MB cada uno. <a href="{$admin_url('entregas/plantilla')}">Plantilla .csv</a></span>
+        </div>
+
+        <div class="pa-revisar" data-revisar hidden>
+            <div class="pa-row" style="justify-content:space-between">
+                <h3 class="pa-h2" style="margin:0" data-revisar-titulo>Revisa antes de crear</h3>
+                <button type="button" class="btn btn-sm" data-revisar-cancelar>Cancelar</button>
+            </div>
+            <p class="pa-muted" data-revisar-ayuda style="margin:.25rem 0 .75rem"></p>
+            <div class="pa-map" data-revisar-lista></div>
+            <div class="pa-grid-2 mt-3" data-revisar-extra hidden>
+                <div><label class="form-label" for="s-carrusel">Título del carrusel nuevo</label><input id="s-carrusel" type="text" name="titulo_carrusel" class="form-input" maxlength="255" placeholder="Ej.: Post 11 · Antes y después"></div>
+                <div><label class="form-label" for="s-cuenta">Cuenta (redes)</label><input id="s-cuenta" type="text" name="cuenta" class="form-input" maxlength="120" placeholder="@tumarca"></div>
+            </div>
+            <p class="mt-3"><button type="submit" class="btn btn-primary" data-revisar-ok>Agregar</button></p>
+        </div>
+    </form>
 </div>
 
-<div class="pa-grid-2 mt-4">
-    <div class="card" id="importar">
-        <h2 class="pa-h2">Importar grilla (Word o texto)</h2>
-        <p class="pa-muted">Sube la grilla en <strong>.docx</strong> (de Google Docs: Archivo → Descargar → Word) o pega su texto. {if $iaActiva}La IA separa cada pieza en tipo, objetivo, láminas, copy y notas, sin reescribir el copy.{else}Se separa por etiquetas (POST 1, Tipo:, Objetivo:, Copy:, Lámina 2:, Hashtags:, Nota:…). Con IA configurada en Ajustes entiende cualquier formato.{/if} Antes de crear nada ves una vista previa para corregir.</p>
-        <form method="post" action="{$admin_url('entregas/' . $entrega['id'] . '/grilla')}" enctype="multipart/form-data">
-            <input type="hidden" name="_csrf_token" value="{$csrf_token}">
-            <label class="form-label mt-3">Archivo .docx</label>
-            <input type="file" name="grilla" accept=".docx,.txt,.md" class="form-input">
-            <label class="form-label mt-3">…o pega el texto</label>
-            <textarea name="texto" class="form-input" rows="4" placeholder="POST 1&#10;Tipo: Carrusel (7 láminas)&#10;Objetivo: …&#10;Copy: …"></textarea>
-            <label class="form-label mt-3">Cuenta (redes)</label>
-            <input type="text" name="cuenta" class="form-input" maxlength="120" placeholder="@tumarca">
-            {if $iaActiva}<label class="pa-check"><input type="checkbox" name="modo" value="simple"> <span>Leer sin IA (solo por etiquetas, al instante)</span></label>{/if}
-            <p class="mt-3"><button type="submit" class="btn btn-primary">Leer la grilla</button></p>
-        </form>
-    </div>
-    <div class="card" id="imagenes">
-        <h2 class="pa-h2">Imágenes por número</h2>
-        <p class="pa-muted">Sube todas las imágenes juntas y cada una va a su pieza según el nombre del archivo: <code>3.jpg</code> o <code>post-3.jpg</code> → pieza 3; <code>3-2.jpg</code> o <code>post3_lamina2.png</code> → pieza 3, lámina 2. La pieza se busca por el número de su título («Post 3 · …») y, si no, por su lugar en la lista.</p>
-        <form method="post" action="{$admin_url('entregas/' . $entrega['id'] . '/imagenes')}" enctype="multipart/form-data">
-            <input type="hidden" name="_csrf_token" value="{$csrf_token}">
-            <label class="form-label mt-3">Imágenes (hasta 80, {$maxMb} MB c/u)</label>
-            <input type="file" name="imagenes[]" multiple accept="image/*,video/mp4,application/pdf" class="form-input" required>
-            <p class="mt-3"><button type="submit" class="btn btn-primary">Repartir en las piezas</button></p>
-        </form>
-    </div>
-</div>
+{* ---- Crear uno a mano: primero el tipo ---- *}
+<details class="card mt-4 pa-plegable" id="a-mano">
+    <summary class="pa-h2">Crear uno a mano</summary>
+    <form method="post" action="{$admin_url('entregas/' . $entrega['id'] . '/contenidos')}" enctype="multipart/form-data" data-a-mano data-campos="{json_encode($tiposCampos)}">
+        <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+        <fieldset class="pa-tipos" style="border:0;padding:0;margin:0">
+            <legend class="form-label">¿Qué vas a subir?</legend>
+            {foreach $tipos as $k => $t}
+                <label class="pa-tipo"><input type="radio" name="tipo" value="{$k}" {if $iterator->first}checked{/if}><b>{$t[0]}</b><span>{$t[2]}</span></label>
+            {/foreach}
+        </fieldset>
 
-<div class="pa-grid-2 mt-4">
-    <div class="card">
-        <h2 class="pa-h2">Agregar un contenido</h2>
-        <form method="post" action="{$admin_url('entregas/' . $entrega['id'] . '/contenidos')}" enctype="multipart/form-data">
-            <input type="hidden" name="_csrf_token" value="{$csrf_token}">
-            <label class="form-label">Tipo</label>
-            <select name="tipo" class="form-input">
-                {foreach $tipos as $k => $t}<option value="{$k}">{$t[0]}</option>{/foreach}
-            </select>
-            <p class="form-hint mt-1">El tipo decide cómo lo ve el cliente (post de Instagram, video vertical, logo sobre fondos, documento…).</p>
-            <label class="form-label mt-3">Título</label>
-            <input type="text" name="titulo" class="form-input" maxlength="255" placeholder="Ej.: Post lanzamiento">
-            <div class="pa-grid-2">
-                <div><label class="form-label mt-3">Cuenta (redes)</label><input type="text" name="cuenta" class="form-input" maxlength="120" placeholder="@tumarca"></div>
-                <div><label class="form-label mt-3">Fecha de publicación</label><input type="date" name="fecha_publicacion" class="form-input"></div>
-            </div>
-            <label class="form-label mt-3">Copy / texto</label>
-            <textarea name="copy" class="form-input" rows="4" placeholder="El texto del post, con hashtags."></textarea>
-            <label class="form-label mt-3">Link (video, prototipo, sitio)</label>
-            <input type="url" name="enlace" class="form-input" maxlength="500" placeholder="https://…">
-            <details class="mt-3">
-                <summary class="form-label" style="cursor:pointer">Brief de la pieza: objetivo, láminas y notas</summary>
-                {include '_brief.latte'}
-            </details>
-            <label class="form-label mt-3">Archivos (hasta 10, {$maxMb} MB c/u)</label>
-            <input type="file" name="archivos[]" multiple class="form-input">
-            <p class="form-hint mt-1">Para un carrusel, sube todas las láminas juntas: se muestran en el orden en que las elijas. Una planilla .csv no va aquí: usa «Subir archivos o planilla».</p>
-            <p class="mt-3"><button type="submit" class="btn btn-primary">Agregar</button></p>
-        </form>
-    </div>
-    <div class="card">
-        <h2 class="pa-h2">Subir archivos o planilla</h2>
-        <p class="pa-muted">Todo lo masivo va aquí. Una <strong>planilla .csv</strong> se despliega en un contenido por fila (los datos de esta entrega ya están, la planilla no pide cliente ni proyecto). Cada <strong>imagen, video o PDF</strong> se convierte en su propio contenido. <a href="{$admin_url('entregas/plantilla')}">Descargar plantilla</a></p>
-        <form method="post" action="{$admin_url('entregas/' . $entrega['id'] . '/masivo')}" enctype="multipart/form-data">
-            <input type="hidden" name="_csrf_token" value="{$csrf_token}">
-            <label class="form-label mt-3">Archivos (hasta 30, {$maxMb} MB c/u)</label>
-            <input type="file" name="archivos[]" multiple class="form-input" required>
-            <div class="pa-grid-2">
-                <div>
-                    <label class="form-label mt-3">Tipo para los archivos</label>
-                    <select name="tipo" class="form-input">
-                        <option value="">Automático según el archivo</option>
-                        {foreach $tipos as $k => $t}<option value="{$k}">{$t[0]}</option>{/foreach}
-                    </select>
+        <div class="pa-mano">
+            <div>
+                <div data-campo="archivos">
+                    <label class="form-label mt-3" data-etq-archivos>Archivos</label>
+                    <input type="file" name="archivos[]" multiple class="form-input" data-mano-archivos>
+                    <div class="pa-mano-thumbs" data-mano-thumbs></div>
+                    <p class="form-hint mt-1" data-hint-archivos>Hasta 10 archivos, {$maxMb} MB cada uno.</p>
                 </div>
-                <div>
-                    <label class="form-label mt-3">Cuenta (redes)</label>
-                    <input type="text" name="cuenta" class="form-input" maxlength="120" placeholder="@tumarca">
+                <label class="form-label mt-3" for="m-titulo">Título</label>
+                <input id="m-titulo" type="text" name="titulo" class="form-input" maxlength="255" placeholder="Ej.: Post 11 · Antes y después">
+                <div data-campo="enlace"><label class="form-label mt-3" for="m-enlace" data-etq-enlace>Link</label><input id="m-enlace" type="url" name="enlace" class="form-input" maxlength="500" placeholder="https://…"></div>
+                <div data-campo="copy"><label class="form-label mt-3" for="m-copy">Copy (con hashtags)</label><textarea id="m-copy" name="copy" class="form-input" rows="4" placeholder="El texto del post, con hashtags." data-mano-copy></textarea></div>
+                <div class="pa-grid-2">
+                    <div data-campo="cuenta"><label class="form-label mt-3" for="m-cuenta">Cuenta (redes)</label><input id="m-cuenta" type="text" name="cuenta" class="form-input" maxlength="120" placeholder="@tumarca" data-mano-cuenta></div>
+                    <div data-campo="fecha"><label class="form-label mt-3" for="m-fecha">Se publica el</label><input id="m-fecha" type="date" name="fecha_publicacion" class="form-input"></div>
                 </div>
+                <details class="mt-3" data-mas>
+                    <summary class="form-label" style="cursor:pointer" data-mas-txt>Más detalles: objetivo, láminas y notas</summary>
+                    <div data-mas-campos></div>
+                    {include '_brief.latte'}
+                </details>
+                <p class="mt-3"><button type="submit" class="btn btn-primary" data-mano-ok>Agregar</button></p>
             </div>
-            <p class="form-hint mt-1">En una planilla, el tipo y la cuenta que vengan en cada fila mandan sobre estos.</p>
-            <p class="mt-3"><button type="submit" class="btn btn-primary">Subir y crear contenidos</button></p>
-        </form>
-    </div>
-</div>
+            <aside class="pa-vista" aria-label="Así lo verá el cliente" data-vista>
+                <span class="pa-eyebrow">Así lo verá el cliente</span>
+                <div class="pa-vista-media" data-vista-media><span>Sin archivos todavía</span></div>
+                <p class="pa-vista-copy" data-vista-copy></p>
+            </aside>
+        </div>
+    </form>
+</details>
+
+{* ---- Grilla en Word o texto (también se puede soltar el .docx arriba) ---- *}
+<details class="card mt-4 pa-plegable" id="grilla">
+    <summary class="pa-h2">Leer una grilla (Word o texto)</summary>
+    <p class="pa-muted">Sube la grilla en <strong>.docx</strong> o pega su texto. {if $iaActiva}La IA separa cada pieza en tipo, objetivo, láminas, copy y notas, sin reescribir el copy.{else}Se separa por etiquetas (POST 1, Tipo:, Objetivo:, Copy:, Lámina 2:…).{/if} Antes de crear nada ves una vista previa. Después suelta las imágenes arriba: van solas a su pieza si el nombre trae el número (<code>3.jpg</code>, <code>3-2.jpg</code>).</p>
+    <form method="post" action="{$admin_url('entregas/' . $entrega['id'] . '/grilla')}" enctype="multipart/form-data" data-grilla-form>
+        <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+        <label class="form-label mt-3" for="g-arch">Archivo .docx</label>
+        <input id="g-arch" type="file" name="grilla" accept=".docx,.txt,.md" class="form-input" data-grilla-input>
+        <label class="form-label mt-3" for="g-texto">…o pega el texto</label>
+        <textarea id="g-texto" name="texto" class="form-input" rows="4" placeholder="POST 1&#10;Tipo: Carrusel (7 láminas)&#10;Objetivo: …&#10;Copy: …"></textarea>
+        <label class="form-label mt-3" for="g-cuenta">Cuenta (redes)</label>
+        <input id="g-cuenta" type="text" name="cuenta" class="form-input" maxlength="120" placeholder="@tumarca">
+        {if $iaActiva}<label class="pa-check"><input type="checkbox" name="modo" value="simple"> <span>Leer sin IA (sólo por etiquetas, al instante)</span></label>{/if}
+        <p class="mt-3"><button type="submit" class="btn btn-primary">Leer la grilla</button></p>
+    </form>
+</details>
+
+{include '_subida.js.latte'}
 
 {/if}
 {/block}
