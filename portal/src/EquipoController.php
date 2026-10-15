@@ -856,6 +856,7 @@ class EquipoController
             'urlCosa'     => $sel !== null ? $urls[$sel['tipo']] . $sel['id'] : '',
             'csrfCampo'   => '_csrf_token',
             'equipo'      => true,
+            'marcasCli'   => Fmt::marcasClientes($this->pdo()),
         ]));
     }
 

@@ -3,7 +3,7 @@
 {block page_title}Reuniones{/block}
 
 {block content}
-<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=12">
+<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=13">
 <div class="page-header">
     <h1>Reuniones</h1>
     <a href="{$admin_url('reuniones/nuevo')}{if $filtros->get('proyecto')}?proyecto_id={$filtros->get('proyecto')}{/if}" class="btn btn-primary">Nueva reunión</a>
@@ -47,15 +47,14 @@
 <div class="card" style="overflow-x:auto">
     <table class="table">
         <thead>
-            <tr><th>Título</th><th>Proyecto</th><th>Fecha</th><th>Estado</th><th></th></tr>
+            <tr><th>Título</th><th>Cliente · proyecto</th><th>Fecha</th><th>Estado</th><th></th></tr>
         </thead>
         <tbody>
         {foreach $reuniones as $r}
-            <tr {if $r['n_propuestas'] > 0}class="pa-new"{/if}>
+            <tr class="pa-cli-fila{if $r['n_propuestas'] > 0} pa-new{/if}" style="--cli: {($marcasCli[$r['cliente_id']]['color'] ?? 'transparent')|noescape}">
                 <td><a href="{$admin_url('reuniones/' . $r['id'])}">{$r['titulo']}</a></td>
                 <td>
-                    <span class="pa-proy"><span class="pa-dot" style="background: {($colorProy[$r['proyecto_id']] ?? '#94a3b8')|noescape}" aria-hidden="true"></span>{$r['proyecto_nombre']}</span>
-                    <div class="pa-muted">{$r['cliente_nombre']}</div>
+                    {include '../_cliente.latte', marcasCli: $marcasCli, cid: $r['cliente_id'], nombre: $r['cliente_nombre'], sub: $r['proyecto_nombre'], fmt: $fmt}
                 </td>
                 <td>{$fmt->fechaLarga($r['fecha'])}<div class="pa-muted">{$fmt->hora($r['fecha'])}</div></td>
                 <td>

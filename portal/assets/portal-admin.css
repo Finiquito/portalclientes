@@ -322,3 +322,10 @@ a.pa-g-hito { cursor: pointer; text-decoration: none !important; }
 .pa-paginas .pa-pill { min-width: 2.25rem; justify-content: center; }
 .pa-orden-col { color: inherit !important; text-decoration: none !important; white-space: nowrap; }
 .pa-orden-col:hover { text-decoration: underline !important; }
+
+/* Cliente en las listas del equipo: mini logo (o iniciales sobre su color) y barrita de su color en la fila. */
+.pa-cli { display: inline-flex; align-items: center; gap: .45rem; min-width: 0; }
+.pa-cli-logo { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 1.375rem; height: 1.375rem; border-radius: .4rem; overflow: hidden; font-size: .5625rem; font-weight: 800; letter-spacing: .02em; box-shadow: 0 0 0 1px color-mix(in srgb, currentColor 12%, transparent); }
+.pa-cli-logo img { width: 100%; height: 100%; object-fit: contain; background: #fff; padding: 1px; }
+.pa-cli-sub { margin-left: 1.825rem; }
+tr.pa-cli-fila > td:first-child { box-shadow: inset 3px 0 0 var(--cli, transparent); }

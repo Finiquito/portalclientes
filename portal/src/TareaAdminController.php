@@ -203,6 +203,7 @@ class TareaAdminController
             'ordenes'       => self::FILTRO_ORDEN,
             'proyectosF'    => $proyectos,
             'colorProy'     => Fmt::coloresTodos($this->pdo()),
+            'marcasCli'     => Fmt::marcasClientes($this->pdo()),
             'puedeMias'     => $yo !== null,
             'fmt'           => new Fmt(),
             'flash_success' => $this->ui->flash('success'),

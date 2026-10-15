@@ -3,7 +3,7 @@
 {block page_title}Solicitudes{/block}
 
 {block content}
-<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=12">
+<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=13">
 <div class="page-header">
     <h1>Solicitudes</h1>
 </div>
@@ -41,18 +41,17 @@
 {else}
 <div class="card" style="overflow-x:auto">
     <table class="table">
-        <thead><tr><th>Solicitud</th><th>Proyecto</th><th>Urgencia</th><th>Estado</th><th>Recibida</th></tr></thead>
+        <thead><tr><th>Solicitud</th><th>Cliente · proyecto</th><th>Urgencia</th><th>Estado</th><th>Recibida</th></tr></thead>
         <tbody>
         {foreach $solicitudes as $s}
             {var $e = $estadosS[$s['estado']] ?? ['—', 'muted']}
-            <tr {if in_array($s['estado'], ['nueva', 'aprobada'], true)}class="pa-new"{/if}>
+            <tr class="pa-cli-fila{if in_array($s['estado'], ['nueva', 'aprobada'], true)} pa-new{/if}" style="--cli: {($marcasCli[$s['cliente_id']]['color'] ?? 'transparent')|noescape}">
                 <td>
                     <a href="{$admin_url('solicitudes/' . $s['id'])}"><strong>{$s['titulo']}</strong></a>
                     <div class="pa-muted">{$tipos[$s['tipo']][0]} · {$s['contacto_nombre'] ?: 'Cliente'}{if $s['n_comentarios'] > 0} · {$s['n_comentarios']} comentario{if $s['n_comentarios'] > 1}s{/if}{/if}</div>
                 </td>
                 <td>
-                    <span class="pa-proy"><span class="pa-dot" style="background: {($colorProy[$s['proyecto_id']] ?? '#94a3b8')|noescape}" aria-hidden="true"></span>{$s['proyecto_nombre'] ?: 'Proyecto nuevo'}</span>
-                    <div class="pa-muted">{$s['cliente_empresa'] ?: $s['cliente_nombre']}</div>
+                    {include '../_cliente.latte', marcasCli: $marcasCli, cid: $s['cliente_id'], nombre: $s['cliente_empresa'] ?: $s['cliente_nombre'], sub: $s['proyecto_nombre'] ?: 'Proyecto nuevo', fmt: $fmt}
                 </td>
                 <td>{if $s['tipo'] === 'reunion'}<span class="pa-muted">—</span>{else}<span class="pa-chip {['urgente' => 'danger', 'semana' => 'info', 'sin_apuro' => 'gris'][$s['urgencia']] ?? 'gris'}">{$urgencias[$s['urgencia']]}</span>{/if}</td>
                 <td><span class="pa-chip {$e[1] === 'muted' ? 'gris' : $e[1]}">{$s['estado'] === 'en_curso' && $s['tarea_estado'] === 'hecha' ? 'Tarea lista' : $e[0]}</span></td>

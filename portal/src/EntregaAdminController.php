@@ -104,6 +104,7 @@ class EntregaAdminController
             'grupos'     => self::FILTRO_ESTADOS,
             'proyectosF' => $proyectos,
             'colorProy'  => Fmt::coloresTodos($this->pdo()),
+            'marcasCli'  => Fmt::marcasClientes($this->pdo()),
             'estados'  => TiposContenido::ESTADOS_ENTREGA,
             'fmt'      => new Fmt(),
         ] + $this->flashes());

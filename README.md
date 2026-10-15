@@ -74,6 +74,11 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### v0.33.1: el cliente se reconoce de un vistazo
+- En las listas del equipo (Tareas, Contenidos, Reuniones, Solicitudes, Contactos ganados, Formularios y Mensajes) la columna pasa a ser **«Cliente · proyecto»**: mini logo del cliente (o sus iniciales sobre su color) con el nombre del cliente, y debajo el proyecto. Además, una **barrita del color del cliente** al borde de cada fila.
+- Cada cliente tiene un color propio: el de su marca; si no tiene, o si otro cliente ya tiene uno casi igual, uno de una paleta de 14 tonos, eligiendo el más distinto a los que ya se usan. Antes el punto era por proyecto y se repetía entre clientes (el primer proyecto de todos salía morado).
+- En el portal de cada cliente sigue el punto de color por proyecto (ahí sí distingue sus proyectos).
+
 ### v0.33.0: paginación
 - **Listas paginadas** de a 20, con selector para ver 30 o 50. «Mostrando 21–40 de 134», Anterior / 1 2 3 … / Siguiente. Los filtros y la búsqueda se mantienen al cambiar de página. Cuántos por página se recuerda por persona.
 - **Panel del equipo y admin**: Tareas, Contenidos, Reuniones, Solicitudes, Contactos ganados y Actividad (ahora hasta 2.000 movimientos, antes 120). Cada lista conserva su «Ordenar por» y suma **«Invertir orden»** para verla al revés.

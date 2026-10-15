@@ -3,7 +3,7 @@
 {block page_title}Solicitud{/block}
 
 {block content}
-<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=12">
+<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=13">
 {var $t = $tipos[$s['tipo']]}
 {var $e = $estadosS[$s['estado']] ?? ['—', 'muted']}
 {var $abierta = in_array($s['estado'], ['nueva', 'aprobada', 'cotizada'], true)}
@@ -23,7 +23,8 @@
         {if $s['tipo'] !== 'reunion'}<span class="pa-chip {['urgente' => 'danger', 'semana' => 'info', 'sin_apuro' => 'gris'][$s['urgencia']] ?? 'gris'}">{$urgencias[$s['urgencia']]}</span>{/if}
     </p>
     <p class="pa-muted" style="margin:0">
-        <span class="pa-proy"><span class="pa-dot" style="background: {($colorProy[$s['proyecto_id']] ?? '#94a3b8')|noescape}" aria-hidden="true"></span>{$s['cliente_empresa'] ?: $s['cliente_nombre']} · {$s['proyecto_nombre'] ?: 'Proyecto nuevo'}</span>
+        {var $mc = $marcasCli[$s['cliente_id']] ?? ['color' => '#94a3b8', 'texto' => '#ffffff', 'logo' => null]}
+        <span class="pa-cli"><span class="pa-cli-logo" style="background: {$mc['logo'] ? '#ffffff' : $mc['color']|noescape}; color: {$mc['texto']|noescape}" aria-hidden="true">{if $mc['logo']}<img src="{$mc['logo']}" alt="">{else}{$fmt->iniciales($s['cliente_empresa'] ?: $s['cliente_nombre'])}{/if}</span>{$s['cliente_empresa'] ?: $s['cliente_nombre']} · {$s['proyecto_nombre'] ?: 'Proyecto nuevo'}</span>
         · Pedida por <strong>{$s['contacto_nombre'] ?: 'el cliente'}</strong> · {$fmt->rel($s['created_at'])}
         {if $paisCliente !== $paisAgencia}· <span title="Hora local del cliente">{\TypeDock\Plugin\Portal\Fmt::bandera($paisCliente)} {\TypeDock\Plugin\Portal\HorarioHabil::nombreDe($paisCliente)}: son las <strong data-reloj="{$zonaCliente}">{$horaCliente}</strong></span>{/if}
     </p>

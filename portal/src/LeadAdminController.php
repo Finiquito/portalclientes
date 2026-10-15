@@ -63,6 +63,7 @@ class LeadAdminController
             'chips'       => LeadService::CHIPS_ADMIN,
             'origenes'    => LeadService::ORIGENES,
             'colorProy'   => Fmt::coloresTodos($this->pdo()),
+            'marcasCli'   => Fmt::marcasClientes($this->pdo()),
             'fmt'         => new Fmt(),
             'hoy'         => Cronograma::hoy(),
             'flash_success' => $this->ui->flash('success'),
@@ -195,6 +196,7 @@ class LeadAdminController
             'snippet'   => is_array($nuevo) ? LeadFuenteService::snippet($base . '/leads/f/' . $nuevo['token']) : '',
             'fmt'       => new Fmt(),
             'colorProy' => Fmt::coloresTodos($this->pdo()),
+            'marcasCli' => Fmt::marcasClientes($this->pdo()),
             'flash_success' => $this->ui->flash('success'),
             'flash_error'   => $this->ui->flash('error'),
         ]);

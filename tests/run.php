@@ -534,7 +534,15 @@ $_GET = [];
 $mapa = P\Fmt::coloresTodos($pdo);
 check(isset($mapa[$p1a], $mapa[$p1b]) && $mapa[$p1a] !== $mapa[$p1b], 'cada proyecto de un cliente tiene su color');
 [$html] = $g->hacer('GET', $T, 'index');
-check(str_contains($html, 'pa-dot" style="background: ' . $mapa[$p1b]), 'el punto de color aparece en la lista');
+$marcas = P\Fmt::marcasClientes($pdo);
+check(str_contains($html, 'class="pa-cli-logo"') && str_contains($html, '--cli: ' . $marcas[$c1]['color']), 'en la lista del equipo, cada fila muestra al cliente (mini logo o iniciales) y su color al borde');
+check(count(array_unique(array_column($marcas, 'color'))) === count($marcas), 'cada cliente tiene un color distinto');
+(new P\AjustesService($pdo))->set('cliente', $c2, 'color', '#e11d48');
+(new P\AjustesService($pdo))->set('cliente', $c3, 'color', '#e11d49');
+$marcas = P\Fmt::marcasClientes($pdo);
+check($marcas[$c2]['color'] !== $marcas[$c3]['color'] && count(array_intersect([$marcas[$c2]['color'], $marcas[$c3]['color']], ['#e11d48', '#e11d49'])) === 1, 'si dos clientes tienen casi el mismo color de marca, el segundo recibe otro para no confundirlos');
+(new P\AjustesService($pdo))->borrar('cliente', $c2, 'color');
+(new P\AjustesService($pdo))->borrar('cliente', $c3, 'color');
 
 // Archivar
 $L = fn(array $post) => $g->hacer('POST', $T, 'lote', [], null, false, $post + ['_csrf_token' => $tok, 'volver' => '/equipo/tareas?estado=hecha']);

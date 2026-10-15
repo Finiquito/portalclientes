@@ -3,7 +3,7 @@
 {block page_title}Contactos ganados{/block}
 
 {block content}
-<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=12">
+<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=13">
 <div class="page-header">
     <h1>Contactos ganados</h1>
     {if $proyectos}<div class="pa-row">
@@ -85,19 +85,18 @@
 {else}
 <div class="card" style="overflow-x:auto">
     <table class="table">
-        <thead><tr><th>Contacto</th><th>Proyecto</th><th>Estado</th><th>Próximo paso</th><th>Llegó</th></tr></thead>
+        <thead><tr><th>Contacto</th><th>Cliente · proyecto</th><th>Estado</th><th>Próximo paso</th><th>Llegó</th></tr></thead>
         <tbody>
         {foreach $leads as $l}
             {var $abierto = !in_array($l['estado'], ['ganado', 'perdido'], true)}
-            <tr {if $l['estado'] === 'nuevo'}class="pa-new"{/if}>
+            <tr class="pa-cli-fila{if $l['estado'] === 'nuevo'} pa-new{/if}" style="--cli: {($marcasCli[$l['cliente_id']]['color'] ?? 'transparent')|noescape}">
                 <td>
                     <a href="{$admin_url('leads/' . $l['id'])}"><strong>{$l['nombre']}</strong></a>
                     <div class="pa-muted">{$l['correo'] ?: $l['telefono']}</div>
                     {if $l['empresa'] && $l['empresa'] !== $l['nombre']}<div class="pa-muted">{$l['empresa']}</div>{/if}
                 </td>
                 <td>
-                    <span class="pa-proy"><span class="pa-dot" style="background: {($colorProy[$l['proyecto_id']] ?? '#94a3b8')|noescape}" aria-hidden="true"></span>{$l['proyecto_nombre']}</span>
-                    <div class="pa-muted">{$l['cliente_nombre']}{if $l['campana']} · {$l['campana']}{/if}</div>
+                    {include '../_cliente.latte', marcasCli: $marcasCli, cid: $l['cliente_id'], nombre: $l['cliente_nombre'], sub: $l['proyecto_nombre'] . ($l['campana'] ? ' · ' . $l['campana'] : ''), fmt: $fmt}
                 </td>
                 <td><span class="pa-chip {$chips[$l['estado']]}">{$estados[$l['estado']]}</span>{if $l['mc_estado'] && isset($mcEstados[$l['mc_estado']])}<div class="pa-muted" style="margin-top:.25rem">Mailchimp: {$mcEstados[$l['mc_estado']][0]}</div>{/if}{var $correos = \TypeDock\Plugin\Portal\LeadService::mcCorreos($l)}{if $correos}<div class="pa-muted">{$correos}</div>{/if}</td>
                 <td>{if $l['proximo_paso'] && $abierto}{$l['proximo_paso']}{if $l['proximo_paso_fecha']}<div class="pa-muted" {if $l['proximo_paso_fecha'] < $hoy}style="color:#e11d48;font-weight:700"{/if}>{$fmt->fechaCorta($l['proximo_paso_fecha'])}</div>{/if}{else}<span class="pa-muted">—</span>{/if}</td>

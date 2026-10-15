@@ -1,0 +1,8 @@
+{* Cliente de una fila: mini logo (o iniciales sobre su color) + nombre; debajo, el proyecto u otro detalle.
+   Parámetros: marcasCli, cid, nombre, sub (texto ya armado, opcional), fmt *}
+{var $mc = $marcasCli[$cid] ?? ['color' => '#94a3b8', 'texto' => '#ffffff', 'logo' => null]}
+<span class="pa-cli">
+    <span class="pa-cli-logo" style="background: {$mc['logo'] ? '#ffffff' : $mc['color']|noescape}; color: {$mc['texto']|noescape}" aria-hidden="true">{if $mc['logo']}<img src="{$mc['logo']}" alt="" loading="lazy">{else}{$fmt->iniciales($nombre)}{/if}</span>
+    <strong>{$nombre}</strong>
+</span>
+{if !empty($sub)}<div class="pa-muted pa-cli-sub">{$sub}</div>{/if}

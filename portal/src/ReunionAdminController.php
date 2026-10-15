@@ -197,6 +197,7 @@ class ReunionAdminController
             'estadosF'      => self::FILTRO_ESTADO,
             'proyectosF'    => $proyectos,
             'colorProy'     => Fmt::coloresTodos($this->pdo()),
+            'marcasCli'     => Fmt::marcasClientes($this->pdo()),
             'fmt'           => new Fmt(),
             'flash_success' => $this->ui->flash('success'),
             'flash_error'   => $this->ui->flash('error'),

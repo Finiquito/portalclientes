@@ -3,7 +3,7 @@
 {block page_title}Tareas{/block}
 
 {block content}
-<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=12">
+<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=13">
 
 <div class="page-header">
     <h1>Tareas</h1>
@@ -88,7 +88,7 @@
             <tr>
                 <th style="width:2rem"><input type="checkbox" data-lote-todas aria-label="Seleccionar todas"></th>
                 <th>Título</th>
-                <th>Proyecto</th>
+                <th>Cliente · proyecto</th>
                 <th>Le toca a</th>
                 <th>Vence</th>
                 <th>Estado</th>
@@ -101,15 +101,14 @@
             {var $e = $fmt->estado($t['estado'])}
             {var $tono = ['muted' => '', 'ok' => 'ok', 'warn' => 'warn', 'danger' => 'danger', 'info' => 'info'][$e[1]] ?? ''}
             {var $v = $fmt->vence($t['fecha_vencimiento'], $t['estado'])}
-            <tr class="{if $t['estado'] === 'entregada'}pa-new{/if}{if (int) ($t['archivada'] ?? 0)} pa-archivada{/if}">
+            <tr class="pa-cli-fila{if $t['estado'] === 'entregada'} pa-new{/if}{if (int) ($t['archivada'] ?? 0)} pa-archivada{/if}" style="--cli: {($marcasCli[$t['cliente_id']]['color'] ?? 'transparent')|noescape}">
                 <td><input type="checkbox" name="ids[]" value="{$t['id']}" form="lote" aria-label="Seleccionar «{$t['titulo']}»"></td>
                 <td>
                     <a href="{$admin_url('tareas/' . $t['id'])}">{$t['titulo']}</a>
                     <div class="pa-muted">{$fmt->tipo($t['tipo'] ?? 'tarea')}{if (int) ($t['visible_cliente'] ?? 1) === 0} · interna{/if}</div>
                 </td>
                 <td>
-                    <span class="pa-proy"><span class="pa-dot" style="background: {($colorProy[$t['proyecto_id']] ?? '#94a3b8')|noescape}" aria-hidden="true"></span>{$t['proyecto_nombre']}</span>
-                    <div class="pa-muted">{$t['cliente_nombre']}</div>
+                    {include '../_cliente.latte', marcasCli: $marcasCli, cid: $t['cliente_id'], nombre: $t['cliente_nombre'], sub: $t['proyecto_nombre'], fmt: $fmt}
                 </td>
                 <td>
                     {if $t['responsable_tipo'] === 'cliente'}<span class="pa-chip brand">Cliente</span><div class="pa-muted">{$t['contacto_nombre']}</div>

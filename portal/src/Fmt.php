@@ -272,6 +272,73 @@ final class Fmt
         return $mapa;
     }
 
+    /** Paleta para clientes sin color de marca: tonos bien separados entre sí. */
+    public const COLORES_CLIENTE = ['#2563eb', '#ea580c', '#16a34a', '#db2777', '#7c3aed', '#0891b2', '#ca8a04', '#dc2626', '#0d9488', '#9333ea', '#65a30d', '#c2410c', '#4f46e5', '#be185d'];
+
+    /**
+     * Identidad de cada cliente en las listas del equipo: su logo (si tiene), su color y sus
+     * iniciales. El color es el de su marca; si no tiene, uno de la paleta, eligiendo el tono
+     * más lejano a los que ya usan los demás (así dos clientes no quedan iguales).
+     *
+     * @return array<string, array{color: string, texto: string, logo: ?string}>
+     */
+    public static function marcasClientes(\PDO $pdo): array
+    {
+        $aj = new AjustesService($pdo);
+        $clientes = $pdo->query('SELECT id FROM portal_clientes ORDER BY created_at, id')->fetchAll(\PDO::FETCH_COLUMN);
+        $out = [];
+        $usados = [];
+        $sinMarca = [];
+        foreach ($clientes as $cid) {
+            $cfg = $aj->todos('cliente', (string) $cid);
+            $logo = !empty($cfg['logo_id']) ? '/portal/marca/cliente/' . rawurlencode((string) $cid) : null;
+            $color = AjustesService::colorValido($cfg['color'] ?? '');
+            // Su color de marca, salvo que otro cliente ya tenga uno casi igual (ahí recibe uno de la paleta).
+            $choca = false;
+            foreach ($usados as $u) {
+                $a = self::matiz($color);
+                $b = self::matiz($u);
+                if ($a !== null && $b !== null && min(abs($a[0] - $b[0]), 360 - abs($a[0] - $b[0])) < 14 && abs($a[1] - $b[1]) < 0.35) {
+                    $choca = true;
+                    break;
+                }
+            }
+            if (!empty($cfg['color']) && self::matiz($color) !== null && !$choca) {
+                $out[(string) $cid] = ['color' => $color, 'logo' => $logo];
+                $usados[] = $color;
+            } else {
+                $sinMarca[(string) $cid] = $logo;
+            }
+        }
+        foreach ($sinMarca as $cid => $logo) {
+            $mejor = self::COLORES_CLIENTE[0];
+            $mejorDist = -1.0;
+            foreach (self::COLORES_CLIENTE as $c) {
+                $h = self::matiz($c)[0];
+                $dist = 360.0;
+                foreach (array_slice($usados, -6) as $u) {   // basta con no repetir los más cercanos en la lista
+                    $mu = self::matiz($u);
+                    if ($mu !== null) {
+                        $d = abs($h - $mu[0]);
+                        $dist = min($dist, min($d, 360 - $d));
+                    }
+                }
+                if (in_array($c, $usados, true)) {
+                    $dist -= 360;
+                }
+                if ($dist > $mejorDist) {
+                    [$mejor, $mejorDist] = [$c, $dist];
+                }
+            }
+            $out[$cid] = ['color' => $mejor, 'logo' => $logo];
+            $usados[] = $mejor;
+        }
+        foreach ($out as &$m) {
+            $m['texto'] = AjustesService::colorTexto($m['color']);
+        }
+        return $out;
+    }
+
     public function iniciales(string $nombre): string
     {
         $partes = preg_split('/\s+/u', trim($nombre)) ?: [];

@@ -3,7 +3,7 @@
 {block page_title}Contenidos{/block}
 
 {block content}
-<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=12">
+<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=13">
 
 <div class="page-header">
     <h1>Entregas de contenido</h1>
@@ -40,16 +40,15 @@
 {else}
 <div class="card" style="overflow-x:auto">
     <table class="table">
-        <thead><tr><th>Entrega</th><th>Proyecto</th><th>Estado</th><th>Revisión</th><th>Límite</th><th></th></tr></thead>
+        <thead><tr><th>Entrega</th><th>Cliente · proyecto</th><th>Estado</th><th>Revisión</th><th>Límite</th><th></th></tr></thead>
         <tbody>
         {foreach $entregas as $e}
             {var $st = $estados[$e['estado']] ?? ['—', 'muted']}
             {var $tono = ['muted' => '', 'ok' => 'ok', 'warn' => 'warn', 'danger' => 'danger', 'info' => 'info'][$st[1]] ?? ''}
-            <tr {if $e['estado'] === 'respondida'}class="pa-new"{/if}>
+            <tr class="pa-cli-fila{if $e['estado'] === 'respondida'} pa-new{/if}" style="--cli: {($marcasCli[$e['cliente_id']]['color'] ?? 'transparent')|noescape}">
                 <td><a href="{$admin_url('entregas/' . $e['id'])}">{$e['titulo']}</a><div class="pa-muted">{$e['n_total']} contenido(s)</div></td>
                 <td>
-                    <span class="pa-proy"><span class="pa-dot" style="background: {($colorProy[$e['proyecto_id']] ?? '#94a3b8')|noescape}" aria-hidden="true"></span>{$e['proyecto_nombre']}</span>
-                    <div class="pa-muted">{$e['cliente_nombre']}</div>
+                    {include '../_cliente.latte', marcasCli: $marcasCli, cid: $e['cliente_id'], nombre: $e['cliente_nombre'], sub: $e['proyecto_nombre'], fmt: $fmt}
                 </td>
                 <td><span class="pa-chip {$tono}">{$st[0]}</span></td>
                 <td class="pa-muted">{$e['n_aprobados']} aprobados · {$e['n_cambios']} con cambios · {$e['n_pendientes']} por revisar</td>
