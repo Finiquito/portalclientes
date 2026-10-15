@@ -9,6 +9,10 @@ Landing de una página para Prisma, el portal de clientes ofrecido a estudios, a
 3. Crea una página (por ejemplo «Inicio»), elige el layout **Landing Prisma** en el editor y déjala como página de inicio (**Ajustes → Sitio → Inicio: página**). Si el inicio está en modo «archivo», también se ve el landing: `layouts/home.latte` es la misma página.
 4. Instala el plugin `invitaciones` y, en **Invitaciones**, guarda la clave completa de Mailchimp (termina en `-us…`), la audiencia `fc1f3c0eb6` y el campo del tamaño (`TAMANO` o `MERGE7`). Aprieta «Probar conexión».
 
+## Actualizar el tema
+
+TypeDock sirve el CSS, el JS y las imágenes desde una **copia** en `public_html/themes/prisma/assets/`, que solo se renueva al activar el tema o al abrir su vista previa. Por eso, después de reemplazar `typedock/themes/prisma`, ve a **Apariencia → Temas** y aprieta **Vista previa** en Prisma: eso vuelve a copiar los assets y limpia la caché de plantillas. Sin ese paso se sigue viendo el CSS anterior aunque cambie `?v=`.
+
 ## Estructura
 
 ```
