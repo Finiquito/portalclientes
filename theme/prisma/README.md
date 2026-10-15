@@ -1,4 +1,4 @@
-# Tema Prisma: landing de prismahub.com
+# Tema Prisma: landing de usaprisma.com
 
 Landing de una página para Prisma, el portal de clientes ofrecido a estudios, agencias chicas y freelancers de Chile. Su objetivo es una sola acción: **pedir una invitación**. Las inscripciones las recibe el plugin `invitaciones/`, que las guarda y las envía a Mailchimp.
 

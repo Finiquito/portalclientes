@@ -7,7 +7,7 @@ use TypeDock\Contract\PluginInterface;
 use TypeDock\Core\PluginContext;
 
 /**
- * Lista de espera del landing (prismahub.com): POST /invitacion guarda la inscripción
+ * Lista de espera del landing (usaprisma.com): POST /invitacion guarda la inscripción
  * y la sincroniza con una audiencia de Mailchimp. Se configura en el admin → Invitaciones.
  */
 class InvitacionesPlugin implements PluginInterface
