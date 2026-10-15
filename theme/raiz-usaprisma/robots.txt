@@ -1,0 +1,49 @@
+# Buscadores y asistentes de IA: bienvenidos.
+User-agent: *
+Allow: /
+Disallow: /admin
+
+# Asistentes de IA (búsqueda y respuestas)
+User-agent: OAI-SearchBot
+Allow: /
+Disallow: /admin
+
+User-agent: ChatGPT-User
+Allow: /
+Disallow: /admin
+
+User-agent: GPTBot
+Allow: /
+Disallow: /admin
+
+User-agent: Claude-SearchBot
+Allow: /
+Disallow: /admin
+
+User-agent: Claude-User
+Allow: /
+Disallow: /admin
+
+User-agent: ClaudeBot
+Allow: /
+Disallow: /admin
+
+User-agent: PerplexityBot
+Allow: /
+Disallow: /admin
+
+User-agent: Perplexity-User
+Allow: /
+Disallow: /admin
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+Disallow: /admin
+
+Sitemap: https://usaprisma.com/sitemap.xml

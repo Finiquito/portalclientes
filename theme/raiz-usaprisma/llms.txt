@@ -1,0 +1,26 @@
+# Prisma
+
+> Prisma es un portal de clientes para freelancers, estudios de diseño y agencias pequeñas de publicidad o marketing de Latinoamérica (equipos de 1 a 15 personas). Tareas, reuniones, revisiones y archivos encajan en un solo lugar: el cliente ve cómo avanza su proyecto, aprueba y envía lo que falta, sin perseguirlo por WhatsApp. Está en español y hoy se abre por invitación.
+
+## Qué hace
+
+- Portal para cada cliente, con su logo y su color, que muestra solo lo suyo: qué le toca, qué está en revisión y cuándo es la próxima reunión.
+- El cliente entra con su correo y un código; no necesita contraseña.
+- Tareas para pedir archivos: el cliente los sube en la misma tarea y quedan guardados ahí.
+- Revisión de contenidos pieza por pieza (por ejemplo, un calendario de publicaciones): el cliente aprueba o pide cambios en cada post y el equipo recibe un solo aviso.
+- Reuniones: a partir de las notas o la transcripción se obtienen el resumen, los acuerdos y la lista de tareas.
+- Panel del equipo: una bandeja con lo que respondió cada cliente, lo vencido y lo que viene en la semana. Cada persona ve las cuentas que tiene asignadas y recibe sus propios avisos.
+
+## Para quién
+
+- Freelancers y profesionales independientes, estudios de diseño y agencias pequeñas de publicidad o marketing.
+- Equipos que hoy coordinan a sus clientes entre WhatsApp, Drive y correo.
+- No está pensado para empresas con decenas de cuentas y un área de TI propia.
+
+## Cómo empezar
+
+- Pide una invitación en https://usaprisma.com/#invitacion con tu nombre, tu correo y el tamaño de tu equipo.
+
+## Enlaces
+
+- [Inicio](https://usaprisma.com/): qué es Prisma, cómo funciona y el formulario de invitación.

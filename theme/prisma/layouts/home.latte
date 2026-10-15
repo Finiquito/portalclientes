@@ -31,6 +31,20 @@
     <meta name="twitter:title" content="{$tituloComp}">
     <meta name="twitter:description" content="{$descComp}">
     <meta name="twitter:image" content="{$sitio}/themes/prisma/assets/img/compartir.jpg?v=2">
+    {* Datos estructurados (schema.org): qué es Prisma, para quién y dónde, en un formato que leen
+       los buscadores y los asistentes de IA. Sólo lo que dice la página; sin precios ni cifras. *}
+    <script type="application/ld+json">{json_encode([
+        '@context' => 'https://schema.org',
+        '@graph' => [
+            ['@type' => 'Organization', '@id' => $sitio . '/#org', 'name' => 'Prisma', 'url' => $sitio . '/', 'logo' => $sitio . '/themes/prisma/assets/img/compartir.jpg'],
+            ['@type' => 'WebSite', '@id' => $sitio . '/#web', 'url' => $sitio . '/', 'name' => 'Prisma', 'inLanguage' => 'es', 'publisher' => ['@id' => $sitio . '/#org']],
+            ['@type' => 'SoftwareApplication', 'name' => 'Prisma', 'url' => $sitio . '/', 'applicationCategory' => 'BusinessApplication', 'applicationSubCategory' => 'Portal de clientes', 'operatingSystem' => 'Web',
+             'inLanguage' => 'es', 'description' => $descComp, 'image' => $sitio . '/themes/prisma/assets/img/compartir.jpg',
+             'audience' => ['@type' => 'BusinessAudience', 'audienceType' => 'Freelancers, estudios de diseño y agencias pequeñas de publicidad o marketing (equipos de 1 a 15 personas)'],
+             'areaServed' => 'Latinoamérica', 'publisher' => ['@id' => $sitio . '/#org'],
+             'featureList' => ['Portal para el cliente con su logo y su color', 'Ingreso del cliente con su correo y un código, sin contraseña', 'Tareas con archivos que sube el cliente', 'Aprobación de contenidos pieza por pieza', 'Reuniones con resumen, acuerdos y tareas a partir de las notas', 'Panel del equipo con cuentas asignadas y avisos']],
+        ],
+    ], \JSON_UNESCAPED_UNICODE | \JSON_UNESCAPED_SLASHES | \JSON_HEX_TAG)|noescape}</script>
 {/block}
 
 {block content}
