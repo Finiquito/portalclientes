@@ -142,11 +142,12 @@ select.campo { appearance: none; background-image: linear-gradient(45deg, transp
    --------------------------------------------------------------------------- */
 .barra { position: sticky; top: 0; z-index: 10; background: color-mix(in oklab, var(--color-paper) 92%, transparent); backdrop-filter: saturate(1.4) blur(10px); border-bottom: var(--rule) solid var(--color-rule-strong); }
 .barra-fila { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); min-height: 4.25rem; }
-.barra-marca { text-decoration: none; display: inline-flex; }
+.barra-marca { text-decoration: none; display: inline-flex; align-items: center; gap: var(--space-3); }
+.barra-lema { padding-left: var(--space-3); border-left: 1px solid var(--color-rule); font-size: var(--text-sm); font-weight: 500; color: var(--color-ink-2); line-height: 1.2; white-space: nowrap; }
 .barra-nav { display: flex; align-items: center; gap: var(--space-5); }
 .barra-link { font-weight: 500; font-size: var(--text-sm); text-decoration: none; background: linear-gradient(currentColor, currentColor) 0 100% / 0 1.5px no-repeat; padding-block: var(--space-1); transition: background-size var(--dur-2) var(--ease-out); }
 .barra-link:hover { background-size: 100% 1.5px; }
-@media (max-width: 34rem) { .barra-link { display: none; } }
+@media (max-width: 34rem) { .barra-link, .barra-lema { display: none; } }
 
 .logo { display: inline-flex; align-items: center; color: var(--color-ink); line-height: 1; }
 .logo-svg { display: block; height: 1.75rem !important; width: auto !important; max-width: none; }

@@ -4,11 +4,19 @@
     Los enlaces de la barra apuntan a /#… para que funcionen desde cualquier página.
 *}
 {var $assets = '/themes/prisma/assets'}
-{var $v = 10}
+{var $v = 11}
 <!DOCTYPE html>
 <html lang="es-CL">
 <head>
     <meta charset="UTF-8">
+    {* Google Analytics (GA4) *}
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-TLZCJ1N0XE"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){ dataLayer.push(arguments); }
+        gtag('js', new Date());
+        gtag('config', 'G-TLZCJ1N0XE');
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     {block metas}
     {if isset($seo)}
@@ -43,7 +51,7 @@
 
 <header class="barra">
     <div class="contenedor barra-fila">
-        <a href="/" class="barra-marca">{include '../partials/logo.latte'}</a>
+        <a href="/" class="barra-marca">{include '../partials/logo.latte'}<span class="barra-lema">El portal de tus clientes</span></a>
         <nav class="barra-nav" aria-label="Principal">
             <a href="/#como-funciona" class="barra-link">Cómo funciona</a>
             <a href="/#invitacion" class="boton boton-chico">Pedir invitación</a>
