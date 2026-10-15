@@ -85,6 +85,18 @@
     if (ou) ou.value = "portada";
   }
 
+  /* Google Analytics: evento «Formulario_Lleno» cuando la invitación queda guardada.
+     Sin datos personales: sólo de dónde vino y el tamaño del equipo. */
+  function medir(form) {
+    if (typeof window.gtag !== "function") return;
+    var origen = form && form.querySelector("input[name=origen]");
+    var tamano = form && form.querySelector("input[name=tamano]:checked");
+    window.gtag("event", "Formulario_Lleno", {
+      origen: origen ? origen.value : "",
+      tamano: tamano ? tamano.value : ""
+    });
+  }
+
   document.querySelectorAll("form[data-invitacion]").forEach(function (form) {
     var estado = form.querySelector("[data-estado]");
     var boton = form.querySelector("button[type=submit]");
@@ -131,6 +143,7 @@
         .then(function (res) {
           if (res && res.ok) {
             var nombre = (form.querySelector("input[name=nombre]") || {}).value || "";
+            medir(form);
             gracias(form, nombre.trim().split(/\s+/)[0], valor);
           } else {
             avisar((res && res.error) || "No pudimos guardar tus datos. Intenta de nuevo en un rato.", "error");
@@ -147,7 +160,7 @@
   var q = new URLSearchParams(window.location.search).get("invitacion");
   if (q) {
     var f = document.querySelector(".form-largo");
-    if (f && q === "ok") gracias(f, "", "tu correo");
+    if (f && q === "ok") { medir(null); gracias(f, "", "tu correo"); }
     else if (f) { var e = f.querySelector("[data-estado]"); if (e) { e.textContent = "No pudimos guardar tus datos. Intenta de nuevo."; e.setAttribute("data-tono", "error"); } }
   }
 })();
