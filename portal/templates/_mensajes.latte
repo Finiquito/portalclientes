@@ -1,0 +1,102 @@
+{* Bandeja de mensajes compartida (portal del cliente y panel del equipo).
+   Parámetros: base, pestana, nActivas, nArchivadas, conv, pag, sel, hilo, lado, yoId, accion, urlCosa, csrfCampo, csrf, equipo, fmt *}
+{var $tipos = \TypeDock\Plugin\Portal\MensajeService::TIPOS}
+{var $q = fn(array $x) => $base . '?' . http_build_query(array_filter($x + ['t' => $pestana === 'archivadas' ? 'archivadas' : '']))}
+
+<div class="card reveal overflow-hidden lg:grid lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)]" style="--i:1">
+    {* Lista de conversaciones *}
+    <section class="{$sel ? 'hidden lg:block' : ''} min-w-0 lg:border-r lg:border-line" aria-label="Conversaciones">
+        <nav class="flex gap-2 border-b border-line p-3" aria-label="Activas o archivadas">
+            <a href="{$base}" class="btn btn-sm {$pestana === 'activas' ? 'btn-primary' : 'btn-ghost'}" {if $pestana === 'activas'}aria-current="true"{/if}>
+                Activas <span class="rounded-full px-1.5 text-xs {$pestana === 'activas' ? 'bg-white/25' : 'bg-surface2 text-muted'}">{$nActivas}</span>
+            </a>
+            <a href="{$base}?t=archivadas" class="btn btn-sm {$pestana === 'archivadas' ? 'btn-primary' : 'btn-ghost'}" {if $pestana === 'archivadas'}aria-current="true"{/if}>
+                Archivadas <span class="rounded-full px-1.5 text-xs {$pestana === 'archivadas' ? 'bg-white/25' : 'bg-surface2 text-muted'}">{$nArchivadas}</span>
+            </a>
+        </nav>
+        {if empty($conv)}
+            <p class="px-5 py-10 text-center text-sm text-muted">
+                {if $pestana === 'activas'}No hay conversaciones abiertas. Cuando {$equipo ? 'un cliente' : 'el equipo'} comente una tarea, un contenido o una solicitud, aparece aquí.
+                {else}Aquí quedan las conversaciones de lo que ya terminó: tareas listas, contenidos aprobados y solicitudes cerradas.{/if}
+            </p>
+        {else}
+            <ul class="divide-y divide-line/70">
+                {foreach $conv as $c}
+                    {var $m = $c['ultimo_msg']}
+                    {var $activa = $sel && $sel['clave'] === $c['clave']}
+                    <li>
+                        <a href="{$q(['c' => $c['clave'], 'p' => $pag->pagina > 1 ? $pag->pagina : ''])}" class="flex gap-3 px-4 py-3.5 transition hover:bg-surface2 {$activa ? 'bg-surface2' : ''}" {if $activa}aria-current="true"{/if}>
+                            <span class="mt-[0.45rem] size-2 flex-none rounded-full {$c['sin_leer'] > 0 ? 'bg-brand' : 'bg-transparent'}" aria-hidden="true"></span>
+                            <span class="min-w-0 flex-1">
+                                <span class="flex items-baseline justify-between gap-2">
+                                    <span class="truncate text-sm {$c['sin_leer'] > 0 ? 'font-extrabold' : 'font-semibold'}">{$c['titulo'] ?: 'Sin título'}</span>
+                                    <span class="flex-none text-xs text-muted">{$fmt->rel($c['ultimo'])}</span>
+                                </span>
+                                <span class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
+                                    <span>{$tipos[$c['tipo']]}</span>
+                                    {if $equipo}<span class="font-semibold">{$c['cliente_nombre']}</span>{/if}
+                                    <span class="chip chip-{$c['estado'][1]}">{$c['estado'][0]}</span>
+                                </span>
+                                {if $m}
+                                    <span class="mt-1.5 flex items-center gap-2 text-sm">
+                                        <span class="line-clamp-1 min-w-0 flex-1 {$c['sin_leer'] > 0 ? 'text-ink' : 'text-muted'}"><span class="font-semibold">{$m['autor_tipo'] === $lado && $m['autor_id'] === $yoId ? 'Tú' : strtok($m['autor_nombre'], ' ')}:</span> {$m['cuerpo']}</span>
+                                        {if $c['sin_leer'] > 0}<span class="chip chip-brand flex-none" title="{$c['sin_leer']} sin leer">{$c['sin_leer']}</span>{/if}
+                                    </span>
+                                {/if}
+                            </span>
+                        </a>
+                    </li>
+                {/foreach}
+            </ul>
+            <div class="border-t border-line px-3">{include '_paginacion.latte', pag: $pag, ordenSelector: false}</div>
+        {/if}
+    </section>
+
+    {* Hilo *}
+    <section class="{$sel ? '' : 'hidden lg:flex'} flex min-h-[28rem] min-w-0 flex-col" aria-label="Conversación">
+        {if !$sel}
+            <div class="m-auto max-w-xs px-6 py-16 text-center">
+                <span class="mx-auto flex size-14 items-center justify-center rounded-2xl bg-brand-soft text-brand-ink"><svg class="size-7"><use href="#i-chat"/></svg></span>
+                <p class="mt-4 font-bold">Elige una conversación</p>
+                <p class="mt-1 text-sm text-muted">Aquí ves todo lo que se han dicho en una tarea, contenido o solicitud, y puedes responder sin salir.</p>
+            </div>
+        {else}
+            <header class="flex items-start gap-3 border-b border-line p-4 sm:px-5">
+                <a href="{$q(['p' => $pag->pagina > 1 ? $pag->pagina : ''])}" class="btn btn-ghost min-h-9! w-9! flex-none px-0! lg:hidden" aria-label="Volver a la lista"><svg class="size-5"><use href="#i-back"/></svg></a>
+                <div class="min-w-0 flex-1">
+                    <p class="text-xs text-muted">{$tipos[$sel['tipo']]}{if $equipo} · {$sel['cliente_nombre']}{/if}{if $sel['proyecto_nombre']} · {$sel['proyecto_nombre']}{/if}</p>
+                    <h2 class="mt-0.5 font-extrabold leading-snug">{$sel['titulo'] ?: 'Sin título'}</h2>
+                    <p class="mt-1.5 flex flex-wrap items-center gap-2"><span class="chip chip-{$sel['estado'][1]}">{$sel['estado'][0]}</span>{if $sel['terminada']}<span class="text-xs text-muted">Terminada: la conversación queda en Archivadas.</span>{/if}</p>
+                </div>
+                <a href="{$urlCosa}" class="btn btn-ghost btn-sm flex-none">Abrir {mb_strtolower($tipos[$sel['tipo']])}</a>
+            </header>
+            <ol class="flex-1 space-y-4 overflow-y-auto p-4 sm:p-5 lg:max-h-[60vh]" data-hilo>
+                {foreach $hilo as $h}
+                    {var $deMiLado = $h['autor_tipo'] === $lado}
+                    {var $mio = $deMiLado && $h['autor_id'] === $yoId}
+                    <li class="flex gap-2.5 {$deMiLado ? 'flex-row-reverse' : ''}">
+                        <span class="avatar size-8! {$h['autor_tipo'] === 'equipo' ? 'avatar-team' : ''}">{$fmt->iniciales($h['autor_nombre'])}</span>
+                        <div class="max-w-[85%] min-w-0 {$deMiLado ? 'text-right' : ''}">
+                            <p class="mb-1 text-xs text-muted"><span class="font-semibold text-ink">{$mio ? 'Tú' : $h['autor_nombre']}</span>{if $h['autor_tipo'] === 'equipo'} · Equipo{/if} · {$fmt->rel($h['created_at'])}{if !empty($h['ubicacion'])} · {\TypeDock\Plugin\Portal\Ubicacion::etiqueta((string) $h['ubicacion'])}{/if}</p>
+                            <div class="bubble inline-block text-left {$deMiLado ? 'rounded-tr-md bg-brand-soft text-ink' : 'rounded-tl-md bg-surface2'}">{$h['cuerpo']|breakLines}</div>
+                        </div>
+                    </li>
+                {/foreach}
+            </ol>
+            {if $accion}
+            <form method="post" action="{$accion}" data-once class="border-t border-line p-4 sm:px-5">
+                <input type="hidden" name="{$csrfCampo}" value="{$csrf}">
+                <input type="hidden" name="volver" value="{$q(['c' => $sel['clave']])}">
+                <label for="m-cuerpo" class="sr-only">Tu respuesta</label>
+                <textarea id="m-cuerpo" name="cuerpo" rows="2" maxlength="4000" required data-autogrow class="field" placeholder="Responder…"></textarea>
+                <div class="mt-3 flex flex-wrap items-center justify-between gap-3">
+                    {if $equipo}<label class="flex items-center gap-2 text-sm text-muted"><input type="checkbox" name="avisar" value="1" checked> Avisar al cliente por correo</label>
+                    {else}<span class="hidden text-xs text-muted sm:block">Ctrl + Enter para enviar</span>{/if}
+                    <button type="submit" data-sending="Enviando…" class="btn btn-primary ml-auto"><svg class="size-5"><use href="#i-send"/></svg> Responder</button>
+                </div>
+            </form>
+            {/if}
+            <script>document.querySelectorAll('[data-hilo]').forEach(function (o) { o.scrollTop = o.scrollHeight; });</script>
+        {/if}
+    </section>
+</div>

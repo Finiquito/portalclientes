@@ -299,6 +299,9 @@ class TareaAdminController
             $this->ui->redirect($this->ui->url('tareas'), 'Tarea no encontrada.', 'error');
             return;
         }
+        if ($this->ui->autorId() !== null) {
+            (new NovedadesService($this->pdo()))->marcar($this->ui->autorId(), 'tarea', $id);
+        }
         $this->ui->view('tareas/edit.latte', $this->datosFormulario($tarea) + [
             'flash_success' => $this->ui->flash('success'),
             'flash_error'   => $this->ui->flash('error'),
@@ -401,7 +404,7 @@ class TareaAdminController
                     'bloques' => [['p' => 'En «' . $t['titulo'] . '»:'], ['cita' => mb_substr($texto, 0, 800)]]]);
             }
         }
-        $this->ui->redirect($this->urlTarea($id) . '#conversacion', 'Comentario publicado.');
+        $this->ui->redirect(MensajeService::destino($this->ui->url('mensajes'), $this->urlTarea($id) . '#conversacion'), 'Comentario publicado.');
     }
 
     public function borrarComentario(string $id, string $comentarioId): void

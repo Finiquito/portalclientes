@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
-    <link rel="stylesheet" href="/plugins/portal/assets/portal.css?v=31">
+    <link rel="stylesheet" href="/plugins/portal/assets/portal.css?v=32">
     <script>{$portalBoot|noescape}</script>
 </head>
 <body class="min-h-dvh bg-bg font-sans text-ink antialiased">
@@ -20,6 +20,7 @@
 
 {var $items = [
     ['inicio',     '/equipo',           'i-inbox',    'Inicio'],
+    ['mensajes',   '/equipo/mensajes',  'i-chat',     'Mensajes', 'escritorio'],
     ['clientes',   '/equipo/clientes',  'i-users',    'Clientes'],
     ['proyectos',  '/equipo/proyectos', 'i-briefcase', 'Proyectos', 'escritorio'],
     ['tareas',     '/equipo/tareas',    'i-tasks',    'Tareas'],
@@ -29,7 +30,7 @@
     ['actividad',  '/equipo/actividad', 'i-bolt',     'Actividad', 'escritorio'],
 ]}
 {if !empty($hayLeads)}
-    {var $items = array_merge(array_slice($items, 0, 7), [['leads', '/equipo/leads', 'i-flag', 'Contactos ganados', 'escritorio']], array_slice($items, 7))}
+    {var $items = array_merge(array_slice($items, 0, 8), [["leads", "/equipo/leads", "i-flag", "Contactos ganados", "escritorio"]], array_slice($items, 8))}
 {/if}
 {* Solo Coordinación: gestión de la agencia. *}
 {var $itemsAgencia = [
@@ -53,6 +54,10 @@
             <span class="chip chip-brand">Equipo</span>
         </a>
         <div class="flex items-center gap-1.5">
+            <a href="/equipo/mensajes" class="btn btn-ghost relative min-h-10! w-10! px-0!" aria-label="Mensajes{if ($nMensajes ?? 0) > 0} ({$nMensajes} sin leer){/if}" {if $nav === 'mensajes'}aria-current="page"{/if}>
+                <svg class="size-5"><use href="#i-chat"/></svg>
+                {if ($nMensajes ?? 0) > 0}<span class="absolute -right-1 -top-1 flex min-w-4 items-center justify-center rounded-full bg-brand px-1 text-[0.625rem] font-bold leading-4 text-brand-fg">{$nMensajes}</span>{/if}
+            </a>
             <button type="button" data-tema-toggle class="btn btn-ghost min-h-10! w-10! px-0!" aria-label="Cambiar entre tema claro y oscuro">
                 <svg class="size-5 dark:hidden"><use href="#i-moon"/></svg>
                 <svg class="hidden size-5 dark:block"><use href="#i-sun"/></svg>
@@ -84,6 +89,7 @@
                             <svg class="size-5 flex-none"><use href="#{$it[2]}"/></svg>
                             <span class="flex-1">{$it[3]}</span>
                             {if $it[0] === 'inicio' && $nTurno > 0}<span class="chip chip-brand">{$nTurno}</span>{/if}
+                            {if $it[0] === 'mensajes' && ($nMensajes ?? 0) > 0}<span class="chip chip-brand">{$nMensajes}</span>{/if}
                             {if $it[0] === 'solicitudes' && $nSolicitudes > 0}<span class="chip chip-brand">{$nSolicitudes}</span>{/if}
                             {if $it[0] === 'leads' && ($nLeads ?? 0) > 0}<span class="chip chip-brand">{$nLeads}</span>{/if}
                         </a>

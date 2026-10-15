@@ -393,6 +393,9 @@ class EntregaAdminController
             $this->ui->redirect($this->url('entregas'), 'Contenido no encontrado.', 'error');
             return;
         }
+        if ($this->ui->autorId() !== null) {
+            (new NovedadesService($this->pdo()))->marcar($this->ui->autorId(), 'contenido', $id);
+        }
         $versiones = [];
         foreach (array_reverse($this->contenidos()->versiones($id)) as $v) {
             $v['archivos']    = $this->contenidos()->archivos((string) $v['id']);
@@ -695,7 +698,7 @@ class EntregaAdminController
             $this->ui->redirect($this->url('entregas'), 'Contenido no encontrado.', 'error');
             return;
         }
-        $volver = $this->url('contenidos/' . $id) . '#conversacion';
+        $volver = MensajeService::destino($this->ui->url('mensajes'), $this->url('contenidos/' . $id) . '#conversacion');
         $texto = trim((string) ($_POST['cuerpo'] ?? ''));
         if ($texto === '') {
             $this->ui->redirect($volver, 'Escribe algo antes de enviar.', 'error');

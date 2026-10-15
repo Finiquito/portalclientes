@@ -324,6 +324,8 @@ class PortalPublicController
             ), fn(array $r): bool => ReunionService::estado($r) === 'proxima')),
             // Las que le toca revisar o aprobar, más las que tienen respuestas que no ha visto.
             'solicitudesCliente' => (new NovedadesService($this->pdo()))->contarSolicitudes($clienteId, (string) $contacto['id']),
+            // Conversaciones donde el equipo escribió algo que esta persona no ha leído.
+            'mensajesSinLeer' => MensajeService::sinLeer((new MensajeService($this->pdo()))->conversaciones('contacto', (string) $contacto['id'], $clienteId)),
             'paisCliente'   => Zona::paisPersona($this->pdo(), $clienteId, (string) $contacto['id']),   // el de la persona si vive en otro país
             'vistaPrevia'   => PortalSession::vistaPrevia(),
             'hayRevisiones' => (int) ($this->fetchOne("SELECT COUNT(*) AS n FROM portal_entregas WHERE cliente_id = ? AND estado <> 'borrador'", [$clienteId])['n'] ?? 0) > 0,
@@ -795,7 +797,7 @@ class PortalPublicController
         $this->avisarEquipo("{$c['nombre']} comentó en «{$t['titulo']}»", $t, $texto, (string) $c['nombre']);
 
         PortalSession::flash('ok', 'Comentario enviado.');
-        $this->redirectTo($vol . '#conversacion');
+        $this->redirectTo(MensajeService::destino('/portal/mensajes', '/' . $vol . '#conversacion'));
     }
 
     public function subirArchivos(string $id): void

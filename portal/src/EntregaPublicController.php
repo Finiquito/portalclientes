@@ -320,7 +320,7 @@ class EntregaPublicController extends PortalPublicController
             ]);
         }
         PortalSession::flash('ok', 'Nota agregada.');
-        $this->redirectTo($vol . '#conversacion');
+        $this->redirectTo(MensajeService::destino('/portal/mensajes', '/' . $vol . '#conversacion'));
     }
 
     /** El cliente terminó: un solo aviso al equipo con el resumen. */

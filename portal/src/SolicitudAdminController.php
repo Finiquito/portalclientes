@@ -104,6 +104,9 @@ class SolicitudAdminController
             $this->ui->redirect($this->url('solicitudes'), 'Solicitud no encontrada.', 'error');
             return;
         }
+        if ($this->ui->autorId() !== null) {
+            (new NovedadesService($this->pdo()))->marcar($this->ui->autorId(), 'solicitud', $id);
+        }
         $eq = new EquipoService($this->pdo());
         $delProyecto = (string) $s['proyecto_id'] !== '' ? array_column($eq->delProyecto((string) $s['proyecto_id']), 'id') : [];
         $usuarios = $eq->activos();
@@ -275,7 +278,7 @@ class SolicitudAdminController
                 'preheader' => mb_substr($texto, 0, 110), 'bloques' => [['p' => 'En «' . $s['titulo'] . '»:'], ['cita' => mb_substr($texto, 0, 800)]],
             ]);
         }
-        $this->ui->redirect($this->url('solicitudes/' . $id) . '#conversacion', 'Comentario publicado.');
+        $this->ui->redirect(MensajeService::destino($this->ui->url('mensajes'), $this->url('solicitudes/' . $id) . '#conversacion'), 'Comentario publicado.');
     }
 
     public function destroy(string $id): void

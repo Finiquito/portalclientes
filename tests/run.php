@@ -2381,6 +2381,84 @@ check($nov->contarSolicitudes($c1, $contacto) === $base, 'lista y vista: ya no c
 check(P\NovedadesService::estadoSolicitud($ss->find($sNid)) === ['Lista', 'ok'], 'el estado que ve el cliente es «Lista»');
 check(P\NovedadesService::resumen([['accion' => 'comento', 'actor_tipo' => 'equipo', 'actor_nombre' => 'Ana'], ['accion' => 'comento', 'actor_tipo' => 'contacto', 'actor_nombre' => 'Clara Cliente'], ['accion' => 'aprobo', 'actor_tipo' => 'contacto', 'actor_nombre' => 'Clara Cliente']]) === 'Clara aprobó · 2 comentarios', 'el resumen junta comentarios y archivos en números');
 
+seccion('Mensajes: bandeja por conversación, sin leer, archivadas y respuesta');
+final class MensajePrueba extends P\MensajePublicController
+{
+    public ?string $redir = null;
+    protected function redirectTo(string $path, array $query = []): void { $this->redir = $this->publicUrl($path, $query); throw new RuntimeException('redirect'); }
+    protected function terminate(): void { throw new RuntimeException('fin'); }
+    public function correr(string $metodo, array $args = [], array $post = []): array
+    {
+        $_POST = $post;
+        $this->redir = null;
+        ob_start();
+        try { $this->{$metodo}(...$args); } catch (RuntimeException $e) { if (!in_array($e->getMessage(), ['redirect', 'fin'], true)) { ob_end_clean(); throw $e; } }
+        return [(string) ob_get_clean(), $this->redir];
+    }
+}
+$ms = new P\MensajeService($pdo);
+$mp = new MensajePrueba($ctx);
+$TA = P\TareaAdminController::class;
+$tM = $ts->create(['proyecto_id' => $p1a, 'titulo' => 'Fotos para la web', 'asignado' => 'equipo', 'visible_cliente' => 1]);
+$tOculta = $ts->create(['proyecto_id' => $p1a, 'titulo' => 'Nota interna', 'asignado' => 'equipo', 'visible_cliente' => 0]);
+$tAjena = $ts->create(['proyecto_id' => $p3a, 'titulo' => 'De otro cliente', 'asignado' => 'equipo', 'visible_cliente' => 1]);
+$_SESSION[P\EquipoController::SESION] = $ana;
+$tokM = P\PortalSession::csrf();
+[, $r] = $g->hacer('POST', $TA, 'comentar', [$tM], 'tarea', false, ['_csrf_token' => $tokM, 'cuerpo' => 'Hola Clara, ¿nos mandas las fotos?', 'volver' => '/equipo/mensajes?c=tarea:' . $tM]);
+check($r === '/equipo/mensajes?c=tarea:' . $tM, 'el equipo responde desde la bandeja y vuelve a la misma conversación');
+usleep(1100000);   // la hora va al segundo: así «Otro» es claramente el último
+[, $r] = $g->hacer('POST', $TA, 'comentar', [$tM], 'tarea', false, ['_csrf_token' => $tokM, 'cuerpo' => 'Otro', 'volver' => 'https://malo.example/robar']);
+check($r === '/equipo/tareas/' . $tM . '#conversacion', 'una dirección de vuelta que no es la bandeja se ignora');
+(new P\ComentarioService($pdo))->crear($c1, 'tarea', $tOculta, 'equipo', $ana, 'Ana', 'Esto no lo ve el cliente');
+(new P\ComentarioService($pdo))->crear($c3, 'tarea', $tAjena, 'equipo', $ana, 'Ana', 'Mensaje de otro cliente');
+
+$_SESSION[P\PortalSession::CONTACTO] = $contacto;
+$convC = $ms->conversaciones('contacto', $contacto, $c1);
+$porClave = array_column($convC, null, 'clave');
+check(isset($porClave['tarea:' . $tM]) && $porClave['tarea:' . $tM]['sin_leer'] === 2 && !isset($porClave['tarea:' . $tOculta]) && !isset($porClave['tarea:' . $tAjena]), 'el cliente ve sus conversaciones (no las tareas internas ni las de otro cliente) con lo sin leer');
+$_GET = [];
+[$html] = $mp->correr('lista');
+check(str_contains($html, 'Fotos para la web') && !str_contains($html, '¿nos mandas las fotos?') && str_contains($html, 'Ana:</span> Otro'), 'la bandeja lista la conversación con su último mensaje');
+check(preg_match('#Mensajes</span>\s*<span class="chip chip-brand">(\d+)</span>#', $html, $mm) === 1 && (int) $mm[1] >= 1, 'el menú muestra cuántas conversaciones tienen mensajes nuevos');
+$_GET = ['c' => 'tarea:' . $tAjena];
+[$html] = $mp->correr('lista');
+check(!str_contains($html, 'Mensaje de otro cliente') && str_contains($html, 'Elige una conversación'), 'no se puede abrir la conversación de otro cliente cambiando la URL');
+$_GET = ['c' => 'tarea:' . $tM];
+[$html] = $mp->correr('lista');
+check(str_contains($html, 'Hola Clara, ¿nos mandas las fotos?') && str_contains($html, 'action="/portal/tareas/' . $tM . '/comentarios"') && str_contains($html, 'name="volver"'), 'al abrirla se ve el hilo y la caja para responder ahí mismo');
+check(array_column($ms->conversaciones('contacto', $contacto, $c1), null, 'clave')['tarea:' . $tM]['sin_leer'] === 0, 'abrirla la marca como leída');
+[, $r] = $mp->correr('comentar', [$tM], ['_csrf' => P\PortalSession::csrf(), 'cuerpo' => 'Van mañana', 'volver' => '/portal/mensajes?c=tarea%3A' . $tM]);
+check($r === '/portal/mensajes?c=tarea:' . $tM && count($ms->hilo('tarea', $tM)) === 3, 'el cliente responde desde la bandeja y vuelve a la conversación');
+$convA = array_column($ms->conversaciones('equipo', $ana, null), null, 'clave');
+check($convA['tarea:' . $tM]['sin_leer'] === 1, 'para el equipo, la respuesta del cliente queda sin leer');
+
+$ts->cambiarEstado($tM, 'hecha');
+$x = array_column($ms->conversaciones('contacto', $contacto, $c1), null, 'clave')['tarea:' . $tM];
+check($x['terminada'] && $x['archivada'], 'tarea lista y sin nada por leer: la conversación pasa a Archivadas');
+check(!array_column($ms->conversaciones('equipo', $ana, null), null, 'clave')['tarea:' . $tM]['archivada'], 'para quien tiene algo sin leer sigue en Activas');
+sleep(1);
+(new P\ComentarioService($pdo))->crear($c1, 'tarea', $tM, 'equipo', $ana, 'Ana', 'Una cosa más');
+check(!array_column($ms->conversaciones('contacto', $contacto, $c1), null, 'clave')['tarea:' . $tM]['archivada'], 'si alguien vuelve a escribir, vuelve a Activas');
+$_GET = ['t' => 'archivadas'];
+[$html] = $mp->correr('lista');
+check(str_contains($html, 'Archivadas') && !str_contains($html, 'Fotos para la web'), 'la pestaña Archivadas no muestra lo que volvió a moverse');
+$_GET = [];
+
+// El panel: sólo lo de sus clientes; abrir en el panel marca leído
+$_SESSION[P\EquipoController::SESION] = $ana;
+$convA = array_column($ms->conversaciones('equipo', $ana, null), null, 'clave');
+$ctlM = new EquipoPrueba($ctx);
+$_GET = ['c' => 'tarea:' . $tAjena];
+[$html] = $ctlM->correr(fn() => $ctlM->mensajes());
+check(!str_contains($html, 'Mensaje de otro cliente'), 'en el panel, cada persona ve sólo las conversaciones de sus clientes');
+$_GET = ['c' => 'tarea:' . $tM];
+[$html] = $ctlM->correr(fn() => $ctlM->mensajes());
+check(str_contains($html, 'Van mañana') && str_contains($html, 'action="/equipo/tareas/' . $tM . '/comentarios"') && str_contains($html, 'name="avisar"'), 'el panel muestra el hilo con la respuesta y la opción de avisar al cliente');
+check(array_column($ms->conversaciones('equipo', $ana, null), null, 'clave')['tarea:' . $tM]['sin_leer'] === 0, 'y lo marca como leído para esa persona');
+$_GET = [];
+$_SESSION[P\EquipoController::SESION] = $coord;
+check(isset(array_column($ms->conversaciones('equipo', $coord, null), null, 'clave')['tarea:' . $tAjena]), 'Coordinación ve las conversaciones de todos los clientes');
+
 seccion('Ingreso: piezas que encajan y favicon');
 unset($_SESSION[P\PortalSession::CONTACTO]);
 P\Notifier::$ahora = null;

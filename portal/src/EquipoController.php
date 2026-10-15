@@ -186,9 +186,16 @@ class EquipoController
             $leads = [];
         }
 
+        try {
+            $nMensajes = MensajeService::sinLeer($this->conversaciones($u));
+        } catch (\Throwable) {
+            $nMensajes = 0;
+        }
+
         return [
             'fmt'        => new Fmt(),
             'nSolicitudes' => $nSolicitudes,
+            'nMensajes'  => $nMensajes,
             'favicon'    => (new MarcaService($this->pdo()))->urlIcono(),
             'hayLeads'   => (int) ($leads['np'] ?? 0) > 0,
             'nLeads'     => (int) ($leads['nl'] ?? 0),
@@ -795,6 +802,63 @@ class EquipoController
     }
 
     /** Todos los proyectos que ve el usuario, con su avance, filtrados por estado. */
+    /** Conversaciones que esta persona del equipo ve (según sus clientes y proyectos). */
+    protected function conversaciones(array $u): array
+    {
+        $acc = $this->acceso($u);
+        $proy = $acc->proyectoIds();
+        $puede = null;
+        if ($proy !== null) {
+            $proy = array_flip($proy);
+            $cli = array_flip($acc->clienteIds() ?? []);
+            $puede = fn(array $x): bool => $x['proyecto_id'] !== '' ? isset($proy[$x['proyecto_id']]) : isset($cli[$x['cliente_id']]);
+        }
+        return (new MensajeService($this->pdo()))->conversaciones('equipo', (string) $u['id'], null, $puede);
+    }
+
+    /** Bandeja de mensajes del panel: lo que escriben los clientes, con respuesta en el mismo lugar. */
+    public function mensajes(): void
+    {
+        $u = $this->requerirUsuario();
+        $svc = new MensajeService($this->pdo());
+        $todas = $this->conversaciones($u);
+        $pestana = ($_GET['t'] ?? '') === 'archivadas' ? 'archivadas' : 'activas';
+        $grupo = array_values(array_filter($todas, fn(array $x): bool => $x['archivada'] === ($pestana === 'archivadas')));
+        $pref = $this->ajustes()->todos('equipo', (string) $u['id']);
+        $pag = Paginacion::desdeGet('/equipo/mensajes', count($grupo), (int) ($pref['por_pagina'] ?? 0), ['recientes' => 'Más nuevos primero']);
+        if (($por = Paginacion::elegido()) !== null) {
+            $this->ajustes()->set('equipo', (string) $u['id'], 'por_pagina', (string) $por);
+        }
+        $sel = null;
+        foreach ($todas as $x) {
+            if ($x['clave'] === (string) ($_GET['c'] ?? '')) {
+                $sel = $x;
+                break;
+            }
+        }
+        if ($sel !== null) {
+            (new NovedadesService($this->pdo()))->marcar((string) $u['id'], $sel['tipo'], $sel['id']);
+            $sel['sin_leer'] = 0;
+        }
+        $urls = ['tarea' => '/equipo/tareas/', 'contenido' => '/equipo/contenidos/', 'solicitud' => '/equipo/solicitudes/'];
+        $this->ctx->view('templates/equipo/mensajes.latte', $this->contexto($u, 'mensajes', [
+            'base'        => '/equipo/mensajes',
+            'pestana'     => $pestana,
+            'nActivas'    => count(array_filter($todas, fn(array $x): bool => !$x['archivada'])),
+            'nArchivadas' => count(array_filter($todas, fn(array $x): bool => $x['archivada'])),
+            'conv'        => $svc->conUltimo($pag->cortar($grupo)),
+            'pag'         => $pag,
+            'sel'         => $sel,
+            'hilo'        => $sel !== null ? $svc->hilo($sel['tipo'], $sel['id']) : [],
+            'lado'        => 'equipo',
+            'yoId'        => (string) $u['id'],
+            'accion'      => $sel !== null ? $urls[$sel['tipo']] . $sel['id'] . '/comentarios' : null,
+            'urlCosa'     => $sel !== null ? $urls[$sel['tipo']] . $sel['id'] : '',
+            'csrfCampo'   => '_csrf_token',
+            'equipo'      => true,
+        ]));
+    }
+
     public function proyectos(): void
     {
         $u   = $this->requerirUsuario();

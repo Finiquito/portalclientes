@@ -1,0 +1,41 @@
+{* Paginación compartida (portal del cliente y panel del equipo). Parámetros: pag (Paginacion), ordenSelector (bool, por defecto sí). *}
+{var $conOrden = ($ordenSelector ?? true) && count($pag->ordenes) > 1}
+{if $pag->total > 0}
+<div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 px-1 py-3 text-sm">
+    <p class="text-muted">
+        {if $pag->paginas > 1}Mostrando <span class="font-semibold text-ink">{$pag->desde}–{$pag->hasta}</span> de <span class="font-semibold text-ink">{$pag->total}</span>
+        {else}{$pag->total === 1 ? '1 en total' : $pag->total . ' en total'}{/if}
+    </p>
+    {if $pag->total > \TypeDock\Plugin\Portal\Paginacion::TAMANOS[0] || $conOrden}
+    <form method="get" class="flex flex-wrap items-center gap-2" data-paginacion>
+        {foreach $pag->ocultos() as $k => $v}<input type="hidden" name="{$k}" value="{$v}">{/foreach}
+        {if $pag->total > \TypeDock\Plugin\Portal\Paginacion::TAMANOS[0]}
+        <label class="flex items-center gap-2 text-muted">Ver
+            <select name="por" class="field w-auto! py-1.5! pr-8! text-sm" onchange="this.form.submit()">
+                {foreach \TypeDock\Plugin\Portal\Paginacion::TAMANOS as $t}<option value="{$t}" {if $pag->porPagina === $t}selected{/if}>{$t}</option>{/foreach}
+            </select>
+        </label>
+        {else}<input type="hidden" name="por" value="{$pag->porPagina}">{/if}
+        {if $conOrden}
+        <label class="flex items-center gap-2 text-muted">Orden
+            <select name="orden" class="field w-auto! py-1.5! pr-8! text-sm" onchange="this.form.submit()">
+                {foreach $pag->ordenes as $k => $et}<option value="{$k}" {if $pag->orden === $k}selected{/if}>{$et}</option>{/foreach}
+            </select>
+        </label>
+        {/if}
+        <noscript><button type="submit" class="btn btn-ghost btn-sm">Aplicar</button></noscript>
+    </form>
+    {/if}
+</div>
+{if $pag->paginas > 1}
+<nav class="flex flex-wrap items-center justify-center gap-1.5 px-1 pb-3 text-sm" aria-label="Páginas">
+    {if $pag->pagina > 1}<a href="{$pag->pag($pag->pagina - 1)}" class="btn btn-ghost btn-sm" rel="prev"><span aria-hidden="true">‹</span> Anterior</a>{/if}
+    {foreach $pag->numeros() as $n}
+        {if $n === null}<span class="px-1 text-muted" aria-hidden="true">…</span>
+        {elseif $n === $pag->pagina}<span class="btn btn-primary btn-sm min-w-9" aria-current="page">{$n}</span>
+        {else}<a href="{$pag->pag($n)}" class="btn btn-ghost btn-sm min-w-9" aria-label="Página {$n}">{$n}</a>{/if}
+    {/foreach}
+    {if $pag->pagina < $pag->paginas}<a href="{$pag->pag($pag->pagina + 1)}" class="btn btn-ghost btn-sm" rel="next">Siguiente <span aria-hidden="true">›</span></a>{/if}
+</nav>
+{/if}
+{/if}

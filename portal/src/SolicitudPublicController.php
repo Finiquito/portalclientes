@@ -222,7 +222,7 @@ class SolicitudPublicController extends PortalPublicController
             'preheader' => mb_substr($texto, 0, 110), 'boton' => 'Abrir la solicitud',
         ]);
         PortalSession::flash('ok', 'Comentario enviado.');
-        $this->redirectTo($vol . '#conversacion');
+        $this->redirectTo(MensajeService::destino('/portal/mensajes', '/' . $vol . '#conversacion'));
     }
 
     protected function ia(): IaService

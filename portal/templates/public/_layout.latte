@@ -11,7 +11,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
-    <link rel="stylesheet" href="/plugins/portal/assets/portal.css?v=31">
+    <link rel="stylesheet" href="/plugins/portal/assets/portal.css?v=32">
     <script>{$portalBoot|noescape}</script>
 </head>
 <body class="min-h-dvh bg-bg font-sans text-ink antialiased">
@@ -20,6 +20,7 @@
 
 {var $items = [
     ['inicio',    '/portal',           'i-home',     'Inicio'],
+    ['mensajes',  '/portal/mensajes',  'i-chat',     'Mensajes'],
     ['tareas',    '/portal/tareas',    'i-tasks',    'Tareas'],
     ['archivos',  '/portal/archivos',  'i-folder',   'Archivos'],
     ['reuniones', '/portal/reuniones', 'i-calendar', 'Reuniones'],
@@ -27,7 +28,7 @@
     ['solicitudes', '/portal/solicitudes', 'i-plus', 'Solicitudes'],
 ]}
 {if $hayRevisiones}
-    {var $items = [$items[0], $items[1], ['revisiones', '/portal/entregas', 'i-eye', 'Revisiones'], $items[2], $items[3], $items[4], $items[5]]}
+    {var $items = [$items[0], $items[1], $items[2], ['revisiones', '/portal/entregas', 'i-eye', 'Revisiones'], $items[3], $items[4], $items[5], $items[6]]}
 {/if}
 {if !empty($verLeads)}
     {var $items = array_merge($items, [['leads', '/portal/contactos-ganados', 'i-users', 'Contactos ganados']])}
@@ -60,6 +61,10 @@
             {/if}
         </a>
         <div class="flex items-center gap-1.5">
+            <a href="/portal/mensajes" class="btn btn-ghost relative min-h-10! w-10! px-0!" aria-label="Mensajes{if ($mensajesSinLeer ?? 0) > 0} ({$mensajesSinLeer} sin leer){/if}" {if $nav === 'mensajes'}aria-current="page"{/if}>
+                <svg class="size-5"><use href="#i-chat"/></svg>
+                {if ($mensajesSinLeer ?? 0) > 0}<span class="absolute -right-1 -top-1 flex min-w-4 items-center justify-center rounded-full bg-brand px-1 text-[0.625rem] font-bold leading-4 text-brand-fg">{$mensajesSinLeer}</span>{/if}
+            </a>
             <a href="/portal/ayuda" class="btn btn-ghost min-h-10! w-10! px-0!" aria-label="¿Cómo funciona el portal?"><svg class="size-5"><use href="#i-help"/></svg></a>
             <button type="button" data-tema-toggle class="btn btn-ghost min-h-10! w-10! px-0!" aria-label="Cambiar entre tema claro y oscuro">
                 <svg class="size-5 dark:hidden"><use href="#i-moon"/></svg>
@@ -88,7 +93,7 @@
                         <a href="{$it[1]}" class="nav-item" {if $nav === $it[0]}aria-current="page"{/if}>
                             <svg class="size-5 flex-none"><use href="#{$it[2]}"/></svg>
                             <span class="flex-1">{$it[3]}</span>
-                            {var $n = $it[0] === 'tareas' ? $pendientes : ($it[0] === 'revisiones' ? $porRevisar : ($it[0] === 'reuniones' ? $proximasReuniones : ($it[0] === 'solicitudes' ? $solicitudesCliente : ($it[0] === 'leads' ? ($leadsNuevos ?? 0) : 0))))}
+                            {var $n = $it[0] === 'tareas' ? $pendientes : ($it[0] === 'revisiones' ? $porRevisar : ($it[0] === 'reuniones' ? $proximasReuniones : ($it[0] === 'solicitudes' ? $solicitudesCliente : ($it[0] === 'leads' ? ($leadsNuevos ?? 0) : ($it[0] === 'mensajes' ? ($mensajesSinLeer ?? 0) : 0)))))}
                             {if $n > 0}<span class="chip chip-brand">{$n}</span>{/if}
                         </a>
                     {/foreach}
@@ -142,7 +147,7 @@
 <nav class="pb-safe fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface/90 backdrop-blur-xl lg:hidden" aria-label="Navegación">
     <div class="mx-auto flex max-w-xl">
         {foreach $items as $it}
-            {continueIf $it[0] === 'solicitudes' || $it[0] === 'archivos' || $it[0] === 'leads'}{* en el celular, Archivos y Contactos ganados se abren desde Inicio *}
+            {continueIf $it[0] === 'solicitudes' || $it[0] === 'archivos' || $it[0] === 'leads' || $it[0] === 'mensajes'}{* en el celular, Archivos y Contactos ganados se abren desde Inicio *}
             <a href="{$it[1]}" class="tab-item" {if $nav === $it[0]}aria-current="page"{/if}>
                 <span class="relative">
                     <svg class="size-[1.4rem]"><use href="#{$it[2]}"/></svg>
