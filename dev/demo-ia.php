@@ -12,6 +12,24 @@ final class DemoIa extends P\IaService
 {
     public function activa(): bool { return true; }
 
+    /** Reunión: propuesta fija, escrita para la transcripción del video. */
+    protected function llamar(array $cuerpo): array
+    {
+        usleep(3000000);
+        $d = static fn(int $n): string => (new DateTimeImmutable("+{$n} days"))->format('Y-m-d');
+        return ['content' => [['type' => 'tool_use', 'name' => 'registrar_reunion', 'input' => [
+            'resumen' => "Revisamos la grilla de noviembre. Josefa aprobó el carrusel de masa madre y pidió sumar el horario nuevo de los domingos. La promo de café con berlín se mueve a la segunda semana para no chocar con el Día del Pan. Para el reel del madrugón, el equipo grabará el jueves a las 5:00 en el local.",
+            'acuerdos' => ['Carrusel de masa madre aprobado', 'Promo café + berlín pasa a la segunda semana', 'Grabación del reel: jueves 5:00 en el local'],
+            'tareas' => [
+                ['titulo' => 'Enviar el horario nuevo de los domingos', 'responsable' => 'cliente', 'vence' => $d(2), 'visible_cliente' => true],
+                ['titulo' => 'Ajustar la grilla con la promo en la segunda semana', 'responsable' => 'equipo', 'vence' => $d(3), 'visible_cliente' => true],
+                ['titulo' => 'Coordinar la grabación del jueves a las 5:00', 'responsable' => 'equipo', 'vence' => $d(4), 'visible_cliente' => true],
+            ],
+            'proxima_reunion' => ['fecha_hora' => $d(7) . 'T10:00', 'titulo' => 'Revisión de diciembre'],
+            'analisis_interno' => 'Josefa está preocupada por las ventas de la tarde; conviene proponer una segunda promo.',
+        ]]]];
+    }
+
     public function analizarGrilla(array $bloques, string $contexto = ''): array
     {
         usleep(3500000);
@@ -28,6 +46,11 @@ final class DemoIa extends P\IaService
     }
 }
 
+final class DemoReunion extends P\ReunionAdminController
+{
+    protected function ia(): P\IaService { return new DemoIa(portal_dev_pdo()); }
+}
+
 final class DemoGrilla extends P\GrillaAdminController
 {
     protected function ia(): P\IaService { return new DemoIa($this->pdo()); }
@@ -36,6 +59,8 @@ final class DemoGrilla extends P\GrillaAdminController
 function portal_dev_demo_ia(TypeDock\Core\PluginContext $ctx): void
 {
     $eq = fn() => new P\EquipoGestion($ctx);
+    Flight::route('GET /equipo/reuniones/@id', fn(string $id) => $eq()->gestionar(DemoReunion::class, 'edit', [$id], 'reunion'));
+    Flight::route('POST /equipo/reuniones/@id', fn(string $id) => $eq()->gestionar(DemoReunion::class, 'update', [$id], 'reunion'));
     Flight::route('POST /equipo/entregas/@id/grilla', fn(string $id) => $eq()->gestionar(DemoGrilla::class, 'subir', [$id], 'entrega'));
     Flight::route('GET /equipo/entregas/@id/grilla/@t', fn(string $id, string $t) => $eq()->gestionar(DemoGrilla::class, 'ver', [$id, $t], 'entrega'));
     Flight::route('POST /equipo/entregas/@id/grilla/@t/tanda/@n', fn(string $id, string $t, string $n) => $eq()->gestionar(DemoGrilla::class, 'tanda', [$id, $t, $n], 'entrega'));
