@@ -41,7 +41,7 @@ class ActividadAdminController
 
         // Por cliente y, si la novedad es de un proyecto, también por proyecto (alguien puede ver
         // solo uno de los proyectos de un cliente).
-        $todos = $this->ui->filtrar($svc->recientes(400), 'cliente_id', 'cliente');
+        $todos = $this->ui->filtrar($svc->recientes(2000), 'cliente_id', 'cliente');
         $deProyecto = array_values(array_filter($todos, fn($a) => !empty($a['proyecto_id'])));
         $proyOk = array_flip(array_column($this->ui->filtrar($deProyecto, 'proyecto_id', 'proyecto'), 'id'));
         $todos = array_values(array_filter($todos, fn($a) => empty($a['proyecto_id']) || isset($proyOk[$a['id']])));
@@ -62,8 +62,11 @@ class ActividadAdminController
         };
         $nuevas = count(array_filter($todos, fn($a) => $a['actor_tipo'] === 'contacto' && $vista !== '' && $a['created_at'] > $vista));
 
+        $pag = Paginacion::delEquipo($this->pdo(), $this->ui->autorId(), $this->ui->url('actividad'), count($items));
+        $items = $pag->cortar($pag->sentido($items));
         $this->ui->view('actividad/index.latte', [
-            'filas'          => array_slice($items, 0, 120),
+            'pag'            => $pag,
+            'filas'          => $items,
             'nuevas'         => $vista === '' ? 0 : $nuevas,
             'vistaAnterior'  => $vista,
             'clientes'       => $clientes,

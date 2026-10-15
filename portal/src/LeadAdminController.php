@@ -47,7 +47,10 @@ class LeadAdminController
         $base = $this->ui->filtrar($svc->lista(['proyecto_id' => $f->get('proyecto'), 'q' => $f->get('q')]), 'proyecto_id');
         $leads = $f->get('estado') === '' ? $base : array_values(array_filter($base, fn(array $l): bool => $l['estado'] === $f->get('estado')));
 
+        $pag = Paginacion::delEquipo($this->pdo(), $this->ui->autorId(), $this->ui->url('leads'), count($leads));
+        $leads = $pag->cortar($pag->sentido($leads));
         $this->ui->view('leads/index.latte', [
+            'pag'         => $pag,
             'mcProyecto'  => $f->get('proyecto') !== '' && $svc->mailchimp($f->get('proyecto')) !== null,
             'mcEstados'   => MailchimpConsulta::ESTADOS,
             'leads'       => $leads,

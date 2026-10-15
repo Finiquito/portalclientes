@@ -60,8 +60,33 @@ class LeadPublicController extends PortalPublicController
         $base = $svc->lista(['cliente_id' => $clienteId, 'proyecto_id' => $f['proyecto_id']]);
         $leads = $svc->lista(['cliente_id' => $clienteId] + $f);
 
+        // Orden: el selector o un clic en el encabezado de la tabla (otro clic lo da vuelta).
+        $pag = Paginacion::delContacto($this->pdo(), (string) $c['id'], '/portal/contactos-ganados', count($leads), [
+            'llego_desc'  => 'Más nuevos primero',
+            'llego_asc'   => 'Más antiguos primero',
+            'nombre_asc'  => 'Nombre (A a Z)',
+            'nombre_desc' => 'Nombre (Z a A)',
+            'estado_asc'  => 'Estado (nuevos primero)',
+            'estado_desc' => 'Estado (perdidos primero)',
+            'paso_asc'    => 'Próximo paso (el más cercano)',
+            'paso_desc'   => 'Próximo paso (el más lejano)',
+        ]);
+        $orden = array_flip(array_keys(LeadService::ESTADOS));
+        $nombre = fn(array $l): string => mb_strtolower((string) $l['nombre']);
+        $paso = fn(array $l): string => (string) ($l['proximo_paso_fecha'] ?: '9999-12-31');
+        $leads = $pag->ordenar($leads, [
+            'llego_asc'   => fn($a, $b) => strcmp((string) $a['created_at'], (string) $b['created_at']),
+            'nombre_asc'  => fn($a, $b) => strcmp($nombre($a), $nombre($b)),
+            'nombre_desc' => fn($a, $b) => strcmp($nombre($b), $nombre($a)),
+            'estado_asc'  => fn($a, $b) => [$orden[$a['estado']] ?? 9, $b['created_at']] <=> [$orden[$b['estado']] ?? 9, $a['created_at']],
+            'estado_desc' => fn($a, $b) => [$orden[$b['estado']] ?? 9, $b['created_at']] <=> [$orden[$a['estado']] ?? 9, $a['created_at']],
+            'paso_asc'    => fn($a, $b) => strcmp($paso($a), $paso($b)),
+            'paso_desc'   => fn($a, $b) => strcmp($paso($b) === '9999-12-31' ? '' : $paso($b), $paso($a) === '9999-12-31' ? '' : $paso($a)),
+        ]);
+
         $this->ctx->view('templates/public/leads.latte', $this->contexto($c, 'leads') + [
-            'leads'     => $leads,
+            'pag'       => $pag,
+            'leads'     => $pag->cortar($leads),
             'f'         => $f,
             'conteo'    => LeadService::conteo($base),
             'total'     => count($base),

@@ -94,7 +94,10 @@ class EntregaAdminController
         $proyectos = $this->ui->filtrar((new ProyectoService($this->pdo()))->listAll(), 'id');
         usort($proyectos, fn($a, $b) => [$a['cliente_nombre'], $a['nombre']] <=> [$b['cliente_nombre'], $b['nombre']]);
 
+        $pag = Paginacion::delEquipo($this->pdo(), $this->ui->autorId(), $this->ui->url('entregas'), count($lista));
+        $lista = $pag->cortar($pag->sentido($lista));
         $this->ui->view('entregas/index.latte', [
+            'pag'        => $pag,
             'entregas'   => $lista,
             'filtros'    => $f,
             'conteos'    => $conteos,

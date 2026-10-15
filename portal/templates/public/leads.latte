@@ -69,12 +69,12 @@
             <table class="w-full border-collapse text-sm">
                 <thead>
                     <tr class="text-left text-xs font-bold text-muted">
-                        <th class="whitespace-nowrap border-b border-line px-3 py-2.5">Contacto</th>
+                        {var $sc = $pag->sentidoColumna('nombre')}<th class="whitespace-nowrap border-b border-line px-3 py-2.5" {if $sc}aria-sort="{$sc === 'asc' ? 'ascending' : 'descending'}"{/if}><a href="{$pag->urlColumna('nombre')}" class="inline-flex items-center gap-1 hover:text-ink {$sc ? 'text-ink' : ''}">Contacto<span aria-hidden="true" class="{$sc ? '' : 'opacity-30'}">{$sc === 'asc' ? '↑' : ($sc === 'desc' ? '↓' : '↕')}</span></a></th>
                         <th class="whitespace-nowrap border-b border-line px-3 py-2.5">Campaña</th>
-                        <th class="whitespace-nowrap border-b border-line px-3 py-2.5">Estado</th>
+                        {var $sc = $pag->sentidoColumna('estado')}<th class="whitespace-nowrap border-b border-line px-3 py-2.5" {if $sc}aria-sort="{$sc === 'asc' ? 'ascending' : 'descending'}"{/if}><a href="{$pag->urlColumna('estado')}" class="inline-flex items-center gap-1 hover:text-ink {$sc ? 'text-ink' : ''}">Estado<span aria-hidden="true" class="{$sc ? '' : 'opacity-30'}">{$sc === 'asc' ? '↑' : ($sc === 'desc' ? '↓' : '↕')}</span></a></th>
                         <th class="whitespace-nowrap border-b border-line px-3 py-2.5">Mailchimp</th>
-                        <th class="whitespace-nowrap border-b border-line px-3 py-2.5">Llegó</th>
-                        <th class="whitespace-nowrap border-b border-line px-3 py-2.5">Próximo paso</th>
+                        {var $sc = $pag->sentidoColumna('llego')}<th class="whitespace-nowrap border-b border-line px-3 py-2.5" {if $sc}aria-sort="{$sc === 'asc' ? 'ascending' : 'descending'}"{/if}><a href="{$pag->urlColumna('llego')}" class="inline-flex items-center gap-1 hover:text-ink {$sc ? 'text-ink' : ''}">Llegó<span aria-hidden="true" class="{$sc ? '' : 'opacity-30'}">{$sc === 'asc' ? '↑' : ($sc === 'desc' ? '↓' : '↕')}</span></a></th>
+                        {var $sc = $pag->sentidoColumna('paso')}<th class="whitespace-nowrap border-b border-line px-3 py-2.5" {if $sc}aria-sort="{$sc === 'asc' ? 'ascending' : 'descending'}"{/if}><a href="{$pag->urlColumna('paso')}" class="inline-flex items-center gap-1 hover:text-ink {$sc ? 'text-ink' : ''}">Próximo paso<span aria-hidden="true" class="{$sc ? '' : 'opacity-30'}">{$sc === 'asc' ? '↑' : ($sc === 'desc' ? '↓' : '↕')}</span></a></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -136,6 +136,7 @@
                 </li>
             {/foreach}
         </ul>
+        <div class="border-t border-line px-4">{include '../_paginacion.latte', pag: $pag}</div>
     {/if}
 </section>
 {/block}

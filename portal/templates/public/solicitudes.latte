@@ -52,6 +52,7 @@
                 </li>
             {/foreach}
         </ul>
+        {if $g[0] === 'Cerradas'}<div class="border-t border-line px-4">{include '../_paginacion.latte', pag: $pag}</div>{/if}
     {/if}
 </section>
 {/if}

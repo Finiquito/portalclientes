@@ -314,3 +314,11 @@ a.pa-g-hito { cursor: pointer; text-decoration: none !important; }
 }
 .pa-files > li, .pa-file { min-width: 0; }   /* en una grilla, un título largo no ensancha la fila */
 [hidden] { display: none !important; }   /* que ninguna clase con display le gane al atributo hidden */
+
+/* Paginación de listas (admin y panel): «Mostrando 21–40 de 134 · Ver 20 · Invertir» y los números. */
+.pa-paginacion { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .6rem 1rem; margin: .9rem 0 0; font-size: .8125rem; }
+.pa-paginacion .pa-selects { gap: .45rem; }
+.pa-paginas { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: .35rem; margin: .7rem 0 0; }
+.pa-paginas .pa-pill { min-width: 2.25rem; justify-content: center; }
+.pa-orden-col { color: inherit !important; text-decoration: none !important; white-space: nowrap; }
+.pa-orden-col:hover { text-decoration: underline !important; }

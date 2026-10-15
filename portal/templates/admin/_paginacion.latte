@@ -1,0 +1,27 @@
+{* Paginación de las listas del admin y del panel. Parámetro: pag (Paginacion). *}
+{if $pag->total > 0}
+<div class="pa-paginacion">
+    <span class="pa-muted">{if $pag->paginas > 1}Mostrando <strong>{$pag->desde}–{$pag->hasta}</strong> de <strong>{$pag->total}</strong>{else}{$pag->total === 1 ? '1 en total' : $pag->total . ' en total'}{/if}</span>
+    <form method="get" class="pa-selects">
+        {foreach $pag->ocultos() as $k => $v}<input type="hidden" name="{$k}" value="{$v}">{/foreach}
+        {if $pag->total > \TypeDock\Plugin\Portal\Paginacion::TAMANOS[0]}
+        <label for="pag-por">Ver</label>
+        <select id="pag-por" name="por" class="form-input" style="width:auto" onchange="this.form.submit()">
+            {foreach \TypeDock\Plugin\Portal\Paginacion::TAMANOS as $t}<option value="{$t}" {if $pag->porPagina === $t}selected{/if}>{$t} por página</option>{/foreach}
+        </select>
+        <noscript><button type="submit" class="btn btn-sm">Ver</button></noscript>
+        {/if}
+        {if $pag->total > 1}<a href="{$pag->urlInvertir()}" class="pa-pill" title="Dar vuelta el orden de la lista" {if $pag->inverso}aria-current="true"{/if}>⇅ {$pag->inverso ? 'Orden invertido' : 'Invertir orden'}</a>{/if}
+    </form>
+</div>
+{if $pag->paginas > 1}
+<nav class="pa-paginas" aria-label="Páginas">
+    {if $pag->pagina > 1}<a href="{$pag->pag($pag->pagina - 1)}" class="pa-pill" rel="prev">‹ Anterior</a>{/if}
+    {foreach $pag->numeros() as $n}
+        {if $n === null}<span class="pa-muted" aria-hidden="true">…</span>
+        {else}<a href="{$pag->pag($n)}" class="pa-pill" {if $n === $pag->pagina}aria-current="true"{/if} aria-label="Página {$n}">{$n}</a>{/if}
+    {/foreach}
+    {if $pag->pagina < $pag->paginas}<a href="{$pag->pag($pag->pagina + 1)}" class="pa-pill" rel="next">Siguiente ›</a>{/if}
+</nav>
+{/if}
+{/if}

@@ -186,7 +186,10 @@ class ReunionAdminController
         $proyectos = $this->proyectos();
         usort($proyectos, fn($a, $b) => [$a['cliente_nombre'], $a['nombre']] <=> [$b['cliente_nombre'], $b['nombre']]);
 
+        $pag = Paginacion::delEquipo($this->pdo(), $this->ui->autorId(), $this->ui->url('reuniones'), count($lista));
+        $lista = $pag->cortar($pag->sentido($lista));
         $this->ui->view('reuniones/index.latte', [
+            'pag'           => $pag,
             'reuniones'     => $lista,
             'filtros'       => $f,
             'conteos'       => $conteos,

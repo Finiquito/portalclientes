@@ -651,10 +651,18 @@ class PortalPublicController
             $filtro = 'todas';
         }
 
+        $pag = Paginacion::delContacto($this->pdo(), (string) $c['id'], '/portal/tareas', count($grupos[$filtro]), [
+            'vence' => 'Por fecha de entrega', 'recientes' => 'Más nuevas primero', 'antiguas' => 'Más antiguas primero',
+        ]);
+        $lista = $pag->ordenar($grupos[$filtro], [
+            'recientes' => fn($a, $b) => strcmp((string) $b['created_at'], (string) $a['created_at']),
+            'antiguas'  => fn($a, $b) => strcmp((string) $a['created_at'], (string) $b['created_at']),
+        ]);
         $this->ctx->view('templates/public/tareas.latte', $ctx + [
             'filtro'   => $filtro,
             'grupos'   => $grupos,
-            'lista'    => $grupos[$filtro],
+            'pag'      => $pag,
+            'lista'    => $pag->cortar($lista),
             'multiples' => count(array_unique(array_column($todas, 'proyecto_id'))) > 1,
         ]);
     }
@@ -946,9 +954,12 @@ class PortalPublicController
             $grupos[ReunionService::estado($r)][] = $r;
         }
         $cid = (string) $c['cliente_id'];
+        $pag = Paginacion::delContacto($this->pdo(), (string) $c['id'], '/portal/reuniones', count($grupos['pasada']));
+        $pasadas = $pag->orden === 'antiguos' ? array_reverse($grupos['pasada']) : $grupos['pasada'];
         $this->ctx->view('templates/public/reuniones.latte', $this->contexto($c, 'reuniones') + [
+            'pag'        => $pag,
             'proximas'   => $this->enHoraDelCliente(array_reverse($grupos['proxima']), $cid),   // la más cercana primero
-            'anteriores' => $this->enHoraDelCliente($grupos['pasada'], $cid),                   // la más reciente primero
+            'anteriores' => $this->enHoraDelCliente($pag->cortar($pasadas), $cid),              // la más reciente primero (o al revés)
             'archivadas' => $this->enHoraDelCliente($grupos['archivada'], $cid),
             'diasArchivo' => ReunionService::DIAS_ARCHIVO,
         ]);

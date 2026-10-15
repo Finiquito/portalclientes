@@ -35,7 +35,10 @@ class SolicitudPublicController extends PortalPublicController
             || ($s['estado'] === 'en_curso' && $s['tarea_estado'] !== 'hecha')));
         $cerradas = array_values(array_filter($todas, fn(array $s): bool => !in_array($s, $abiertas, true)));
 
+        $pag = Paginacion::delContacto($this->pdo(), (string) $c['id'], '/portal/solicitudes', count($cerradas));
+        $cerradas = $pag->cortar($pag->orden === 'antiguos' ? array_reverse($cerradas) : $cerradas);
         $this->ctx->view('templates/public/solicitudes.latte', $this->contexto($c, 'solicitudes') + [
+            'pag'      => $pag,
             'marcas'   => (new NovedadesService($this->pdo()))->solicitudes((string) $c['cliente_id'], (string) $c['id']),
             'abiertas' => $abiertas,
             'cerradas' => $cerradas,

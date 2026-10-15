@@ -17,6 +17,8 @@ final class Paginacion
 
     public readonly int $pagina;
     public readonly int $paginas;
+    /** ?dir=inv: la lista va al revés de su orden normal (más antiguos primero, Z a A…). */
+    public readonly bool $inverso;
     public readonly int $desde;
     public readonly int $hasta;
 
@@ -35,6 +37,44 @@ final class Paginacion
         $this->pagina  = min(max(1, $pagina), $this->paginas);
         $this->desde   = $total === 0 ? 0 : ($this->pagina - 1) * $porPagina + 1;
         $this->hasta   = min($total, $this->pagina * $porPagina);
+        $this->inverso = ($_GET['dir'] ?? '') === 'inv';
+    }
+
+    /**
+     * Para el panel y el admin: cuántos por página se recuerda por persona del equipo
+     * (en el admin, que no tiene persona, por sesión).
+     */
+    public static function delEquipo(\PDO $pdo, ?string $usuarioId, string $base, int $total, array $ordenes = []): self
+    {
+        $aj = new AjustesService($pdo);
+        $guardado = $usuarioId !== null ? (int) $aj->get('equipo', $usuarioId, 'por_pagina') : (int) ($_SESSION['portal_por_pagina'] ?? 0);
+        if (($por = self::elegido()) !== null && $por !== $guardado) {
+            $usuarioId !== null ? $aj->set('equipo', $usuarioId, 'por_pagina', (string) $por) : $_SESSION['portal_por_pagina'] = $por;
+        }
+        return self::desdeGet($base, $total, $guardado, $ordenes);
+    }
+
+    /** Para el portal del cliente: se recuerda por contacto (mirar «como el cliente» no lo cambia). */
+    public static function delContacto(\PDO $pdo, string $contactoId, string $base, int $total, array $ordenes = ['recientes' => 'Más nuevos primero', 'antiguos' => 'Más antiguos primero']): self
+    {
+        $aj = new AjustesService($pdo);
+        $guardado = (int) $aj->get('contacto', $contactoId, 'por_pagina');
+        if (($por = self::elegido()) !== null && $por !== $guardado && PortalSession::vistaPrevia() === null) {
+            $aj->set('contacto', $contactoId, 'por_pagina', (string) $por);
+        }
+        return self::desdeGet($base, $total, $guardado, $ordenes);
+    }
+
+    /** Da vuelta la lista si se pidió al revés. */
+    public function sentido(array $filas): array
+    {
+        return $this->inverso ? array_reverse(array_values($filas)) : $filas;
+    }
+
+    /** Enlace para dar vuelta el orden (vuelve a la página 1). */
+    public function urlInvertir(): string
+    {
+        return $this->url(['dir' => $this->inverso ? '' : 'inv']);
     }
 
     /**
@@ -43,14 +83,14 @@ final class Paginacion
      * @param int|null $guardado  lo que eligió esta persona la última vez
      * @param array<string, string> $ordenes clave => etiqueta; la primera es la por defecto
      */
-    public static function desdeGet(string $base, int $total, ?int $guardado = null, array $ordenes = ['recientes' => 'Más nuevos primero', 'antiguos' => 'Más antiguos primero']): self
+    public static function desdeGet(string $base, int $total, ?int $guardado = null, array $ordenes = []): self
     {
         $por = (int) ($_GET['por'] ?? 0);
         if (!in_array($por, self::TAMANOS, true)) {
             $por = in_array($guardado, self::TAMANOS, true) ? (int) $guardado : self::TAMANOS[0];
         }
         $orden = (string) ($_GET['orden'] ?? '');
-        if (!isset($ordenes[$orden])) {
+        if ($ordenes !== [] && !isset($ordenes[$orden])) {
             $orden = (string) array_key_first($ordenes);
         }
         return new self($total, $por, (int) ($_GET['p'] ?? 1), $orden, $ordenes, $base);
@@ -102,7 +142,7 @@ final class Paginacion
         if ((int) ($q['p'] ?? 1) <= 1) {
             unset($q['p']);
         }
-        if ((string) ($q['orden'] ?? '') === (string) array_key_first($this->ordenes)) {
+        if ($this->ordenes !== [] && (string) ($q['orden'] ?? '') === (string) array_key_first($this->ordenes)) {
             unset($q['orden']);
         }
         $q = array_filter($q, fn($v) => $v !== '' && $v !== null && !is_array($v));
@@ -111,7 +151,7 @@ final class Paginacion
 
     public function pag(int $n): string
     {
-        return $this->url(['p' => $n, 'orden' => $this->orden]);
+        return $this->url(['p' => $n]);
     }
 
     /** Orden de una columna: si ya está en «asc», el clic la pasa a «desc» y viceversa. */
@@ -121,7 +161,7 @@ final class Paginacion
     }
 
     /** 'asc', 'desc' o '' si la tabla no está ordenada por esa columna. */
-    public function sentido(string $col): string
+    public function sentidoColumna(string $col): string
     {
         return match ($this->orden) {
             $col . '_asc'  => 'asc',
@@ -160,7 +200,10 @@ final class Paginacion
     public function ocultos(): array
     {
         $q = $_GET;
-        unset($q['p'], $q['por'], $q['orden']);
+        unset($q['p'], $q['por']);
+        if ($this->ordenes !== []) {
+            unset($q['orden']);
+        }
         return array_filter($q, fn($v) => is_string($v) && $v !== '');
     }
 }

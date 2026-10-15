@@ -80,8 +80,12 @@ class SolicitudAdminController
         $proyectos = $this->ui->filtrar((new ProyectoService($this->pdo()))->listAll(), 'id');
         usort($proyectos, fn($a, $b) => [$a['cliente_nombre'], $a['nombre']] <=> [$b['cliente_nombre'], $b['nombre']]);
 
+        $lista = array_values(array_filter($base, fn(array $s): bool => self::enGrupo($s, $f->get('estado'))));
+        $pag = Paginacion::delEquipo($this->pdo(), $this->ui->autorId(), $this->ui->url('solicitudes'), count($lista));
+        $lista = $pag->cortar($pag->sentido($lista));
         $this->ui->view('solicitudes/index.latte', [
-            'solicitudes' => array_values(array_filter($base, fn(array $s): bool => self::enGrupo($s, $f->get('estado')))),
+            'pag'         => $pag,
+            'solicitudes' => $lista,
             'filtros'     => $f,
             'conteos'     => $conteos,
             'grupos'      => self::FILTRO_ESTADOS,

@@ -74,6 +74,12 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### v0.33.0: paginación
+- **Listas paginadas** de a 20, con selector para ver 30 o 50. «Mostrando 21–40 de 134», Anterior / 1 2 3 … / Siguiente. Los filtros y la búsqueda se mantienen al cambiar de página. Cuántos por página se recuerda por persona.
+- **Panel del equipo y admin**: Tareas, Contenidos, Reuniones, Solicitudes, Contactos ganados y Actividad (ahora hasta 2.000 movimientos, antes 120). Cada lista conserva su «Ordenar por» y suma **«Invertir orden»** para verla al revés.
+- **Portal del cliente**: Contactos ganados (además, clic en los encabezados Contacto, Estado, Llegó y Próximo paso para ordenar; otro clic lo da vuelta), Tareas (por fecha de entrega, más nuevas o más antiguas), Revisiones, Reuniones anteriores, Solicitudes cerradas y Mensajes.
+- Clientes y Proyectos del panel no se paginan: van agrupados por cuenta y con búsqueda instantánea en la página.
+
 ### v0.32.0: Mensajes
 - **Mensajes** en el menú del portal del cliente y del panel del equipo: una conversación por cada tarea, contenido o solicitud con comentarios. Se ve el último mensaje, quién lo dejó, el estado de la cosa y cuántos mensajes nuevos hay. Al hacer clic se abre el hilo al lado y se responde ahí mismo (en el celular, el hilo ocupa la pantalla y hay un botón para volver).
 - **Sin leer**: el número del menú cuenta las conversaciones donde la otra parte escribió algo que esa persona no ha leído (el cliente ve lo del equipo y el equipo lo de los clientes). Se marca leído al abrir la conversación o la tarea / contenido / solicitud. En el celular, Mensajes está en el encabezado con su número.

@@ -2459,6 +2459,51 @@ $_GET = [];
 $_SESSION[P\EquipoController::SESION] = $coord;
 check(isset(array_column($ms->conversaciones('equipo', $coord, null), null, 'clave')['tarea:' . $tAjena]), 'Coordinación ve las conversaciones de todos los clientes');
 
+seccion('Paginación: 20, 30 o 50 por página, orden y filtros que se mantienen');
+$_GET = ['p' => '2', 'estado' => 'nuevo', 'q' => 'ana'];
+$pg = P\Paginacion::desdeGet('/portal/contactos-ganados', 134, null, ['llego_desc' => 'Más nuevos', 'llego_asc' => 'Más antiguos', 'nombre_asc' => 'A-Z']);
+check($pg->porPagina === 20 && $pg->desde === 21 && $pg->hasta === 40 && $pg->paginas === 7, 'por defecto 20 por página: la 2 muestra 21–40 de 134');
+check($pg->pag(3) === '/portal/contactos-ganados?estado=nuevo&q=ana&p=3', 'los enlaces de página mantienen los filtros');
+check($pg->numeros() === range(1, 7) && P\Paginacion::desdeGet('/x', 200)->numeros() === [1, 2, 3, null, 10], 'hasta 7 páginas se ven todas; con más, números con «…»');
+check($pg->cortar(range(1, 134)) === range(21, 40), 'corta la lista en la página pedida');
+check($pg->urlColumna('nombre') === '/portal/contactos-ganados?estado=nuevo&q=ana&orden=nombre_asc', 'clic en un encabezado ordena por esa columna y vuelve a la página 1');
+$_GET = ['orden' => 'nombre_asc'];
+$pg = P\Paginacion::desdeGet('/x', 10, null, ['llego_desc' => 'a', 'nombre_asc' => 'b', 'nombre_desc' => 'c']);
+check($pg->urlColumna('nombre') === '/x?orden=nombre_desc' && $pg->sentidoColumna('nombre') === 'asc', 'otro clic en la misma columna la da vuelta');
+$_GET = ['por' => '999', 'p' => '50'];
+$pg = P\Paginacion::desdeGet('/x', 45, 30);
+check($pg->porPagina === 30 && $pg->pagina === 2, 'un tamaño inválido usa el que la persona eligió antes; una página que no existe va a la última');
+$_GET = ['por' => '50'];
+P\Paginacion::delContacto($pdo, $contacto, '/portal/tareas', 10);
+check((new P\AjustesService($pdo))->get('contacto', $contacto, 'por_pagina') === '50', 'cuántos por página se recuerda por persona');
+$_GET = [];
+check(P\Paginacion::delContacto($pdo, $contacto, '/portal/tareas', 120)->porPagina === 50, 'y se usa la próxima vez sin volver a elegirlo');
+(new P\AjustesService($pdo))->set('contacto', $contacto, 'por_pagina', '20');
+$_GET = ['dir' => 'inv'];
+check(P\Paginacion::desdeGet('/x', 3)->sentido([1, 2, 3]) === [3, 2, 1], '«Invertir orden» da vuelta la lista');
+
+$_SESSION[P\EquipoController::SESION] = $coord;
+for ($i = 1; $i <= 25; $i++) {
+    $ts->create(['proyecto_id' => $p1a, 'titulo' => sprintf('Paginada %02d', $i), 'asignado' => 'equipo', 'visible_cliente' => 1, 'fecha_vencimiento' => sprintf('2027-01-%02d', $i)]);
+}
+$_GET = ['estado' => 'todas', 'proyecto' => $p1a];
+[$html] = $g->hacer('GET', P\TareaAdminController::class, 'index');
+check(str_contains($html, 'Mostrando <strong>1–20</strong>') && str_contains($html, 'Paginada 01') && !str_contains($html, 'Paginada 25') && str_contains($html, 'aria-label="Página 2"'), 'las tareas del panel van de a 20, con los números de página');
+$_GET = ['estado' => 'todas', 'proyecto' => $p1a, 'p' => '2'];
+[$html] = $g->hacer('GET', P\TareaAdminController::class, 'index');
+check(str_contains($html, 'Paginada 25') && !str_contains($html, 'Paginada 01'), 'la página 2 trae las que siguen');
+$_GET = ['estado' => 'todas', 'proyecto' => $p1a, 'dir' => 'inv'];
+[$html] = $g->hacer('GET', P\TareaAdminController::class, 'index');
+check(str_contains($html, 'Paginada 25') && str_contains($html, 'Orden invertido'), 'invertir el orden muestra primero las del final');
+$_SESSION[P\PortalSession::CONTACTO] = $contacto;
+$_GET = ['f' => 'todas', 'orden' => 'recientes'];
+$pubP = new PublicoPrueba($ctx);
+ob_start();
+try { $pubP->tareas(); } catch (RuntimeException) {}
+$html = (string) ob_get_clean();
+check(str_contains($html, 'Mostrando') && str_contains($html, 'name="por"') && str_contains($html, 'Más nuevas primero'), 'el portal del cliente también pagina sus tareas, con el selector de cantidad y de orden');
+$_GET = [];
+
 seccion('Ingreso: piezas que encajan y favicon');
 unset($_SESSION[P\PortalSession::CONTACTO]);
 P\Notifier::$ahora = null;

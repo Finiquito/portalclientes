@@ -189,10 +189,13 @@ class TareaAdminController
             default    => fn($a, $b) => [$vence($a), (string) $a['created_at']] <=> [$vence($b), (string) $b['created_at']],
         });
 
+        $pag = Paginacion::delEquipo($this->pdo(), $this->ui->autorId(), $this->ui->url('tareas'), count($lista));
+        $lista = $pag->cortar($pag->sentido($lista));
         $proyectos = $this->proyectos();
         usort($proyectos, fn($a, $b) => [$a['cliente_nombre'], $a['nombre']] <=> [$b['cliente_nombre'], $b['nombre']]);
 
         $this->ui->view('tareas/index.latte', [
+            'pag'           => $pag,
             'tareas'        => $lista,
             'filtros'       => $f,
             'conteos'       => $conteos,

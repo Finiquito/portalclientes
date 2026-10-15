@@ -40,6 +40,7 @@
         <ul class="space-y-3">
             {foreach $b[1] as $r}{include tarjeta $r, $b[2]}{/foreach}
         </ul>
+        {if !$b[2]}{include '../_paginacion.latte', pag: $pag}{/if}
     {/if}
 </section>
 {/foreach}

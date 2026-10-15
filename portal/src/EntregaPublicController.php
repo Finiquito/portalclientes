@@ -41,8 +41,11 @@ class EntregaPublicController extends PortalPublicController
     public function entregas(): void
     {
         $c = $this->requerirContacto();
+        $todas = $this->entregasSvc()->delCliente((string) $c['cliente_id']);
+        $pag = Paginacion::delContacto($this->pdo(), (string) $c['id'], '/portal/entregas', count($todas));
         $this->ctx->view('templates/public/entregas.latte', $this->contexto($c, 'revisiones') + [
-            'entregas' => $this->entregasSvc()->delCliente((string) $c['cliente_id']),
+            'pag'      => $pag,
+            'entregas' => $pag->cortar($pag->orden === 'antiguos' ? array_reverse($todas) : $todas),
             'estados'  => TiposContenido::ESTADOS_ENTREGA,
         ]);
     }
