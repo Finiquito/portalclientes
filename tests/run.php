@@ -2572,6 +2572,87 @@ check(count($csS->archivos($vS1)) === 3 && $r === '/equipo/entregas/' . $eS . '#
 P\ArchivoService::$mover = null;
 check(P\TiposContenido::numerosArchivo('post3_lamina2.png') === [3, 2] && P\TiposContenido::numerosArchivo('portada.png') === null && P\TiposContenido::numeroTitulo('Reel 4 · Algo') === 4, 'lee el número de pieza y de lámina en el nombre del archivo y en el título');
 
+seccion('Tapas: PDF y video con su imagen, portada del reel, cambiar tapa y tarjeta del link');
+$jpgTapa = function (): string {
+    $tmp = tempnam(sys_get_temp_dir(), 'tp');
+    $im = imagecreatetruecolor(320, 180);
+    imagefill($im, 0, 0, imagecolorallocate($im, 200, 40, 90));
+    imagejpeg($im, $tmp);
+    imagedestroy($im);
+    return $tmp;
+};
+$mp4 = "\x00\x00\x00\x18ftypmp42\x00\x00\x00\x00mp42isom" . str_repeat("\0", 64);
+$eT = $esS->create(['proyecto_id' => $p1a, 'titulo' => 'Con tapas']);
+P\ArchivoService::$mover = fn(string $a, string $b) => copy($a, $b);
+$tmpV = tempnam(sys_get_temp_dir(), 'vd');
+file_put_contents($tmpV, $mp4);
+$fs = $armar(['manual.pdf']);
+$fs['name'][] = 'reel.mp4'; $fs['type'][] = 'video/mp4'; $fs['tmp_name'][] = $tmpV; $fs['error'][] = UPLOAD_ERR_OK; $fs['size'][] = strlen($mp4);
+$t1 = $jpgTapa();
+$t2 = $jpgTapa();
+$_FILES = ['archivos' => $fs, 'tapas' => ['name' => ['a.jpg', 'b.jpg'], 'type' => ['image/jpeg', 'image/jpeg'], 'tmp_name' => [$t1, $t2], 'error' => [0, 0], 'size' => [filesize($t1), filesize($t2)]]];
+$g->hacer('POST', $ES, 'soltar', [$eT], 'entrega', false, ['_csrf_token' => $tokS, 'destino' => ['nuevo', 'nuevo'], 'tapa_de' => ['manual.pdf', 'reel.mp4']]);
+$_FILES = [];
+$lT = $csS->listar($eT);
+$reelT = array_values(array_filter($lT, fn($c) => $c['tipo'] === 'reel'))[0] ?? null;
+$docT = array_values(array_filter($lT, fn($c) => $c['tipo'] === 'brandbook'))[0] ?? null;
+$aDoc = $docT ? $csS->archivos((string) $docT['version_id']) : [];
+$aReel = $reelT ? $csS->archivos((string) $reelT['version_id']) : [];
+check(count($aDoc) === 1 && !empty($aDoc[0]['miniatura']), 'la página 1 del PDF que armó el navegador queda como su tapa');
+$vidT = array_values(array_filter($aReel, fn($a) => $a['mime'] === 'video/mp4'))[0] ?? null;
+$porT = array_values(array_filter($aReel, fn($a) => $a['nombre_original'] === 'portada.jpg'))[0] ?? null;
+check($vidT !== null && !empty($vidT['miniatura']), 'el cuadro elegido del video queda como su tapa');
+check($porT !== null && (int) $porT['orden'] === 0 && $aReel[0]['id'] === $porT['id'], 'en un reel, esa tapa pasa a ser la Portada que ve el cliente');
+[$html] = $g->hacer('GET', $ES, 'edit', [$eT], 'entrega');
+check(str_contains($html, '/equipo/archivos/' . $aDoc[0]['id'] . '?mini=1') || str_contains($html, $aDoc[0]['id']), 'la lista de piezas muestra la tapa del PDF');
+check(str_contains($html, 'data-sin-tapa="[]"') || !str_contains($html, (string) $aDoc[0]['id'] . '","cid'), 'lo que ya tiene tapa no se vuelve a generar');
+
+// Cambiar tapa: por formulario (vuelve a la ficha) y desde el navegador (JSON).
+$antesMini = $aDoc[0]['miniatura'];
+$t3 = $jpgTapa();
+$_FILES = ['tapa' => ['name' => 'otra.jpg', 'type' => 'image/jpeg', 'tmp_name' => $t3, 'error' => 0, 'size' => filesize($t3)]];
+[, $r] = $g->hacer('POST', $ES, 'tapa', [(string) $aDoc[0]['id']], 'archivo', false, ['_csrf_token' => $tokS, 'volver' => '/equipo/contenidos/' . $docT['id']]);
+check($r === '/equipo/contenidos/' . $docT['id'] && !empty((new P\ArchivoService($pdo))->find((string) $aDoc[0]['id'])['miniatura']), '«Cambiar tapa» guarda la imagen y vuelve a la ficha');
+$_FILES = ['tapa' => ['name' => 'x.jpg', 'type' => 'image/jpeg', 'tmp_name' => $tmpV, 'error' => 0, 'size' => 10]];
+[, $r] = $g->hacer('POST', $ES, 'tapa', [(string) $aDoc[0]['id']], 'archivo', false, ['_csrf_token' => $tokS, 'volver' => 'https://otro.sitio/']);
+check($r === '/equipo/entregas' && str_contains(json_encode(P\PortalSession::tomarFlash(), JSON_UNESCAPED_UNICODE), 'No se pudo usar esa imagen'), 'algo que no es imagen se rechaza y no se vuelve a una dirección ajena');
+P\EntregaAdminController::$traer = fn(string $u) => null;
+$_SERVER['HTTP_ACCEPT'] = 'application/json';
+$t4 = $jpgTapa();
+$_FILES = ['tapa' => ['name' => 'c.jpg', 'type' => 'image/jpeg', 'tmp_name' => $t4, 'error' => 0, 'size' => filesize($t4)]];
+[$out] = $g->hacer('POST', $ES, 'tapa', [(string) $vidT['id']], 'archivo', false, ['_csrf_token' => $tokS]);
+unset($_SERVER['HTTP_ACCEPT']);
+$_FILES = [];
+check(str_contains($out, '{"ok":true}'), 'desde el navegador responde en JSON (tapas que faltaban se completan solas)');
+$_SESSION[P\EquipoController::SESION] = $ana;
+[$cAj, $vAj] = $csS->crear($esS->find($entAjena), ['tipo' => 'brandbook', 'titulo' => 'Doc ajeno']);
+$aAj = (new P\ArchivoService($pdo))->guardarVarios([['name' => 'aj.pdf', 'type' => 'application/pdf', 'tmp_name' => (function () use ($pdfMin) { $t = tempnam(sys_get_temp_dir(), 'aj'); file_put_contents($t, $pdfMin); return $t; })(), 'error' => 0, 'size' => strlen($pdfMin)]],
+    (string) $esS->find($entAjena)['cliente_id'], $p3a, 'version', $vAj, ['tipo' => 'equipo', 'id' => null, 'nombre' => 'Equipo'], 20)['ok'][0] ?? null;
+$_FILES = ['tapa' => ['name' => 'd.jpg', 'type' => 'image/jpeg', 'tmp_name' => $jpgTapa(), 'error' => 0, 'size' => 1000]];
+[, $r] = $g->hacer('POST', $ES, 'tapa', [(string) ($aAj['id'] ?? '')], 'archivo', false, ['_csrf_token' => $tokS]);
+$_FILES = [];
+$_SESSION[P\EquipoController::SESION] = $coord;
+check($aAj !== null && $r === '/equipo' && empty((new P\ArchivoService($pdo))->find((string) $aAj['id'])['miniatura']), 'no se cambia la tapa de un archivo de un cliente ajeno');
+
+// Tarjeta del link
+$pedidas = [];
+P\EntregaAdminController::$traer = function (string $u) use (&$pedidas) { $pedidas[] = $u; return '<html><head><title>Respaldo</title><meta property="og:title" content="Campa&ntilde;a de verano"><meta content="https://cdn.ejemplo.cl/og.jpg" property="og:image"></head></html>'; };
+$_GET = ['url' => 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'];
+[$out] = $g->hacer('GET', $ES, 'linkInfo');
+check(str_contains($out, 'i.ytimg.com\/vi\/dQw4w9WgXcQ\/hqdefault.jpg') && $pedidas === [], 'un link de YouTube usa su miniatura sin consultar a nadie');
+$_GET = ['url' => 'https://ejemplo.cl/landing'];
+[$out] = $g->hacer('GET', $ES, 'linkInfo');
+$j = json_decode($out, true);
+check(($j['titulo'] ?? '') === 'Campaña de verano' && ($j['imagen'] ?? '') === 'https://cdn.ejemplo.cl/og.jpg', 'otro sitio: título e imagen que declara para compartir');
+$_GET = ['url' => 'javascript:alert(1)'];
+[$out] = $g->hacer('GET', $ES, 'linkInfo');
+check(json_decode($out, true) === ['ok' => false] && count($pedidas) === 1, 'un link que no es http(s) no se consulta');
+$_GET = [];
+P\EntregaAdminController::$traer = null;
+P\ArchivoService::$mover = null;
+[$html] = $g->hacer('GET', $ES, 'editContenido', [(string) $reelT['id']], 'contenido');
+check(str_contains($html, 'Usar un cuadro del video') && str_contains($html, 'Cambiar tapa'), 'la ficha del reel ofrece elegir un cuadro como portada y cambiar la tapa');
+
 seccion('Plantillas: compilan sin avisos (el TypeDock real convierte un aviso en error)');
 $dirT = dirname(__DIR__) . '/portal/templates';
 $motorT = new Latte\Engine();

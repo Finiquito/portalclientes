@@ -3,7 +3,7 @@
 {block page_title}{if $entrega}{$entrega['titulo']}{else}Nueva entrega{/if}{/block}
 
 {block content}
-<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=14">
+<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=15">
 
 <div class="page-header">
     <h1>{if $entrega}Entrega: {$entrega['titulo']}{else}Nueva entrega{/if}</h1>
@@ -100,6 +100,8 @@
                 {if $mins}
                     {foreach $mins as $k => $aid}<img src="{$admin_url('archivos/' . $aid)}?t=1" alt="" loading="lazy" style="--k:{$k}">{/foreach}
                     {if $fl['imagenes'] > count($mins)}<span class="pa-mini-mas">+{$fl['imagenes'] - count($mins)}</span>{/if}
+                {elseif isset($linkTapa[$c['id']])}
+                    <img src="{$linkTapa[$c['id']]}" alt="" loading="lazy" referrerpolicy="no-referrer">
                 {else}
                     <span class="pa-ico">{['post' => 'Post', 'reel' => 'Reel', 'story' => 'Story', 'grafica' => 'Gráfica', 'logo' => 'Logo', 'mockup' => 'Mockup', 'brandbook' => 'PDF', 'presentacion' => 'PDF', 'web' => 'Web'][$c['tipo']] ?? 'Archivo'}</span>
                 {/if}
@@ -129,7 +131,7 @@
     {/if}
 
     {* ---- Una sola puerta para agregar ---- *}
-    <form method="post" action="{$admin_url('entregas/' . $entrega['id'] . '/soltar')}" enctype="multipart/form-data" class="pa-soltar mt-3" id="soltar" data-soltar data-piezas="{json_encode($piezasJs)}">
+    <form method="post" action="{$admin_url('entregas/' . $entrega['id'] . '/soltar')}" enctype="multipart/form-data" class="pa-soltar mt-3" id="soltar" data-soltar data-piezas="{json_encode($piezasJs)}" data-sin-tapa="{json_encode($sinTapa)}" data-tapa-url="{$admin_url('archivos/__ID__/tapa')}" data-link-url="{$admin_url('entregas/link')}" data-pdfjs="/plugins/portal/assets/pdf/pdf.min.js">
         <input type="hidden" name="_csrf_token" value="{$csrf_token}">
         <div class="pa-dz" data-dz tabindex="-1">
             <span class="pa-dz-ico" aria-hidden="true">+</span>
@@ -197,6 +199,12 @@
             <aside class="pa-vista" aria-label="Así lo verá el cliente" data-vista>
                 <span class="pa-eyebrow">Así lo verá el cliente</span>
                 <div class="pa-vista-media" data-vista-media><span>Sin archivos todavía</span></div>
+                <p class="pa-muted pa-vista-pie" data-vista-pie></p>
+                <div class="pa-tapa-ctrl" data-tapa-ctrl hidden>
+                    <label class="form-label" for="m-tapa-cuadro">Tapa: elige el cuadro</label>
+                    <input id="m-tapa-cuadro" type="range" min="0" max="1" step="0.1" value="1" disabled data-tapa-slider>
+                    <label class="btn btn-sm" style="justify-self:start">Subir otra imagen como tapa<input type="file" accept="image/jpeg,image/png,image/webp" class="pa-oculto" data-tapa-propia></label>
+                </div>
                 <p class="pa-vista-copy" data-vista-copy></p>
             </aside>
         </div>
@@ -220,6 +228,7 @@
     </form>
 </details>
 
+{include '_tapas.js.latte'}
 {include '_subida.js.latte'}
 
 {/if}

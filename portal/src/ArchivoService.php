@@ -295,6 +295,33 @@ class ArchivoService
     }
 
     /** Miniatura JPEG de hasta 480 px con GD. Devuelve false si no se puede (no es grave). */
+    /**
+     * Tapa de un archivo que no es imagen (página 1 de un PDF, un cuadro de un video) o una
+     * imagen elegida a mano: queda como su miniatura. La genera el navegador del equipo y
+     * llega como imagen; aquí sólo se valida y se achica.
+     */
+    public function ponerTapa(array $a, string $tmp): bool
+    {
+        if (!is_file($tmp) || filesize($tmp) > 4 * 1048576 || @getimagesize($tmp) === false || !str_starts_with($this->detectarMime($tmp), 'image/')) {
+            return false;
+        }
+        $dir = $this->directorioBase() . '/' . $this->segmento((string) $a['cliente_id']);
+        $nombre = basename((string) $a['ruta']) . '_t';
+        $destino = $dir . '/' . $nombre;
+        $ok = $this->crearMiniatura($tmp, $destino, 640);
+        if (!$ok && $this->detectarMime($tmp) === 'image/jpeg') {
+            // Sin GD: el navegador ya la mandó chica y en JPEG.
+            $ok = @copy($tmp, $destino);
+            if ($ok) {
+                @chmod($destino, 0640);
+            }
+        }
+        if ($ok) {
+            $this->pdo->prepare('UPDATE ' . self::TABLE . ' SET miniatura = ? WHERE id = ?')->execute([$nombre, (string) $a['id']]);
+        }
+        return $ok;
+    }
+
     private function crearMiniatura(string $origen, string $destino, int $max = 480): bool
     {
         if (!function_exists('imagecreatefromstring') || !function_exists('imagejpeg')) {

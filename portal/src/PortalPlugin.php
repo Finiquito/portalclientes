@@ -158,6 +158,8 @@ class PortalPlugin implements PluginInterface
         $ctx->registerAdminRoute('GET',  'entregas/nuevo',                  [$entregas, 'create']);
         $ctx->registerAdminRoute('POST', 'entregas',                        [$entregas, 'store']);
         $ctx->registerAdminRoute('GET',  'entregas/plantilla',              [$entregas, 'plantilla']);
+        $ctx->registerAdminRoute('GET',  'entregas/link',                   [$entregas, 'linkInfo']);
+        $ctx->registerAdminRoute('POST', 'archivos/@id/tapa',               fn(string $id) => $entregas->tapa($id));
         $ctx->registerAdminRoute('GET',  'entregas/@id',                    fn(string $id) => $entregas->edit($id));
         $ctx->registerAdminRoute('POST', 'entregas/@id',                    fn(string $id) => $entregas->update($id));
         $ctx->registerAdminRoute('POST', 'entregas/@id/borrar',             fn(string $id) => $entregas->destroy($id));
@@ -295,7 +297,7 @@ class PortalPlugin implements PluginInterface
 
     public function getVersion(): string
     {
-        return '0.34.1';
+        return '0.35.0';
     }
 
     public function provides(): array

@@ -3,7 +3,7 @@
 {block page_title}{$c['titulo']}{/block}
 
 {block content}
-<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=14">
+<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=15">
 
 <div class="page-header">
     <h1>{$c['titulo']}</h1>
@@ -46,7 +46,7 @@
         <p class="pa-muted" style="margin:0 0 .4rem">Se ve dentro del portal: YouTube, Vimeo, Loom, Google Drive (video), Google Slides, Canva y Figma. Para video, lo más limpio es subir el mp4. Presentaciones: sube el PDF exportado o pega el link.</p>
         <input type="url" name="enlace" class="form-input" value="{$c['enlace']}" maxlength="500" placeholder="https://…">
         {if $esReel}
-        <h3 class="pa-h2 mt-4" style="font-size:1rem">Portada</h3>
+        <h3 class="pa-h2" style="font-size:1rem;margin:1.5rem 0 .6rem">Portada</h3>
         <div class="pa-row" style="align-items:flex-start">
             <label class="pa-lam-img" title="Subir o cambiar la portada" style="width:6rem;height:auto;aspect-ratio:9/16">
                 {if $portada}<img src="{$admin_url('archivos/' . $portada['id'])}?t=1" alt="Portada actual" data-portada-thumb>{else}<span data-portada-thumb>Subir<br>portada</span>{/if}
@@ -55,8 +55,37 @@
             <div style="flex:1;min-width:14rem">
                 <p class="pa-muted" style="margin:0">La imagen que se ve antes de reproducir el reel (9:16, como en Instagram). El cliente la revisa y le puede marcar puntos como a cualquier imagen. Se sube al guardar.</p>
                 {if $portada}<label class="pa-check"><input type="checkbox" name="quitar_portada" value="1"> <span>Quitar la portada</span></label>{/if}
+                {if $videoReel}
+                <div class="pa-tapa-ctrl" style="margin-top:.6rem" data-cuadro data-video="{$admin_url('archivos/' . $videoReel['id'])}">
+                    <button type="button" class="btn btn-sm" data-cuadro-abrir style="justify-self:start">Usar un cuadro del video</button>
+                    <div data-cuadro-panel hidden>
+                        <label class="form-label" for="c-cuadro">Elige el cuadro</label>
+                        <input id="c-cuadro" type="range" min="0" max="1" step="0.1" value="1" data-cuadro-slider>
+                        <p class="pa-muted" style="margin:.25rem 0 0;font-size:.8rem" data-cuadro-txt>Mueve la barra: la portada de la izquierda cambia. Se guarda al apretar «Guardar».</p>
+                    </div>
+                </div>
+                {/if}
             </div>
         </div>
+        {include '_tapas.js.latte'}
+        <script n:syntax="off">
+        (function () {
+          // Portada desde un cuadro del video del reel.
+          var box = document.querySelector('[data-cuadro]'), pf = document.querySelector('[data-portada-file]');
+          if (box && pf && window.PortalTapas) {
+            var sl = box.querySelector('[data-cuadro-slider]'), t = null;
+            var usar = function (seg) {
+              window.PortalTapas.video(box.getAttribute('data-video'), seg).then(function (r) {
+                if (!r || !r.blob) { return; }
+                if (typeof seg !== 'number') { sl.max = String(Math.max(0.1, Math.floor((r.duracion || 1) * 10) / 10)); }
+                try { var dt = new DataTransfer(); dt.items.add(new File([r.blob], 'portada.jpg', { type: 'image/jpeg' })); pf.files = dt.files; pf.dispatchEvent(new Event('change')); } catch (e) {}
+              }).catch(function () { box.querySelector('[data-cuadro-txt]').textContent = 'No pudimos leer el video en este navegador. Sube una imagen como portada.'; });
+            };
+            box.querySelector('[data-cuadro-abrir]').addEventListener('click', function () { box.querySelector('[data-cuadro-panel]').hidden = false; this.hidden = true; usar(); });
+            sl.addEventListener('input', function () { clearTimeout(t); t = setTimeout(function () { usar(parseFloat(sl.value)); }, 200); });
+          }
+        })();
+        </script>
         <script n:syntax="off">
         (function () {
           var f = document.querySelector('[data-portada-file]');
@@ -71,7 +100,7 @@
         })();
         </script>
         {/if}
-        <h3 class="pa-h2 mt-4" style="font-size:1rem">Brief de la pieza</h3>
+        <h3 class="pa-h2" style="font-size:1rem;margin:1.5rem 0 .6rem">Brief de la pieza</h3>
         {include '_brief.latte', c: $c, filas: $filasLaminas, esReel: $esReel}
         {if $c['entrega_estado'] !== 'borrador'}
             <label class="pa-check"><input type="checkbox" name="avisar_cambio" value="1"> <span><strong>Avisarle al cliente que la actualizamos.</strong> Vuelve a «Por revisar» y la ve marcada como «Actualizado». Si cambia la pieza en sí, mejor «Subir una versión nueva» (abajo): queda el historial v1, v2…</span></label>
@@ -96,16 +125,23 @@
         <ul class="pa-files">
             {foreach $v['archivos'] as $a}
             <li class="pa-file">
-                {if $fmt->esImagen($a['mime'])}
+                {if $fmt->esImagen($a['mime']) || !empty($a['miniatura'])}
                     <a href="{$admin_url('archivos/' . $a['id'])}?i=1" target="_blank" rel="noopener"><img src="{$admin_url('archivos/' . $a['id'])}?t=1" alt="" loading="lazy"></a>
                 {else}
                     <span class="pa-ico">{$fmt->extension($a['nombre_original'])}</span>
                 {/if}
                 <div class="pa-meta">
                     <a class="pa-name" href="{$admin_url('archivos/' . $a['id'])}" target="_blank" rel="noopener">{$a['nombre_original']}</a>
-                    <span class="pa-muted">{$fmt->tamano($a['tamano'])}</span>
+                    <span class="pa-muted">{$fmt->tamano($a['tamano'])}{if !$fmt->esImagen($a['mime']) && !empty($a['miniatura'])} · con tapa{/if}</span>
                     {if in_array(strtolower($fmt->extension($a['nombre_original'])), ['ppt', 'pptx', 'odp', 'key', 'doc', 'docx', 'xls', 'xlsx'], true)}<span class="pa-lock" style="display:block">El cliente no puede verlo en el portal, sólo descargarlo. Sube el PDF exportado, o pega un link de Google Slides / Canva.</span>{/if}
                 </div>
+                {if $a['mime'] === 'application/pdf' || str_starts_with((string) $a['mime'], 'video/')}
+                <form method="post" action="{$admin_url('archivos/' . $a['id'] . '/tapa')}" enctype="multipart/form-data" class="pa-pieza-subir">
+                    <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+                    <input type="hidden" name="volver" value="{$admin_url('contenidos/' . $c['id'])}">
+                    <label class="btn btn-sm" title="La imagen que representa este archivo en las listas">Cambiar tapa<input type="file" name="tapa" accept="image/jpeg,image/png,image/webp" class="pa-oculto" onchange="this.form.submit()"></label>
+                </form>
+                {/if}
                 <form method="post" action="{$admin_url('archivos/' . $a['id'] . '/borrar')}" onsubmit="return confirm('¿Eliminar este archivo?');">
                     <input type="hidden" name="_csrf_token" value="{$csrf_token}">
                     <button type="submit" class="btn btn-sm btn-danger">Eliminar</button>

@@ -87,6 +87,8 @@ class EquipoGestion extends EquipoController
         $r('GET',  'entregas/nuevo',                EntregaAdminController::class, 'create');
         $r('POST', 'entregas',                      EntregaAdminController::class, 'store');
         $r('GET',  'entregas/plantilla',            EntregaAdminController::class, 'plantilla');
+        $r('GET',  'entregas/link',                 EntregaAdminController::class, 'linkInfo');
+        $r('POST', 'archivos/@id/tapa',             EntregaAdminController::class, 'tapa', 'archivo');
         $r('GET',  'entregas/@id',                  EntregaAdminController::class, 'edit', 'entrega');
         $r('POST', 'entregas/@id',                  EntregaAdminController::class, 'update', 'entrega');
         $r('POST', 'entregas/@id/borrar',           EntregaAdminController::class, 'destroy', 'entrega');

@@ -74,6 +74,14 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### v0.35.0: tapas y vista previa por tipo (panel de la agencia)
+- **«Así lo verá el cliente» según el tipo**: post y carrusel en 4:5 (con contador y puntos), reel y story en 9:16, documento con su página 1 y el número de páginas, logo sobre fondo blanco, oscuro y transparente, y web con la tarjeta del link.
+- **Tapa de PDF y video**: el navegador arma la página 1 del PDF o un cuadro del video y se guarda como su miniatura. En un video se elige el cuadro con una barra o se sube otra imagen. Los PDF y videos que ya estaban subidos sin tapa se completan solos al abrir la entrega.
+- **Reel**: la tapa elegida pasa a ser su Portada si todavía no tiene una. En la ficha hay «Usar un cuadro del video» para cambiarla.
+- **«Cambiar tapa»** en cada PDF o video de la ficha del contenido.
+- **Tarjeta del link**: YouTube muestra su miniatura; Vimeo y otros sitios, el título y la imagen que declaran para compartir. La consulta sólo va a direcciones públicas, sin redirecciones, con 4 s y 600 KB como máximo.
+- El portal del cliente no cambia: ve la Portada del reel como siempre.
+
 ### v0.34.1
 - **Arreglo**: «Nueva entrega» y abrir una entrega daban «Algo falló de nuestro lado» en TypeDock. La plantilla usaba una constante de PHP sin barra inicial (`JSON_UNESCAPED_UNICODE`); Latte 3.1 lo marca como obsoleto y TypeDock convierte ese aviso en error. Se quitó.
 - El entorno de desarrollo pasa a Latte 3.1.6 y las pruebas compilan todas las plantillas y fallan ante cualquier aviso, para que esto no vuelva a pasar.

@@ -158,6 +158,8 @@ class EntregaAdminController
         $portadas = [];
         $resumen  = [];
         $miniaturas = [];
+        $sinTapa = [];
+        $linkTapa = [];
         $faltas = [];
         $piezasJs = [];
         $fmt = new Fmt();
@@ -166,17 +168,26 @@ class EntregaAdminController
             if ($c['version_id'] !== null) {
                 foreach ($this->contenidos()->archivos((string) $c['version_id']) as $a) {
                     $info['archivos']++;
-                    if ($fmt->esImagen($a['mime'])) {
+                    $esImg = $fmt->esImagen($a['mime']);
+                    if ($esImg) {
                         $info['imagenes']++;
-                        $portadas[$c['id']] ??= $a['id'];
-                        if (count($miniaturas[$c['id']] ?? []) < 4) {
-                            $miniaturas[$c['id']][] = $a['id'];
-                        }
                     } elseif (TiposContenido::esVideo($a['mime'])) {
                         $info['videos']++;
                     } elseif ($a['mime'] === 'application/pdf') {
                         $info['pdfs']++;
                     }
+                    // Tapa: la imagen misma, o la miniatura que se generó para el PDF o el video.
+                    if ($esImg || !empty($a['miniatura'])) {
+                        $portadas[$c['id']] ??= $a['id'];
+                        if (count($miniaturas[$c['id']] ?? []) < 4) {
+                            $miniaturas[$c['id']][] = $a['id'];
+                        }
+                    } elseif (TiposContenido::esVideo($a['mime']) || $a['mime'] === 'application/pdf') {
+                        $sinTapa[] = ['id' => (string) $a['id'], 'cid' => (string) $c['id'], 'tipo' => $a['mime'] === 'application/pdf' ? 'pdf' : 'video', 'src' => $this->url('archivos/' . $a['id'])];
+                    }
+                }
+                if (!isset($miniaturas[$c['id']]) && ($emb = TiposContenido::embed((string) ($c['enlace'] ?? ''))) !== null && $emb['tipo'] === 'youtube' && preg_match('#/embed/([\w-]{11})#', $emb['src'], $m)) {
+                    $linkTapa[$c['id']] = 'https://i.ytimg.com/vi/' . $m[1] . '/mqdefault.jpg';
                 }
                 $resumen[$c['id']] = $this->contenidos()->reacciones((string) $c['version_id']);
             }
@@ -192,6 +203,7 @@ class EntregaAdminController
             'estadosContenido' => TiposContenido::ESTADOS_CONTENIDO, 'reacciones' => TiposContenido::REACCIONES,
             'portadas' => $portadas, 'resumenReacc' => $resumen, 'maxMb' => $this->maxMb(),
             'miniaturas' => $miniaturas, 'faltas' => $faltas, 'piezasJs' => $piezasJs,
+            'sinTapa' => array_slice($sinTapa, 0, 30), 'linkTapa' => $linkTapa,
             'tiposCampos' => self::CAMPOS_POR_TIPO,
             'iaActiva' => (new IaService($this->pdo()))->activa(),
         ] + $this->flashes());
@@ -278,6 +290,8 @@ class EntregaAdminController
         if ($lista !== []) {
             $r = $this->archivos()->guardarVarios($lista, (string) $e['cliente_id'], (string) $e['proyecto_id'], 'version', $vid, $this->autor(), $this->maxMb());
             $errores = $r['errores'];
+            $this->aplicarTapas($r['ok']);
+            $this->portadaDesdeTapas($r['ok']);
         }
         $this->reabrirSiCorresponde($e);
         $this->ui->redirect($volver, $errores === [] ? 'Contenido agregado.' : 'Contenido agregado, pero: ' . implode(' · ', $errores), $errores === [] ? 'success' : 'error');
@@ -418,6 +432,7 @@ class EntregaAdminController
             return;
         }
 
+        $inicio = (new \DateTimeImmutable('-2 seconds'))->format('Y-m-d H:i:s');
         $contenidos = $this->contenidos()->listar($id);
         $porId = array_column($contenidos, null, 'id');
         $porNumero = [];
@@ -495,6 +510,9 @@ class EntregaAdminController
         if ($laminas > 0 || $creados > $antes || $creados > 0) {
             $this->reabrirSiCorresponde($e);
         }
+        $recientes = $this->archivosRecientes((string) $e['cliente_id'], $inicio);
+        $this->aplicarTapas($recientes);
+        $this->portadaDesdeTapas($recientes);
         $msg = $partes !== [] ? 'Listo: ' . implode(' · ', $partes) . '.' : 'No se subió nada.';
         if ($omitidos > 0) {
             $msg .= ' ' . ($omitidos === 1 ? '1 archivo quedó fuera' : $omitidos . ' archivos quedaron fuera') . ', como elegiste.';
@@ -503,6 +521,204 @@ class EntregaAdminController
             $msg .= ' Revisa: ' . implode(' · ', array_slice($errores, 0, 6));
         }
         $this->ui->redirect($volver, $msg, $partes !== [] && $errores === [] ? 'success' : 'error');
+    }
+
+    /**
+     * Tapas que generó el navegador (página 1 de un PDF, un cuadro de un video): llegan en
+     * tapas[] con el nombre de su archivo en tapa_de[]; se ponen como miniatura de ese archivo.
+     *
+     * @param array<int, array<string, mixed>> $subidos filas recién guardadas
+     */
+    private function aplicarTapas(array $subidos): void
+    {
+        $tapas = ArchivoService::normalizar($_FILES['tapas'] ?? null);
+        $de = array_values(array_map('strval', (array) ($_POST['tapa_de'] ?? [])));
+        if ($tapas === [] || $subidos === []) {
+            return;
+        }
+        $porNombre = [];
+        foreach ($subidos as $a) {
+            $porNombre[(string) $a['nombre_original']] ??= $a;
+        }
+        foreach ($tapas as $i => $t) {
+            $nombre = $this->archivos()->nombreSeguro($de[$i] ?? '');
+            if (isset($porNombre[$nombre]) && (int) ($t['error'] ?? 1) === UPLOAD_ERR_OK && empty($porNombre[$nombre]['miniatura'])) {
+                $this->archivos()->ponerTapa($porNombre[$nombre], (string) $t['tmp_name']);
+            }
+        }
+    }
+
+    /**
+     * En un reel, la tapa del video pasa a ser su Portada (la imagen que el cliente ve antes de
+     * reproducir), si la versión todavía no tiene una.
+     *
+     * @param array<int, array<string, mixed>> $subidos
+     */
+    private function portadaDesdeTapas(array $subidos): void
+    {
+        $fmt = new Fmt();
+        foreach ($subidos as $s) {
+            $a = $this->archivos()->find((string) $s['id']);
+            if ($a === null || empty($a['miniatura']) || !TiposContenido::esVideo((string) $a['mime']) || $a['entidad_tipo'] !== 'version') {
+                continue;
+            }
+            $st = $this->pdo()->prepare('SELECT c.* FROM portal_contenidos c JOIN portal_versiones v ON v.contenido_id = c.id WHERE v.id = ?');
+            $st->execute([(string) $a['entidad_id']]);
+            $c = $st->fetch();
+            if (!$c || TiposContenido::visor((string) $c['tipo']) !== 'reel') {
+                continue;
+            }
+            $tiene = array_filter($this->contenidos()->archivos((string) $a['entidad_id']), fn($x) => $fmt->esImagen((string) $x['mime']));
+            if ($tiene !== []) {
+                continue;
+            }
+            $ruta = $this->archivos()->directorioBase() . '/' . $this->archivos()->segmento((string) $a['cliente_id']) . '/' . basename((string) $a['miniatura']);
+            if (!is_file($ruta)) {
+                continue;
+            }
+            $tmp = tempnam(sys_get_temp_dir(), 'po');
+            copy($ruta, $tmp);
+            $antes = ArchivoService::$mover;
+            ArchivoService::$mover = fn(string $o, string $d): bool => rename($o, $d);
+            try {
+                $r = $this->archivos()->guardarVarios([['name' => 'portada.jpg', 'type' => 'image/jpeg', 'tmp_name' => $tmp, 'error' => UPLOAD_ERR_OK, 'size' => (int) filesize($tmp)]],
+                    (string) $a['cliente_id'], (string) $a['proyecto_id'], 'version', (string) $a['entidad_id'], $this->autor(), $this->maxMb());
+            } finally {
+                ArchivoService::$mover = $antes;
+            }
+            if ($r['ok'] !== []) {
+                $this->pdo()->prepare('UPDATE ' . ArchivoService::TABLE . ' SET orden = 0 WHERE id = ?')->execute([$r['ok'][0]['id']]);
+            }
+        }
+    }
+
+    /** Archivos de un cliente guardados desde $desde (los de esta misma subida). */
+    private function archivosRecientes(string $clienteId, string $desde): array
+    {
+        $st = $this->pdo()->prepare("SELECT * FROM portal_archivos WHERE cliente_id = ? AND entidad_tipo = 'version' AND created_at >= ? ORDER BY created_at DESC");
+        $st->execute([$clienteId, $desde]);
+        return $st->fetchAll();
+    }
+
+    /**
+     * Pone o cambia la tapa de un archivo (PDF o video): un cuadro elegido del video o una imagen.
+     * Lo usa también la lista de la entrega para crear, en segundo plano, las tapas que faltan.
+     */
+    public function tapa(string $id): void
+    {
+        $a = $this->archivos()->find($id);
+        $json = str_contains((string) ($_SERVER['HTTP_ACCEPT'] ?? ''), 'application/json');
+        $f = $_FILES['tapa'] ?? null;
+        $ok = $a !== null && $a['entidad_tipo'] === 'version' && is_array($f) && (int) ($f['error'] ?? 1) === UPLOAD_ERR_OK
+            && $this->archivos()->ponerTapa($a, (string) $f['tmp_name']);
+        if ($json) {
+            $this->responderJson(['ok' => $ok]);
+            return;
+        }
+        $volver = (string) ($_POST['volver'] ?? '');
+        if (!str_starts_with($volver, $this->url('contenidos/')) && !str_starts_with($volver, $this->url('entregas/'))) {
+            $volver = $this->url('entregas');
+        }
+        $this->ui->redirect($volver, $ok ? 'Tapa actualizada.' : 'No se pudo usar esa imagen como tapa (JPG, PNG o WebP de hasta 4 MB).', $ok ? 'success' : 'error');
+    }
+
+    /**
+     * Tarjeta de un link para la vista previa: título e imagen que el sitio declara para
+     * compartir (og:title / og:image). Sólo http(s), sin direcciones internas, 4 s y 600 KB como máximo.
+     */
+    public function linkInfo(): void
+    {
+        $url = TiposContenido::enlaceSeguro((string) ($_GET['url'] ?? ''));
+        $out = ['ok' => false];
+        $emb = $url !== '' ? TiposContenido::embed($url) : null;
+        if ($emb !== null && $emb['tipo'] === 'youtube' && preg_match('#/embed/([\w-]{11})#', $emb['src'], $m)) {
+            $out = ['ok' => true, 'titulo' => '', 'imagen' => 'https://i.ytimg.com/vi/' . $m[1] . '/hqdefault.jpg', 'sitio' => 'YouTube'];
+        } elseif ($url !== '') {
+            $fuente = $emb !== null && $emb['tipo'] === 'vimeo' ? 'https://vimeo.com/api/oembed.json?url=' . rawurlencode($url) : $url;
+            $html = self::traerSeguro($fuente);
+            if ($html !== null && $emb !== null && $emb['tipo'] === 'vimeo') {
+                $j = json_decode($html, true);
+                if (is_array($j)) {
+                    $out = ['ok' => true, 'titulo' => (string) ($j['title'] ?? ''), 'imagen' => (string) ($j['thumbnail_url'] ?? ''), 'sitio' => 'Vimeo'];
+                }
+            } elseif ($html !== null) {
+                $meta = function (string $prop) use ($html): string {
+                    $p = preg_quote($prop, '/');
+                    if (preg_match('/<meta[^>]+(?:property|name)=["\']' . $p . '["\'][^>]*content=["\']([^"\']*)/i', $html, $m)
+                        || preg_match('/<meta[^>]+content=["\']([^"\']*)["\'][^>]*(?:property|name)=["\']' . $p . '["\']/i', $html, $m)) {
+                        return html_entity_decode(trim($m[1]), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                    }
+                    return '';
+                };
+                $titulo = $meta('og:title') ?: (preg_match('/<title[^>]*>([^<]{1,200})/i', $html, $m) ? html_entity_decode(trim($m[1]), ENT_QUOTES | ENT_HTML5, 'UTF-8') : '');
+                $img = $meta('og:image') ?: $meta('twitter:image');
+                if ($img !== '' && !preg_match('#^https?://#i', $img)) {
+                    $p = parse_url($url);
+                    $img = ($p['scheme'] ?? 'https') . '://' . ($p['host'] ?? '') . '/' . ltrim($img, '/');
+                }
+                $out = ['ok' => true, 'titulo' => mb_substr($titulo, 0, 160), 'imagen' => TiposContenido::enlaceSeguro($img), 'sitio' => (string) parse_url($url, PHP_URL_HOST)];
+            }
+        }
+        $this->responderJson($out);
+    }
+
+    /** Para pruebas: reemplaza la descarga de linkInfo(). fn(string $url): ?string */
+    public static ?\Closure $traer = null;
+
+    /** Descarga una página pública sin seguir hacia direcciones internas. */
+    private static function traerSeguro(string $url): ?string
+    {
+        if (self::$traer !== null) {
+            return (self::$traer)($url);
+        }
+        $host = (string) parse_url($url, PHP_URL_HOST);
+        if ($host === '' || !function_exists('curl_init')) {
+            return null;
+        }
+        $ips = @gethostbynamel($host) ?: [];
+        if ($ips === []) {
+            return null;
+        }
+        foreach ($ips as $ip) {
+            if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
+                return null;
+            }
+        }
+        $ch = curl_init($url);
+        $buf = '';
+        curl_setopt_array($ch, [
+            CURLOPT_FOLLOWLOCATION => false,
+            CURLOPT_RESOLVE        => [$host . ':443:' . $ips[0], $host . ':80:' . $ips[0]],
+            CURLOPT_CONNECTTIMEOUT => 3,
+            CURLOPT_TIMEOUT        => 4,
+            CURLOPT_PROTOCOLS      => CURLPROTO_HTTP | CURLPROTO_HTTPS,
+            CURLOPT_USERAGENT      => 'Mozilla/5.0 (compatible; PortalClientes/1.0)',
+            CURLOPT_HTTPHEADER     => ['Accept: text/html,application/json'],
+            CURLOPT_WRITEFUNCTION  => function ($c, string $d) use (&$buf): int {
+                $buf .= $d;
+                return strlen($buf) > 600000 ? 0 : strlen($d);
+            },
+        ]);
+        curl_exec($ch);
+        $cod = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        return $cod >= 200 && $cod < 300 && $buf !== '' ? $buf : null;
+    }
+
+    /** Termina la respuesta (en pruebas se reemplaza). */
+    /** Responde JSON y termina (en pruebas, con $traer puesto, deja la salida en el búfer y sigue). */
+    private function responderJson(array $out): void
+    {
+        if (self::$traer !== null) {
+            echo json_encode($out, JSON_UNESCAPED_UNICODE);
+            return;
+        }
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode($out, JSON_UNESCAPED_UNICODE);
+        exit;
     }
 
     private static function tipoPorExtension(string $ext): string
@@ -588,6 +804,7 @@ class EntregaAdminController
             // En un reel las láminas son el guion (sin imagen por fila) y la imagen es la portada.
             'esReel' => TiposContenido::visor((string) $c['tipo']) === 'reel',
             'portada' => TiposContenido::visor((string) $c['tipo']) === 'reel' ? ($imgVigente[0] ?? null) : null,
+            'videoReel' => TiposContenido::visor((string) $c['tipo']) === 'reel' ? (array_values(array_filter($c['version_id'] !== null ? $this->contenidos()->archivos((string) $c['version_id']) : [], fn($a) => TiposContenido::esVideo((string) $a['mime'])))[0] ?? null) : null,
             'filasLaminas' => TiposContenido::visor((string) $c['tipo']) === 'reel' ? null : self::filasLaminas(TiposContenido::laminas($c['laminas'] ?? null), $imgVigente),
             'fmt' => new Fmt(), 'firma' => $this->firma(), 'maxMb' => $this->maxMb(),
         ] + $this->flashes());
