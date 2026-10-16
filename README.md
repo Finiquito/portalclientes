@@ -74,6 +74,12 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### v0.37.0: base para las betas (código compartido, correo de Prisma y prueba de IA)
+- **Cada agencia con su carpeta de archivos.** Si el plugin se instala una sola vez y se enlaza en varias agencias (`releases/`), ya no adivina dónde guardar los archivos de los clientes y la clave de cifrado: exige `PORTAL_UPLOAD_DIR` en cada instancia. En una instalación normal no cambia nada.
+- **Correo de Prisma.** Si la agencia no configuró su propio SMTP, los avisos salen por el correo de la beta (`correo.json` en `PORTAL_SECRETOS_DIR`, fuera del web-root y del repo) como «Nombre de la agencia vía Prisma», con las respuestas al correo de la agencia. Si pone su SMTP, sale por el suyo. Tope diario por agencia: lo que sobra queda en cola para el día siguiente sin gastar intentos.
+- **Prueba de IA.** Con `ia.json` en esa misma carpeta, la IA funciona sin clave propia durante 30 días desde el primer uso (con tope diario por agencia). Al vencer se apaga sola hasta que la agencia ponga la suya.
+- Sin esos archivos el portal funciona exactamente igual que antes.
+
 ### v0.36.0: después de la reunión, un solo «Guardar»
 - **Tareas como tarjetas, más grandes y fáciles de leer.** Arriba van las **creadas**, que ahora se pueden seguir editando desde la reunión (título, detalle, responsable, vence y «Lo ve el cliente»); el cambio pasa a la tarea real y se marca «Cambio sin guardar» hasta que guardas. Si la tarea se borró desde Tareas, la reunión lo dice.
 - **Sugeridas: ✓ Crear o ✕ Descartar**, una sola decisión por tarea (otro clic la deshace). Las que no decides quedan pendientes para otro día. La que escribes a mano se crea al guardar.

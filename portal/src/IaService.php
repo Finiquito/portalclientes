@@ -158,12 +158,78 @@ class IaService
 
     private function clave(): string
     {
-        return $this->claveDe($this->proveedor());
+        $prov = $this->proveedor();
+        $propia = $this->claveDe($prov);
+        return $propia !== '' ? $propia : $this->clavePrueba($prov);
     }
 
     public function activa(): bool
     {
         return $this->clave() !== '';
+    }
+
+    // ---- Prueba de IA con la clave de la beta -----------------------------------------------
+
+    /** Sólo pruebas: reloj. */
+    public static ?\DateTimeImmutable $hoy = null;
+
+    private function hoy(): \DateTimeImmutable
+    {
+        return self::$hoy ?? new \DateTimeImmutable('today', new \DateTimeZone('UTC'));
+    }
+
+    /**
+     * La clave compartida de la beta, mientras dure la prueba (30 días desde el primer uso, por defecto) y sólo
+     * si la agencia no puso la suya. Pasada la fecha se apaga sola y la agencia tiene que poner su clave.
+     */
+    private function clavePrueba(string $prov): string
+    {
+        $c = Compartido::ia();
+        if ($c === null || $c['proveedor'] !== $prov) {
+            return '';
+        }
+        $a = $this->ajustes();
+        $hasta = $a->get('global', 'portal', 'ia_prueba_hasta');
+        if ($hasta === '') {
+            $hasta = $this->hoy()->modify('+' . $c['dias'] . ' days')->format('Y-m-d');
+            $a->set('global', 'portal', 'ia_prueba_hasta', $hasta);
+        }
+        return $this->hoy()->format('Y-m-d') <= $hasta ? $c['clave'] : '';
+    }
+
+    /**
+     * Estado de la prueba para mostrar en Ajustes.
+     *
+     * @return array{usa: bool, hasta: string, dias: int, vencida: bool}|null null si la beta no ofrece clave compartida
+     *   o si la agencia ya puso la suya.
+     */
+    public function prueba(): ?array
+    {
+        $prov = $this->proveedor();
+        $c = Compartido::ia();
+        if ($c === null || $c['proveedor'] !== $prov || $this->claveDe($prov) !== '') {
+            return null;
+        }
+        $vigente = $this->clavePrueba($prov) !== '';
+        $hasta = $this->ajustes()->get('global', 'portal', 'ia_prueba_hasta');
+        $dias = $hasta === '' ? 0 : max(0, (int) $this->hoy()->diff(new \DateTimeImmutable($hasta, new \DateTimeZone('UTC')))->format('%r%a'));
+        return ['usa' => $vigente, 'hasta' => $hasta, 'dias' => $dias, 'vencida' => !$vigente];
+    }
+
+    /** Cuenta una llamada de la prueba y corta al pasar el tope diario (la clave compartida es de todas las agencias). */
+    private function contarPrueba(): void
+    {
+        if ($this->claveDe($this->proveedor()) !== '' || Compartido::ia() === null) {
+            return;
+        }
+        $a = $this->ajustes();
+        [$dia, $n] = array_pad(explode(':', $a->get('global', 'portal', 'ia_dia'), 2), 2, '0');
+        $hoy = $this->hoy()->format('Y-m-d');
+        $n = $dia === $hoy ? (int) $n : 0;
+        if ($n >= Compartido::ia()['tope']) {
+            throw new \RuntimeException('Se alcanzó el límite diario de la prueba de IA. Vuelve a intentarlo mañana o pon tu propia clave en Ajustes.');
+        }
+        $a->set('global', 'portal', 'ia_dia', $hoy . ':' . ($n + 1));
     }
 
     /** 'entorno' | 'guardada' | '' (del proveedor indicado o del activo) */
@@ -223,6 +289,7 @@ class IaService
     protected function llamar(array $cuerpo): array
     {
         $prov = $this->proveedor();
+        $this->contarPrueba();
         $clave = $this->clave();
         if ($prov === 'openai') {
             $json = $this->http($this->urlApi($prov), ['authorization: Bearer ' . $clave], $cuerpo);

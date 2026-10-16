@@ -2824,6 +2824,103 @@ check(str_contains($html, 'Hola, equipo') && str_contains($html, 'ing-logo') && 
 $_SESSION[P\EquipoController::SESION] = $sesEq;
 
 // ---------------------------------------------------------------------------
+seccion('Beta: carpeta propia por agencia, correo de Prisma y prueba de IA');
+// Código compartido (enlace simbólico a releases/): no se adivina la carpeta de archivos.
+$lanzo = false;
+try {
+    P\ArchivoService::rutaDesdeCodigo('/home/u/prisma/releases/portal-0.37.0/src');
+} catch (RuntimeException $e) {
+    $lanzo = str_contains($e->getMessage(), 'PORTAL_UPLOAD_DIR');
+}
+check($lanzo, 'con el código en releases/ y sin PORTAL_UPLOAD_DIR se niega a adivinar la carpeta');
+check(P\ArchivoService::rutaDesdeCodigo('/home/u/typedock/plugins/portal/src') === '/home/u/typedock/storage/portal_uploads', 'instalación normal: storage junto a typedock');
+$upl = sys_get_temp_dir() . '/portal_upl_' . bin2hex(random_bytes(3));
+check((new P\ArchivoService($pdo))->directorioBase() === rtrim((string) constant('PORTAL_UPLOAD_DIR'), '/'), 'la constante PORTAL_UPLOAD_DIR manda sobre la ruta adivinada');
+putenv('PORTAL_SECRETOS_DIR=' . $upl);
+check(P\Compartido::directorio() === $upl, 'la configuración compartida también se puede dar por variable de entorno (SetEnv)');
+putenv('PORTAL_SECRETOS_DIR');
+@mkdir($upl, 0700, true);
+
+$sec = sys_get_temp_dir() . '/portal_sec_' . bin2hex(random_bytes(3));
+mkdir($sec, 0700, true);
+$pdoB = baseLimpia();
+$ctxB = portal_dev_contexto($pdoB);
+$ajB = new P\AjustesService($pdoB);
+$nB = new P\Notifier($ctxB, $pdoB);
+$cfgEnvio = new ReflectionMethod($nB, 'configEnvio');
+P\Compartido::$dir = $sec;
+check(P\Compartido::correo() === null && $nB->origenCorreo() === '', 'sin archivos compartidos y sin SMTP propio: no hay correo');
+file_put_contents($sec . '/correo.json', json_encode(['host' => 'smtp.hostinger.com', 'puerto' => 465, 'seg' => 'ssl', 'usuario' => 'notificaciones@usaprisma.com', 'clave' => 'x', 'desde' => 'notificaciones@usaprisma.com', 'tope_diario' => 2]));
+check($nB->origenCorreo() === 'prisma', 'sin SMTP propio sale por el correo de Prisma');
+$ajB->set('global', 'portal', 'nombre_equipo', 'Estudio Pampa');
+$ajB->set('global', 'portal', 'email_avisos', 'hola@estudiopampa.cl');
+$env = $cfgEnvio->invoke($nB);
+check($env['cfg']['desde'] === 'notificaciones@usaprisma.com' && $env['nombre'] === 'Estudio Pampa vía Prisma' && $env['responder'] === 'hola@estudiopampa.cl', 'remitente de Prisma, nombre «Agencia vía Prisma» y respuestas al correo de la agencia');
+check($nB->correoOrganizador() === 'notificaciones@usaprisma.com', 'las invitaciones de calendario las firma el correo de Prisma');
+// SMTP propio completo: gana al de Prisma.
+$nB->smtpGuardar(['host' => 'smtp.estudiopampa.cl', 'puerto' => 465, 'seg' => 'ssl', 'usuario' => 'avisos@estudiopampa.cl', 'desde' => 'avisos@estudiopampa.cl', 'clave' => 'secreta']);
+check($nB->origenCorreo() === 'propio' && $cfgEnvio->invoke($nB)['nombre'] === 'Estudio Pampa', 'con SMTP propio configurado sale por el propio, con el nombre de la agencia');
+$ajB->set('global', 'portal', 'correo_origen', 'prisma');
+check($nB->origenCorreo() === 'prisma', 'la agencia puede volver al correo de Prisma');
+// Eligió «propio» pero lo borró: no se manda con otra identidad.
+$ajB->set('global', 'portal', 'correo_origen', 'propio');
+$nB->smtpGuardar(['host' => 'smtp.estudiopampa.cl', 'usuario' => 'avisos@estudiopampa.cl', 'quitar_clave' => '1']);
+check($nB->origenCorreo() === '' && $cfgEnvio->invoke($nB) === null, 'eligió el propio y quedó incompleto: no cae al de Prisma');
+$ajB->set('global', 'portal', 'correo_origen', '');
+$nB->smtpGuardar(['host' => '', 'usuario' => '']);
+// Tope diario.
+$hoyU = (new DateTimeImmutable('now', new DateTimeZone('UTC')))->format('Y-m-d');
+$ajB->set('global', 'portal', 'correo_dia', $hoyU . ':2');
+check($nB->enviadosHoyPrisma() === 2 && $nB->topeDiarioPrisma() === 2, 'cuenta los envíos de hoy y conoce el tope');
+check($nB->enviarCorreo('a@b.cl', 'Hola', '<p>x</p>', 'x') === false && str_contains($ajB->get('global', 'portal', 'smtp_ultimo_error'), 'tope diario'), 'al pasar el tope no envía y deja el motivo en Ajustes');
+$ajB->set('global', 'portal', 'correo_dia', '2000-01-01:99');
+check($nB->enviadosHoyPrisma() === 0, 'el contador arranca de cero cada día');
+// Cola: el tope no gasta intentos y reprograma para mañana.
+$pdoB->exec("INSERT INTO portal_clientes (id, nombre, created_at, updated_at) VALUES ('cli-b', 'Cliente B', '2026-01-01', '2026-01-01')");
+$ajB->set('global', 'portal', 'correo_dia', $hoyU . ':2');
+$enc = new ReflectionMethod($nB, 'encolar');
+$enc->invoke($nB, 'cli-b', '', 'a@b.cl', 'Aviso', 'texto', '<p>x</p>', new DateTimeImmutable('2020-01-01 00:00:00'));
+$nB->vaciarCola();
+$fila = $pdoB->query("SELECT estado, intentos, enviar_desde FROM portal_correos_cola")->fetch();
+check($fila['estado'] === 'pendiente' && (int) $fila['intentos'] === 0 && $fila['enviar_desde'] > (new DateTimeImmutable('now', new DateTimeZone('UTC')))->format('Y-m-d H:i:s'), 'el tope deja el correo en cola para mañana sin gastar intentos');
+
+// Prueba de IA con la clave de la beta.
+$iaB = new P\IaService($pdoB, $upl);
+check($iaB->activa() === false && $iaB->prueba() === null, 'sin clave propia ni compartida la IA está apagada');
+file_put_contents($sec . '/ia.json', json_encode(['proveedor' => 'anthropic', 'clave' => 'sk-beta-compartida', 'dias_prueba' => 30, 'tope_diario' => 2]));
+P\IaService::$hoy = new DateTimeImmutable('2026-11-01', new DateTimeZone('UTC'));
+check($iaB->activa() === true && $iaB->origenClave() === '' && $iaB->pista() === '', 'con clave compartida la IA se activa sin mostrarla ni marcarla como guardada');
+$pr = $iaB->prueba();
+check($pr !== null && $pr['usa'] && $pr['hasta'] === '2026-12-01' && $pr['dias'] === 30, 'la prueba dura 30 días desde el primer uso');
+P\IaService::$hoy = new DateTimeImmutable('2026-12-01', new DateTimeZone('UTC'));
+check($iaB->activa() === true, 'el último día todavía funciona');
+P\IaService::$hoy = new DateTimeImmutable('2026-12-02', new DateTimeZone('UTC'));
+$pr = $iaB->prueba();
+check($iaB->activa() === false && $pr['vencida'] === true, 'vencida la prueba la IA se apaga sola');
+$iaB->guardarClave('sk-propia-agencia');
+check($iaB->activa() === true && $iaB->origenClave() === 'guardada' && $iaB->prueba() === null, 'la agencia pone su clave y sigue funcionando después de la prueba');
+$iaB->guardarClave('');
+// Tope diario de la prueba.
+P\IaService::$hoy = new DateTimeImmutable('2026-11-10', new DateTimeZone('UTC'));
+$ajB->set('global', 'portal', 'ia_prueba_hasta', '2026-12-31');
+$cnt = new ReflectionMethod($iaB, 'contarPrueba');
+$cnt->invoke($iaB);
+$cnt->invoke($iaB);
+$corto = false;
+try {
+    $cnt->invoke($iaB);
+} catch (RuntimeException $e) {
+    $corto = str_contains($e->getMessage(), 'límite diario');
+}
+check($corto, 'la prueba de IA se corta al pasar el tope diario por agencia');
+P\IaService::$hoy = null;
+P\Compartido::$dir = null;
+array_map('unlink', glob($sec . '/*') ?: []);
+@rmdir($sec);
+array_map('unlink', glob($upl . '/{.[!.]*,*}', GLOB_BRACE) ?: []);
+@rmdir($upl);
+
+// ---------------------------------------------------------------------------
 echo "\n\n" . $GLOBALS['ok'] . ' comprobaciones OK, ' . count($GLOBALS['fallas']) . " fallas ({$motor}).\n";
 foreach ($GLOBALS['fallas'] as $f) {
     echo "  ✗ {$f}\n";

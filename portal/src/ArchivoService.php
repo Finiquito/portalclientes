@@ -52,11 +52,10 @@ class ArchivoService
     {
         if ($this->baseDir !== null) {
             $dir = $this->baseDir;
-        } elseif (defined('PORTAL_UPLOAD_DIR')) {
-            $dir = (string) constant('PORTAL_UPLOAD_DIR');
+        } elseif (($cfg = Compartido::entorno('PORTAL_UPLOAD_DIR')) !== '') {
+            $dir = $cfg;
         } else {
-            // .../typedock/plugins/portal/src -> .../typedock/storage/portal_uploads
-            $dir = dirname(__DIR__, 3) . '/storage/portal_uploads';
+            $dir = self::rutaDesdeCodigo(__DIR__);
         }
         if (!is_dir($dir)) {
             @mkdir($dir, 0750, true);
@@ -67,6 +66,19 @@ class ArchivoService
             @file_put_contents($dir . '/index.html', '');
         }
         return rtrim($dir, '/');
+    }
+
+    /**
+     * Carpeta de archivos cuando nadie la indicó: .../typedock/plugins/portal/src -> .../typedock/storage/portal_uploads.
+     * Si el código vive en una carpeta de versiones compartida entre agencias (enlace simbólico), adivinarla dejaría
+     * los archivos y la clave AES de todas en el mismo lugar: ahí se exige PORTAL_UPLOAD_DIR.
+     */
+    public static function rutaDesdeCodigo(string $dirSrc): string
+    {
+        if (basename(dirname($dirSrc, 2)) === 'releases') {
+            throw new \RuntimeException('Falta PORTAL_UPLOAD_DIR: con el plugin compartido, cada instancia debe indicar su propia carpeta de archivos.');
+        }
+        return dirname($dirSrc, 3) . '/storage/portal_uploads';
     }
 
     /** Límite efectivo en bytes: el menor entre el ajuste del portal y php.ini. */

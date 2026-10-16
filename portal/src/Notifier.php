@@ -518,6 +518,12 @@ class Notifier
             $this->pdo->prepare('UPDATE ' . self::COLA . " SET estado = 'enviado', enviado_en = ?, error = NULL WHERE id = ?")->execute([$ahora->format('Y-m-d H:i:s'), $f['id']]);
             return true;
         }
+        if ($this->topeCorreo) {
+            // Tope diario: no es un fallo del servidor, así que no gasta intentos; vuelve mañana temprano.
+            $manana = $ahora->modify('tomorrow')->modify('+5 minutes')->format('Y-m-d H:i:s');
+            $this->pdo->prepare('UPDATE ' . self::COLA . " SET estado = 'pendiente', intentos = intentos - 1, enviar_desde = ? WHERE id = ?")->execute([$manana, $f['id']]);
+            return false;
+        }
         $intentos = (int) $f['intentos'] + 1;
         if ($intentos >= self::MAX_INTENTOS) {
             $this->pdo->prepare('UPDATE ' . self::COLA . " SET estado = 'error', error = ? WHERE id = ?")->execute(['El servidor de correo no aceptó el envío ' . $intentos . ' veces.', $f['id']]);
@@ -650,6 +656,65 @@ class Notifier
         }
     }
 
+    // ---- Correo de Prisma (compartido) vs correo propio -------------------------------------
+
+    /** Se pasó el tope diario del correo de Prisma: el envío queda en cola para mañana. */
+    private bool $topeCorreo = false;
+
+    /**
+     * Con qué correo sale lo de esta agencia: 'propio' (su SMTP), 'prisma' (el de la beta) o '' (ninguno).
+     * Ajuste «correo_origen»: 'propio' | 'prisma' | '' (automático: el propio si lo configuró, si no el de Prisma).
+     * Si la agencia eligió el propio y no está completo NO se usa el de Prisma: no se manda con una identidad que no eligió.
+     */
+    public function origenCorreo(): string
+    {
+        $pref = $this->ajustes()->get('global', 'portal', 'correo_origen');
+        $propio = $this->smtpConfig() !== null;
+        $prisma = Compartido::correo() !== null;
+        if ($pref === 'propio') {
+            return $propio ? 'propio' : '';
+        }
+        if ($pref === 'prisma') {
+            return $prisma ? 'prisma' : ($propio ? 'propio' : '');
+        }
+        return $propio ? 'propio' : ($prisma ? 'prisma' : '');
+    }
+
+    /**
+     * @return array{cfg: array<string, mixed>, origen: string, nombre: string, responder: ?string}|null
+     */
+    private function configEnvio(): ?array
+    {
+        $origen = $this->origenCorreo();
+        $copia = trim($this->ajustes()->get('global', 'portal', 'email_avisos'));
+        $copia = filter_var($copia, FILTER_VALIDATE_EMAIL) ? $copia : null;
+        if ($origen === 'prisma') {
+            $c = Compartido::correo();
+            return $c === null ? null : ['cfg' => $c, 'origen' => 'prisma', 'nombre' => $this->marca()->nombreEquipo() . ' vía Prisma', 'responder' => $copia];
+        }
+        $c = $origen === 'propio' ? $this->smtpConfig() : null;
+        return $c === null || $c['desde'] === '' ? null : ['cfg' => $c, 'origen' => 'propio', 'nombre' => $this->marca()->nombreEquipo(), 'responder' => $copia];
+    }
+
+    /** Tope diario de correos del correo de Prisma (por agencia). */
+    public function topeDiarioPrisma(): int
+    {
+        return Compartido::correo()['tope'] ?? 0;
+    }
+
+    /** Correos enviados hoy (UTC) por el correo de Prisma. */
+    public function enviadosHoyPrisma(): int
+    {
+        $v = $this->ajustes()->get('global', 'portal', 'correo_dia');
+        [$dia, $n] = array_pad(explode(':', $v, 2), 2, '0');
+        return $dia === $this->ahoraUtc()->format('Y-m-d') ? max(0, (int) $n) : 0;
+    }
+
+    private function contarEnvioPrisma(): void
+    {
+        $this->ajustes()->set('global', 'portal', 'correo_dia', $this->ahoraUtc()->format('Y-m-d') . ':' . ($this->enviadosHoyPrisma() + 1));
+    }
+
     /** @param array<string, mixed> $c */
     private function clienteSmtp(array $c): SmtpCliente
     {
@@ -679,9 +744,18 @@ class Notifier
     public function enviarCorreo(string $to, string $asunto, string $html, string $texto, bool $silencioso = true, ?string $ics = null): bool
     {
         $modo = $this->modo();
-        if (in_array($modo, ['auto', 'smtp'], true) && ($cfg = $this->smtpConfig()) !== null && $cfg['desde'] !== '') {
+        $this->topeCorreo = false;
+        if (in_array($modo, ['auto', 'smtp'], true) && ($env = $this->configEnvio()) !== null) {
+            if ($env['origen'] === 'prisma' && $this->enviadosHoyPrisma() >= $env['cfg']['tope']) {
+                $this->topeCorreo = true;   // mañana sale solo desde la cola
+                $this->ajustes()->set('global', 'portal', 'smtp_ultimo_error', 'Se alcanzó el tope diario del correo de Prisma (' . $env['cfg']['tope'] . '). Lo pendiente sale mañana.');
+                return false;
+            }
             try {
-                $this->clienteSmtp($cfg)->enviar($cfg['desde'], $this->marca()->nombreEquipo(), $to, $asunto, $html, $texto, trim($this->ajustes()->get('global', 'portal', 'email_avisos')) ?: null, $ics);
+                $this->clienteSmtp($env['cfg'])->enviar($env['cfg']['desde'], $env['nombre'], $to, $asunto, $html, $texto, $env['responder'], $ics);
+                if ($env['origen'] === 'prisma') {
+                    $this->contarEnvioPrisma();
+                }
                 return true;
             } catch (\Throwable $e) {
                 $this->ajustes()->set('global', 'portal', 'smtp_ultimo_error', mb_substr($e->getMessage(), 0, 250) . ' (' . date('d/m H:i') . ')');
@@ -706,8 +780,8 @@ class Notifier
     /** Correo que firma las invitaciones de calendario (el remitente SMTP o, si no hay, el de copia de avisos). */
     public function correoOrganizador(): string
     {
-        $cfg = $this->smtpConfig();
-        $c = $cfg !== null && $cfg['desde'] !== '' ? $cfg['desde'] : trim($this->ajustes()->get('global', 'portal', 'email_avisos'));
+        $env = $this->configEnvio();
+        $c = $env !== null ? $env['cfg']['desde'] : trim($this->ajustes()->get('global', 'portal', 'email_avisos'));
         return filter_var($c, FILTER_VALIDATE_EMAIL) ? $c : 'no-responder@' . preg_replace('/:\d+$/', '', (string) ($_SERVER['HTTP_HOST'] ?? 'localhost'));
     }
 

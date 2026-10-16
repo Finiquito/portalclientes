@@ -210,9 +210,9 @@ No intentes automatizar el instalador gráfico de TypeDock cada vez. Haz **una i
 1. Hay **SSH y cron** → enlaces simbólicos + `bin/prisma`.
 2. Hasta **10 betas, todas en la misma cuenta** de Hostinger.
 3. **Clave de IA:** la pone Richard durante el primer mes, con tope de gasto; después cada agencia pone la suya (ver §7.3).
-4. **Heartbeat:** pendiente de explicar y confirmar (ver el chat); es un aviso diario con números agregados, sin datos de sus clientes.
+4. **Heartbeat:** sí. Aviso diario con números agregados, sin datos de sus clientes; se informa en los términos de la beta.
 5. **Tickets:** directo al tablero en el hub (se salta el MVP de correo + issue; el espejo en issues del repo sigue como opción).
-6. **Correo:** viene preconfigurado con el SMTP de Hostinger y la agencia puede cambiarlo por el suyo (ver §7).
+6. **Correo:** remitente `notificaciones@usaprisma.com`. Viene preconfigurado con el SMTP de Hostinger y la agencia puede cambiarlo por el suyo (ver §7).
 
 ---
 
@@ -259,3 +259,37 @@ Cómo se logra sin tocar el panel de cada cliente:
 3. Tope diario por instancia y aviso al admin si se alcanza.
 4. `IaService` con el mismo respaldo, contador y fecha de término.
 5. Pruebas para ambos modos.
+
+---
+
+## 8. Que el correo no caiga en spam (SPF, DKIM y DMARC)
+
+Los tres son registros TXT/CNAME en el DNS de `usaprisma.com`. Cada uno responde una pregunta distinta del servidor que recibe:
+
+| Registro | Pregunta que responde | Qué poner |
+|---|---|---|
+| **SPF** | ¿Este servidor tiene permiso para enviar por usaprisma.com? | Un único TXT en `@` que liste a Hostinger **y** a Mailchimp (la lista de espera ya envía desde este dominio). Ej.: `v=spf1 include:_spf.mail.hostinger.com include:servers.mcsv.net ~all`. Solo puede haber **un** SPF por dominio |
+| **DKIM** | ¿El mensaje viene firmado y no lo alteraron? | Las claves que entrega Hostinger para el buzón (registros CNAME/TXT que hPanel te muestra al activar el dominio de correo) y las de Mailchimp (autenticar el dominio en su panel) |
+| **DMARC** | Si SPF o DKIM fallan, ¿qué hago, y quién me avisa? | TXT en `_dmarc`: `v=DMARC1; p=none; rua=mailto:dmarc@usaprisma.com; adkim=r; aspf=r` |
+
+**Regla de alineación (por eso el diseño «vía Prisma»):** DMARC exige que el dominio del *From* coincida con el que pasó SPF/DKIM. Siempre enviamos con `From: notificaciones@usaprisma.com`; el correo de la agencia va solo en *Reply-To*, que no afecta a DMARC. **Nunca** poner el correo de la agencia en *From* usando el SMTP de Prisma: fallaría DMARC. Si una agencia quiere salir con su dominio, usa su propio SMTP (modo «propio»).
+
+**Pasos, en orden:**
+1. Crear el buzón `notificaciones@usaprisma.com` y otro `dmarc@usaprisma.com` para los informes (o una alias hacia tu correo).
+2. Activar SPF y DKIM en Hostinger y en Mailchimp, y fusionar el SPF en un solo registro.
+3. Publicar DMARC con **`p=none`** (solo observar). Dejarlo 2–4 semanas leyendo los informes (`rua`) para confirmar que todo lo legítimo pasa.
+4. Subir a `p=quarantine` y, con 1–2 meses limpios, a `p=reject`.
+5. Probar con un correo real a Gmail → «Mostrar original» debe decir `SPF: PASS`, `DKIM: PASS`, `DMARC: PASS`. Herramientas gratis: mail-tester.com, MXToolbox y Google Postmaster Tools.
+
+**Buenas prácticas de contenido:** solo correos de sistema, textos cortos y sin imágenes pesadas, que el enlace apunte al subdominio de la agencia, y la dirección de respuesta real. Vigilar los rebotes: un buzón que acumula rebotes arrastra a las 10 agencias.
+
+## 9. Configuración que lleva cada instancia (v0.37)
+
+| Dónde | Qué | Para qué |
+|---|---|---|
+| `.htaccess` o config de la instancia | `SetEnv PORTAL_UPLOAD_DIR /home/…/agencia/storage/portal_uploads` | Archivos y clave AES de **esa** agencia (obligatorio si el plugin va por enlace a `releases/`) |
+| `.htaccess` o config de la instancia | `SetEnv PORTAL_SECRETOS_DIR /home/…/prisma/secretos` | Dónde están `correo.json` e `ia.json` compartidos |
+| `~/prisma/secretos/correo.json` | `{"host","puerto","seg","usuario","clave","desde","tope_diario"}` | SMTP de Prisma (permisos 600) |
+| `~/prisma/secretos/ia.json` | `{"proveedor","clave","dias_prueba","tope_diario"}` | Clave de IA de la beta |
+
+Las claves se escriben a mano en el servidor, nunca en el repo ni en el chat.
