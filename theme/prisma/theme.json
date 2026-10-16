@@ -1,7 +1,7 @@
 {
   "name": "Prisma",
-  "version": "1.5.0",
-  "description": "Landing de Prisma (usaprisma.com): portal de clientes para freelancers, estudios y agencias pequeñas de Latinoamérica. Una página con lista de espera (plugin «invitaciones»).",
+  "version": "1.6.0",
+  "description": "Landing de Prisma (usaprisma.com): portal de clientes para freelancers, estudios y agencias pequeñas de Latinoamérica. Una página con videos, preguntas frecuentes y formulario de beta gratis (plugin «invitaciones»).",
   "author": "Estudio RichGT",
   "menus": {},
   "slots": {},

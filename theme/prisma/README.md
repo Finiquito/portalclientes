@@ -1,6 +1,6 @@
 # Tema Prisma: landing de usaprisma.com
 
-Landing de una página para Prisma, el portal de clientes ofrecido a estudios, agencias chicas y freelancers de Chile. Su objetivo es una sola acción: **pedir una invitación**. Las inscripciones las recibe el plugin `invitaciones/`, que las guarda y las envía a Mailchimp.
+Landing de una página para Prisma, el portal de clientes ofrecido a estudios, agencias chicas y freelancers de Chile. Su objetivo es una sola acción: **probar la beta gratis** (dejar el correo en el formulario). Las inscripciones las recibe el plugin `invitaciones/`, que las guarda y las envía a Mailchimp.
 
 ## Instalación en TypeDock
 
@@ -12,6 +12,13 @@ Landing de una página para Prisma, el portal de clientes ofrecido a estudios, a
 ## Actualizar el tema
 
 TypeDock sirve el CSS, el JS y las imágenes desde una **copia** en `public_html/themes/prisma/assets/`, que solo se renueva al activar el tema o al abrir su vista previa. Por eso, después de reemplazar `typedock/themes/prisma`, ve a **Apariencia → Temas** y aprieta **Vista previa** en Prisma: eso vuelve a copiar los assets y limpia la caché de plantillas. Sin ese paso se sigue viendo el CSS anterior aunque cambie `?v=`.
+
+## Videos, foto y contacto (v1.6)
+
+- **Videos:** la sección «Míralo funcionando» (`#videos`) reproduce `/videos/prisma-1.mp4` … `/videos/prisma-7.mp4`. Esos archivos **no van en el tema**: se suben a `public_html/videos/` (al lado de `index.php`). Las portadas (`assets/img/video-N.jpg`) sí van en el tema y se ven antes de dar play. Un solo video carga a la vez, y Analytics recibe el evento `Video_Visto` (con el número del video) la primera vez que se reproduce cada uno.
+- **Foto de quien está detrás:** si existe `assets/img/autor.jpg` (cuadrada, ~640×640), aparece sola en «Quién está detrás». Si no existe, la sección se ve solo con texto. Después de subirla, aprieta **Vista previa** del tema.
+- **Nombre y contacto:** `$autor` y `$contacto` están al comienzo de `layouts/home.latte`; el correo del pie está en `layouts/base.latte`.
+- **Preguntas frecuentes:** la lista `$preguntas` de `home.latte` alimenta la página y los datos estructurados (FAQPage) a la vez.
 
 ## Estructura
 
@@ -28,7 +35,7 @@ partials/despiece-*.latte          ilustraciones SVG en línea (generadas; no ed
 assets/css/prisma.css              estilos: colores, tipos y medidas como tokens en :root
 assets/js/prisma.js                despiece animado y envío del formulario (sin dependencias)
 assets/fonts/                      Schibsted Grotesk (OFL), alojada en el tema: sin CDN externo
-assets/img/                        capturas reales del portal y del panel (datos de demo)
+assets/img/                        capturas reales del portal y del panel (datos de demo) y portadas de los videos (video-N.jpg)
 assets/screenshot.png              miniatura para la lista de temas
 tools/despiece.py                  genera las ilustraciones isométricas
 ```

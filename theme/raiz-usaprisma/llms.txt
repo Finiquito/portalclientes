@@ -1,6 +1,6 @@
 # Prisma
 
-> Prisma es un portal de clientes para freelancers, estudios de diseño y agencias pequeñas de publicidad o marketing de Latinoamérica (equipos de 1 a 15 personas). Tareas, reuniones, revisiones y archivos encajan en un solo lugar: el cliente ve cómo avanza su proyecto, aprueba y envía lo que falta, sin perseguirlo por WhatsApp. Está en español y hoy se abre por invitación.
+> Prisma es un portal de clientes para freelancers, estudios de diseño y agencias pequeñas de publicidad o marketing de Latinoamérica (equipos de 1 a 15 personas). Tareas, reuniones, revisiones y archivos encajan en un solo lugar: el cliente ve cómo avanza su proyecto, aprueba y envía lo que falta, sin perseguirlo por WhatsApp. Está en español y hoy está en beta gratis, con cupos limitados.
 
 ## Qué hace
 
@@ -19,8 +19,21 @@
 
 ## Cómo empezar
 
-- Pide una invitación en https://usaprisma.com/#invitacion con tu nombre, tu correo y el tamaño de tu equipo.
+- La beta es gratis y los cupos son limitados. A cambio, quien la prueba cuenta qué le sirve, qué falta y qué sobra.
+- Pide tu cupo en https://usaprisma.com/#invitacion con tu nombre, tu correo y el tamaño de tu equipo.
+
+## Preguntas frecuentes
+
+- ¿Los clientes necesitan cuenta? No: entran con su correo y un código, sin contraseña.
+- ¿Qué tan seguros están los datos? Los datos de cada cliente están separados, todo viaja por HTTPS y las claves guardadas en Prisma van cifradas con AES-256.
+- ¿Hay que instalar algo? No: funciona desde el navegador.
 
 ## Enlaces
 
-- [Inicio](https://usaprisma.com/): qué es Prisma, cómo funciona y el formulario de invitación.
+- [Inicio](https://usaprisma.com/): qué es Prisma, cómo funciona y el formulario para pedir un cupo.
+- [Videos](https://usaprisma.com/#videos): siete recorridos cortos del panel real, con datos de ejemplo.
+- [Preguntas frecuentes](https://usaprisma.com/#preguntas)
+
+## Contacto
+
+- info@usaprisma.com

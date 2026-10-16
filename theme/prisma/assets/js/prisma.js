@@ -16,7 +16,7 @@
     var titulo = document.createElement("strong");
     titulo.textContent = nombre ? "Listo, " + nombre + "." : "Listo, quedaste en la lista.";
     var texto = document.createElement("p");
-    texto.textContent = "Te escribimos a " + correo + " cuando tengamos cupo. Si Mailchimp te pide confirmar tu correo, revisa tu bandeja (y la de spam).";
+    texto.textContent = "Te escribo a " + correo + " cuando tenga cupo. Si Mailchimp te pide confirmar tu correo, revisa tu bandeja (y la de spam).";
     caja.appendChild(titulo);
     caja.appendChild(texto);
     form.replaceWith(caja);
@@ -154,6 +154,44 @@
           if (boton && document.body.contains(boton)) { boton.disabled = false; boton.removeAttribute("aria-busy"); boton.textContent = textoBoton; }
         });
     });
+  });
+
+  /* ---- Videos: un solo visor; la lista cambia el video. Sin JS, cada enlace abre el archivo. ---- */
+  var visor = document.querySelector("[data-visor]");
+  if (visor) {
+    var video = visor.querySelector("video");
+    var items = document.querySelectorAll("[data-video]");
+    var contados = {};
+    video.addEventListener("play", function () {
+      var id = video.getAttribute("data-id");
+      if (contados[id] || typeof window.gtag !== "function") return;
+      contados[id] = true;
+      window.gtag("event", "Video_Visto", { video: id });
+    });
+    items.forEach(function (a) {
+      a.addEventListener("click", function (ev) {
+        ev.preventDefault();
+        items.forEach(function (i) { i.removeAttribute("aria-current"); });
+        a.setAttribute("aria-current", "true");
+        video.pause();
+        video.setAttribute("data-id", a.getAttribute("data-video"));
+        video.poster = a.getAttribute("data-poster");
+        video.src = a.getAttribute("href");
+        video.load();
+        var p = video.play();
+        if (p && p.catch) p.catch(function () {});
+        if (window.matchMedia("(max-width: 60rem)").matches) visor.scrollIntoView({ behavior: reducir ? "auto" : "smooth", block: "nearest" });
+      });
+    });
+  }
+
+  /* ---- Foto de quien está detrás: aparece sólo si existe assets/img/autor.jpg ---- */
+  document.querySelectorAll("[data-foto]").forEach(function (fig) {
+    var img = fig.querySelector("img[data-src]");
+    if (!img) return;
+    var prueba = new Image();
+    prueba.onload = function () { img.src = img.getAttribute("data-src"); fig.hidden = false; };
+    prueba.src = img.getAttribute("data-src");
   });
 
   /* Sin JS el formulario vuelve con ?invitacion=ok o ?invitacion=error */

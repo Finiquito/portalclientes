@@ -10,9 +10,29 @@
 {* Metadatos del landing: propios del tema, no los del SEO general del sitio (que
    pueden decir «Blog»). La imagen para compartir es assets/img/compartir.jpg (1200×630). *}
 {var $sitio = 'https://usaprisma.com'}
+{var $contacto = 'info@usaprisma.com'}
+{var $autor = 'Richard González'}
+{* Preguntas frecuentes: se muestran en la página y se repiten en los datos estructurados (FAQPage). *}
+{var $preguntas = [
+    ['¿Cuánto cuesta?', 'La beta es gratis y los cupos son limitados. Si más adelante Prisma tiene precio, te lo cuento antes de cobrarte nada.'],
+    ['¿Qué me pides a cambio?', 'Que lo uses en tu trabajo real y me cuentes qué te sirve, qué falta y qué sobra. Eso es todo.'],
+    ['¿Mis clientes tienen que crear una cuenta?', 'No. Entran con su correo y un código que les llega por correo; no hay contraseña que olvidar.'],
+    ['¿Qué tan seguros están los datos de mis clientes?', 'Los datos de cada cliente están separados de los de los demás, todo viaja por HTTPS y las claves que guardas en Prisma van cifradas con AES-256.'],
+    ['¿Tengo que instalar algo?', 'No. Prisma funciona desde el navegador, tanto para tu equipo como para tus clientes.'],
+]}
+{* Videos: los archivos van en public_html/videos/prisma-N.mp4; las portadas, en assets/img/video-N.jpg. *}
+{var $videos = [
+    [1, 'Lo que ve mi cliente', 'Su portal: qué le toca, qué está en revisión y cuándo es la próxima reunión.'],
+    [2, 'Subir la grilla', 'La grilla de contenidos queda ordenada, pieza por pieza, en pocos minutos.'],
+    [3, 'Sumar los diseños', 'Cada imagen cae en su pieza por el nombre del archivo.'],
+    [4, 'Las reuniones', 'De la transcripción salen los acuerdos y las tareas.'],
+    [5, 'Pedir archivos', 'Pido el logo una vez y el cliente lo sube en la misma tarea.'],
+    [6, 'Los mensajes', 'Cada cosa tiene su conversación, en vez de cinco apps distintas.'],
+    [7, 'Mi mañana', 'Una sola pantalla en vez de WhatsApp, correo y Drive.'],
+]}
 {block metas}
-    {var $tituloComp = 'Prisma · Pieza a pieza, tus proyectos toman forma'}
-    {var $descComp = 'El portal de clientes para freelancers, estudios y agencias pequeñas: tus clientes ven cómo avanza su proyecto, aprueban y te envían lo que falta. Y tú dejas de perseguirlos por WhatsApp.'}
+    {var $tituloComp = 'Prisma · Deja de perseguir a tus clientes por WhatsApp'}
+    {var $descComp = 'Prisma es el portal donde tus clientes ven cómo avanza su proyecto, aprueban y te envían lo que falta. Para freelancers, estudios y agencias pequeñas. Beta gratis, cupos limitados.'}
     {var $url = (isset($seo) && $seo->canonical) ? $seo->canonical : $sitio . '/'}
     <title>{$tituloComp}</title>
     <meta name="description" content="{$descComp}">
@@ -42,7 +62,9 @@
              'inLanguage' => 'es', 'description' => $descComp, 'image' => $sitio . '/themes/prisma/assets/img/compartir.jpg',
              'audience' => ['@type' => 'BusinessAudience', 'audienceType' => 'Freelancers, estudios de diseño y agencias pequeñas de publicidad o marketing (equipos de 1 a 15 personas)'],
              'areaServed' => 'Latinoamérica', 'publisher' => ['@id' => $sitio . '/#org'],
+             'offers' => ['@type' => 'Offer', 'price' => '0', 'priceCurrency' => 'CLP', 'description' => 'Beta gratuita con cupos limitados'],
              'featureList' => ['Portal para el cliente con su logo y su color', 'Ingreso del cliente con su correo y un código, sin contraseña', 'Tareas con archivos que sube el cliente', 'Aprobación de contenidos pieza por pieza', 'Reuniones con resumen, acuerdos y tareas a partir de las notas', 'Panel del equipo con cuentas asignadas y avisos']],
+            ['@type' => 'FAQPage', 'mainEntity' => array_map(fn($p) => ['@type' => 'Question', 'name' => $p[0], 'acceptedAnswer' => ['@type' => 'Answer', 'text' => $p[1]]], $preguntas)],
         ],
     ], \JSON_UNESCAPED_UNICODE | \JSON_UNESCAPED_SLASHES | \JSON_HEX_TAG)|noescape}</script>
 {/block}
@@ -54,16 +76,17 @@
     <section class="portada">
         <div class="contenedor portada-grilla">
             <div class="portada-texto">
-                <h1>Pieza a pieza, tus proyectos toman forma.</h1>
-                <p class="bajada">Tareas, reuniones, revisiones y archivos encajan en un portal para tu estudio, tu agencia pequeña o tu trabajo independiente. Tus clientes ven cómo avanza su proyecto, aprueban y te envían lo que falta. Y tú dejas de perseguirlos por WhatsApp.</p>
+                <p class="sello">Beta gratis · Cupos limitados</p>
+                <h1>Deja de perseguir a tus clientes por WhatsApp.</h1>
+                <p class="bajada">Prisma es el portal donde tus clientes ven cómo avanza su proyecto, aprueban y te envían lo que falta. Tareas, reuniones, revisiones y archivos, en un solo lugar para tu estudio, tu agencia pequeña o tu trabajo independiente.</p>
 
                 <form class="form-corto" action="#invitacion" method="get" data-continuar novalidate>
                     <label for="correo-portada" class="solo-lector">Tu correo</label>
                     <input id="correo-portada" class="campo" type="email" name="email" placeholder="tu@estudio.com" autocomplete="email" inputmode="email" required>
-                    <button type="submit" class="boton">Pedir invitación</button>
+                    <button type="submit" class="boton">Probar la beta gratis</button>
                     <p class="form-estado" data-estado role="status" aria-live="polite"></p>
                 </form>
-                <p class="nota">Luego te pedimos tu nombre y el tamaño de tu equipo, y listo.</p>
+                <p class="nota">Luego te pido tu nombre y el tamaño de tu equipo, y listo. <a href="#videos">¿Quieres verlo antes?</a></p>
             </div>
 
             <figure class="portada-figura">
@@ -76,6 +99,30 @@
             <li>Tu cliente entra con su correo, sin contraseña</li>
             <li>En español, para Latinoamérica</li>
         </ul>
+    </section>
+
+    {* ---- Videos: el producto funcionando ---- *}
+    <section class="videos" id="videos" aria-labelledby="t-videos">
+        <div class="contenedor videos-grilla">
+            <div class="visor" data-visor>
+                <video controls playsinline preload="none" width="1080" height="1350" poster="{$assets}/img/video-1.jpg" src="/videos/prisma-1.mp4" data-id="1"></video>
+            </div>
+            <div class="videos-texto">
+                <h2 id="t-videos">Míralo funcionando.</h2>
+                <p>Siete recorridos cortos del panel real, con datos de ejemplo. Parte por el primero y sigue por el que más se parezca a tu semana.</p>
+                <ol class="lista-videos">
+                    {foreach $videos as [$n, $titulo, $desc]}
+                    <li>
+                        <a href="/videos/prisma-{$n}.mp4" data-video="{$n}" data-poster="{$assets}/img/video-{$n}.jpg" {if $n === 1}aria-current="true"{/if}>
+                            <span class="lista-videos-n">{$n}</span>
+                            <strong>{$titulo}</strong>
+                            <span class="lista-videos-d">{$desc}</span>
+                        </a>
+                    </li>
+                    {/foreach}
+                </ol>
+            </div>
+        </div>
     </section>
 
     {* ---- Las piezas ---- *}
@@ -162,12 +209,42 @@
         </div>
     </section>
 
+    {* ---- Quién está detrás. La foto es opcional: si existe assets/img/autor.jpg, el JS la muestra. ---- *}
+    <section class="autor" aria-labelledby="t-autor">
+        <div class="contenedor autor-grilla">
+            <h2 id="t-autor">Quién está detrás.</h2>
+            <figure class="autor-foto" data-foto hidden>
+                <img data-src="{$assets}/img/autor.jpg" width="640" height="640" alt="{$autor}" decoding="async">
+            </figure>
+            <div class="autor-texto">
+                <p>Soy Richard, diseñador y desarrollador freelancer en Chile, con 15 años trabajando en frontend. Llevaba a mis clientes entre WhatsApp, Drive y correo, y perdía horas persiguiendo logos, aprobaciones y respuestas.</p>
+                <p>Armé Prisma para mi propio trabajo y hoy lo uso en mi día a día. Lo estoy abriendo en beta gratis a cambio de tus comentarios: qué te sirve, qué falta y qué sobra.</p>
+                <p class="autor-firma"><strong>{$autor}</strong> · Escríbeme a <a href="mailto:{$contacto}">{$contacto}</a></p>
+            </div>
+        </div>
+    </section>
+
+    {* ---- Preguntas frecuentes ---- *}
+    <section class="preguntas" id="preguntas" aria-labelledby="t-preguntas">
+        <div class="contenedor faq-grilla">
+            <h2 id="t-preguntas">Preguntas frecuentes.</h2>
+            <div class="faq-lista">
+                {foreach $preguntas as [$pregunta, $respuesta]}
+                <details class="faq-item">
+                    <summary>{$pregunta}</summary>
+                    <p>{$respuesta}</p>
+                </details>
+                {/foreach}
+            </div>
+        </div>
+    </section>
+
     {* ---- Invitación ---- *}
     <section class="invitacion" id="invitacion" aria-labelledby="t-invitacion">
         <div class="contenedor invitacion-grilla">
             <div class="invitacion-texto">
-                <h2 id="t-invitacion">Pide tu invitación.</h2>
-                <p>Estamos abriendo Prisma de a poco, con freelancers, estudios y agencias de Latinoamérica. Déjanos tus datos y te escribimos cuando tengamos cupo para ti.</p>
+                <h2 id="t-invitacion">Prueba la beta gratis.</h2>
+                <p>Estoy abriendo Prisma de a poco, con freelancers, estudios y agencias de Latinoamérica, y los cupos son limitados. Déjame tus datos y te escribo cuando tenga lugar para ti.</p>
             </div>
 
             <form class="form-largo" action="{$accion}" method="post" data-invitacion novalidate>
@@ -209,9 +286,9 @@
                     </select>
                 </div>
 
-                <button type="submit" class="boton boton-grande" data-enviando="Enviando…">Pedir invitación</button>
+                <button type="submit" class="boton boton-grande" data-enviando="Enviando…">Probar la beta gratis</button>
                 <p class="form-estado" data-estado role="status" aria-live="polite"></p>
-                <p class="nota">Usamos tu correo solo para esto. Te puedes dar de baja con un clic.</p>
+                <p class="nota">Uso tu correo solo para esto. Te puedes dar de baja con un clic.</p>
             </form>
         </div>
     </section>
