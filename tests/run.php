@@ -1485,6 +1485,74 @@ P\Notifier::$ahora = $enAgencia('2027-01-15 10:00');
 $g->hacer('POST', $R, 'destroy', [$rk], 'reunion', false, ['_csrf_token' => $tok]);
 check(str_starts_with(($para('ana@agencia.cl')[0]['subject'] ?? ''), 'Se canceló la reunión: Kickoff Cinco'), 'borrar la reunión manda la cancelación');
 
+// Después de la reunión: un solo «Guardar» crea, descarta, actualiza lo creado y aplica «Qué ve el cliente».
+$ctx->correos = [];
+P\PortalSession::tomarFlash();
+$rT = $rs->create(['proyecto_id' => $p5, 'titulo' => 'Revisión Cinco', 'fecha' => '2027-01-14 10:00', 'publicada' => '1']);
+$q1 = $rs->agregarPropuesta($rT, ['titulo' => 'Enviar logos', 'asignado' => 'cliente'], 'ia');
+$q2 = $rs->agregarPropuesta($rT, ['titulo' => 'Ajustar paleta'], 'ia');
+$q3 = $rs->agregarPropuesta($rT, ['titulo' => 'Idea que no va'], 'ia');
+$q4 = $rs->agregarPropuesta($rT, ['titulo' => 'Para otro día'], 'ia');
+$baseT = ['_csrf_token' => $tok, 'proyecto_id' => $p5, 'titulo' => 'Revisión Cinco', 'fecha_d' => '2027-01-14', 'fecha_t' => '10:00', 'duracion_min' => '60',
+    'resumen' => 'Vimos la paleta.', 'acuerdos' => "Logos el lunes", 'publicada' => '1', 'resumen_publicado' => '1'];
+$g->hacer('POST', $R, 'update', [$rT], 'reunion', false, $baseT + [
+    'decision' => [$q1 => 'crear', $q2 => 'crear', $q3 => 'descartar'],
+    'prop' => [$q1 => ['titulo' => 'Enviar logos', 'asignado' => 'cliente'], $q2 => ['titulo' => 'Ajustar paleta', 'asignado' => 'equipo', 'fecha_vencimiento' => '2027-01-20'],
+               $q3 => ['titulo' => 'Idea que no va'], $q4 => ['titulo' => 'Para otro día']],
+    'nueva' => ['titulo' => 'llamar a la imprenta', 'asignado' => 'equipo'],
+    'prox_fecha_d' => '2027-01-21', 'prox_fecha_t' => '10:00', 'prox_titulo' => 'Seguimiento Cinco', 'agendar_prox' => '1', 'prox_publicar' => '1', 'avisar' => '1', 'accion' => 'guardar']);
+$flT = json_encode(P\PortalSession::tomarFlash(), JSON_UNESCAPED_UNICODE);
+$tr = $rs->propuestasParaEditar($rT);
+check(count($tr['creadas']) === 3 && count($tr['sugeridas']) === 1 && $tr['sugeridas'][0]['titulo'] === 'Para otro día' && $rs->propuesta($q3) === null,
+    'un solo Guardar: crea las marcadas y la escrita a mano, descarta las marcadas y deja pendiente lo que no se decidió');
+check(str_contains($flT, '3 tareas creadas (1 la ve el cliente)') && str_contains($flT, '1 sugerencia descartada') && str_contains($flT, 'próxima reunión agendada')
+    && str_contains($flT, 'resumen publicado') && str_contains($flT, 'le avisamos por correo'), 'el mensaje dice lo que pasó');
+check(count(array_filter($ctx->correos, fn($c) => str_contains($c['subject'], 'Novedades de la reunión «Revisión Cinco»'))) + (int) $pdo->query("SELECT COUNT(*) FROM portal_correos_cola WHERE asunto LIKE 'Novedades de la reunión «Revisión Cinco»%'")->fetchColumn() >= 1,
+    'y el correo al cliente sale en el mismo Guardar');
+$rTv = $rs->find($rT);
+$proxT = $rs->find((string) $rTv['prox_reunion_id']);
+check($proxT !== null && (int) $proxT['publicada'] === 1, 'la próxima reunión queda agendada y visible');
+
+// Una tarea ya creada se puede cambiar desde la reunión: pasa a la tarea real.
+$cPal = array_values(array_filter($tr['creadas'], fn($q) => $q['titulo'] === 'Ajustar paleta'))[0];
+$tPal = (string) $cPal['tarea_id'];
+check((int) $ts->find($tPal)['visible_cliente'] === 0 && $ts->find($tPal)['fecha_vencimiento'] === '2027-01-20', 'la tarea creada parte interna, con su fecha');
+$ctx->correos = [];
+$pdo->exec("DELETE FROM portal_correos_cola");
+$creadasPost = [];
+foreach ($tr['creadas'] as $q) {
+    $creadasPost[$q['id']] = ['titulo' => $q['titulo'], 'descripcion' => $q['descripcion'], 'asignado' => $q['asignado'], 'fecha_vencimiento' => $q['fecha_vencimiento'], 'visible_cliente' => $q['visible_cliente'] ? '1' : ''];
+}
+$creadasPost[$cPal['id']] = ['titulo' => 'Ajustar paleta final', 'descripcion' => "Dos tonos\r\nmás cálidos", 'asignado' => 'equipo', 'fecha_vencimiento' => '2027-01-22', 'visible_cliente' => '1'];
+$g->hacer('POST', $R, 'update', [$rT], 'reunion', false, $baseT + ['creada' => $creadasPost, 'prox_form' => '1', 'prox_publicar' => '', 'avisar' => '1', 'accion' => 'guardar']);
+$flT = json_encode(P\PortalSession::tomarFlash(), JSON_UNESCAPED_UNICODE);
+$tPalV = $ts->find($tPal);
+check($tPalV['titulo'] === 'Ajustar paleta final' && (int) $tPalV['visible_cliente'] === 1 && $tPalV['fecha_vencimiento'] === '2027-01-22' && $tPalV['descripcion'] === "Dos tonos\nmás cálidos",
+    'cambiar título, fecha y «Lo ve el cliente» de una tarea creada actualiza la tarea real');
+check(str_contains($flT, '1 tarea actualizada') && !str_contains($flT, 'creada'), 'sólo cuenta como actualizada la que cambió');
+check((int) $rs->find((string) $rTv['prox_reunion_id'])['publicada'] === 0, 'la próxima reunión ya agendada se puede ocultar desde «Qué ve el cliente»');
+check(str_contains($flT, 'le avisamos por correo'), 'una tarea que recién pasa a verse cuenta como novedad para el correo');
+$tr2 = $rs->propuestasParaEditar($rT);
+$creadasPost = [];
+foreach ($tr2['creadas'] as $q) {
+    $creadasPost[$q['id']] = ['titulo' => $q['titulo'], 'descripcion' => str_replace("\n", "\r\n", (string) $q['descripcion']), 'asignado' => $q['asignado'], 'fecha_vencimiento' => $q['fecha_vencimiento'], 'visible_cliente' => $q['visible_cliente'] ? '1' : ''];
+}
+$g->hacer('POST', $R, 'update', [$rT], 'reunion', false, $baseT + ['creada' => $creadasPost, 'avisar' => '1', 'accion' => 'guardar']);
+$flT = json_encode(P\PortalSession::tomarFlash(), JSON_UNESCAPED_UNICODE);
+check(str_contains($flT, 'Reunión guardada.') && str_contains($flT, 'No se envió correo'), 'guardar sin cambios no cuenta nada como nuevo ni manda correo, y lo dice');
+$cLog = array_values(array_filter($tr2['creadas'], fn($q) => $q['titulo'] === 'Enviar logos'))[0];
+$creadasPost[$cLog['id']]['asignado'] = 'equipo';
+$creadasPost[$cLog['id']]['visible_cliente'] = '';
+$g->hacer('POST', $R, 'update', [$rT], 'reunion', false, $baseT + ['creada' => $creadasPost, 'accion' => 'guardar']);
+check($ts->find((string) $cLog['tarea_id'])['responsable_tipo'] === 'equipo' && (int) $ts->find((string) $cLog['tarea_id'])['visible_cliente'] === 0, 'el responsable de una tarea creada también se cambia desde la reunión');
+P\PortalSession::tomarFlash();
+[$html] = $g->hacer('GET', $R, 'edit', [$rT], 'reunion');
+check(str_contains($html, 'Qué ve el cliente') && str_contains($html, 'name="creada[') && str_contains($html, 'name="decision[') && !str_contains($html, 'Crear lo marcado'),
+    'la pantalla muestra las creadas editables, Crear / Descartar en las sugeridas y un solo Guardar');
+$ts->delete((string) $cLog['tarea_id']);
+[$html] = $g->hacer('GET', $R, 'edit', [$rT], 'reunion');
+check(str_contains($html, 'La tarea se borró'), 'si la tarea se borró desde Tareas, la reunión lo muestra sin dejar editarla');
+
 // Correo con invitación por SMTP: alternativa text/calendar y adjunto
 $smtp = new P\SmtpCliente('localhost', 25, '', '', '');
 $m = (new ReflectionMethod($smtp, 'mensaje'));

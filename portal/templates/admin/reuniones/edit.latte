@@ -3,7 +3,7 @@
 {block page_title}{$reunion['titulo']}{/block}
 
 {block content}
-<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=15">
+<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=16">
 {* Fechas en la hora de la agencia; debajo se muestra la del cliente *}
 {var $fecha10 = substr((string) $reunion['fecha'], 0, 10)}
 {var $hora = strlen((string) $reunion['fecha']) > 10 ? substr((string) $reunion['fecha'], 11, 5) : ''}
@@ -50,7 +50,7 @@
         <label class="form-label mt-3">Grabación (opcional)</label>
         <input type="url" name="enlace_grabacion" class="form-input" value="{$reunion['enlace_grabacion']}" maxlength="500" placeholder="https://drive.google.com/…">
         {include '../_fase_campo.latte', fasesRango: $fasesRango, faseActual: $reunion['fase_id'] ?? '', campoFecha: 'fecha_d', proyFijo: null, esHito: (bool) ($reunion['es_hito'] ?? 0)}
-        <label class="pa-check"><input type="checkbox" name="publicada" value="1" {if $reunion['publicada']}checked{/if}> Visible para el cliente en «Reuniones»</label>
+        <p class="form-hint mt-3">Qué ve el cliente de esta reunión se decide al final, en «Qué ve el cliente».</p>
 
         {include '_convocados.latte', nueva: false}
     </div>
@@ -87,54 +87,96 @@
         <textarea name="resumen" class="form-input" rows="6" placeholder="Qué se conversó y qué se decidió.">{$reunion['resumen']}</textarea>
         <label class="form-label mt-3">Acuerdos <span class="pa-muted">(uno por línea)</span></label>
         <textarea name="acuerdos" class="form-input" rows="4">{$reunion['acuerdos']}</textarea>
-        <label class="pa-check"><input type="checkbox" name="resumen_publicado" value="1" {if $reunion['resumen_publicado']}checked{/if}> Publicar resumen, acuerdos y grabación al cliente <span class="pa-muted">(requiere que la reunión esté visible)</span></label>
         <label class="form-label mt-3">Análisis interno <span class="pa-lock">🔒 el cliente nunca lo ve</span></label>
         <textarea name="analisis" class="form-input" rows="4" placeholder="Riesgos, dudas del cliente, temas pendientes…">{$reunion['analisis']}</textarea>
     </div>
 
-    {* 4. Tareas *}
-    <div class="card">
-        <h2 class="pa-h2">4 · Tareas propuestas</h2>
-        <p class="form-hint" style="margin-bottom:.75rem">Marca las que quieres crear. «Visible» decide si el cliente la ve (lo asignado al cliente siempre se ve). Marca «Quitar» en las que no sirven: se descartan al guardar o al crear (puedes marcar varias). Nada se crea hasta que apretes «Crear lo marcado».</p>
-        <div style="overflow-x:auto">
-        <table class="pa-prop">
-            <thead><tr><th style="width:2.2rem">Crear</th><th>Tarea</th><th style="width:8rem">Responsable</th><th style="width:9.5rem">Vence</th><th style="width:5.5rem">Visible</th><th style="width:3.5rem">Quitar</th></tr></thead>
-            <tbody>
-            {foreach $propuestas as $q}
-                {if $q['estado'] === 'propuesta'}
-                <tr>
-                    <td><input type="checkbox" name="aprobar[]" value="{$q['id']}" aria-label="Crear esta tarea" {if $q['origen'] !== 'ia'}checked{/if}></td>
-                    <td>
-                        <input type="text" name="prop[{$q['id']}][titulo]" class="form-input" value="{$q['titulo']}" maxlength="255">
-                        <input type="text" name="prop[{$q['id']}][descripcion]" class="form-input" value="{$q['descripcion']}" placeholder="Detalle (opcional)" style="margin-top:.3rem;font-size:.85rem">
-                        {if $q['origen'] === 'ia'}<span class="pa-chip brand" style="margin-top:.3rem">✨ sugerida por IA</span>{/if}
-                    </td>
-                    <td><select name="prop[{$q['id']}][asignado]" class="form-input"><option value="equipo" {if $q['asignado'] === 'equipo'}selected{/if}>Equipo</option><option value="cliente" {if $q['asignado'] === 'cliente'}selected{/if}>Cliente</option></select></td>
-                    <td><input type="date" name="prop[{$q['id']}][fecha_vencimiento]" class="form-input" value="{$q['fecha_vencimiento']}"></td>
-                    <td><label><input type="checkbox" name="prop[{$q['id']}][visible_cliente]" value="1" {if $q['visible_cliente']}checked{/if}> sí</label></td>
-                    <td style="text-align:center"><input type="checkbox" name="quitar[]" value="{$q['id']}" aria-label="Quitar esta propuesta al guardar" title="Se descarta al guardar"></td>
-                </tr>
-                {else}
-                <tr class="pa-done">
-                    <td>✓</td>
-                    <td>{$q['titulo']} <span class="pa-chip ok">Creada</span>{if $q['tarea_id']} <a href="{$admin_url('tareas/' . $q['tarea_id'])}">ver tarea</a>{/if}</td>
-                    <td>{$q['asignado'] === 'cliente' ? 'Cliente' : 'Equipo'}</td>
-                    <td>{$q['fecha_vencimiento']}</td>
-                    <td>{$q['visible_cliente'] || $q['asignado'] === 'cliente' ? 'sí' : 'no'}</td>
-                    <td></td>
-                </tr>
-                {/if}
+    {* 4. Tareas: las creadas siguen editables; en las sugeridas se elige Crear o Descartar (sin elegir = pendiente). *}
+    {var $creadas = $tareasReunion['creadas']}
+    {var $sugeridas = $tareasReunion['sugeridas']}
+    {var $todasIa = $sugeridas !== [] && count(array_filter($sugeridas, fn($q) => $q['origen'] === 'ia')) === count($sugeridas)}
+    <div class="card" data-tareas-reunion>
+        <h2 class="pa-h2">4 · Tareas de la reunión</h2>
+        <p class="pa-t-bajada">Las creadas ya existen y puedes seguir ajustándolas aquí. En las sugeridas, elige <b>Crear</b> o <b>Descartar</b>; las que dejes sin elegir quedan pendientes para decidir otro día.</p>
+
+        {define tarjeta, $q, $n, $creada}
+            {var $cli = $q['asignado'] === 'cliente'}
+            {var $ve = $cli || (int) $q['visible_cliente'] === 1}
+            <article class="pa-t{if $creada} es-creada{/if}" data-tarea="{$creada ? 'creada' : 'sugerida'}" data-id="{$q['id']}">
+                <div class="pa-t-cuerpo">
+                    <textarea name="{$n}[titulo]" class="pa-t-titulo" rows="1" maxlength="255" aria-label="Título de la tarea">{$q['titulo']}</textarea>
+                    <textarea name="{$n}[descripcion]" class="pa-t-detalle" rows="1" maxlength="4000" placeholder="Detalle (opcional)" aria-label="Detalle de la tarea">{$q['descripcion']}</textarea>
+                </div>
+                <div class="pa-t-lado">
+                    {if $creada}
+                        <span class="pa-t-estado">✓ Creada{if $q['tarea_id']} · <a href="{$admin_url('tareas/' . $q['tarea_id'])}">ver tarea</a>{/if}</span>
+                    {else}
+                        <div class="pa-t-dec" role="group" aria-label="Decidir esta sugerencia">
+                            <label class="pa-acc crear"><input type="radio" name="decision[{$q['id']}]" value="crear"> ✓ Crear</label>
+                            <label class="pa-acc descartar"><input type="radio" name="decision[{$q['id']}]" value="descartar"> ✕ Descartar</label>
+                        </div>
+                    {/if}
+                </div>
+                <div class="pa-t-meta">
+                    <span class="pa-t-campo">Responsable
+                        <span class="pa-seg">
+                            <label><input type="radio" name="{$n}[asignado]" value="equipo" {if !$cli}checked{/if}><span>Equipo</span></label>
+                            <label><input type="radio" name="{$n}[asignado]" value="cliente" {if $cli}checked{/if}><span>Cliente</span></label>
+                        </span>
+                    </span>
+                    <label class="pa-t-campo">Vence <input type="date" name="{$n}[fecha_vencimiento]" class="form-input pa-t-fecha" value="{$q['fecha_vencimiento']}"></label>
+                    <label class="pa-t-campo pa-t-ve">
+                        <input type="checkbox" role="switch" class="pa-sw" name="{$n}[visible_cliente]" value="1" {if $ve}checked{/if} {if $cli}disabled{/if} data-ve>
+                        <span data-ve-txt>{if $cli}Lo ve el cliente <small>· siempre, le toca a él</small>{elseif $ve}Lo ve el cliente{else}Solo el equipo{/if}</span>
+                    </label>
+                    <span class="pa-t-cambio" hidden>● Cambio sin guardar</span>
+                    {if !$creada}
+                        {if $q['origen'] === 'ia'}<span class="pa-chip brand pa-t-ia">✨ Sugerida por IA</span>{else}<span class="pa-chip gris pa-t-ia">Agregada a mano</span>{/if}
+                    {/if}
+                </div>
+            </article>
+        {/define}
+
+        {if $creadas !== []}
+            <h3 class="pa-t-grupo">Creadas <span>· {count($creadas)}</span></h3>
+            <div class="pa-t-lista">
+                {foreach $creadas as $q}
+                    {if $q['editable']}
+                        {include tarjeta, q: $q, n: 'creada[' . $q['id'] . ']', creada: true}
+                    {else}
+                        <article class="pa-t es-creada es-borrada"><div class="pa-t-cuerpo"><span class="pa-t-titulo-fijo">{$q['titulo']}</span></div><div class="pa-t-lado"><span class="pa-chip gris">La tarea se borró</span></div></article>
+                    {/if}
+                {/foreach}
+            </div>
+        {/if}
+
+        <h3 class="pa-t-grupo">{$todasIa ? 'Sugeridas por la IA' : 'Por decidir'} <span>· {count($sugeridas)}</span></h3>
+        <div class="pa-t-lista">
+            {foreach $sugeridas as $q}
+                {include tarjeta, q: $q, n: 'prop[' . $q['id'] . ']', creada: false}
+            {else}
+                <p class="pa-muted">No quedan sugerencias por decidir.</p>
             {/foreach}
-                <tr>
-                    <td>＋</td>
-                    <td><input type="text" name="nueva[titulo]" class="form-input" placeholder="Agregar una tarea a mano…" maxlength="255"></td>
-                    <td><select name="nueva[asignado]" class="form-input"><option value="equipo">Equipo</option><option value="cliente">Cliente</option></select></td>
-                    <td><input type="date" name="nueva[fecha_vencimiento]" class="form-input"></td>
-                    <td><label><input type="checkbox" name="nueva[visible_cliente]" value="1"> sí</label></td>
-                    <td></td>
-                </tr>
-            </tbody>
-        </table>
+        </div>
+
+        <div class="pa-t pa-t-nueva" data-tarea="nueva">
+            <div class="pa-t-cuerpo">
+                <input type="text" name="nueva[titulo]" class="pa-t-titulo" placeholder="＋ Agregar una tarea a mano…" maxlength="255" aria-label="Agregar una tarea a mano" data-nueva>
+            </div>
+            <div class="pa-t-lado"><span class="pa-muted">Se crea al guardar</span></div>
+            <div class="pa-t-meta">
+                <span class="pa-t-campo">Responsable
+                    <span class="pa-seg">
+                        <label><input type="radio" name="nueva[asignado]" value="equipo" checked><span>Equipo</span></label>
+                        <label><input type="radio" name="nueva[asignado]" value="cliente"><span>Cliente</span></label>
+                    </span>
+                </span>
+                <label class="pa-t-campo">Vence <input type="date" name="nueva[fecha_vencimiento]" class="form-input pa-t-fecha"></label>
+                <label class="pa-t-campo pa-t-ve">
+                    <input type="checkbox" role="switch" class="pa-sw" name="nueva[visible_cliente]" value="1" data-ve>
+                    <span data-ve-txt>Solo el equipo</span>
+                </label>
+            </div>
         </div>
     </div>
 
@@ -151,20 +193,138 @@
                 <div style="flex:1;min-width:14rem"><label class="form-label">Tema</label><input type="text" name="prox_titulo" class="form-input" value="{$reunion['prox_titulo']}" maxlength="255"></div>
             </div>
             <p class="form-hint mt-1" data-equiv="prox_fecha" data-zona-agencia="{$zonaAgencia}" data-nombre-agencia="{$nombreAgencia}"></p>
-            <label class="pa-check"><input type="checkbox" name="agendar_prox" value="1"> Agendarla ahora como reunión de este proyecto, con los mismos convocados (después le pones el link de Meet)</label>
-            <label class="pa-check" style="margin-top:.35rem"><input type="checkbox" name="prox_publicar" value="1"> Mostrársela al cliente</label>
+            <label class="pa-check"><input type="checkbox" name="agendar_prox" value="1" data-agendar> Agendarla al guardar como reunión de este proyecto, con los mismos convocados (después le pones el link de Meet)</label>
         {/if}
     </div>
 
-    {* Acciones *}
-    <div class="card">
-        <label class="pa-check" style="margin-top:0"><input type="checkbox" name="avisar" value="1"> Avisar por correo al cliente de lo que quede visible (resumen, tareas, próxima reunión)</label>
-        <div class="pa-inline mt-3">
-            <button type="submit" name="accion" value="aplicar" class="btn btn-primary">Crear lo marcado y aplicar</button>
-            <button type="submit" name="accion" value="guardar" class="btn">Guardar sin aplicar</button>
+    {* Qué ve el cliente: todo lo que se publica, en un solo lugar, y un único Guardar. *}
+    <div class="card pa-ve" data-publica>
+        <h2 class="pa-h2">Qué ve el cliente</h2>
+        <p class="pa-t-bajada">Todo lo que se publica de esta reunión, en un solo lugar. Puedes cambiarlo cuando quieras y volver a guardar.</p>
+        <div class="pa-ve-filas">
+            <label class="pa-ve-fila">
+                <span class="pa-ve-txt"><b>La reunión</b><span>Aparece en su lista de «Reuniones».</span></span>
+                <input type="checkbox" role="switch" class="pa-sw" name="publicada" value="1" {if $reunion['publicada']}checked{/if} data-pub="reunion">
+            </label>
+            <label class="pa-ve-fila">
+                <span class="pa-ve-txt"><b>Resumen y acuerdos</b><span data-pub-nota="resumen">Lo escrito en la sección 3, con la grabación si la hay.</span></span>
+                <input type="checkbox" role="switch" class="pa-sw" name="resumen_publicado" value="1" {if $reunion['resumen_publicado']}checked{/if} data-pub="resumen">
+            </label>
+            <div class="pa-ve-fila">
+                <span class="pa-ve-txt"><b>Tareas visibles <span class="pa-ve-cuenta" data-n-visibles></span></b><span>Se decide en cada tarea con «Lo ve el cliente». Las ve en su sección «Tareas».</span></span>
+            </div>
+            <label class="pa-ve-fila">
+                {if $proxima}
+                    <span class="pa-ve-txt"><b>Próxima reunión</b><span>{$proxima['titulo']} · {$fmt->fechaLarga($proxima['fecha'])} {$fmt->hora($proxima['fecha'])}</span></span>
+                    <input type="hidden" name="prox_form" value="1">
+                    <input type="checkbox" role="switch" class="pa-sw" name="prox_publicar" value="1" {if $proxima['publicada']}checked{/if} data-pub="prox">
+                {else}
+                    <span class="pa-ve-txt"><b>Próxima reunión</b><span data-pub-nota="prox">Se puede mostrar si la agendas al guardar (sección 5).</span></span>
+                    <input type="checkbox" role="switch" class="pa-sw" name="prox_publicar" value="1" data-pub="prox" data-pub-pendiente>
+                {/if}
+            </label>
+            <label class="pa-ve-fila">
+                <span class="pa-ve-txt"><b>Avisarle por correo</b><span>Un solo correo con lo nuevo que pueda ver.</span></span>
+                <input type="checkbox" role="switch" class="pa-sw" name="avisar" value="1" data-pub="correo">
+            </label>
+        </div>
+        <div class="pa-ve-resumen" data-al-guardar aria-live="polite"></div>
+        <div class="pa-ve-pie">
+            <button type="submit" name="accion" value="guardar" class="btn btn-primary">Guardar</button>
+            <p class="pa-muted">Guarda todo: los textos, los cambios en las tareas creadas, las que marcaste para crear y lo que ve el cliente.</p>
         </div>
     </div>
 </form>
+
+<script n:syntax="off">
+    /* Tareas de la reunión y «Qué ve el cliente»: Crear/Descartar se desmarcan con otro clic,
+       «Lo ve el cliente» queda fijo si la tarea es del cliente, aviso de cambios sin guardar
+       en las creadas y la lista «Al guardar» con lo que va a pasar. */
+    (function () {
+        var form = document.querySelector('form.pa-stack'), caja = document.querySelector('[data-al-guardar]');
+        if (!form || !caja) return;
+        var tarjetas = Array.prototype.slice.call(form.querySelectorAll('[data-tarea]'));
+        function foto(t) {
+            return Array.prototype.map.call(t.querySelectorAll('input:not([name^="decision"]), textarea'), function (i) {
+                return i.type === 'radio' || i.type === 'checkbox' ? (i.checked ? 1 : 0) : i.value;
+            }).join('|');
+        }
+        tarjetas.forEach(function (t) { t.dataset.orig = foto(t); });
+        var previo = {};
+        form.querySelectorAll('input[name^="decision"]').forEach(function (r) { if (r.checked) previo[r.name] = r.value; });
+        form.addEventListener('click', function (e) {
+            var r = e.target.closest('input[type=radio][name^="decision"]');
+            if (!r) return;
+            if (previo[r.name] === r.value) { r.checked = false; previo[r.name] = ''; } else { previo[r.name] = r.value; }
+            pintar();
+        });
+        function ve(t) {
+            var cli = t.querySelector('input[name$="[asignado]"][value=cliente]'), sw = t.querySelector('[data-ve]');
+            return (cli && cli.checked) || (sw && sw.checked);
+        }
+        function plural(n, uno, varios) { return n + ' ' + (n === 1 ? uno : varios); }
+        function pintar() {
+            var crear = 0, cambios = 0, desc = 0, pend = 0, vis = 0;
+            tarjetas.forEach(function (t) {
+                var tipo = t.dataset.tarea, cli = t.querySelector('input[name$="[asignado]"][value=cliente]'), sw = t.querySelector('[data-ve]'), txt = t.querySelector('[data-ve-txt]');
+                if (sw && cli) {
+                    if (cli.checked) { if (!sw.disabled) { sw.dataset.antes = sw.checked ? '1' : ''; } sw.checked = true; sw.disabled = true; }
+                    else if (sw.disabled) { sw.disabled = false; sw.checked = sw.dataset.antes === '1'; }
+                    txt.innerHTML = cli.checked ? 'Lo ve el cliente <small>· siempre, le toca a él</small>' : (sw.checked ? 'Lo ve el cliente' : 'Solo el equipo');
+                }
+                var d = t.querySelector('input[name^="decision"]:checked');
+                t.dataset.d = d ? d.value : '';
+                if (tipo === 'creada') {
+                    var cambio = foto(t) !== t.dataset.orig;
+                    t.querySelector('.pa-t-cambio').hidden = !cambio;
+                    t.classList.toggle('con-cambio', cambio);
+                    if (cambio) cambios++;
+                    if (ve(t)) vis++;
+                } else if (tipo === 'nueva') {
+                    if (t.querySelector('[data-nueva]').value.trim() !== '') { crear++; if (ve(t)) vis++; }
+                } else if (d && d.value === 'crear') { crear++; if (ve(t)) vis++; }
+                else if (d) { desc++; } else { pend++; }
+            });
+            var pub = function (k) { var i = form.querySelector('[data-pub="' + k + '"]'); return i && i.checked && !i.disabled; };
+            var agendar = form.querySelector('[data-agendar]'), proxSw = form.querySelector('[data-pub-pendiente]');
+            if (proxSw) {
+                proxSw.disabled = !(agendar && agendar.checked);
+                form.querySelector('[data-pub-nota="prox"]').textContent = proxSw.disabled ? 'Se puede mostrar si la agendas al guardar (sección 5).' : 'Se agenda al guardar; elige si la ve.';
+            }
+            var reunion = pub('reunion');
+            form.querySelector('[data-pub-nota="resumen"]').textContent = reunion ? 'Lo escrito en la sección 3, con la grabación si la hay.' : 'Necesita que la reunión esté visible.';
+            form.querySelector('[data-n-visibles]').textContent = '· ' + vis;
+            var li = [];
+            if (crear) li.push('Se ' + (crear === 1 ? 'crea 1 tarea' : 'crean ' + crear + ' tareas') + '.');
+            if (cambios) li.push('Se ' + (cambios === 1 ? 'actualiza 1 tarea creada' : 'actualizan ' + cambios + ' tareas creadas') + '.');
+            if (desc) li.push('Se ' + (desc === 1 ? 'descarta 1 sugerencia' : 'descartan ' + desc + ' sugerencias') + '.');
+            if (pend) li.push(plural(pend, 'sugerencia queda pendiente', 'sugerencias quedan pendientes') + ' para otro día.');
+            if (agendar && agendar.checked) li.push('Se agenda la próxima reunión.');
+            var veCli = [];
+            if (reunion) veCli.push('la reunión');
+            if (reunion && pub('resumen')) veCli.push('el resumen y los acuerdos');
+            if (vis) veCli.push(plural(vis, 'tarea', 'tareas'));
+            if (pub('prox')) veCli.push('la próxima reunión');
+            li.push(veCli.length ? 'El cliente verá ' + veCli.join(', ').replace(/, ([^,]*)$/, ' y $1') + '.' : 'El cliente no verá nada de esta reunión.');
+            li.push(pub('correo') ? 'Le llega un correo con lo nuevo que pueda ver.' : 'No se le envía correo.');
+            caja.innerHTML = '<b>Al guardar</b><ul><li>' + li.join('</li><li>') + '</li></ul>';
+        }
+        form.addEventListener('input', pintar);
+        form.addEventListener('change', pintar);
+        /* El detalle crece con el texto */
+        form.querySelectorAll('.pa-t-detalle, textarea.pa-t-titulo').forEach(function (a) {
+            var titulo = a.classList.contains('pa-t-titulo');
+            var ajustar = function () {
+                if (titulo && /\n/.test(a.value)) a.value = a.value.replace(/\s*\n\s*/g, ' ');   /* el título va en una línea */
+                a.style.height = 'auto'; a.style.height = a.scrollHeight + 'px';
+            };
+            if (titulo) a.addEventListener('keydown', function (e) { if (e.key === 'Enter') e.preventDefault(); });
+            a.addEventListener('input', ajustar); ajustar();
+            window.addEventListener('resize', ajustar);
+        });
+        pintar();
+    })();
+</script>
 
 {if $iaActiva}
 <div id="pa-ia-espera" hidden role="status" aria-live="polite">

@@ -207,6 +207,79 @@ class ReunionService
         return $stmt->fetchAll();
     }
 
+    /**
+     * Propuestas listas para la pantalla: las ya creadas muestran los datos actuales de su tarea
+     * (pudo cambiarse desde Tareas) y `editable` dice si esa tarea todavía existe.
+     *
+     * @return array{creadas: array<array<string, mixed>>, sugeridas: array<array<string, mixed>>}
+     */
+    public function propuestasParaEditar(string $reunionId): array
+    {
+        $creadas = [];
+        $sugeridas = [];
+        $tareas = new TareaService($this->pdo);
+        foreach ($this->propuestas($reunionId) as $q) {
+            if ($q['estado'] === 'propuesta') {
+                $sugeridas[] = $q;
+                continue;
+            }
+            $t = $q['tarea_id'] ? $tareas->find((string) $q['tarea_id']) : null;
+            if ($t !== null) {
+                $q['titulo'] = $t['titulo'];
+                $q['descripcion'] = $t['descripcion'];
+                $q['asignado'] = $t['responsable_tipo'] === 'cliente' ? 'cliente' : 'equipo';
+                $q['fecha_vencimiento'] = $t['fecha_vencimiento'] !== null ? substr((string) $t['fecha_vencimiento'], 0, 10) : null;
+                $q['visible_cliente'] = (int) $t['visible_cliente'];
+                $q['tarea_estado'] = $t['estado'];
+            }
+            $q['editable'] = $t !== null;
+            $creadas[] = $q;
+        }
+        return ['creadas' => $creadas, 'sugeridas' => $sugeridas];
+    }
+
+    /**
+     * Cambios a una tarea ya creada desde esta reunión (título, detalle, responsable, vence y si la ve el cliente).
+     * Sólo escribe si algo cambió. Devuelve null si no hubo cambios; si no, si quedó visible ahora y antes no.
+     *
+     * @param array<string, mixed> $p
+     * @return array{nuevaVisible: bool}|null
+     */
+    public function actualizarCreada(string $reunionId, string $propId, array $p): ?array
+    {
+        $q = $this->propuesta($propId);
+        if ($q === null || $q['reunion_id'] !== $reunionId || $q['estado'] === 'propuesta' || !$q['tarea_id']) {
+            return null;
+        }
+        $tareas = new TareaService($this->pdo);
+        $t = $tareas->find((string) $q['tarea_id']);
+        if ($t === null) {
+            return null;
+        }
+        $titulo = Fmt::mayusculaInicial(mb_substr(trim((string) ($p['titulo'] ?? '')), 0, 255));
+        $asignado = ($p['asignado'] ?? $t['responsable_tipo']) === 'cliente' ? 'cliente' : 'equipo';
+        $vence = self::normalizarFecha((string) ($p['fecha_vencimiento'] ?? ''));
+        $nuevo = [
+            'titulo'            => $titulo !== '' ? $titulo : (string) $t['titulo'],
+            'descripcion'       => mb_substr(trim(str_replace("\r\n", "\n", (string) ($p['descripcion'] ?? ''))), 0, 4000),
+            'asignado'          => $asignado,
+            'fecha_vencimiento' => $vence !== '' ? substr($vence, 0, 10) : null,
+            'visible_cliente'   => ($asignado === 'cliente' || !empty($p['visible_cliente'])) ? 1 : 0,
+        ];
+        $antesVisible = (int) $t['visible_cliente'] === 1 || $t['responsable_tipo'] === 'cliente';
+        $venceAntes = $t['fecha_vencimiento'] !== null && $t['fecha_vencimiento'] !== '' ? substr((string) $t['fecha_vencimiento'], 0, 10) : null;
+        $igual = $nuevo['titulo'] === $t['titulo'] && $nuevo['descripcion'] === trim(str_replace("\r\n", "\n", (string) $t['descripcion']))
+            && $asignado === ($t['responsable_tipo'] === 'cliente' ? 'cliente' : 'equipo')
+            && $nuevo['fecha_vencimiento'] === $venceAntes && $nuevo['visible_cliente'] === ($antesVisible ? 1 : 0);
+        if ($igual) {
+            return null;
+        }
+        $tareas->update((string) $t['id'], array_merge($t, $nuevo));
+        $this->pdo->prepare('UPDATE ' . self::PROP . ' SET titulo = ?, descripcion = ?, asignado = ?, fecha_vencimiento = ?, visible_cliente = ? WHERE id = ?')
+            ->execute([$nuevo['titulo'], $nuevo['descripcion'], $asignado, $nuevo['fecha_vencimiento'], $nuevo['visible_cliente'], $propId]);
+        return ['nuevaVisible' => $nuevo['visible_cliente'] === 1 && !$antesVisible];
+    }
+
     public function propuesta(string $id): ?array
     {
         $stmt = $this->pdo->prepare('SELECT * FROM ' . self::PROP . ' WHERE id = ?');
@@ -342,6 +415,14 @@ class ReunionService
         ]);
         $this->pdo->prepare('UPDATE ' . self::TABLE . ' SET prox_reunion_id = ? WHERE id = ?')->execute([$id, $reunionId]);
         return $id;
+    }
+
+    /** Muestra u oculta al cliente una reunión (la próxima, desde la reunión anterior). Devuelve si cambió. */
+    public function fijarPublicada(string $id, bool $publicada): bool
+    {
+        $st = $this->pdo->prepare('UPDATE ' . self::TABLE . ' SET publicada = ?, updated_at = ? WHERE id = ? AND publicada <> ?');
+        $st->execute([$publicada ? 1 : 0, self::ahora(), $id, $publicada ? 1 : 0]);
+        return $st->rowCount() > 0;
     }
 
     // ---------------------------------------------------------------------

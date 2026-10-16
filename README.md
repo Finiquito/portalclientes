@@ -74,6 +74,13 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### v0.36.0: después de la reunión, un solo «Guardar»
+- **Tareas como tarjetas, más grandes y fáciles de leer.** Arriba van las **creadas**, que ahora se pueden seguir editando desde la reunión (título, detalle, responsable, vence y «Lo ve el cliente»); el cambio pasa a la tarea real y se marca «Cambio sin guardar» hasta que guardas. Si la tarea se borró desde Tareas, la reunión lo dice.
+- **Sugeridas: ✓ Crear o ✕ Descartar**, una sola decisión por tarea (otro clic la deshace). Las que no decides quedan pendientes para otro día. La que escribes a mano se crea al guardar.
+- **«Qué ve el cliente»**: un solo panel al final con la reunión, el resumen y los acuerdos, cuántas tareas ve, la próxima reunión (también se puede ocultar después de agendarla) y el aviso por correo. Debajo, «Al guardar» dice exactamente lo que va a pasar.
+- **Un solo botón «Guardar»** reemplaza a «Crear lo marcado y aplicar» y «Guardar sin aplicar». El mensaje final cuenta lo que se hizo; si pediste correo y no había nada nuevo para el cliente, lo avisa en vez de mandarlo.
+- Una tarea creada que recién pasa a «Lo ve el cliente» cuenta como novedad para el correo.
+
 ### v0.35.1: las listas recuerdan cómo las dejaste y Mensajes avisa antes de archivar
 - **Filtro, orden y página se mantienen** al volver a una lista desde otra pantalla, por ejemplo después de abrir o editar un ítem. Aplica a los contactos ganados del cliente (incluido el orden por «Próximo paso»), las tareas, revisiones, reuniones, solicitudes y mensajes del portal, y a las listas del equipo (tareas, contenidos, contactos ganados, reuniones, solicitudes, actividad y mensajes). «Todas» o «Quitar filtros» dentro de la misma lista siguen limpiando.
 - **Mensajes**: una conversación terminada que acabas de leer ya no desaparece al tiro. Se queda en «Activas» con el aviso «Pasa a Archivadas» y se desvanece a los 10 segundos; los contadores se actualizan solos.

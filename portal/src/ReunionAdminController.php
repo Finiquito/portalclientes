@@ -248,7 +248,7 @@ class ReunionAdminController
             'paisCliente' => $paisCli,
             'fasesRango' => $this->ui->filtrar((new FaseService($this->pdo()))->conRangos(), 'proyecto_id'),
             'proyectos'  => $proyectos,
-            'propuestas' => $this->service()->propuestas($id),
+            'tareasReunion' => $this->service()->propuestasParaEditar($id),
             'iaActiva'   => $ia->activa(),
             'gcal'       => $this->service()->enlaceGoogleCalendar($reunion),
             'proxima'    => $reunion['prox_reunion_id'] ? $this->service()->find((string) $reunion['prox_reunion_id']) : null,
@@ -258,7 +258,11 @@ class ReunionAdminController
         ]);
     }
 
-    /** Guardar / analizar con IA / aplicar (crear tareas aprobadas, agendar, publicar y avisar). */
+    /**
+     * Un solo «Guardar» (o «Analizar con IA»). Guarda los datos, las ediciones de las tareas ya creadas
+     * y de las sugeridas, descarta las marcadas y, al guardar, crea las marcadas y aplica «Qué ve el cliente».
+     * Las sugerencias sin decidir quedan pendientes.
+     */
     public function update(string $id): void
     {
         $svc = $this->service();
@@ -279,24 +283,32 @@ class ReunionAdminController
         $svc->update($id, $_POST);
         $invitaciones = $this->guardarConvocados($id, $antes);
 
-        // Tarea nueva escrita a mano en la fila final de la tabla.
-        if (is_array($_POST['nueva'] ?? null) && trim((string) ($_POST['nueva']['titulo'] ?? '')) !== '') {
-            $svc->agregarPropuesta($id, $_POST['nueva']);
+        // Decisión de cada sugerencia: «crear», «descartar» o nada (queda pendiente para otro día).
+        // También se aceptan los nombres de antes (aprobar[] / quitar[]).
+        $decision = [];
+        foreach ((array) ($_POST['decision'] ?? []) as $pid => $d) {
+            if (in_array($d, ['crear', 'descartar'], true)) {
+                $decision[(string) $pid] = $d;
+            }
+        }
+        foreach ((array) ($_POST['aprobar'] ?? []) as $pid) {
+            $decision[(string) $pid] ??= 'crear';
+        }
+        foreach ((array) ($_POST['quitar'] ?? []) as $pid) {
+            $decision[(string) $pid] = 'descartar';
         }
 
-        // Propuestas marcadas con «Quitar»: se descartan al guardar (sin recargar una por una).
         $quitadas = 0;
-        foreach (array_unique(array_map('strval', (array) ($_POST['quitar'] ?? []))) as $pid) {
-            $q = $svc->propuesta($pid);
+        foreach (array_keys($decision, 'descartar', true) as $pid) {
+            $q = $svc->propuesta((string) $pid);
             if ($q !== null && $q['reunion_id'] === $id && $q['estado'] === 'propuesta') {
-                $svc->borrarPropuesta($pid);
+                $svc->borrarPropuesta((string) $pid);
                 $quitadas++;
             }
-            unset($_POST['prop'][$pid]);
-            $_POST['aprobar'] = array_values(array_diff(array_map('strval', (array) ($_POST['aprobar'] ?? [])), [$pid]));
+            unset($_POST['prop'][$pid], $decision[$pid]);
         }
 
-        // Ediciones de las propuestas de la tabla.
+        // Ediciones de las sugerencias pendientes.
         foreach ((array) ($_POST['prop'] ?? []) as $pid => $datos) {
             $q = $svc->propuesta((string) $pid);
             if ($q !== null && $q['reunion_id'] === $id && is_array($datos)) {
@@ -304,18 +316,35 @@ class ReunionAdminController
             }
         }
 
-        $msg = 'Reunión guardada.' . ($quitadas > 0 ? ' Propuestas quitadas: ' . $quitadas . '.' : '')
-            . ($invitaciones > 0 ? ' Invitaciones o cambios enviados a los convocados: ' . $invitaciones . '.' : '');
+        // Tareas ya creadas: los cambios hechos aquí pasan a la tarea real.
+        $actualizadas = 0;
+        $nuevasVisibles = 0;
+        foreach ((array) ($_POST['creada'] ?? []) as $pid => $datos) {
+            if (is_array($datos) && ($c = $svc->actualizarCreada($id, (string) $pid, $datos)) !== null) {
+                $actualizadas++;
+                $nuevasVisibles += $c['nuevaVisible'] ? 1 : 0;
+            }
+        }
+
+        // Tarea escrita a mano: se crea al guardar.
+        if (is_array($_POST['nueva'] ?? null) && trim((string) ($_POST['nueva']['titulo'] ?? '')) !== '') {
+            $nid = $svc->agregarPropuesta($id, $_POST['nueva']);
+            if ($nid !== null) {
+                $decision[$nid] = 'crear';
+            }
+        }
+
+        $msg = 'Reunión guardada.';
         $tipo = 'success';
 
         // Cualquier fallo inesperado se muestra como aviso (y queda en el log) en vez de un error 500 mudo.
         try {
             if ($accion === 'analizar') {
                 [$msg, $tipo] = $this->analizar($id);
-            } elseif ($accion === 'aplicar') {
-                [$msg, $tipo] = $this->aplicar($id, $antes);
             } else {
-                $this->registrarPublicacion($antes, $svc->find($id) ?? $antes, 0, false, !empty($_POST['avisar']));
+                $msg = $this->aplicar($id, $antes, array_keys($decision, 'crear', true), [
+                    'actualizadas' => $actualizadas, 'nuevasVisibles' => $nuevasVisibles, 'quitadas' => $quitadas, 'invitaciones' => $invitaciones,
+                ]);
             }
         } catch (\Throwable $e) {
             error_log('[portal] reunión ' . $id . ' (' . $accion . '): ' . get_class($e) . ': ' . $e->getMessage() . ' @' . basename($e->getFile()) . ':' . $e->getLine());
@@ -362,54 +391,77 @@ class ReunionAdminController
     }
 
     /**
-     * Crea las tareas aprobadas, agenda la próxima reunión si se pidió,
-     * y (si se marcó) avisa por correo al cliente de lo que quedó visible.
+     * El único «Guardar»: crea las sugerencias marcadas, agenda o muestra la próxima reunión,
+     * deja rastro de lo publicado y, si se pidió, avisa por correo de lo nuevo. Devuelve el mensaje.
      *
      * @param array<string, mixed> $antes
-     * @return array{0: string, 1: string}
+     * @param array<string> $crear
+     * @param array{actualizadas: int, nuevasVisibles: int, quitadas: int, invitaciones: int} $hecho
      */
-    private function aplicar(string $id, array $antes): array
+    private function aplicar(string $id, array $antes, array $crear, array $hecho): string
     {
         $svc = $this->service();
-        $ids = array_values(array_filter(array_map('strval', (array) ($_POST['aprobar'] ?? []))));
-        $res = $svc->aprobarPropuestas($id, $ids);
+        $res = $svc->aprobarPropuestas($id, array_values(array_map('strval', $crear)));
 
         $proxId = null;
+        $agendada = false;
+        $proxPublicada = false;
         if (!empty($_POST['agendar_prox'])) {
             $proxId = $svc->agendarProxima($id, !empty($_POST['prox_publicar']));
             if ($proxId !== null) {
+                $agendada = true;
+                $proxPublicada = !empty($_POST['prox_publicar']);
                 // La próxima reunión hereda los convocados y, si se pidió, les llega la invitación.
                 $conv = $this->convocados();
                 $nuevos = [];
-                foreach ($conv->ids($id) as $tipo => $ids) {
+                foreach ($conv->ids($id) as $tipoC => $ids) {
                     foreach ($ids as $pid) {
-                        $conv->agregar($proxId, $tipo, $pid);
-                        $nuevos[] = ['tipo' => $tipo, 'id' => $pid];
+                        $conv->agregar($proxId, $tipoC, $pid);
+                        $nuevos[] = ['tipo' => $tipoC, 'id' => $pid];
                     }
                 }
                 if (!empty($_POST['invitar']) && ($prox = $svc->find($proxId)) !== null) {
                     $conv->sincronizar(null, $prox, ['nuevos' => $nuevos, 'quitados' => []]);
                 }
             }
+        } elseif (!empty($_POST['prox_form']) && (string) $antes['prox_reunion_id'] !== '') {
+            // Ya agendada: el interruptor de «Qué ve el cliente» la muestra u oculta.
+            $proxId = (string) $antes['prox_reunion_id'];
+            $mostrar = !empty($_POST['prox_publicar']);
+            $proxPublicada = $svc->fijarPublicada($proxId, $mostrar) && $mostrar;
         }
         $ahora = $svc->find($id) ?? $antes;
-        $proxPublicada = $proxId !== null && !empty($_POST['prox_publicar']);
-        $this->registrarPublicacion($antes, $ahora, $res['visibles'], $proxPublicada, !empty($_POST['avisar']), $proxId);
+        $avisar = !empty($_POST['avisar']);
+        $enviado = $this->registrarPublicacion($antes, $ahora, $res['visibles'] + $hecho['nuevasVisibles'], $proxPublicada, $avisar, $proxId);
 
+        $n = static fn(int $k, string $uno, string $varios): string => $k . ' ' . ($k === 1 ? $uno : $varios);
         $partes = [];
         if ($res['creadas'] > 0) {
-            $partes[] = $res['creadas'] . ($res['creadas'] === 1 ? ' tarea creada' : ' tareas creadas') . ($res['visibles'] > 0 ? " ({$res['visibles']} visibles para el cliente)" : ' (internas)');
+            $partes[] = $n($res['creadas'], 'tarea creada', 'tareas creadas') . ($res['visibles'] > 0 ? " ({$res['visibles']} " . ($res['visibles'] === 1 ? 'la ve' : 'las ve') . ' el cliente)' : ' (internas)');
         }
-        if ($proxId !== null) {
+        if ($hecho['actualizadas'] > 0) {
+            $partes[] = $n($hecho['actualizadas'], 'tarea actualizada', 'tareas actualizadas');
+        }
+        if ($hecho['quitadas'] > 0) {
+            $partes[] = $n($hecho['quitadas'], 'sugerencia descartada', 'sugerencias descartadas');
+        }
+        if ($agendada) {
             $partes[] = 'próxima reunión agendada';
         }
-        if ((int) $ahora['resumen_publicado'] === 1 && (int) $antes['resumen_publicado'] === 0) {
+        if ((int) $ahora['resumen_publicado'] === 1 && (int) $antes['resumen_publicado'] === 0 && (int) $ahora['publicada'] === 1) {
             $partes[] = 'resumen publicado';
         }
-        if ($partes === []) {
-            return ['No había nada nuevo que aplicar: marca tareas, o la próxima reunión, y vuelve a intentar.', 'error'];
+        if ($hecho['invitaciones'] > 0) {
+            $partes[] = 'invitaciones o cambios enviados a los convocados (' . $hecho['invitaciones'] . ')';
         }
-        return [ucfirst(implode(', ', $partes)) . '.', 'success'];
+        if ($enviado) {
+            $partes[] = 'le avisamos por correo al cliente';
+        }
+        $msg = 'Reunión guardada' . ($partes !== [] ? ': ' . implode(', ', $partes) : '') . '.';
+        if ($avisar && !$enviado) {
+            $msg .= ' No se envió correo: no había nada nuevo que el cliente pudiera ver.';
+        }
+        return $msg;
     }
 
     /**
@@ -419,12 +471,12 @@ class ReunionAdminController
      * @param array<string, mixed> $antes
      * @param array<string, mixed> $ahora
      */
-    private function registrarPublicacion(array $antes, array $ahora, int $tareasVisibles, bool $proxPublicada, bool $avisar, ?string $proxId = null): void
+    private function registrarPublicacion(array $antes, array $ahora, int $tareasVisibles, bool $proxPublicada, bool $avisar, ?string $proxId = null): bool
     {
         $visibleAhora = (int) $ahora['publicada'] === 1;
         $resumenNuevo = $visibleAhora && (int) $ahora['resumen_publicado'] === 1 && (int) $antes['resumen_publicado'] === 0;
         if (!$visibleAhora || (!$resumenNuevo && $tareasVisibles === 0 && !$proxPublicada)) {
-            return;
+            return false;
         }
 
         (new ActividadService($this->pdo()))->registrar(
@@ -432,7 +484,7 @@ class ReunionAdminController
             'reunion', 'reunion', (string) $ahora['id'], (string) $ahora['titulo']
         );
         if (!$avisar) {
-            return;
+            return false;
         }
 
         $bloques = [];
@@ -466,6 +518,7 @@ class ReunionAdminController
             ($convContactos !== [] ? ['contactos' => $convContactos] : []) + ['etiqueta' => 'Reunión', 'titulo' => 'Novedades de la reunión', 'resaltado' => 'reunión', 'boton' => 'Ver el detalle', 'bloques' => $bloques,
              'preheader' => 'Resumen, acuerdos y próximos pasos de «' . $ahora['titulo'] . '»']
         );
+        return true;
     }
 
     public function borrarPropuesta(string $id, string $pid): void
