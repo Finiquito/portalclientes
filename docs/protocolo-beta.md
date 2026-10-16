@@ -205,10 +205,57 @@ No intentes automatizar el instalador gráfico de TypeDock cada vez. Haz **una i
 | 7 | Tablero de tickets, votos, página de novedades | Cuando haya volumen | Mediano |
 | 8 | Respaldo/baja/cuotas | Antes de la beta pública | Mediano |
 
-## 6. Decisiones que necesito de ti
+## 6. Decisiones tomadas
 
-1. ¿Tu plan de Hostinger tiene **SSH y cron**? (define si usamos enlaces o el modo pull)
-2. ¿Todas las betas irán **dentro de la misma cuenta**?
-3. ¿Qué incluyes en la **clave de IA**: cada agencia pone la suya, o tú pones una con tope de gasto?
-4. ¿Aceptas el **heartbeat con agregados** (se avisa en los términos)?
-5. ¿Los tickets: partimos con **correo + issue** o directo al tablero en el hub?
+1. Hay **SSH y cron** → enlaces simbólicos + `bin/prisma`.
+2. Hasta **10 betas, todas en la misma cuenta** de Hostinger.
+3. **Clave de IA:** la pone Richard durante el primer mes, con tope de gasto; después cada agencia pone la suya (ver §7.3).
+4. **Heartbeat:** pendiente de explicar y confirmar (ver el chat); es un aviso diario con números agregados, sin datos de sus clientes.
+5. **Tickets:** directo al tablero en el hub (se salta el MVP de correo + issue; el espejo en issues del repo sigue como opción).
+6. **Correo:** viene preconfigurado con el SMTP de Hostinger y la agencia puede cambiarlo por el suyo (ver §7).
+
+---
+
+## 7. Correo de envíos
+
+### 7.1 Estado actual
+
+El SMTP se guarda por instancia en la tabla de ajustes (`global/portal/smtp_*`, con la clave cifrada) y se edita en el admin → Ajustes. Las instancias nuevas parten **sin** SMTP.
+
+### 7.2 Diseño: «correo de Prisma» por defecto, correo propio opcional
+
+Dos modos, que la agencia elige en Ajustes → Correo:
+
+| Modo | Remitente | Quién lo configura |
+|---|---|---|
+| **Correo de Prisma** (por defecto) | `Nombre de la agencia vía Prisma <avisos@usaprisma.com>` con *Reply-To* al correo de la agencia | Tú, al provisionar. La agencia ni lo ve |
+| **Correo propio** | el de la agencia | La agencia, con su SMTP (host, puerto, usuario, clave) y botón «Probar» |
+
+Cómo se logra sin tocar el panel de cada cliente:
+
+- **Credenciales fuera de la BD y fuera del repo:** `~/prisma/secretos/correo.json` (permisos 600) con el SMTP de Hostinger. El plugin lo usa como *respaldo* cuando la instancia no tiene SMTP propio. Cambias la clave del correo una sola vez y vale para las 10 instancias.
+- **Sin pegar la clave en cada panel:** `smtpConfig()` busca primero el SMTP de la instancia y, si no hay, el compartido. En la pantalla, el modo «Correo de Prisma» muestra solo «Activo» y no expone host ni clave.
+- **Cuando la agencia pone el suyo,** el compartido deja de usarse para ella. Si el propio falla, el portal avisa en el admin y **no** cae en silencio al compartido (para no mandar con una identidad que la agencia no eligió), salvo que lo permita expresamente.
+
+### 7.3 Límites y reputación (lo importante en hosting compartido)
+
+- **Un solo buzón para 10 agencias comparte cuota y reputación.** Si una agencia manda mal (rebotes, spam), afecta a todas. Hay que verificar en Hostinger el tope diario de envíos del buzón.
+- **Tope por instancia:** contador diario en el plugin (ej. 100 correos/día en modo Prisma). Al pasarlo, se encolan para el día siguiente (ya existe `portal_correos_cola`).
+- **Autenticación del dominio:** SPF, DKIM y DMARC de `usaprisma.com` bien puestos en la zona DNS; sin eso los avisos terminan en spam.
+- **Solo correos de sistema** (invitaciones, avisos de tareas, códigos de acceso). Nada de envío masivo ni marketing por este canal.
+- **Salida de emergencia:** una vez pasado el mes de prueba, se recomienda que cada agencia use su propio correo (mismo momento en que pone su propia clave de IA).
+
+### 7.4 Clave de IA durante el primer mes
+
+- Mismo patrón: tu clave en `~/prisma/secretos/ia.json` como respaldo, con **tope de gasto mensual** configurado en la consola del proveedor (clave dedicada a la beta, separada de la tuya personal).
+- Cada instancia lleva un contador de uso y una fecha `ia_hasta` (alta + 30 días). El panel muestra «Tu prueba de IA termina el …».
+- Al vencer, la función de IA se apaga con un aviso claro hasta que la agencia ponga su clave.
+- Mejora futura: que las llamadas pasen por el hub para medir y cortar con precisión por agencia.
+
+### 7.5 Cambios de código que salen de esto
+
+1. `Notifier::smtpConfig()` con respaldo al archivo compartido y modo (`prisma` / `propio`).
+2. Pantalla Ajustes → Correo con selector de modo; en modo Prisma no muestra ni la clave ni el host.
+3. Tope diario por instancia y aviso al admin si se alcanza.
+4. `IaService` con el mismo respaldo, contador y fecha de término.
+5. Pruebas para ambos modos.
