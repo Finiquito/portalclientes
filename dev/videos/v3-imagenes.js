@@ -7,7 +7,7 @@ const ARCH = [['1-1.jpg', '1-1.jpg'], ['1-2.jpg', '1-2.jpg'], ['1-3.jpg', '1-3.j
 const MINI = ARCH.map(a => ({nombre: a.name, tipo: 'img', src: 'data:image/jpeg;base64,' + a.buffer.toString('base64')}));
 video({
   nombre: '3-soltar-imagenes',
-  portada: {kick: 'Las imágenes', titulo: 'Suelto todas las imágenes juntas y <em>cada una cae en su lámina.</em>'},
+  portada: {kick: 'Los diseños', titulo: '¿Diseños listos? Los sumo a la grilla <em>en segundos.</em>', bajada: 'Cada imagen cae en su pieza y lámina por el nombre del archivo.'},
   async antes(pp, B) {
     await pp.goto(B + '/equipo/entregas');
     return await pp.$$eval('a', as => as.filter(a => a.textContent.includes('Grilla de diciembre')).map(a => a.getAttribute('href'))[0]);

@@ -20,8 +20,8 @@ function restaurar() {
   fs.cpSync(DEV + '/storage/video_uploads-base', DEV + '/storage/video_uploads', {recursive: true});
 }
 const portadaHtml = ({kick, titulo, bajada}) => `<div class="logo">${LOGO}</div><div class="kick">${kick}</div><h1>${titulo}</h1>${bajada ? `<p class="bajada">${bajada}</p>` : ''}<div class="pz">${PIEZAS}</div>`;
-const cierreHtml = ({titulo, sub}) => `<div class="logo">${LOGO}</div><div class="kick">Beta gratis</div><h1>${titulo}</h1><div class="bajada" style="bottom:90px"><span class="chip">Cupos limitados</span><span class="url">usaprisma.com</span><p style="margin:12px 0 0;font-size:24px;color:#3b4366">${sub}</p></div><div class="pz">${PIEZAS}</div>`;
-const CIERRE = {titulo: 'Lo armé para mí.<br><em>Ahora lo comparto.</em>', sub: 'Pruébalo gratis mientras lo afinamos.'};
+const cierreHtml = ({titulo}) => `<div class="logo">${LOGO}</div><div class="pz">${PIEZAS}</div><h1>${titulo}</h1><div class="pie"><div class="cta">Prueba la beta gratis <span>→ usaprisma.com</span></div><p class="nota">Cupos limitados, mientras lo afinamos.</p></div>`;
+const CIERRE = {titulo: 'Hizo más rápido mi trabajo diario.<br><em>Pruébalo y me cuentas cómo te va.</em>'};
 
 async function video({nombre, quien = 'equipo', email = 'camila@estudiopampa.cl', url, antes, portada, cierre = CIERRE, guion}) {
   restaurar();
@@ -63,7 +63,7 @@ async function video({nombre, quien = 'equipo', email = 'camila@estudiopampa.cl'
   await dm('quitarTarjetas'); await esperar(500); await dm('cursor', true); await esperar(250);
   await guion(h);
   await dm('sinGlobo'); await dm('cursor', false);
-  await dm('tarjeta', cierreHtml(cierre)); await esperar(4600);
+  await dm('tarjeta', cierreHtml(cierre), false, false, 'cierre'); await esperar(4600);
   const tFin = Date.now() / 1000; await cdp.send('Page.stopScreencast'); await esperar(300);
   await ctx.close(); await b.close();
 
@@ -78,4 +78,4 @@ async function video({nombre, quien = 'equipo', email = 'camila@estudiopampa.cl'
   if (hoja) { execFileSync(ffmpeg(), ['-y', '-loglevel', 'error', '-i', out, '-vf', 'fps=1/2.5,scale=270:-1,tile=6x4', '-frames:v', '1', hoja]); }
   console.log(nombre, (fin - cuadros[0][1]).toFixed(1) + ' s', out);
 }
-module.exports = {video, esperar, lectura};
+module.exports = {video, esperar, lectura, portadaHtml, cierreHtml, CIERRE, FONT, OVERLAY};

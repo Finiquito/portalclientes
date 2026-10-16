@@ -4,7 +4,7 @@ const fs = require('fs');
 const DOCX = {name: 'Grilla noviembre - Panadería Ruiz.docx', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', buffer: fs.readFileSync(__dirname + '/grilla-noviembre.docx')};
 video({
   nombre: '2-de-la-grilla-al-portal',
-  portada: {kick: 'La grilla en Word', titulo: 'Pasaba una tarde copiando la grilla al portal. <em>Ahora es un minuto.</em>'},
+  portada: {kick: 'Gestionar la grilla', titulo: 'Subo la grilla y queda ordenada, pieza por pieza, <em>en pocos minutos.</em>', bajada: 'Lista para revisar, ajustar y gestionar sus cambios.'},
   async antes(pp, B) {
     await pp.goto(B + '/equipo/entregas/nuevo');
     const op = await pp.$$eval('select[name=proyecto_id] option', os => os.find(o => o.textContent.includes('Redes octubre')).value);

@@ -10,7 +10,7 @@ const NOTAS = `Reunión con Josefa (Panadería Ruiz) · grilla de noviembre
 let R = '';
 video({
   nombre: '4-reunion-resumida',
-  portada: {kick: 'Las reuniones', titulo: 'Terminaba la reunión y nadie anotaba <em>qué quedó para quién.</em>'},
+  portada: {kick: 'Las reuniones', titulo: 'Con la transcripción de la reunión, <em>los acuerdos y las tareas se arman solos.</em>', bajada: 'Con responsables, fechas y la próxima reunión.'},
   async antes(pp, B) {
     await pp.goto(B + '/equipo/reuniones?t=pasadas');
     R = await pp.evaluate(() => [...document.querySelectorAll('a')].filter(a => a.textContent.includes('Revisión grilla de noviembre')).map(a => a.getAttribute('href'))[0] || '');

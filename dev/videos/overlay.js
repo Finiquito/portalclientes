@@ -30,7 +30,14 @@
   .dm-tarjeta h1 em{font-style:normal;color:#e8432f}
   .dm-tarjeta .bajada{position:absolute;left:64px;right:330px;bottom:96px;margin:0;font-size:26px;line-height:1.35;color:#3b4366}
   .dm-tarjeta .chip{display:inline-block;background:#e8432f;color:#fff;font-weight:800;font-size:24px;padding:12px 20px;border-radius:8px}
-  .dm-tarjeta .url{display:block;margin-top:18px;font-weight:800;font-size:40px;letter-spacing:-.01em}`;
+  .dm-tarjeta .url{display:block;margin-top:18px;font-weight:800;font-size:40px;letter-spacing:-.01em}
+  .dm-tarjeta.cierre .logo{width:130px}
+  .dm-tarjeta.cierre .pz{top:120px;right:40px;bottom:auto;width:150px;opacity:.9}
+  .dm-tarjeta.cierre h1{top:330px;right:220px;font-size:54px;line-height:1.08;letter-spacing:-.02em}
+  .dm-tarjeta.cierre .pie{position:absolute;left:64px;right:64px;bottom:72px}
+  .dm-tarjeta.cierre .cta{display:inline-flex;align-items:center;gap:14px;background:#141c40;color:#fff;font-weight:800;font-size:28px;padding:18px 28px;border-radius:14px}
+  .dm-tarjeta.cierre .cta span{font-weight:600;color:#c7cdf0}
+  .dm-tarjeta.cierre .nota{margin:16px 0 0;font-size:21px;color:#5a6286}`;
   const arrow = '<svg viewBox="0 0 24 24" width="28" height="28"><path d="M4 2l15 11.5-6.8.9 3.9 7.4-3 1.5-3.8-7.6L4 20z" fill="#fff" stroke="#111" stroke-width="1.4" stroke-linejoin="round"/></svg>';
   const listo = () => {
     const st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
@@ -64,8 +71,8 @@
         });
       },
       soltarArchivos() { document.querySelectorAll('.dm-arch').forEach(a => { a.style.opacity = '0'; }); },
-      tarjeta(html, guardar, largo) {
-        const t = document.createElement('div'); t.className = 'dm-tarjeta' + (largo ? ' largo' : ''); t.innerHTML = html; document.body.appendChild(t);
+      tarjeta(html, guardar, largo, clase) {
+        const t = document.createElement('div'); t.className = 'dm-tarjeta' + (largo ? ' largo' : '') + (clase ? ' ' + clase : ''); t.innerHTML = html; document.body.appendChild(t);
         if (guardar) { sessionStorage.setItem('dm-tapa', html); }
         requestAnimationFrame(() => requestAnimationFrame(() => t.classList.add('si')));
       },
