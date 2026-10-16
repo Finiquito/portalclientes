@@ -52,6 +52,9 @@ class LeadPublicController extends PortalPublicController
     public function lista(): void
     {
         $c = $this->requerirAcceso();
+        if ($this->recordarLista('/portal/contactos-ganados')) {
+            return;
+        }
         $clienteId = (string) $c['cliente_id'];
         $svc = $this->leads();
         $proyectos = $svc->proyectosDe($clienteId);

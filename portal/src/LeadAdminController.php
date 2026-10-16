@@ -37,6 +37,10 @@ class LeadAdminController
 
     public function index(): void
     {
+        if (($volver = ListaRecordada::volverA($this->ui->url('leads'))) !== null) {
+            $this->ui->redirect($volver);
+            return;
+        }
         $proyectos = $this->proyectos();
         $f = FiltrosLista::desdeGet($this->ui->url('leads'), ['estado' => '', 'proyecto' => '', 'q' => ''], [
             'estado'   => array_keys(LeadService::ESTADOS),

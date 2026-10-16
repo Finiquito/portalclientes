@@ -820,6 +820,10 @@ class EquipoController
     public function mensajes(): void
     {
         $u = $this->requerirUsuario();
+        if (($q = ListaRecordada::restaurar('/equipo/mensajes')) !== null) {
+            $this->redirectTo('/equipo/mensajes?' . $q);
+            return;
+        }
         $svc = new MensajeService($this->pdo());
         $todas = $this->conversaciones($u);
         $pestana = ($_GET['t'] ?? '') === 'archivadas' ? 'archivadas' : 'activas';

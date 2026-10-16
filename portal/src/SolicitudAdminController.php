@@ -58,6 +58,10 @@ class SolicitudAdminController
 
     public function index(): void
     {
+        if (($volver = ListaRecordada::volverA($this->ui->url('solicitudes'))) !== null) {
+            $this->ui->redirect($volver);
+            return;
+        }
         $f = FiltrosLista::desdeGet($this->url('solicitudes'), ['estado' => 'por_atender', 'tipo' => '', 'proyecto' => ''], [
             'estado'   => array_keys(self::FILTRO_ESTADOS),
             'tipo'     => array_keys(SolicitudService::TIPOS),

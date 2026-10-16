@@ -30,6 +30,10 @@ class ActividadAdminController
 
     public function actividad(): void
     {
+        if (($volver = ListaRecordada::volverA($this->ui->url('actividad'))) !== null) {
+            $this->ui->redirect($volver);
+            return;
+        }
         $n = $this->notificador();
         Diferido::alTerminar(static fn() => $n->vaciarCola());
         // «Desde tu última visita»: en el panel es de cada persona; en el admin, del sitio.

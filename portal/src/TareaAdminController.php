@@ -153,6 +153,10 @@ class TareaAdminController
 
     public function index(): void
     {
+        if (($volver = ListaRecordada::volverA($this->ui->url('tareas'))) !== null) {
+            $this->ui->redirect($volver);
+            return;
+        }
         $f = FiltrosLista::desdeGet($this->ui->url('tareas'), ['estado' => 'abiertas', 'proyecto' => '', 'turno' => '', 'orden' => 'vence'], [
             'estado'   => array_keys(self::FILTRO_ESTADOS),
             'proyecto' => 'uuid',

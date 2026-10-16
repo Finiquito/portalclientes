@@ -74,6 +74,10 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### v0.35.1: las listas recuerdan cómo las dejaste y Mensajes avisa antes de archivar
+- **Filtro, orden y página se mantienen** al volver a una lista desde otra pantalla, por ejemplo después de abrir o editar un ítem. Aplica a los contactos ganados del cliente (incluido el orden por «Próximo paso»), las tareas, revisiones, reuniones, solicitudes y mensajes del portal, y a las listas del equipo (tareas, contenidos, contactos ganados, reuniones, solicitudes, actividad y mensajes). «Todas» o «Quitar filtros» dentro de la misma lista siguen limpiando.
+- **Mensajes**: una conversación terminada que acabas de leer ya no desaparece al tiro. Se queda en «Activas» con el aviso «Pasa a Archivadas» y se desvanece a los 10 segundos; los contadores se actualizan solos.
+
 ### v0.35.0: tapas y vista previa por tipo (panel de la agencia)
 - **«Así lo verá el cliente» según el tipo**: post y carrusel en 4:5 (con contador y puntos), reel y story en 9:16, documento con su página 1 y el número de páginas, logo sobre fondo blanco, oscuro y transparente, y web con la tarjeta del link.
 - **Tapa de PDF y video**: el navegador arma la página 1 del PDF o un cuadro del video y se guarda como su miniatura. En un video se elige el cuadro con una barra o se sube otra imagen. Los PDF y videos que ya estaban subidos sin tapa se completan solos al abrir la entrega.

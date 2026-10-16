@@ -157,6 +157,10 @@ class ReunionAdminController
 
     public function index(): void
     {
+        if (($volver = ListaRecordada::volverA($this->ui->url('reuniones'))) !== null) {
+            $this->ui->redirect($volver);
+            return;
+        }
         $f = FiltrosLista::desdeGet($this->ui->url('reuniones'), ['cuando' => 'proximas', 'estado' => '', 'proyecto' => ''], [
             'cuando'   => array_keys(self::FILTRO_CUANDO),
             'estado'   => array_keys(self::FILTRO_ESTADO),

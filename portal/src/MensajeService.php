@@ -18,6 +18,9 @@ final class MensajeService
 {
     public const TIPOS = ['tarea' => 'Tarea', 'contenido' => 'Contenido', 'solicitud' => 'Solicitud'];
 
+    /** Segundos que una conversación terminada y recién leída sigue en «Activas». */
+    public const GRACIA_ARCHIVO = 120;
+
     public function __construct(private readonly \PDO $pdo) {}
 
     /**
@@ -32,7 +35,7 @@ final class MensajeService
     public function conversaciones(string $lado, string $personaId, ?string $clienteId, ?\Closure $puedeVer = null): array
     {
         $desde = (new \DateTimeImmutable('-' . NovedadesService::DIAS_NUEVO . ' days'))->format('Y-m-d H:i:s');
-        $sql = "SELECT k.entidad_tipo, k.entidad_id, k.cliente_id, MAX(k.created_at) AS ultimo, COUNT(*) AS n,
+        $sql = "SELECT k.entidad_tipo, k.entidad_id, k.cliente_id, MAX(k.created_at) AS ultimo, COUNT(*) AS n, MAX(v.visto_en) AS visto_en,
                        SUM(CASE WHEN k.autor_tipo <> ? AND k.created_at >= ? AND (v.visto_en IS NULL OR k.created_at > v.visto_en) THEN 1 ELSE 0 END) AS sin_leer
                 FROM portal_comentarios k
                 LEFT JOIN " . NovedadesService::TABLE . " v ON v.contacto_id = ? AND v.entidad_tipo = k.entidad_tipo AND v.entidad_id = k.entidad_id
@@ -46,6 +49,7 @@ final class MensajeService
         }
 
         $cosas = $this->cosas($filas, $lado);
+        $graciaDesde = (new \DateTimeImmutable('-' . self::GRACIA_ARCHIVO . ' seconds'))->format('Y-m-d H:i:s');
         $out = [];
         foreach ($filas as $f) {
             $cosa = $cosas[$f['entidad_tipo'] . ':' . $f['entidad_id']] ?? null;
@@ -60,12 +64,16 @@ final class MensajeService
                 continue;
             }
             $sinLeer = (int) $f['sin_leer'];
+            // Recién leída y ya terminada: se queda un momento en «Activas» para que se entienda que
+            // pasa a «Archivadas» (en la lista se desvanece sola a los pocos segundos).
+            $recien = $cosa['terminada'] && $sinLeer === 0 && (string) ($f['visto_en'] ?? '') >= $graciaDesde;
             $out[] = $cosa + [
-                'clave'     => $f['entidad_tipo'] . ':' . $f['entidad_id'],
-                'ultimo'    => (string) $f['ultimo'],
-                'n'         => (int) $f['n'],
-                'sin_leer'  => $sinLeer,
-                'archivada' => $cosa['terminada'] && $sinLeer === 0,
+                'clave'      => $f['entidad_tipo'] . ':' . $f['entidad_id'],
+                'ultimo'     => (string) $f['ultimo'],
+                'n'          => (int) $f['n'],
+                'sin_leer'   => $sinLeer,
+                'archivada'  => $cosa['terminada'] && $sinLeer === 0 && !$recien,
+                'archivando' => $recien,
             ];
         }
         usort($out, fn(array $a, array $b): int => strcmp($b['ultimo'], $a['ultimo']));

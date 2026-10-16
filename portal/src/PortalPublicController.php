@@ -49,6 +49,17 @@ class PortalPublicController
         return $query === [] ? $url : $url . '?' . http_build_query($query);
     }
 
+    /** Si se llega a una lista desde otra pantalla, vuelve con el filtro, orden y página que tenía. */
+    protected function recordarLista(string $ruta): bool
+    {
+        if (($q = ListaRecordada::restaurar($ruta)) === null) {
+            return false;
+        }
+        parse_str($q, $query);
+        $this->redirectTo($ruta, $query);
+        return true;
+    }
+
     protected function redirectTo(string $path, array $query = []): void
     {
         $url = $this->publicUrl($path, $query);
@@ -637,6 +648,9 @@ class PortalPublicController
     public function tareas(): void
     {
         $c     = $this->requerirContacto();
+        if ($this->recordarLista('/portal/tareas')) {
+            return;
+        }
         $todas = $this->tareasDelCliente((string) $c['cliente_id']);
         $ctx   = $this->contexto($c, 'tareas');
 
@@ -943,6 +957,9 @@ class PortalPublicController
     public function reuniones(): void
     {
         $c = $this->requerirContacto();
+        if ($this->recordarLista('/portal/reuniones')) {
+            return;
+        }
         $todas = $this->fetchAll(
             'SELECT r.*, p.nombre AS proyecto_nombre FROM portal_reuniones r
              JOIN portal_proyectos p ON p.id = r.proyecto_id WHERE p.cliente_id = ? AND r.publicada = 1 ORDER BY r.fecha DESC',

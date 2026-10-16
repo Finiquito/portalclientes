@@ -41,6 +41,9 @@ class EntregaPublicController extends PortalPublicController
     public function entregas(): void
     {
         $c = $this->requerirContacto();
+        if ($this->recordarLista('/portal/entregas')) {
+            return;
+        }
         $todas = $this->entregasSvc()->delCliente((string) $c['cliente_id']);
         $pag = Paginacion::delContacto($this->pdo(), (string) $c['id'], '/portal/entregas', count($todas));
         $this->ctx->view('templates/public/entregas.latte', $this->contexto($c, 'revisiones') + [

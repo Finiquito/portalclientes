@@ -2442,7 +2442,13 @@ check($convA['tarea:' . $tM]['sin_leer'] === 1, 'para el equipo, la respuesta de
 
 $ts->cambiarEstado($tM, 'hecha');
 $x = array_column($ms->conversaciones('contacto', $contacto, $c1), null, 'clave')['tarea:' . $tM];
-check($x['terminada'] && $x['archivada'], 'tarea lista y sin nada por leer: la conversación pasa a Archivadas');
+check($x['terminada'] && !$x['archivada'] && $x['archivando'], 'recién leída y terminada: se queda un momento en Activas, marcada «Pasa a Archivadas»');
+$pdo->prepare("UPDATE portal_comentarios SET created_at = ? WHERE entidad_tipo = 'tarea' AND entidad_id = ?")
+    ->execute([(new DateTimeImmutable('-' . (P\MensajeService::GRACIA_ARCHIVO + 60) . ' seconds'))->format('Y-m-d H:i:s'), $tM]);
+$pdo->prepare('UPDATE ' . P\NovedadesService::TABLE . " SET visto_en = ? WHERE contacto_id = ? AND entidad_tipo = 'tarea' AND entidad_id = ?")
+    ->execute([(new DateTimeImmutable('-' . (P\MensajeService::GRACIA_ARCHIVO + 5) . ' seconds'))->format('Y-m-d H:i:s'), $contacto, $tM]);
+$x = array_column($ms->conversaciones('contacto', $contacto, $c1), null, 'clave')['tarea:' . $tM];
+check($x['terminada'] && $x['archivada'] && !$x['archivando'], 'pasado ese momento, la conversación queda en Archivadas');
 check(!array_column($ms->conversaciones('equipo', $ana, null), null, 'clave')['tarea:' . $tM]['archivada'], 'para quien tiene algo sin leer sigue en Activas');
 sleep(1);
 (new P\ComentarioService($pdo))->crear($c1, 'tarea', $tM, 'equipo', $ana, 'Ana', 'Una cosa más');
@@ -2652,6 +2658,29 @@ P\EntregaAdminController::$traer = null;
 P\ArchivoService::$mover = null;
 [$html] = $g->hacer('GET', $ES, 'editContenido', [(string) $reelT['id']], 'contenido');
 check(str_contains($html, 'Usar un cuadro del video') && str_contains($html, 'Cambiar tapa'), 'la ficha del reel ofrece elegir un cuadro como portada y cambiar la tapa');
+
+seccion('Listas que recuerdan su filtro, orden y página al volver');
+$_SESSION['portal_listas'] = [];
+$_SERVER['HTTP_HOST'] = 'proyectos.ejemplo.cl';
+$_GET = ['estado' => 'cambios', 'orden' => 'proximo_asc', 'p' => '2'];
+check(P\ListaRecordada::restaurar('/portal/contactos-ganados') === null, 'con filtros en la URL, la lista se muestra y se guarda');
+$_GET = [];
+$_SERVER['HTTP_REFERER'] = 'https://proyectos.ejemplo.cl/portal/contactos-ganados/01a1';
+check(P\ListaRecordada::volverA('/portal/contactos-ganados') === '/portal/contactos-ganados?estado=cambios&orden=proximo_asc&p=2', 'al volver desde la ficha, vuelve con el mismo filtro, orden y página');
+$_SERVER['HTTP_REFERER'] = 'https://proyectos.ejemplo.cl/portal/contactos-ganados?estado=cambios';
+check(P\ListaRecordada::restaurar('/portal/contactos-ganados') === null, '«Todas» o «Quitar filtros» dentro de la misma lista la dejan sin filtros…');
+$_SERVER['HTTP_REFERER'] = 'https://proyectos.ejemplo.cl/portal';
+check(P\ListaRecordada::restaurar('/portal/contactos-ganados') === null, '…y se olvida lo guardado');
+$_GET = ['proyecto' => 'x'];
+P\ListaRecordada::restaurar('/equipo/tareas');
+$_GET = [];
+$_SERVER['HTTP_REFERER'] = 'https://otro-sitio.cl/equipo/tareas/1';
+check(P\ListaRecordada::restaurar('/equipo/tareas') === null, 'si se llega desde otro sitio, no se toca');
+unset($_SERVER['HTTP_REFERER']);
+check(P\ListaRecordada::restaurar('/equipo/tareas') === null, 'sin página de origen (URL escrita a mano), tampoco');
+$_SERVER['HTTP_REFERER'] = 'https://proyectos.ejemplo.cl/equipo/tareas/1';
+check(P\ListaRecordada::restaurar('/admin/portal/leads') === null && P\ListaRecordada::restaurar('/equipo/tareas') === 'proyecto=x', 'cada lista recuerda lo suyo');
+unset($_SERVER['HTTP_REFERER']); $_SESSION['portal_listas'] = [];
 
 seccion('Plantillas: compilan sin avisos (el TypeDock real convierte un aviso en error)');
 $dirT = dirname(__DIR__) . '/portal/templates';

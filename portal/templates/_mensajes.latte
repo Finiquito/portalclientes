@@ -8,10 +8,10 @@
     <section class="{$sel ? 'hidden lg:block' : ''} min-w-0 lg:border-r lg:border-line" aria-label="Conversaciones">
         <nav class="flex gap-2 border-b border-line p-3" aria-label="Activas o archivadas">
             <a href="{$base}" class="btn btn-sm {$pestana === 'activas' ? 'btn-primary' : 'btn-ghost'}" {if $pestana === 'activas'}aria-current="true"{/if}>
-                Activas <span class="rounded-full px-1.5 text-xs {$pestana === 'activas' ? 'bg-white/25' : 'bg-surface2 text-muted'}">{$nActivas}</span>
+                Activas <span class="rounded-full px-1.5 text-xs {$pestana === 'activas' ? 'bg-white/25' : 'bg-surface2 text-muted'}" data-n-activas>{$nActivas}</span>
             </a>
             <a href="{$base}?t=archivadas" class="btn btn-sm {$pestana === 'archivadas' ? 'btn-primary' : 'btn-ghost'}" {if $pestana === 'archivadas'}aria-current="true"{/if}>
-                Archivadas <span class="rounded-full px-1.5 text-xs {$pestana === 'archivadas' ? 'bg-white/25' : 'bg-surface2 text-muted'}">{$nArchivadas}</span>
+                Archivadas <span class="rounded-full px-1.5 text-xs {$pestana === 'archivadas' ? 'bg-white/25' : 'bg-surface2 text-muted'}" data-n-archivadas>{$nArchivadas}</span>
             </a>
         </nav>
         {if empty($conv)}
@@ -25,7 +25,7 @@
                     {var $m = $c['ultimo_msg']}
                     {var $activa = $sel && $sel['clave'] === $c['clave']}
                     {var $mc = ($marcasCli ?? [])[$c['cliente_id']] ?? null}
-                    <li {if $equipo && $mc}style="box-shadow: inset 3px 0 0 {$mc['color']|noescape}"{/if}>
+                    <li {if $equipo && $mc}style="box-shadow: inset 3px 0 0 {$mc['color']|noescape}"{/if} {if !empty($c['archivando'])}data-archivando{/if}>
                         <a href="{$q(['c' => $c['clave'], 'p' => $pag->pagina > 1 ? $pag->pagina : ''])}" class="flex gap-3 px-4 py-3.5 transition hover:bg-surface2 {$activa ? 'bg-surface2' : ''}" {if $activa}aria-current="true"{/if}>
                             <span class="mt-[0.45rem] size-2 flex-none rounded-full {$c['sin_leer'] > 0 ? 'bg-brand' : 'bg-transparent'}" aria-hidden="true"></span>
                             <span class="min-w-0 flex-1">
@@ -37,6 +37,7 @@
                                     <span>{$tipos[$c['tipo']]}</span>
                                     {if $equipo}<span class="inline-flex items-center gap-1.5 font-semibold text-ink">{if $mc}<span class="inline-flex size-4 flex-none items-center justify-center overflow-hidden rounded-[0.3rem] text-[0.5rem] font-extrabold" style="background: {$mc['logo'] ? '#ffffff' : $mc['color']|noescape}; color: {$mc['texto']|noescape}" aria-hidden="true">{if $mc['logo']}<img src="{$mc['logo']}" alt="" class="size-full object-contain">{else}{$fmt->iniciales($c['cliente_nombre'])}{/if}</span>{/if}{$c['cliente_nombre']}</span>{/if}
                                     <span class="chip chip-{$c['estado'][1]}">{$c['estado'][0]}</span>
+                                    {if !empty($c['archivando'])}<span class="chip chip-muted">Pasa a Archivadas</span>{/if}
                                 </span>
                                 {if $m}
                                     <span class="mt-1.5 flex items-center gap-2 text-sm">
@@ -50,6 +51,22 @@
                 {/foreach}
             </ul>
             <div class="border-t border-line px-3">{include '_paginacion.latte', pag: $pag, ordenSelector: false}</div>
+            <script>
+            // Lo terminado que recién se leyó se queda un momento a la vista y después se va a «Archivadas».
+            setTimeout(function () {
+                var items = document.querySelectorAll('[data-archivando]');
+                if (!items.length) { return; }
+                var act = document.querySelector('[data-n-activas]'), arc = document.querySelector('[data-n-archivadas]');
+                items.forEach(function (li) {
+                    li.style.transition = 'opacity .6s ease, max-height .6s ease';
+                    li.style.overflow = 'hidden'; li.style.maxHeight = li.offsetHeight + 'px';
+                    requestAnimationFrame(function () { li.style.opacity = '0'; li.style.maxHeight = '0'; });
+                    setTimeout(function () { li.remove(); }, 650);
+                });
+                if (act) { act.textContent = Math.max(0, parseInt(act.textContent, 10) - items.length); }
+                if (arc) { arc.textContent = parseInt(arc.textContent, 10) + items.length; }
+            }, 10000);
+            </script>
         {/if}
     </section>
 

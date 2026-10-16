@@ -73,6 +73,10 @@ class EntregaAdminController
 
     public function index(): void
     {
+        if (($volver = ListaRecordada::volverA($this->ui->url('entregas'))) !== null) {
+            $this->ui->redirect($volver);
+            return;
+        }
         $f = FiltrosLista::desdeGet($this->url('entregas'), ['estado' => 'activas', 'proyecto' => ''], [
             'estado'   => array_keys(self::FILTRO_ESTADOS),
             'proyecto' => 'uuid',

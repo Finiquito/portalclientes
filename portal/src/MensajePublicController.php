@@ -15,6 +15,9 @@ class MensajePublicController extends PortalPublicController
     {
         $c = $this->requerirContacto();
         $svc = new MensajeService($this->pdo());
+        if ($this->recordarLista('/portal/mensajes')) {
+            return;
+        }
         $todas = $svc->conversaciones('contacto', (string) $c['id'], (string) $c['cliente_id']);
         $pestana = ($_GET['t'] ?? '') === 'archivadas' ? 'archivadas' : 'activas';
         $grupo = array_values(array_filter($todas, fn(array $x): bool => $x['archivada'] === ($pestana === 'archivadas')));

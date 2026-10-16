@@ -29,6 +29,9 @@ class SolicitudPublicController extends PortalPublicController
     public function lista(): void
     {
         $c = $this->requerirContacto();
+        if ($this->recordarLista('/portal/solicitudes')) {
+            return;
+        }
         $this->marcarPaso($c, 'solicitudes');
         $todas = $this->solicitudes()->delCliente((string) $c['cliente_id']);
         $abiertas = array_values(array_filter($todas, fn(array $s): bool => in_array($s['estado'], ['nueva', 'cotizada', 'aprobada'], true)
