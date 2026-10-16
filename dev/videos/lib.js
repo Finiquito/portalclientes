@@ -21,9 +21,16 @@ function restaurar() {
 }
 const portadaHtml = ({kick, titulo, bajada}) => `<div class="logo">${LOGO}</div><div class="kick">${kick}</div><h1>${titulo}</h1>${bajada ? `<p class="bajada">${bajada}</p>` : ''}<div class="pz">${PIEZAS}</div>`;
 const cierreHtml = ({titulo}) => `<div class="logo">${LOGO}</div><div class="pz">${PIEZAS}</div><h1>${titulo}</h1><div class="pie"><div class="cta">Prueba la beta gratis <span>→ usaprisma.com</span></div><p class="nota">Cupos limitados, mientras lo afinamos.</p></div>`;
-const CIERRE = {titulo: 'Hizo más rápido mi trabajo diario.<br><em>Pruébalo y me cuentas cómo te va.</em>'};
+const CIERRES = [
+  {titulo: 'Hizo más rápido mi trabajo diario.<br><em>Pruébalo y me cuentas cómo te va.</em>'},
+  {titulo: 'Es simple y fácil de implementar.<br><em>Si me funciona a mí, te puede funcionar a ti.</em>'},
+];
+const CIERRE = CIERRES[0];
+// Los dos cierres se alternan: impares (1, 3, 5, 7) el primero y pares (2, 4, 6) el segundo.
+const cierreDe = nombre => CIERRES[(parseInt(nombre, 10) + 1) % 2];
 
-async function video({nombre, quien = 'equipo', email = 'camila@estudiopampa.cl', url, antes, portada, cierre = CIERRE, guion}) {
+async function video({nombre, quien = 'equipo', email = 'camila@estudiopampa.cl', url, antes, portada, cierre, guion}) {
+  cierre = cierre || cierreDe(nombre);
   restaurar();
   const b = await chromium.launch();
   const pre = await b.newContext({viewport: {width: W, height: H}});
@@ -78,4 +85,4 @@ async function video({nombre, quien = 'equipo', email = 'camila@estudiopampa.cl'
   if (hoja) { execFileSync(ffmpeg(), ['-y', '-loglevel', 'error', '-i', out, '-vf', 'fps=1/2.5,scale=270:-1,tile=6x4', '-frames:v', '1', hoja]); }
   console.log(nombre, (fin - cuadros[0][1]).toFixed(1) + ' s', out);
 }
-module.exports = {video, esperar, lectura, portadaHtml, cierreHtml, CIERRE, FONT, OVERLAY};
+module.exports = {video, esperar, lectura, portadaHtml, cierreHtml, CIERRE, CIERRES, FONT, OVERLAY};

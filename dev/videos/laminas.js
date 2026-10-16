@@ -1,7 +1,7 @@
 // Vista previa de portadas y cierre (las mismas tarjetas que usan los videos), sin grabar nada.
 const {chromium} = require('playwright');
 const fs = require('fs'), path = require('path');
-const {portadaHtml, cierreHtml, CIERRE, FONT, OVERLAY} = require('./lib');
+const {portadaHtml, cierreHtml, CIERRES, FONT, OVERLAY} = require('./lib');
 const salida = process.argv[2] || path.join(__dirname, 'laminas');
 fs.mkdirSync(salida, {recursive: true});
 const guiones = fs.readdirSync(__dirname).filter(f => /^v\d-.*\.js$/.test(f)).sort();
@@ -22,6 +22,6 @@ const guiones = fs.readdirSync(__dirname).filter(f => /^v\d-.*\.js$/.test(f)).so
     const portada = eval('(' + src.match(/portada: (\{.*?\}),\n/s)[1] + ')');
     await foto(portadaHtml(portada), portada.titulo.replace(/<[^>]+>/g, '').length > 62, '', g.replace('.js', '.png'));
   }
-  await foto(cierreHtml(CIERRE), false, 'cierre', 'v9-cierre.png');
+  for (const [i, c] of CIERRES.entries()) { await foto(cierreHtml(c), false, 'cierre', `v9-cierre-${i + 1}.png`); }
   await b.close(); console.log(salida);
 })();
