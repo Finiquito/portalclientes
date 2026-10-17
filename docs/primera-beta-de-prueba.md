@@ -32,11 +32,21 @@ Y dime: **cómo instalaste TypeDock en proyectos.richgt.com** (asistente web en 
 4. **Correo** `notificaciones@usaprisma.com` y `dmarc@usaprisma.com`. Luego SPF/DKIM/DMARC según `docs/protocolo-beta.md` §8.
 
 ## 3. Instalar la agencia de prueba (a mano; será la «imagen dorada»)
-1. Instala TypeDock en `prueba1` igual que en tu portal actual, con la BD nueva.
-2. Sube `portal-plugin-v0.10.0-beta.zip` con el zip-uploader del admin.
-3. Entra a `/admin/portal/...` y comprueba que abre.
-4. Crea el usuario administrador de la prueba.
-5. Anota el árbol de carpetas resultante y pégamelo (`ls -R` a 3 niveles, sin `storage/`).
+
+Cómo viene TypeDock (README de la distribución para hosting compartido): dos carpetas, `public_html/` (lo público) y `typedock/` (el código, **fuera** del webroot), y al abrir el sitio te lleva solo al instalador. El mismo README dice cómo ubicar `typedock/` en otro lado: editar `TYPEDOCK_ROOT` en `public_html/index.php` y en `install.php`.
+
+Eso es justo lo que necesitamos para varias agencias: **cada una lleva su propia carpeta `typedock/`** (no puede ser `~/typedock` para todas):
+
+```
+~/prisma/instancias/prueba1/typedock/     ← código, config, storage y plugins de ESA agencia
+<raíz del subdominio>/index.php, install.php   ← con TYPEDOCK_ROOT apuntando a la carpeta de arriba
+```
+
+1. Sube el contenido de `public_html/` de la distribución a la raíz del subdominio `prueba1` y `typedock/` a `~/prisma/instancias/prueba1/typedock/`.
+2. Edita `TYPEDOCK_ROOT` en `index.php` e `install.php` para que apunte a esa ruta.
+3. Abre `https://prueba1.usaprisma.com` → instalador → BD nueva y usuario administrador.
+4. Sube `portal-plugin-v0.10.0-beta.zip` con el zip-uploader del admin y comprueba `/admin/portal/...`.
+5. Pégame el árbol resultante (`ls -R` a 3 niveles, sin `storage/`) y el contenido de `index.php`.
 
 ## 4. Probar el código compartido (enlace simbólico)
 Con lo que me pegues, preparo los comandos exactos. En esencia:
