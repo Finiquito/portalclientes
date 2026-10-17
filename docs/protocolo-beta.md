@@ -17,8 +17,8 @@ usaprisma.com  (TypeDock + tema Prisma + plugin «beta-hub»)   ← el centro de
   └─ /admin/beta                 registro de instancias, tickets, novedades
 
 ~/prisma/                         (fuera de public_html, en tu cuenta Hostinger)
-  ├─ releases/portal-0.36.0/ … 0.37.0/    código del plugin, una carpeta por versión
-  ├─ current → releases/portal-0.37.0     enlace simbólico: lo que usan todos
+  ├─ releases/portal-beta-0.9/ … 0.10/     código del plugin, una carpeta por versión
+  ├─ current → releases/portal-beta-0.10     enlace simbólico: lo que usan todos
   ├─ base/                        "imagen dorada": TypeDock limpio + volcado SQL vacío
   ├─ instancias.json              registro (subdominio, carpeta, BD, versión, estado)
   ├─ bin/prisma                   herramienta CLI en PHP (crear, actualizar, estado, respaldar)
@@ -40,7 +40,7 @@ Hoy cada instancia tendría su propia copia del plugin, y actualizar 10 betas = 
 
 - El plugin vive **una sola vez** en `~/prisma/releases/portal-X.Y.Z/`.
 - En cada instancia, `typedock/plugins/portal` es un **enlace simbólico** a `~/prisma/current`.
-- **Actualizar a todos = cambiar un enlace** (`ln -sfn releases/portal-0.37.0 current`). Instantáneo y atómico.
+- **Actualizar a todos = cambiar un enlace** (`ln -sfn releases/portal-beta-0.10 current`). Instantáneo y atómico.
 - **Volver atrás = apuntar el enlace a la versión anterior.** Sin descargas.
 - Las migraciones ya corren solas al primer request (`$ctx->migrate()` + `Schema::asegurar`, idempotentes y que no borran datos). Cada instancia se migra sola la primera vez que alguien la abre.
 
@@ -50,7 +50,7 @@ Hoy cada instancia tendría su propia copia del plugin, y actualizar 10 betas = 
 
 Con enlace simbólico, PHP resuelve `__DIR__` a la carpeta **real** (`~/prisma/releases/...`). Hoy `ArchivoService.php:59` hace `dirname(__DIR__, 3) . '/storage/portal_uploads'` y `Cifrado` guarda `.ia_secret` en ese mismo directorio. Con el enlace, **los archivos de los clientes y la clave AES de todas las agencias caerían en una carpeta compartida**. Eso rompería el aislamiento que prometes en la landing.
 
-Arreglo (pequeño, va en la v0.37): que el plugin reciba el directorio de datos desde la instancia (constante `PORTAL_STORAGE` o `$ctx`), y que solo use `dirname(__DIR__, 3)` como último recurso. Con prueba que falle si el storage queda dentro del directorio del código. **Este es el primer cambio de código del plan.**
+Arreglo (pequeño, quedó en la beta 0.10): que el plugin reciba el directorio de datos desde la instancia (constante `PORTAL_STORAGE` o `$ctx`), y que solo use `dirname(__DIR__, 3)` como último recurso. Con prueba que falle si el storage queda dentro del directorio del código. **Este es el primer cambio de código del plan.**
 
 ### 1.3 Canales y orden de salida
 
@@ -63,7 +63,7 @@ Flujo de una versión:
 1. `scripts/zip.sh` (ya existe) → pasa pruebas → `scripts/release.sh` (nuevo): genera `portal-X.Y.Z.tar.gz`, `sha256` y un `manifest.json` con versión, notas en lenguaje simple, `min_core`, canal.
 2. `prisma actualizar --canal canary` → mueve el enlace de las instancias canary.
 3. Esperas, miras el heartbeat/errores. Si está bien: `prisma actualizar --canal estable`.
-4. El hub publica la novedad ("Lo que pediste → listo en v0.37") y avisa a las agencias.
+4. El hub publica la novedad ("Lo que pediste → listo en beta 0.10") y avisa a las agencias.
 
 Con enlace único, canary y estable necesitan **dos enlaces** (`current-canary`, `current-estable`) y cada instancia apunta a uno. Simple.
 
@@ -283,7 +283,7 @@ Los tres son registros TXT/CNAME en el DNS de `usaprisma.com`. Cada uno responde
 
 **Buenas prácticas de contenido:** solo correos de sistema, textos cortos y sin imágenes pesadas, que el enlace apunte al subdominio de la agencia, y la dirección de respuesta real. Vigilar los rebotes: un buzón que acumula rebotes arrastra a las 10 agencias.
 
-## 9. Configuración que lleva cada instancia (v0.37)
+## 9. Configuración que lleva cada instancia (beta 0.10)
 
 | Dónde | Qué | Para qué |
 |---|---|---|

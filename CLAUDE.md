@@ -10,6 +10,11 @@
 - **No abras PR** salvo que lo pida.
 - **Portal del cliente:** está bien como está; cambia lo del lado de la agencia y toca el del cliente solo si es necesario.
 
+## Ramas (ver `docs/ramas.md`)
+- **Personal** (`claude/youthful-gates-tjxgp0`, la rama por defecto): su portal en `proyectos.richgt.com`, versiones `0.36.x`.
+- **Beta** (`beta`): portal para las agencias beta, versiones `0.N.M-beta` (se dice «beta 0.N»; hoy **beta 0.10**). Protocolo y decisiones en `docs/protocolo-beta.md`.
+- Antes de trabajar, confirma en qué rama estás. Lo personal se hace en la personal; lo de las agencias, en `beta`. Las mejoras pasan de la personal a la beta con merge, nunca al revés sin preguntar.
+
 ## Qué hay en el repo
 - `portal/`: plugin **Portal de Clientes** para TypeDock (PHP 8.2+, Latte 3.1, Flight). Se instala en `proyectos.richgt.com`. Tiene el portal del cliente (`/portal`), el panel del equipo (`/equipo`) y el admin (`/admin/portal/...`). Detalles y lista de cambios en `README.md`.
 - `theme/prisma/`: tema del landing **Prisma** (usaprisma.com), con Google Analytics G-TLZCJ1N0XE, el evento `Formulario_Lleno` y datos estructurados. `theme/raiz-usaprisma/` tiene robots.txt, sitemap.xml y llms.txt, que van en `public_html/`.

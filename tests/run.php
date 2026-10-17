@@ -2828,7 +2828,7 @@ seccion('Beta: carpeta propia por agencia, correo de Prisma y prueba de IA');
 // Código compartido (enlace simbólico a releases/): no se adivina la carpeta de archivos.
 $lanzo = false;
 try {
-    P\ArchivoService::rutaDesdeCodigo('/home/u/prisma/releases/portal-0.37.0/src');
+    P\ArchivoService::rutaDesdeCodigo('/home/u/prisma/releases/portal-beta-0.10/src');
 } catch (RuntimeException $e) {
     $lanzo = str_contains($e->getMessage(), 'PORTAL_UPLOAD_DIR');
 }
