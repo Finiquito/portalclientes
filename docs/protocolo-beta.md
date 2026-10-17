@@ -287,10 +287,10 @@ Los tres son registros TXT/CNAME en el DNS de `usaprisma.com`. Cada uno responde
 
 | Dónde | Qué | Para qué |
 |---|---|---|
-| `.htaccess` o config de la instancia | `SetEnv PORTAL_UPLOAD_DIR /home/…/agencia/storage/portal_uploads` | Archivos y clave AES de **esa** agencia (obligatorio si el plugin va por enlace a `releases/`) |
-| `.htaccess` o config de la instancia | `SetEnv PORTAL_SECRETOS_DIR /home/…/prisma/secretos` | Dónde están `correo.json` e `ia.json` compartidos |
-| `~/prisma/secretos/correo.json` | `{"host","puerto","seg","usuario","clave","desde","tope_diario"}` | SMTP de Prisma (permisos 600) |
-| `~/prisma/secretos/ia.json` | `{"proveedor","clave","dias_prueba","tope_diario"}` | Clave de IA de la beta |
+| `config.php` de la instancia (lo escribe `prisma crear`) | `SetEnv PORTAL_UPLOAD_DIR /home/…/agencia/storage/portal_uploads` | Archivos y clave AES de **esa** agencia (obligatorio si el plugin va por enlace a `releases/`) |
+| `config.php` de la instancia (lo escribe `prisma crear`) | `SetEnv PORTAL_SECRETOS_DIR /home/…/prisma/secretos/compartido` | Dónde están `correo.json` e `ia.json` compartidos |
+| `~/prisma/secretos/compartido/correo.json` | `{"host","puerto","seg","usuario","clave","desde","tope_diario"}` | SMTP de Prisma (permisos 600) |
+| `~/prisma/secretos/compartido/ia.json` | `{"proveedor","clave","dias_prueba","tope_diario"}` | Clave de IA de la beta |
 
 Las claves se escriben a mano en el servidor, nunca en el repo ni en el chat.
 
@@ -312,3 +312,7 @@ Hallazgos que cambian el plan (revisado en `github.com/typedock/core`):
 | **Contraseña del usuario 0** | Existe `PasswordResetService` | Se crea con una clave aleatoria que nadie ve y se le manda el enlace de «restablecer», en vez de un enlace nuevo propio |
 
 **Efecto en `prisma crear`:** copiar la distribución limpia de TypeDock → `config.php` → instalar por la API → copiar/enlazar el plugin y el tema → publicar assets → crear al usuario 0 → correo de bienvenida. Lo único manual sigue siendo el subdominio, la BD y el SSL en hPanel.
+
+## 11. Estado de la herramienta `prisma` (beta 0.10)
+
+Ya existe (`prisma/`, ver `prisma/README.md`): `crear`, `secreto`, `version agregar`, `actualizar`, `estado`, con `--simular`. Probada de punta a punta con un TypeDock real sobre SQLite (`tests/prisma.php`). **Pendiente:** probar con MySQL en Hostinger, `respaldar`, `pausar/eliminar`, correo de bienvenida, heartbeat y tablero de tickets.

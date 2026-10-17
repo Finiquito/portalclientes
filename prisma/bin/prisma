@@ -1,0 +1,8 @@
+#!/usr/bin/env php
+<?php
+declare(strict_types=1);
+
+foreach (['Casa', 'Proc', 'Crear', 'Versiones', 'Cli'] as $c) {
+    require_once __DIR__ . '/../src/' . $c . '.php';
+}
+exit(\Prisma\Cli::correr($argv));

@@ -1,0 +1,83 @@
+<?php
+declare(strict_types=1);
+
+/**
+ * Se ejecuta DENTRO de una instancia de TypeDock (con su vendor/), como proceso aparte.
+ * Recibe un JSON por stdin (nunca por argumentos: así las claves no aparecen en `ps`) y
+ * responde con una última línea JSON {"ok": true, ...} o {"ok": false, "error": "..."}.
+ *
+ *   php instancia.php instalar   {root, public, config: {...}, admin: {email, name}, dias_enlace}
+ *   php instancia.php assets     {root, public}
+ */
+
+function responder(array $d, int $code = 0): never
+{
+    echo json_encode($d, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . "\n";
+    exit($code);
+}
+
+$accion = $argv[1] ?? '';
+$in = json_decode((string) stream_get_contents(STDIN), true);
+if (!is_array($in) || !is_dir((string) ($in['root'] ?? ''))) {
+    responder(['ok' => false, 'error' => 'Entrada inválida.'], 2);
+}
+
+define('TYPEDOCK_ROOT', rtrim((string) $in['root'], '/'));
+define('TYPEDOCK_PUBLIC_DIR', rtrim((string) ($in['public'] ?? TYPEDOCK_ROOT . '/public'), '/'));
+
+try {
+    if (!is_file(TYPEDOCK_ROOT . '/vendor/autoload.php')) {
+        throw new RuntimeException('Falta vendor/ en ' . TYPEDOCK_ROOT . ': ¿se copió la distribución completa de TypeDock?');
+    }
+    require TYPEDOCK_ROOT . '/vendor/autoload.php';
+
+    if ($accion === 'assets') {
+        typedock_load_config(TYPEDOCK_ROOT);
+        $n = count((new TypeDock\Core\AssetPublisher(TYPEDOCK_ROOT, TYPEDOCK_PUBLIC_DIR))->publishAll());
+        responder(['ok' => true, 'publicados' => $n]);
+    }
+
+    if ($accion === 'instalar') {
+        $installer = new TypeDock\Install\Installer(TYPEDOCK_ROOT);
+        if (TypeDock\Install\Installer::isInstalled(TYPEDOCK_ROOT)) {
+            throw new RuntimeException('Esta instancia ya está instalada.');
+        }
+        $admin = (array) ($in['admin'] ?? []);
+        $installer->writeConfig(array_map('strval', (array) ($in['config'] ?? [])));
+        typedock_load_config(TYPEDOCK_ROOT);
+
+        $res = $installer->runMigrations();
+        if (!empty($res['errors'])) {
+            $e = $res['errors'][0];
+            throw new RuntimeException('Migración ' . $e['name'] . ': ' . $e['message']);
+        }
+
+        $db = require TYPEDOCK_ROOT . '/config/database.php';
+        // Clave aleatoria que nadie ve: la persona entra con el enlace de «restablecer contraseña».
+        $userId = $installer->createAdmin($db, (string) ($admin['email'] ?? ''), (string) ($admin['name'] ?? ''), rtrim(strtr(base64_encode(random_bytes(30)), '+/', '-_'), '='));
+        $installer->seedSiteOptions($db, ['name' => (string) ($_ENV['APP_NAME'] ?? 'TypeDock')]);
+        $installer->activateTheme($db, 'default');
+        $installer->lock(defined('TYPEDOCK_VERSION') ? TYPEDOCK_VERSION : 'desconocida');
+        (new TypeDock\Core\AssetPublisher(TYPEDOCK_ROOT, TYPEDOCK_PUBLIC_DIR))->publishAll();
+
+        // Enlace de primer ingreso: el servicio del núcleo dura 1 hora; para un correo de bienvenida
+        // damos más días. Se guarda sólo el hash.
+        $dias = max(1, (int) ($in['dias_enlace'] ?? 7));
+        $token = bin2hex(random_bytes(32));
+        $pdo = TypeDock\Core\Database\ConnectionFactory::create($db, TYPEDOCK_ROOT);
+        $pdo->prepare('INSERT INTO password_resets (id, user_id, token_hash, expires_at, created_at) VALUES (?, ?, ?, ?, ?)')->execute([
+            typedock_uuid7(), $userId, hash('sha256', $token),
+            (new DateTimeImmutable('+' . $dias . ' days'))->format('Y-m-d H:i:s'),
+            (new DateTimeImmutable())->format('Y-m-d H:i:s'),
+        ]);
+        responder([
+            'ok' => true, 'user_id' => $userId, 'nucleo' => defined('TYPEDOCK_VERSION') ? TYPEDOCK_VERSION : '',
+            'enlace' => rtrim((string) ($_ENV['APP_URL'] ?? ''), '/') . '/admin/password-reset?token=' . $token,
+            'vence_dias' => $dias,
+        ]);
+    }
+
+    throw new RuntimeException('Acción desconocida: ' . $accion);
+} catch (Throwable $e) {
+    responder(['ok' => false, 'error' => $e->getMessage()], 1);
+}

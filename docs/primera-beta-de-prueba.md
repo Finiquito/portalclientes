@@ -70,3 +70,7 @@ Tú creas a mano `~/prisma/secretos/correo.json` e `ia.json` (permisos 600) con 
 - `bin/prisma` (CLI en PHP): `estado`, `crear`, `actualizar`, `respaldar`, con modo `--simular` para probarlo sin tocar nada.
 - `scripts/release.sh`: arma el tar de la versión y el `manifest.json`.
 - Entrada `bootstrap` del plugin para crear al usuario 0 con enlace de primer ingreso.
+
+## 7. Con la herramienta `prisma` (ya existe)
+
+Cuando termines el reconocimiento, en vez de instalar a mano sigue `prisma/README.md`: subes `prisma-herramienta.zip`, la distribución de TypeDock y el zip del plugin, y `prisma crear prueba1 … --simular` te dice qué haría antes de hacerlo.
