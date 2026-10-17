@@ -124,6 +124,25 @@ final class Casa
         }
     }
 
+    /**
+     * Crea un enlace simbólico con `ln -s`. No usa symlink() de PHP: Hostinger lo trae en disable_functions
+     * (pero el comando ln sí funciona).
+     */
+    public static function enlazar(string $destino, string $enlace): void
+    {
+        [$code, , $err] = Proc::correr(['ln', '-s', '--', $destino, $enlace]);
+        if ($code !== 0 || !is_link($enlace)) {
+            throw new \RuntimeException('No pude crear el enlace simbólico ' . $enlace . ': ' . trim($err));
+        }
+    }
+
+    /** Funciones de PHP que la herramienta necesita y el hosting podría tener deshabilitadas. @return list<string> */
+    public static function funcionesFaltantes(): array
+    {
+        $off = array_map('trim', explode(',', (string) ini_get('disable_functions')));
+        return array_values(array_filter(['proc_open', 'rename', 'file_put_contents', 'readlink'], fn($f) => !function_exists($f) || in_array($f, $off, true)));
+    }
+
     public static function borrar(string $ruta): void
     {
         if (is_link($ruta) || is_file($ruta)) {

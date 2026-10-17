@@ -104,8 +104,14 @@ final class Versiones
         }
         $tmp = $enlace . '.nuevo';
         @unlink($tmp);
-        if (!symlink('../releases/' . $nombre, $tmp) || !rename($tmp, $enlace)) {
-            $this->d('✗ No pude mover el enlace del canal (¿el hosting permite symlink?).');
+        try {
+            Casa::enlazar('../releases/' . $nombre, $tmp);
+            if (!rename($tmp, $enlace)) {   // rename sobre un enlace existente es atómico
+                throw new \RuntimeException('rename falló');
+            }
+        } catch (\RuntimeException $e) {
+            @unlink($tmp);
+            $this->d('✗ No pude mover el enlace del canal: ' . $e->getMessage());
             return 1;
         }
 

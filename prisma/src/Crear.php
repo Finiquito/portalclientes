@@ -109,6 +109,9 @@ final class Crear
         if (PHP_VERSION_ID < 80200) {
             throw new \RuntimeException('TypeDock pide PHP 8.2 o superior (aquí hay ' . PHP_VERSION . ').');
         }
+        if (($faltan = Casa::funcionesFaltantes()) !== []) {
+            throw new \RuntimeException('El hosting tiene deshabilitadas funciones de PHP que la herramienta necesita: ' . implode(', ', $faltan) . '.');
+        }
         foreach (['pdo', 'mbstring', 'openssl', 'json'] as $ext) {
             if (!extension_loaded($ext)) {
                 throw new \RuntimeException("Falta la extensión PHP «{$ext}».");
@@ -255,9 +258,7 @@ final class Crear
             mkdir($dir, 0755, true);
         }
         Casa::borrar($destino);
-        if (!symlink($this->casa->canal($plan['canal']), $destino)) {
-            throw new \RuntimeException('El hosting no permite enlaces simbólicos (symlink). Habría que usar el modo de copia.');
-        }
+        Casa::enlazar($this->casa->canal($plan['canal']), $destino);
     }
 
     /** @return list<string> avisos */

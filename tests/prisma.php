@@ -38,11 +38,11 @@ $home = $tmp . '/prisma';
 mkdir($home, 0750, true);
 $sh = fn(string $c) => shell_exec($c . ' 2>&1');
 
-/** @return array{0:int,1:string} */
+/** Corre prisma con las mismas funciones deshabilitadas que Hostinger (symlink, exec, popen…). @return array{0:int,1:string} */
 function prisma(string $home, array $args): array
 {
     $env = ['PRISMA_HOME' => $home, 'PATH' => getenv('PATH') ?: '/usr/bin:/bin', 'HOME' => $home];
-    $p = proc_open(array_merge([PHP_BINARY, dirname(__DIR__) . '/prisma/bin/prisma'], $args), [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes, null, $env);
+    $p = proc_open(array_merge([PHP_BINARY, '-d', 'disable_functions=system,exec,shell_exec,passthru,ini_alter,dl,symlink,link,chgrp,leak,popen,apache_child_terminate,virtual,mb_send_mail', dirname(__DIR__) . '/prisma/bin/prisma'], $args), [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes, null, $env);
     $out = stream_get_contents($pipes[1]) . stream_get_contents($pipes[2]);
     return [proc_close($p), $out];
 }

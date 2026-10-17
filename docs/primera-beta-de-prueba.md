@@ -20,7 +20,12 @@ ls -d ~/domains/*/public_html 2>/dev/null
 mkdir -p ~/prueba_ln/a && ln -s ~/prueba_ln/a ~/prueba_ln/b && ls -l ~/prueba_ln && rm -r ~/prueba_ln
 ```
 
-Me pegas la salida. Lo que más me importa: **PHP ≥ 8.2**, que **`ln -s` funcione**, la ruta exacta de `public_html` (algo como `/home/u123456789/domains/usaprisma.com/public_html`) y que `disable_functions` **no** incluya `proc_open` ni `symlink`.
+Me pegas la salida. Lo que más me importa: **PHP ≥ 8.2**, que **`ln -s` funcione**, la ruta exacta de `public_html` (en tu cuenta: `/home/u940913119/domains/prueba1.usaprisma.com/public_html`) y que `disable_functions` **no** incluya `proc_open` ni `symlink`.
+
+### Resultado del reconocimiento (cuenta u940913119)
+- PHP 8.2.34 ✓, extensiones curl, intl, mbstring, openssl, pdo_mysql y zip ✓; `unzip`, `zip`, `cp`, `mysql` y `mysqldump` ✓.
+- `ln -s` funciona ✓, pero **`symlink()` de PHP está deshabilitada** (igual que `exec`, `shell_exec`, `system`, `popen`). `proc_open` sí está permitida. La herramienta `prisma` ya crea los enlaces con el comando `ln` y se prueba con esas mismas restricciones.
+- Cada subdominio tiene su carpeta en `~/domains/<subdominio>/public_html`; `prueba1.usaprisma.com` ya existe.
 
 ## 2. En hPanel (≈10 min)
 
@@ -33,7 +38,7 @@ Me pegas la salida. Lo que más me importa: **PHP ≥ 8.2**, que **`ln -s` funci
 
 ## 3. Subir tres archivos a `~/prisma`
 
-Por el File Manager o `scp`, a la carpeta `~/prisma` (créala si no existe):
+**Nada va a mano a `public_html` de usaprisma.com ni de prueba1.** Los tres zips van a `/home/u940913119/prisma/` (fuera de cualquier sitio, créala si no existe); `prisma crear` llena después el `public_html` de prueba1 por ti. Por el File Manager de hPanel o `scp`:
 
 1. `prisma-herramienta.zip` (te lo envié en el chat).
 2. `typedock-shared.zip`: el mismo de TypeDock que usaste para instalar tu portal.
@@ -83,7 +88,7 @@ nano ~/prisma/secretos/instancias/prueba1.json     # completa base de datos, usu
 
 # 1) simulación: no toca nada, muestra lo que haría
 prisma crear prueba1 --host=prueba1.usaprisma.com \
-  --docroot=/home/u123456789/domains/usaprisma.com/public_html/prueba1 \
+  --docroot=/home/u940913119/domains/prueba1.usaprisma.com/public_html \
   --correo=TU_CORREO --nombre="Estudio de Prueba" --canal=canary --simular
 
 # 2) de verdad (mismo comando sin --simular)
