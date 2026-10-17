@@ -1,0 +1,501 @@
+<!doctype html>
+<html lang="es" data-tema="auto">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Bienvenida a Prisma · maqueta</title>
+<style>
+@font-face { font-family: "Schibsted Grotesk"; font-style: normal; font-weight: 400 900; font-display: swap;
+  src: url("data:font/woff2;base64,{{FONT}}") format("woff2"); }
+
+/* Tokens de Prisma (los mismos de theme/prisma/assets/css/prisma.css y del ingreso del portal) */
+:root {
+  --paper: oklch(98.6% 0.004 255);
+  --surface: #fff;
+  --ink: oklch(23% 0.07 272);
+  --ink-2: oklch(40% 0.04 270);
+  --ink-3: oklch(50% 0.03 268);
+  --rule: oklch(23% 0.07 272 / .16);
+  --rule-soft: oklch(23% 0.07 272 / .08);
+  --signal: oklch(61% 0.22 33);
+  --on-ink: oklch(97% 0.01 255);
+  --ok: oklch(52% 0.12 155);
+  --error: oklch(52% 0.2 25);
+  --acento: oklch(61% 0.22 33);
+  --radius: 10px;
+  --ease: cubic-bezier(.22, 1, .36, 1);
+  --font: "Schibsted Grotesk", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --grid: oklch(23% 0.07 272 / .04);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-tema="claro"]) {
+    --paper: oklch(17% 0.035 272); --surface: oklch(21.5% 0.04 272); --ink: oklch(96% 0.01 255); --ink-2: oklch(82% 0.02 262);
+    --ink-3: oklch(72% 0.02 262); --rule: oklch(96% 0.01 255 / .2); --rule-soft: oklch(96% 0.01 255 / .1); --on-ink: oklch(20% 0.05 272);
+    --ok: oklch(76% 0.13 155); --error: oklch(74% 0.16 25); --grid: oklch(96% 0.01 255 / .035); color-scheme: dark;
+  }
+}
+:root[data-tema="oscuro"] {
+  --paper: oklch(17% 0.035 272); --surface: oklch(21.5% 0.04 272); --ink: oklch(96% 0.01 255); --ink-2: oklch(82% 0.02 262);
+  --ink-3: oklch(72% 0.02 262); --rule: oklch(96% 0.01 255 / .2); --rule-soft: oklch(96% 0.01 255 / .1); --on-ink: oklch(20% 0.05 272);
+  --ok: oklch(76% 0.13 155); --error: oklch(74% 0.16 25); --grid: oklch(96% 0.01 255 / .035); color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  font-family: var(--font); font-size: 17px; line-height: 1.5; color: var(--ink); background: var(--paper);
+  -webkit-font-smoothing: antialiased; overflow-x: hidden;
+  background-image: linear-gradient(30deg, var(--grid) 1px, transparent 1px), linear-gradient(150deg, var(--grid) 1px, transparent 1px);
+  background-size: 46px 26.5px;
+}
+button, input { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--signal); outline-offset: 3px; border-radius: 6px; }
+
+.app { min-height: 100dvh; display: grid; grid-template-rows: auto 1fr auto; }
+
+/* Línea de avance (arriba del todo) */
+.avance { position: fixed; inset: 0 0 auto 0; height: 3px; background: var(--rule-soft); z-index: 5; }
+.avance i { display: block; height: 100%; width: 0; background: var(--signal); transition: width 520ms var(--ease); }
+
+/* Cabecera: logo · guía de pasos · guardado */
+.cab { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 16px; padding: 22px clamp(20px, 4vw, 40px); }
+.logo { color: var(--ink); display: inline-flex; width: 84px; }
+.logo svg { width: 100%; height: auto; display: block; }
+
+.pasos { display: flex; align-items: center; gap: 0; list-style: none; margin: 0; padding: 5px; border: 1px solid var(--rule); border-radius: 999px; background: color-mix(in srgb, var(--surface) 82%, transparent); backdrop-filter: blur(10px); }
+.pasos li { display: flex; align-items: center; }
+.pasos li + li::before { content: ""; width: 14px; height: 1px; background: var(--rule); margin-inline: 2px; }
+.pasos button { display: inline-flex; align-items: center; gap: 0; height: 34px; min-width: 34px; padding: 0 9px; border: 0; border-radius: 999px; background: transparent; cursor: pointer; color: var(--ink-3); font-weight: 600; font-size: 14px;
+  transition: background 320ms var(--ease), color 320ms var(--ease), padding 320ms var(--ease); }
+.pasos button:disabled { cursor: default; opacity: .55; }
+.pasos .n { display: grid; place-items: center; width: 16px; height: 16px; line-height: 1; font-variant-numeric: tabular-nums; transform: translateY(-1px); }
+.pasos .n svg { width: 14px; height: 14px; }
+.pasos .t { max-width: 0; overflow: hidden; white-space: nowrap; opacity: 0; transition: max-width 420ms var(--ease), opacity 260ms ease, margin 320ms var(--ease); }
+.pasos [aria-current="step"] { background: var(--ink); color: var(--on-ink); padding-right: 14px; }
+.pasos [aria-current="step"] .t { max-width: 140px; opacity: 1; margin-left: 7px; }
+.pasos .hecho { color: var(--ok); }
+.pasos button:not(:disabled):not([aria-current="step"]):hover { background: var(--rule-soft); }
+
+.lado { justify-self: end; display: flex; align-items: center; gap: 18px; }
+.guardado { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: var(--ink-3); opacity: 0; transform: translateY(-3px); transition: opacity 260ms ease, transform 260ms var(--ease); }
+.guardado.ver { opacity: 1; transform: none; }
+.guardado svg { width: 15px; height: 15px; color: var(--ok); }
+.salir { border: 0; background: none; font-size: 14px; font-weight: 600; color: var(--ink-2); cursor: pointer; padding: 10px 4px; text-decoration: underline; text-underline-offset: 4px; text-decoration-color: var(--rule); }
+.salir:hover { color: var(--ink); text-decoration-color: var(--ink); }
+
+/* Contenido */
+main { display: grid; place-items: center; padding: 8px clamp(20px, 4vw, 40px) 24px; }
+.col { width: min(100%, 560px); position: relative; }
+.paso { display: none; }
+.paso.activo { display: block; animation: entra 440ms var(--ease) both; }
+.paso.activo.atras { animation-name: entra-atras; }
+@keyframes entra { from { opacity: 0; transform: translateX(28px); } to { opacity: 1; transform: none; } }
+@keyframes entra-atras { from { opacity: 0; transform: translateX(-28px); } to { opacity: 1; transform: none; } }
+
+.kicker { font-size: 14px; font-weight: 700; letter-spacing: .02em; color: var(--ink-3); margin: 0 0 10px; }
+h1 { font-size: clamp(30px, 2.2rem + 1vw, 42px); line-height: 1.1; font-weight: 800; letter-spacing: -0.026em; margin: 0 0 12px; text-wrap: balance; }
+.sub { margin: 0 0 32px; color: var(--ink-2); font-size: 17px; text-wrap: pretty; }
+
+.campo { display: grid; gap: 8px; margin-bottom: 20px; }
+.campo > label, .etq { font-size: 14px; font-weight: 650; color: var(--ink-2); }
+.opc { font-weight: 500; color: var(--ink-3); }
+.in { height: 52px; width: 100%; padding: 0 16px; border: 1.5px solid var(--rule); border-radius: var(--radius); background: var(--surface); font-size: 17px; transition: border-color 160ms ease, box-shadow 160ms ease; }
+.in::placeholder { color: color-mix(in srgb, var(--ink-3) 70%, transparent); }
+.in:hover { border-color: color-mix(in srgb, var(--ink) 35%, transparent); }
+.in:focus { outline: none; border-color: var(--ink); box-shadow: 0 0 0 4px color-mix(in srgb, var(--signal) 22%, transparent); }
+.in[aria-invalid="true"] { border-color: var(--error); }
+.err { color: var(--error); font-size: 14px; min-height: 0; display: none; }
+.err.ver { display: block; animation: entra 240ms var(--ease) both; }
+.dos { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.ayuda { font-size: 14px; color: var(--ink-3); margin: -4px 0 0; }
+
+/* Logo y color */
+.marca { display: grid; grid-template-columns: 1fr auto; gap: 20px; align-items: start; padding-top: 4px; }
+.subir { display: flex; align-items: center; gap: 14px; height: 64px; padding: 0 16px; border: 1.5px dashed var(--rule); border-radius: var(--radius); background: transparent; cursor: pointer; text-align: left; width: 100%; transition: border-color 160ms ease, background 160ms ease; }
+.subir:hover { border-color: var(--ink); background: color-mix(in srgb, var(--surface) 70%, transparent); }
+.subir .ico { width: 36px; height: 36px; border-radius: 8px; background: var(--rule-soft); display: grid; place-items: center; overflow: hidden; flex: none; }
+.subir .ico img { width: 100%; height: 100%; object-fit: contain; background: #fff; }
+.subir b { display: block; font-size: 15px; font-weight: 650; }
+.subir span { font-size: 13px; color: var(--ink-3); }
+.colores { display: flex; gap: 10px; padding: 18px 0 0; }
+.colores input { position: absolute; opacity: 0; pointer-events: none; }
+.colores label { width: 28px; height: 28px; border-radius: 50%; background: var(--c); cursor: pointer; display: block; box-shadow: inset 0 0 0 1px var(--rule); transition: transform 200ms var(--ease), box-shadow 200ms ease; }
+.colores label:hover { transform: scale(1.12); }
+.colores input:checked + label { box-shadow: inset 0 0 0 1px var(--rule), 0 0 0 3px var(--paper), 0 0 0 5px var(--c); }
+.colores input:focus-visible + label { outline: 2px solid var(--signal); outline-offset: 6px; }
+
+/* Vista previa en vivo */
+.vista { margin-top: 28px; border: 1px solid var(--rule); border-radius: 14px; background: var(--surface); padding: 16px 18px; display: grid; gap: 14px; }
+.vista .tit { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
+.vista .fila { display: flex; align-items: center; gap: 12px; }
+.chapa { width: 40px; height: 40px; border-radius: 10px; background: var(--acento); color: #fff; font-weight: 800; display: grid; place-items: center; overflow: hidden; flex: none; transition: background 320ms ease; }
+.chapa img { width: 100%; height: 100%; object-fit: contain; background: #fff; }
+.vista .nombre { font-weight: 750; font-size: 17px; letter-spacing: -.01em; }
+.vista .lin { height: 8px; border-radius: 4px; background: var(--rule-soft); }
+.vista .btnv { margin-left: auto; height: 32px; padding: 0 14px; border-radius: 8px; background: var(--acento); color: #fff; font-size: 13px; font-weight: 700; display: grid; place-items: center; transition: background 320ms ease; }
+
+/* Plantillas */
+.plantillas { display: grid; gap: 10px; margin-bottom: 8px; }
+.plantilla { position: relative; }
+.plantilla input { position: absolute; opacity: 0; pointer-events: none; }
+.plantilla label { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; align-items: center; padding: 14px 16px; min-height: 64px; border: 1.5px solid var(--rule); border-radius: var(--radius); background: var(--surface); cursor: pointer; transition: border-color 160ms ease, box-shadow 160ms ease; }
+.plantilla label:hover { border-color: color-mix(in srgb, var(--ink) 40%, transparent); }
+.plantilla b { font-size: 16px; font-weight: 700; }
+.plantilla .etapas { grid-column: 1; font-size: 13.5px; color: var(--ink-3); }
+.plantilla .radio { grid-column: 2; grid-row: 1 / span 2; width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--rule); display: grid; place-items: center; transition: all 200ms var(--ease); }
+.plantilla .radio::after { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--on-ink); transform: scale(0); transition: transform 240ms var(--ease); }
+.plantilla input:checked + label { border-color: var(--ink); box-shadow: 0 0 0 3px color-mix(in srgb, var(--signal) 18%, transparent); }
+.plantilla input:checked + label .radio { background: var(--ink); border-color: var(--ink); }
+.plantilla input:checked + label .radio::after { transform: scale(1); }
+.plantilla input:focus-visible + label { outline: 2px solid var(--signal); outline-offset: 3px; }
+
+/* Equipo */
+.agrega { display: grid; grid-template-columns: 1fr auto; gap: 10px; }
+.btn2 { height: 52px; padding: 0 20px; border-radius: var(--radius); border: 1.5px solid var(--rule); background: var(--surface); font-weight: 650; cursor: pointer; transition: border-color 160ms ease; }
+.btn2:hover { border-color: var(--ink); }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; min-height: 8px; }
+.chip { display: inline-flex; align-items: center; gap: 8px; height: 38px; padding: 0 6px 0 14px; border-radius: 999px; background: var(--surface); border: 1px solid var(--rule); font-size: 15px; animation: entra 300ms var(--ease) both; }
+.chip button { width: 26px; height: 26px; border-radius: 50%; border: 0; background: var(--rule-soft); cursor: pointer; display: grid; place-items: center; font-size: 16px; line-height: 1; }
+.chip button:hover { background: var(--rule); }
+.tu { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border: 1px solid var(--rule); border-radius: var(--radius); background: color-mix(in srgb, var(--surface) 70%, transparent); margin-bottom: 18px; }
+.tu .av { width: 36px; height: 36px; border-radius: 50%; background: var(--ink); color: var(--on-ink); display: grid; place-items: center; font-weight: 800; font-size: 14px; }
+.tu small { display: block; color: var(--ink-3); font-size: 13.5px; }
+
+/* Listo */
+.check-grande { width: 64px; height: 64px; margin-bottom: 20px; color: var(--ok); }
+.check-grande circle { fill: none; stroke: currentColor; stroke-width: 2.5; stroke-dasharray: 190; stroke-dashoffset: 190; animation: trazo 700ms var(--ease) 120ms forwards; }
+.check-grande path { fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 40; stroke-dashoffset: 40; animation: trazo 420ms var(--ease) 620ms forwards; }
+@keyframes trazo { to { stroke-dashoffset: 0; } }
+.resumen { list-style: none; margin: 0 0 22px; padding: 0; border: 1px solid var(--rule); border-radius: 14px; background: var(--surface); overflow: hidden; }
+.resumen li { display: grid; grid-template-columns: 28px 1fr; gap: 12px; padding: 14px 16px; align-items: start; }
+.resumen li + li { border-top: 1px solid var(--rule-soft); }
+.resumen svg { width: 20px; height: 20px; color: var(--ok); margin-top: 2px; }
+.resumen b { font-weight: 700; }
+.resumen span { display: block; color: var(--ink-3); font-size: 14.5px; }
+.interruptor { display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: center; padding: 14px 16px; border: 1px solid var(--rule); border-radius: var(--radius); margin-bottom: 18px; background: color-mix(in srgb, var(--surface) 70%, transparent); }
+.interruptor b { display: block; font-weight: 700; font-size: 16px; }
+.interruptor small { color: var(--ink-3); font-size: 14px; }
+.sw { position: relative; width: 52px; height: 32px; }
+.sw input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; z-index: 2; }
+.sw i { position: absolute; inset: 0; border-radius: 999px; background: var(--rule); transition: background 240ms ease; }
+.sw i::after { content: ""; position: absolute; top: 3px; left: 3px; width: 26px; height: 26px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.3); transition: transform 280ms var(--ease); }
+.sw input:checked + i { background: var(--ok); }
+.sw input:checked + i::after { transform: translateX(20px); }
+.sw input:focus-visible + i { outline: 2px solid var(--signal); outline-offset: 3px; }
+.etiquetas { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.etiqueta { font-size: 13.5px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--rule); color: var(--ink-2); background: color-mix(in srgb, var(--surface) 70%, transparent); }
+
+/* Pie: atrás / continuar */
+.pie { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px clamp(20px, 4vw, 40px) 28px; }
+.pie .centro { flex: 1; text-align: center; color: var(--ink-3); font-size: 14px; }
+.atras, .omitir { border: 0; background: none; cursor: pointer; font-weight: 650; font-size: 16px; padding: 12px 8px; color: var(--ink-2); border-radius: 8px; display: inline-flex; align-items: center; gap: 6px; }
+.atras:hover, .omitir:hover { color: var(--ink); }
+.atras[hidden], .omitir[hidden] { display: inline-flex; visibility: hidden; }
+.sig { height: 52px; padding: 0 26px; border: 0; border-radius: var(--radius); background: var(--ink); color: var(--on-ink); font-weight: 700; font-size: 17px; cursor: pointer; display: inline-flex; align-items: center; gap: 10px; transition: transform 200ms var(--ease), opacity 160ms ease; }
+.sig:hover { transform: translateY(-1px); }
+.sig:active { transform: scale(.985); }
+.sig svg { width: 18px; height: 18px; transition: transform 240ms var(--ease); }
+.sig:hover svg { transform: translateX(3px); }
+
+.toast { position: fixed; left: 50%; bottom: 96px; transform: translate(-50%, 12px); background: var(--ink); color: var(--on-ink); padding: 12px 18px; border-radius: 12px; font-size: 15px; opacity: 0; pointer-events: none; transition: opacity 260ms ease, transform 320ms var(--ease); z-index: 9; }
+.toast.ver { opacity: 1; transform: translate(-50%, 0); }
+.maqueta { position: fixed; left: 14px; bottom: 10px; font-size: 11.5px; color: var(--ink-3); opacity: .8; z-index: 3; }
+.maqueta button { border: 0; background: none; color: inherit; text-decoration: underline; cursor: pointer; font-size: inherit; padding: 4px; }
+body.limpio .maqueta { display: none; }
+
+@media (max-width: 720px) {
+  .cab { grid-template-columns: auto 1fr; row-gap: 14px; }
+  .lado { grid-column: 2; grid-row: 1; }
+  .pasos { grid-column: 1 / -1; grid-row: 2; justify-self: center; }
+  .guardado { display: none; }
+  .dos { grid-template-columns: 1fr; gap: 0; }
+  .marca { grid-template-columns: 1fr; gap: 14px; }
+  .colores { padding-top: 6px; }
+  .pie .centro { display: none; }
+  .sig { padding: 0 22px; }
+  main { align-items: start; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .paso.activo, .paso.activo.atras, .chip, .err.ver { animation: fade 180ms ease both; }
+  @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+  .pasos .t, .avance i, .sig, .sig svg, .sw i::after, .colores label { transition-duration: 1ms; }
+  .check-grande circle, .check-grande path { animation-duration: 1ms; animation-delay: 0s; }
+}
+</style>
+</head>
+<body>
+<div class="avance" aria-hidden="true"><i id="barra"></i></div>
+<div class="app">
+  <header class="cab">
+    <a class="logo" href="#" aria-label="Prisma" onclick="return false">{{LOGO}}</a>
+    <ol class="pasos" id="pasos" aria-label="Pasos de la configuración"></ol>
+    <div class="lado">
+      <span class="guardado" id="guardado" role="status" aria-live="polite"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 10.5l3.5 3.5 7.5-8"/></svg><span id="guardadoTxt">Guardado</span></span>
+      <button class="salir" id="salir" type="button">Guardar y salir</button>
+    </div>
+  </header>
+
+  <main><div class="col">
+
+    <!-- 1 -->
+    <section class="paso" data-paso="1" aria-labelledby="h1">
+      <p class="kicker">Bienvenida a Prisma</p>
+      <h1 id="h1">Armemos tu agencia en cinco minutos</h1>
+      <p class="sub">Dos datos para empezar. Todo lo demás lo puedes cambiar después.</p>
+      <div class="dos">
+        <div class="campo"><label for="tuNombre">Tu nombre</label><input class="in" id="tuNombre" data-k="tuNombre" autocomplete="name" placeholder="Camila Soto"><span class="err" id="e-tuNombre">Escribe tu nombre.</span></div>
+        <div class="campo"><label for="agencia">Nombre de la agencia</label><input class="in" id="agencia" data-k="agencia" autocomplete="organization" placeholder="Estudio Pampa"><span class="err" id="e-agencia">Escribe el nombre de tu agencia.</span></div>
+      </div>
+      <div class="marca">
+        <div class="campo" style="margin:0"><span class="etq">Logo <span class="opc">· opcional</span></span>
+          <button class="subir" type="button" id="subir"><span class="ico" id="icoLogo"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M10 13V4M6.5 7.5L10 4l3.5 3.5M4 13.5v1.5a1 1 0 001 1h10a1 1 0 001-1v-1.5"/></svg></span><span><b id="logoNombre">Subir logo</b><span>PNG o SVG, fondo claro</span></span></button>
+          <input type="file" id="archivoLogo" accept="image/png,image/svg+xml,image/jpeg" hidden>
+        </div>
+        <div class="campo" style="margin:0"><span class="etq">Color</span>
+          <div class="colores" role="radiogroup" aria-label="Color de acento" id="colores"></div>
+        </div>
+      </div>
+      <div class="vista" aria-label="Vista previa">
+        <span class="tit">Así te verán tus clientes</span>
+        <div class="fila"><span class="chapa" id="vChapa">E</span><span class="nombre" id="vNombre">Tu agencia</span><span class="btnv">Aprobar</span></div>
+        <div class="lin" style="width:78%"></div><div class="lin" style="width:52%"></div>
+      </div>
+    </section>
+
+    <!-- 2 -->
+    <section class="paso" data-paso="2" aria-labelledby="h2">
+      <p class="kicker">Paso 2 de 5</p>
+      <h1 id="h2">Tu primer cliente</h1>
+      <p class="sub">Una empresa o persona para la que trabajas. Entrará a su portal para revisar y aprobar.</p>
+      <div class="campo"><label for="cliente">Nombre del cliente</label><input class="in" id="cliente" data-k="cliente" placeholder="Panadería Ruiz"><span class="err" id="e-cliente">Escribe el nombre del cliente.</span></div>
+      <div class="dos">
+        <div class="campo"><label for="contacto">Persona de contacto</label><input class="in" id="contacto" data-k="contacto" autocomplete="off" placeholder="Josefa Ruiz"><span class="err" id="e-contacto">Escribe el nombre del contacto.</span></div>
+        <div class="campo"><label for="correo">Su correo</label><input class="in" id="correo" data-k="correo" type="email" inputmode="email" autocomplete="off" placeholder="josefa@panaderiaruiz.cl"><span class="err" id="e-correo">Escribe un correo válido.</span></div>
+      </div>
+      <p class="ayuda">No le enviamos nada todavía. Tú decides al final si la invitas.</p>
+    </section>
+
+    <!-- 3 -->
+    <section class="paso" data-paso="3" aria-labelledby="h3">
+      <p class="kicker">Paso 3 de 5</p>
+      <h1 id="h3">Su primer proyecto</h1>
+      <p class="sub">Elige una plantilla y armamos las etapas. Después las ajustas como quieras.</p>
+      <div class="campo"><label for="proyecto">Nombre del proyecto</label><input class="in" id="proyecto" data-k="proyecto" placeholder="Rebranding 2026"><span class="err" id="e-proyecto">Escribe el nombre del proyecto.</span></div>
+      <div class="campo" style="margin-bottom:0"><span class="etq" id="lblPlantilla">Plantilla</span>
+        <div class="plantillas" role="radiogroup" aria-labelledby="lblPlantilla" id="plantillas"></div>
+      </div>
+    </section>
+
+    <!-- 4 -->
+    <section class="paso" data-paso="4" aria-labelledby="h4">
+      <p class="kicker">Paso 4 de 5 · opcional</p>
+      <h1 id="h4">¿Con quién trabajas?</h1>
+      <p class="sub">Invita a tu equipo para que vea sus proyectos. Puedes hacerlo cuando quieras.</p>
+      <div class="tu"><span class="av" id="avTu">C</span><div><b id="tuLinea">Tú</b><small>Coordinación general · ves y administras todo</small></div></div>
+      <div class="campo" style="margin-bottom:0"><label for="miembro">Correo de una persona de tu equipo</label>
+        <div class="agrega"><input class="in" id="miembro" type="email" inputmode="email" placeholder="nombre@tuagencia.cl" autocomplete="off"><button class="btn2" type="button" id="agregar">Agregar</button></div>
+        <span class="err" id="e-miembro">Escribe un correo válido.</span>
+      </div>
+      <div class="chips" id="chips" aria-live="polite"></div>
+    </section>
+
+    <!-- 5 -->
+    <section class="paso" data-paso="5" aria-labelledby="h5">
+      <svg class="check-grande" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="29"/><path d="M20 33l9 9 16-19"/></svg>
+      <h1 id="h5">Todo listo, <span id="nomFin">Camila</span></h1>
+      <p class="sub">Tu agencia ya funciona. Esto es lo que dejamos armado:</p>
+      <ul class="resumen" id="resumen"></ul>
+      <div class="interruptor"><div><b id="invTit">Invitar a Josefa al portal ahora</b><small>Le llega un correo con su acceso. Si no, puedes hacerlo después desde su ficha.</small></div><span class="sw"><input type="checkbox" id="invitar" checked aria-labelledby="invTit"><i></i></span></div>
+      <div class="etiquetas"><span class="etiqueta">Correo de Prisma activo</span><span class="etiqueta" id="etIA">IA de prueba por 30 días</span></div>
+    </section>
+
+  </div></main>
+
+  <footer class="pie">
+    <button class="atras" id="atras" type="button"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.5 4.5L7 10l5.5 5.5"/></svg>Atrás</button>
+    <span class="centro" id="centro"></span>
+    <span style="display:inline-flex;align-items:center;gap:6px"><button class="omitir" id="omitir" type="button" hidden>Omitir por ahora</button><button class="sig" id="sig" type="button"><span id="sigTxt">Continuar</span><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h12M11 5l5 5-5 5"/></svg></button></span>
+  </footer>
+</div>
+<div class="toast" id="toast" role="status"></div>
+<div class="maqueta">Maqueta interactiva · datos de ejemplo · <button id="reiniciar" type="button">Reiniciar</button></div>
+
+<script>
+(function () {
+  var NOMBRES = ['Tu agencia', 'Tu cliente', 'Su proyecto', 'Tu equipo', 'Listo'];
+  var COLORES = [['#E8552D', 'Naranjo Prisma'], ['#2F5BEA', 'Azul'], ['#118A6B', 'Verde'], ['#8A4FD6', 'Violeta'], ['#D63A7C', 'Rosa'], ['#2B2F3A', 'Grafito']];
+  var PLANTILLAS = [
+    ['branding', 'Branding', 'Brief · Propuesta · Diseño · Entrega'],
+    ['web', 'Sitio web', 'Brief · Diseño · Desarrollo · Lanzamiento'],
+    ['redes', 'Redes sociales', 'Estrategia · Grilla · Aprobación · Publicación'],
+    ['blanco', 'Empezar en blanco', 'Tú defines las etapas']
+  ];
+  var CHECK = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 10.5l3.5 3.5 7.5-8"/></svg>';
+  var KEY = 'prisma-onboarding-maqueta';
+  var q = new URLSearchParams(location.search);
+  var $ = function (s, r) { return (r || document).querySelector(s); };
+  var estado = { paso: 1, max: 1, tuNombre: '', agencia: '', color: COLORES[0][0], logo: '', cliente: '', contacto: '', correo: '', proyecto: '', plantilla: 'branding', equipo: [] };
+  try { var g = JSON.parse(localStorage.getItem(KEY) || 'null'); if (g && !q.get('demo') && !q.get('limpio-estado')) { estado = Object.assign(estado, g); } } catch (e) {}
+  if (q.get('limpio')) document.body.classList.add('limpio');
+  if (q.get('tema')) document.documentElement.setAttribute('data-tema', q.get('tema'));
+  if (q.get('demo')) {
+    Object.assign(estado, { tuNombre: 'Camila Soto', agencia: 'Estudio Pampa', cliente: 'Panadería Ruiz', contacto: 'Josefa Ruiz', correo: 'josefa@panaderiaruiz.cl', proyecto: 'Rebranding 2026', plantilla: 'branding', color: '#2F5BEA', equipo: ['andres@estudiopampa.cl', 'vale@estudiopampa.cl'], max: 5 });
+  }
+  if (q.get('paso')) estado.paso = Math.min(5, Math.max(1, +q.get('paso')));
+  estado.max = Math.max(estado.max, estado.paso);
+
+  // --- construir guía de pasos, colores y plantillas
+  var ol = $('#pasos');
+  NOMBRES.forEach(function (n, i) {
+    var li = document.createElement('li');
+    li.innerHTML = '<button type="button" data-ir="' + (i + 1) + '"><span class="n">' + (i + 1) + '</span><span class="t">' + n + '</span></button>';
+    ol.appendChild(li);
+  });
+  ol.addEventListener('click', function (e) { var b = e.target.closest('button[data-ir]'); if (b && !b.disabled) ir(+b.dataset.ir); });
+  var cont = $('#colores');
+  COLORES.forEach(function (c, i) {
+    cont.insertAdjacentHTML('beforeend', '<span><input type="radio" name="color" id="c' + i + '" value="' + c[0] + '"><label for="c' + i + '" style="--c:' + c[0] + '" title="' + c[1] + '"><span class="sr" style="position:absolute;width:1px;height:1px;overflow:hidden">' + c[1] + '</span></label></span>');
+  });
+  var pl = $('#plantillas');
+  PLANTILLAS.forEach(function (p) {
+    pl.insertAdjacentHTML('beforeend', '<div class="plantilla"><input type="radio" name="plantilla" id="p-' + p[0] + '" value="' + p[0] + '"><label for="p-' + p[0] + '"><b>' + p[1] + '</b><span class="etapas">' + p[2] + '</span><span class="radio"></span></label></div>');
+  });
+
+  // --- pintar estado en los campos
+  document.querySelectorAll('[data-k]').forEach(function (el) { el.value = estado[el.dataset.k] || ''; });
+  function pintarColor() {
+    document.documentElement.style.setProperty('--acento', estado.color);
+    document.querySelectorAll('#colores input').forEach(function (i) { i.checked = i.value === estado.color; });
+  }
+  function pintarPlantilla() { document.querySelectorAll('#plantillas input').forEach(function (i) { i.checked = i.value === estado.plantilla; }); }
+  function pintarVista() {
+    var n = estado.agencia.trim() || 'Tu agencia';
+    $('#vNombre').textContent = n;
+    var ch = $('#vChapa');
+    ch.innerHTML = estado.logo ? '<img alt="" src="' + estado.logo + '">' : '';
+    if (!estado.logo) ch.textContent = (n[0] || 'E').toUpperCase();
+    var ic = $('#icoLogo');
+    if (estado.logo) { ic.innerHTML = '<img alt="" src="' + estado.logo + '">'; $('#logoNombre').textContent = 'Cambiar logo'; }
+  }
+  function pintarEquipo() {
+    var c = $('#chips'); c.innerHTML = '';
+    estado.equipo.forEach(function (m, i) {
+      var s = document.createElement('span'); s.className = 'chip';
+      s.innerHTML = '<span></span><button type="button" aria-label="Quitar ' + m + '">×</button>';
+      s.firstChild.textContent = m;
+      s.lastChild.onclick = function () { estado.equipo.splice(i, 1); guardar(); pintarEquipo(); };
+      c.appendChild(s);
+    });
+  }
+  function pintarTu() {
+    var n = estado.tuNombre.trim() || 'Tú';
+    $('#avTu').textContent = (n[0] || 'T').toUpperCase();
+    $('#tuLinea').textContent = n;
+  }
+  function resumen() {
+    var pn = (PLANTILLAS.filter(function (p) { return p[0] === estado.plantilla; })[0] || PLANTILLAS[0]);
+    var et = pn[2].indexOf('·') > -1 ? pn[2].split('·').length + ' etapas' : 'sin etapas todavía';
+    var primer = (estado.contacto.trim().split(' ')[0]) || 'el contacto';
+    $('#nomFin').textContent = (estado.tuNombre.trim().split(' ')[0]) || '';
+    $('#invTit').textContent = 'Invitar a ' + primer + ' al portal ahora';
+    var li = function (t, s) { return '<li>' + CHECK + '<div><b></b><span></span></div></li>'; };
+    var r = $('#resumen'); r.innerHTML = li() + li() + li() + li();
+    var filas = r.querySelectorAll('li');
+    var datos = [
+      [estado.agencia.trim() || 'Tu agencia', 'Tú quedas como Coordinación general'],
+      [estado.cliente.trim() || 'Tu cliente', 'Contacto: ' + (estado.contacto.trim() || '—') + (estado.correo.trim() ? ' · ' + estado.correo.trim() : '')],
+      [estado.proyecto.trim() || 'Tu proyecto', 'Plantilla ' + pn[1] + ' · ' + et + ' · a tu cargo'],
+      [estado.equipo.length ? 'Equipo' : 'Equipo', estado.equipo.length ? estado.equipo.length + ' invitado' + (estado.equipo.length > 1 ? 's' : '') + ': ' + estado.equipo.join(', ') : 'Lo invitas cuando quieras, desde Equipo']
+    ];
+    filas.forEach(function (f, i) { f.querySelector('b').textContent = datos[i][0]; f.querySelector('span').textContent = datos[i][1]; });
+    var d = new Date(Date.now() + 30 * 864e5);
+    $('#etIA').textContent = 'IA de prueba hasta el ' + d.getDate() + ' de ' + ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'][d.getMonth()];
+  }
+
+  // --- guardado automático (simulado)
+  var tG, tH;
+  function guardar() {
+    clearTimeout(tG); clearTimeout(tH);
+    var g = $('#guardado'), t = $('#guardadoTxt');
+    t.textContent = 'Guardando…'; g.classList.add('ver');
+    tG = setTimeout(function () {
+      try { localStorage.setItem(KEY, JSON.stringify(Object.assign({}, estado, { logo: estado.logo.length < 200000 ? estado.logo : '' }))); } catch (e) {}
+      t.textContent = 'Guardado'; tH = setTimeout(function () { g.classList.remove('ver'); }, 1800);
+    }, 450);
+  }
+  document.querySelectorAll('[data-k]').forEach(function (el) {
+    el.addEventListener('input', function () {
+      estado[el.dataset.k] = el.value; el.removeAttribute('aria-invalid'); var e = $('#e-' + el.id); if (e) e.classList.remove('ver');
+      if (el.id === 'agencia') pintarVista(); if (el.id === 'tuNombre') pintarTu(); guardar();
+    });
+  });
+  $('#colores').addEventListener('change', function (e) { estado.color = e.target.value; pintarColor(); guardar(); });
+  $('#plantillas').addEventListener('change', function (e) { estado.plantilla = e.target.value; guardar(); });
+  $('#subir').onclick = function () { $('#archivoLogo').click(); };
+  $('#archivoLogo').onchange = function (e) {
+    var f = e.target.files[0]; if (!f) return; var r = new FileReader();
+    r.onload = function () { estado.logo = r.result; pintarVista(); guardar(); }; r.readAsDataURL(f);
+  };
+  function agregar() {
+    var i = $('#miembro'), v = i.value.trim().toLowerCase(), e = $('#e-miembro');
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)) { e.classList.add('ver'); i.setAttribute('aria-invalid', 'true'); i.focus(); return; }
+    e.classList.remove('ver'); i.removeAttribute('aria-invalid');
+    if (estado.equipo.indexOf(v) < 0) estado.equipo.push(v);
+    i.value = ''; pintarEquipo(); guardar(); i.focus();
+  }
+  $('#agregar').onclick = agregar;
+  $('#miembro').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); if (this.value.trim()) agregar(); else siguiente(); } });
+
+  // --- navegación
+  function validar(n) {
+    var reglas = { 1: ['tuNombre', 'agencia'], 2: ['cliente', 'contacto', 'correo'], 3: ['proyecto'] }[n] || [], primero = null;
+    reglas.forEach(function (id) {
+      var el = $('#' + id), v = el.value.trim(), ok = v.length > 0 && (id !== 'correo' || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v));
+      el.setAttribute('aria-invalid', ok ? 'false' : 'true'); if (ok) el.removeAttribute('aria-invalid');
+      $('#e-' + id).classList.toggle('ver', !ok); if (!ok && !primero) primero = el;
+    });
+    if (primero) { primero.focus(); return false; } return true;
+  }
+  var primeraVez = true;
+  function ir(n, atras) {
+    estado.paso = n; estado.max = Math.max(estado.max, n);
+    document.querySelectorAll('.paso').forEach(function (s) { s.classList.remove('activo', 'atras'); });
+    var s = $('.paso[data-paso="' + n + '"]'); s.classList.add('activo'); if (atras) s.classList.add('atras');
+    document.querySelectorAll('#pasos button').forEach(function (b, i) {
+      var k = i + 1; b.removeAttribute('aria-current'); b.classList.toggle('hecho', k < n && k < estado.max + 1 && k !== n);
+      b.disabled = k > estado.max;
+      if (k === n) b.setAttribute('aria-current', 'step');
+      b.querySelector('.n').innerHTML = (k < n) ? CHECK : String(k);
+      b.setAttribute('aria-label', NOMBRES[i] + (k < n ? ', completado' : ''));
+    });
+    $('#barra').style.width = (n / 5 * 100) + '%';
+    $('#atras').hidden = n === 1; $('#omitir').hidden = n !== 4;
+    $('#sigTxt').textContent = n === 5 ? 'Ir a mi panel' : (n === 4 && estado.equipo.length === 0 ? 'Continuar' : 'Continuar');
+    $('#centro').textContent = n === 5 ? '' : 'Paso ' + n + ' de 5 · se guarda solo';
+    if (n === 5) resumen(); if (n === 4) pintarTu();
+    guardarSilencioso();
+    if (!primeraVez) { var f = s.querySelector('input:not([type=radio]):not([type=checkbox])'); if (f && window.innerWidth > 720) setTimeout(function () { f.focus({ preventScroll: true }); }, 60); }
+    primeraVez = false; window.scrollTo(0, 0);
+  }
+  function guardarSilencioso() { try { localStorage.setItem(KEY, JSON.stringify(Object.assign({}, estado, { logo: estado.logo.length < 200000 ? estado.logo : '' }))); } catch (e) {} }
+  function siguiente() {
+    var n = estado.paso;
+    if (n === 5) { aviso('Aquí te llevaríamos a tu panel de equipo.'); return; }
+    if (!validar(n)) return; ir(n + 1);
+  }
+  $('#sig').onclick = siguiente;
+  $('#atras').onclick = function () { if (estado.paso > 1) ir(estado.paso - 1, true); };
+  $('#omitir').onclick = function () { ir(5); };
+  document.addEventListener('keydown', function (e) { if (e.key === 'Enter' && e.target.tagName === 'INPUT' && e.target.type !== 'checkbox' && e.target.type !== 'radio' && e.target.id !== 'miembro') { e.preventDefault(); siguiente(); } });
+  var tT; function aviso(t) { var el = $('#toast'); el.textContent = t; el.classList.add('ver'); clearTimeout(tT); tT = setTimeout(function () { el.classList.remove('ver'); }, 2600); }
+  $('#salir').onclick = function () { guardarSilencioso(); aviso('Tu avance quedó guardado. Vuelve cuando quieras.'); };
+  $('#reiniciar').onclick = function () { try { localStorage.removeItem(KEY); } catch (e) {} location.search = ''; };
+
+  pintarColor(); pintarPlantilla(); pintarVista(); pintarEquipo(); pintarTu();
+  ir(estado.paso);
+})();
+</script>
+</body>
+</html>
