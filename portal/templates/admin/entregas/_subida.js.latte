@@ -1,0 +1,306 @@
+{* Subida de contenidos en la entrega: soltar sobre una pieza, zona única con «Revisa antes de crear» y crear a mano por tipo.
+   Sin JavaScript todo sigue funcionando: los formularios se envían tal cual y el servidor decide solo. *}
+<script n:syntax="off">
+(function () {
+  'use strict';
+  var IMG = /\.(jpe?g|png|webp|gif)$/i, VID = /\.(mp4|mov)$/i, PDF = /\.pdf$/i, GRILLA = /\.(docx|txt|md)$/i, CSV = /\.csv$/i;
+  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function arrastraArchivos(e) { return e.dataTransfer && Array.prototype.indexOf.call(e.dataTransfer.types || [], 'Files') >= 0; }
+  function enviar(form) { if (form.requestSubmit) { form.requestSubmit(); } else { form.submit(); } }
+  function ponerArchivos(input, files) {
+    try { var dt = new DataTransfer(); Array.prototype.forEach.call(files, function (f) { dt.items.add(f); }); input.files = dt.files; return true; } catch (e) { return false; }
+  }
+
+  // ---- Tapas (página 1 del PDF, cuadro del video) generadas aquí y subidas junto al archivo ----
+  var T = window.PortalTapas, tapas = new Map(), pendientes = new Map(), propias = new WeakSet();
+  function tapaDe(f, segundo) {
+    if (!T || !(PDF.test(f.name) || VID.test(f.name))) { return Promise.resolve(null); }
+    if (typeof segundo !== 'number' && pendientes.has(f)) { return pendientes.get(f); }
+    var p = (PDF.test(f.name) ? T.pdf(f) : T.video(f, segundo)).then(function (r) { if (r && r.blob && !propias.has(f)) { tapas.set(f, r.blob); } return r; }, function () { return null; });
+    if (typeof segundo !== 'number') { pendientes.set(f, p); }
+    return p;
+  }
+  // Pone en el formulario las tapas listas: tapas[] (imagen) y tapa_de[] (el nombre de su archivo).
+  function adjuntarTapas(form, files) {
+    form.querySelectorAll('[data-tapas-auto]').forEach(function (x) { x.remove(); });
+    var lista = [], de = [];
+    files.forEach(function (f) { var b = tapas.get(f); if (b) { lista.push(new File([b], 'tapa.jpg', { type: b.type || 'image/jpeg' })); de.push(f.name); } });
+    if (!lista.length) { return; }
+    var inp = document.createElement('input'); inp.type = 'file'; inp.name = 'tapas[]'; inp.multiple = true; inp.hidden = true; inp.setAttribute('data-tapas-auto', '');
+    if (!ponerArchivos(inp, lista)) { return; }
+    form.appendChild(inp);
+    de.forEach(function (n) { var h = document.createElement('input'); h.type = 'hidden'; h.name = 'tapa_de[]'; h.value = n; h.setAttribute('data-tapas-auto', ''); form.appendChild(h); });
+  }
+  // Espera las tapas que se están generando (máximo 8 s) antes de enviar.
+  function esperarTapas(files) {
+    var ps = files.map(function (f) { return pendientes.get(f) || null; }).filter(Boolean);
+    return Promise.race([Promise.all(ps), new Promise(function (ok) { setTimeout(ok, 8000); })]);
+  }
+
+  // Abrir «Crear uno a mano» o «Leer una grilla» desde la zona.
+  document.querySelectorAll('[data-abrir]').forEach(function (a) {
+    a.addEventListener('click', function (e) {
+      var d = document.getElementById(a.getAttribute('data-abrir'));
+      if (!d) { return; }
+      e.preventDefault(); d.open = true; d.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      var f = d.querySelector('input:not([type=hidden]), textarea'); if (f) { setTimeout(function () { f.focus({ preventScroll: true }); }, 300); }
+    });
+  });
+  if (location.hash === '#a-mano' || location.hash === '#grilla') { var dh = document.querySelector(location.hash); if (dh) { dh.open = true; } }
+
+  // ---- Soltar sobre una pieza: le suma los archivos ----
+  document.querySelectorAll('[data-pieza]').forEach(function (li) {
+    var form = li.querySelector('[data-pieza-form]'); if (!form) { return; }
+    var input = form.querySelector('[data-pieza-input]');
+    input.addEventListener('change', function () { if (input.files.length) { enviar(form); } });
+    li.addEventListener('dragover', function (e) { if (!arrastraArchivos(e)) { return; } e.preventDefault(); li.classList.add('pa-drop'); });
+    li.addEventListener('dragleave', function (e) { if (!li.contains(e.relatedTarget)) { li.classList.remove('pa-drop'); } });
+    li.addEventListener('drop', function (e) {
+      if (!arrastraArchivos(e)) { return; }
+      e.preventDefault(); e.stopPropagation(); li.classList.remove('pa-drop');
+      if (ponerArchivos(input, e.dataTransfer.files)) { enviar(form); }
+    });
+  });
+
+  // ---- Zona única ----
+  var form = document.querySelector('[data-soltar]');
+  if (form) {
+    var dz = form.querySelector('[data-dz]'), input = form.querySelector('[data-dz-input]');
+    var rev = form.querySelector('[data-revisar]'), lista = form.querySelector('[data-revisar-lista]');
+    var piezas = []; try { piezas = JSON.parse(form.getAttribute('data-piezas') || '[]'); } catch (e) { piezas = []; }
+    var archivos = [];
+
+    function pieza(n) { for (var i = 0; i < piezas.length; i++) { if (piezas[i].n === n) { return piezas[i]; } } return null; }
+    function numeros(nombre) { var m = nombre.replace(/\.[^.]+$/, '').match(/\d+/g); return m ? [parseInt(m[0], 10), m[1] ? parseInt(m[1], 10) : 0] : null; }
+    function corto(t) { return t.length > 46 ? t.slice(0, 45) + '…' : t; }
+    function opciones(sel) {
+      var h = piezas.map(function (p) { return '<option value="pieza:' + p.id + '"' + (sel === 'pieza:' + p.id ? ' selected' : '') + '>Sumar a: ' + esc(corto(p.titulo)) + '</option>'; }).join('');
+      return h + '<option value="nuevo"' + (sel === 'nuevo' ? ' selected' : '') + '>Contenido nuevo (uno por archivo)</option>'
+        + '<option value="carrusel"' + (sel === 'carrusel' ? ' selected' : '') + '>Carrusel nuevo (junto con los otros)</option>'
+        + '<option value="omitir"' + (sel === 'omitir' ? ' selected' : '') + '>No subir</option>';
+    }
+
+    function revisar(files) {
+      files = Array.prototype.slice.call(files);
+      if (!files.length) { return; }
+      // La grilla tiene su propia vista previa: va directo al lector.
+      var grilla = files.filter(function (f) { return GRILLA.test(f.name); })[0];
+      if (grilla) {
+        var gf = document.querySelector('[data-grilla-form]'), gi = gf && gf.querySelector('[data-grilla-input]');
+        if (gi && ponerArchivos(gi, [grilla])) { enviar(gf); return; }
+      }
+      archivos = files;
+      var sinPiezaImg = files.filter(function (f) { var n = numeros(f.name); return IMG.test(f.name) && !(n && pieza(n[0])); }).length;
+      var reconocidos = 0;
+      lista.innerHTML = '';
+      files.forEach(function (f, i) {
+        var n = numeros(f.name), p = n ? pieza(n[0]) : null, chip, sel;
+        if (CSV.test(f.name)) { chip = '<span class="pa-chip info">Planilla: un contenido por fila</span>'; sel = 'nuevo'; }
+        else if (p && (IMG.test(f.name) || VID.test(f.name) || PDF.test(f.name))) { reconocidos++; chip = '<span class="pa-chip ok">' + esc(corto(p.titulo)) + (n[1] ? ' · lámina ' + n[1] : '') + '</span>'; sel = 'pieza:' + p.id; }
+        else if (IMG.test(f.name)) { chip = n ? '<span class="pa-chip warn">No hay pieza ' + n[0] + '</span>' : '<span class="pa-chip">Imagen sin número de pieza</span>'; sel = sinPiezaImg > 1 ? 'carrusel' : 'nuevo'; }
+        else if (PDF.test(f.name)) { chip = '<span class="pa-chip">PDF: documento nuevo</span>'; sel = 'nuevo'; }
+        else if (VID.test(f.name)) { chip = '<span class="pa-chip">Video: reel nuevo</span>'; sel = 'nuevo'; }
+        else { chip = '<span class="pa-chip">Archivo</span>'; sel = 'nuevo'; }
+        var mini = IMG.test(f.name) ? '<img src="' + URL.createObjectURL(f) + '" alt="">' : '<span class="pa-ico">' + esc((f.name.split('.').pop() || '').toUpperCase()) + '</span>';
+        var fila = document.createElement('div');
+        fila.className = 'pa-map-fila';
+        fila.innerHTML = mini + '<div style="min-width:0"><code>' + esc(f.name) + '</code>' + chip + '</div>'
+          + (CSV.test(f.name) ? '<input type="hidden" data-destino="' + i + '" value="nuevo"><span class="pa-muted">Se crea un contenido por fila</span>'
+            : '<select class="form-input" data-destino="' + i + '" aria-label="Qué hacer con ' + esc(f.name) + '">' + opciones(sel) + '</select>');
+        lista.appendChild(fila);
+        if (PDF.test(f.name) || VID.test(f.name)) {
+          tapaDe(f).then(function (r) { if (r && r.blob) { var im = new Image(); im.alt = ''; im.src = URL.createObjectURL(r.blob); fila.replaceChild(im, fila.firstChild); } });
+        }
+      });
+      var t = files.length === 1 ? '1 archivo' : files.length + ' archivos';
+      form.querySelector('[data-revisar-titulo]').textContent = 'Revisa antes de crear · ' + t;
+      form.querySelector('[data-revisar-ayuda]').textContent = (reconocidos ? 'Reconocimos el número de pieza en ' + reconocidos + (reconocidos === 1 ? ' nombre. ' : ' nombres. ') : '')
+        + 'Elige qué hacer con cada archivo: sumarlo a una pieza, crear uno nuevo o juntarlos en un carrusel.';
+      actualizar();
+      rev.hidden = false;
+      rev.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+    function actualizar() {
+      var vals = Array.prototype.map.call(lista.querySelectorAll('[data-destino]'), function (s) { return s.value; });
+      var subir = vals.filter(function (v) { return v !== 'omitir'; }).length;
+      form.querySelector('[data-revisar-extra]').hidden = !vals.some(function (v) { return v === 'carrusel' || v === 'nuevo'; });
+      var ok = form.querySelector('[data-revisar-ok]');
+      ok.textContent = subir === 0 ? 'Nada para subir' : 'Agregar ' + (subir === 1 ? '1 archivo' : subir + ' archivos');
+      ok.disabled = subir === 0;
+    }
+    lista.addEventListener('change', actualizar);
+    form.querySelector('[data-revisar-cancelar]').addEventListener('click', function () { rev.hidden = true; archivos = []; input.value = ''; lista.innerHTML = ''; });
+
+    input.addEventListener('change', function () { revisar(input.files); });
+    ['dragover', 'dragenter'].forEach(function (ev) { dz.addEventListener(ev, function (e) { if (!arrastraArchivos(e)) { return; } e.preventDefault(); dz.classList.add('pa-drop'); }); });
+    dz.addEventListener('dragleave', function (e) { if (!dz.contains(e.relatedTarget)) { dz.classList.remove('pa-drop'); } });
+    dz.addEventListener('drop', function (e) { if (!arrastraArchivos(e)) { return; } e.preventDefault(); dz.classList.remove('pa-drop'); revisar(e.dataTransfer.files); });
+
+    // Al enviar: sólo los archivos que se suben, cada uno con su destino (y las tapas listas).
+    var listoSoltar = false;
+    form.addEventListener('submit', function (e) {
+      if (!archivos.length) { return; }
+      if (!listoSoltar && archivos.some(function (f) { return pendientes.has(f); })) {
+        e.preventDefault(); e.stopImmediatePropagation();
+        esperarTapas(archivos).then(function () { listoSoltar = true; enviar(form); });
+        return;
+      }
+      form.querySelectorAll('input[name="destino[]"]').forEach(function (x) { x.remove(); });
+      var quedan = [];
+      lista.querySelectorAll('[data-destino]').forEach(function (s) {
+        var i = parseInt(s.getAttribute('data-destino'), 10);
+        if (s.value === 'omitir') { return; }
+        quedan.push(archivos[i]);
+        var h = document.createElement('input'); h.type = 'hidden'; h.name = 'destino[]'; h.value = s.value; form.appendChild(h);
+      });
+      ponerArchivos(input, quedan);
+      adjuntarTapas(form, quedan);
+    });
+  }
+
+  // ---- Crear uno a mano: el formulario sigue al tipo ----
+  var mano = document.querySelector('[data-a-mano]');
+  if (mano) {
+    var M = {}; try { M = JSON.parse(mano.getAttribute('data-campos') || '{}'); } catch (e) { M = {}; }
+    var masBox = mano.querySelector('[data-mas-campos]'), mas = mano.querySelector('[data-mas]');
+    var nombres = { archivos: 'archivos', enlace: 'link', copy: 'copy', cuenta: 'cuenta', fecha: 'fecha de publicación' };
+    var etqArch = { post: 'Láminas o imagen', reel: 'Video (MP4) o portada', story: 'Imagen o video vertical 9:16', grafica: 'Imagen', logo: 'Variantes del logo', mockup: 'Imágenes', brandbook: 'Archivo PDF', presentacion: 'Archivo PDF', web: 'Capturas', otro: 'Archivos' };
+    var hintArch = { post: 'Para un carrusel, elige todas las láminas juntas: van en el orden en que las elijas.', brandbook: 'Se ve por páginas y se puede descargar.', presentacion: 'Si no tienes PDF, pega el link en «Más detalles».' };
+    var etqEnl = { reel: 'Link del video (YouTube, Vimeo o Drive)', web: 'Link al sitio o prototipo', presentacion: 'Link a la presentación', otro: 'Link' };
+    var lugar = {};
+    mano.querySelectorAll('[data-campo]').forEach(function (el) { var ph = document.createComment('campo'); el.parentNode.insertBefore(ph, el); lugar[el.getAttribute('data-campo')] = { el: el, ph: ph }; });
+    var tipoNombre = {}; mano.querySelectorAll('.pa-tipo').forEach(function (l) { tipoNombre[l.querySelector('input').value] = l.querySelector('b').textContent; });
+
+    function tipo() { var r = mano.querySelector('input[name="tipo"]:checked'); return r ? r.value : 'post'; }
+    function aplicar() {
+      var k = tipo(), opc = [];
+      Object.keys(lugar).forEach(function (c) {
+        var v = (M[c] || {})[k], L = lugar[c];
+        if (v === 1) { masBox.appendChild(L.el); L.el.hidden = false; opc.push(nombres[c]); }
+        else { L.ph.parentNode.insertBefore(L.el, L.ph.nextSibling); L.el.hidden = v === 0; }
+      });
+      mano.querySelector('[data-etq-archivos]').textContent = etqArch[k] || 'Archivos';
+      mano.querySelector('[data-hint-archivos]').textContent = hintArch[k] || 'Hasta 10 archivos.';
+      mano.querySelector('[data-etq-enlace]').textContent = etqEnl[k] || 'Link';
+      mano.querySelector('[data-mas-txt]').textContent = 'Más detalles: ' + opc.concat(['objetivo, láminas y notas']).join(', ');
+      var nom = (tipoNombre[k] || 'contenido').split(' /')[0];
+      mano.querySelector('[data-mano-ok]').textContent = 'Agregar ' + nom.charAt(0).toLowerCase() + nom.slice(1);
+      mano.querySelector('#m-titulo').placeholder = { brandbook: 'Ej.: Brandbook 2026', presentacion: 'Ej.: Propuesta de campaña', web: 'Ej.: Landing de verano', logo: 'Ej.: Logo · versión final', reel: 'Ej.: Reel 2 · Un día en la consulta' }[k] || 'Ej.: Post 11 · Antes y después';
+      vista();
+    }
+    var urls = [], linkTimer = null, ultimoLink = '';
+    var MARCO = { post: 'ig', story: 'vertical', reel: 'vertical', brandbook: 'doc', presentacion: 'doc', logo: 'logo', web: 'web' };
+    var tapaCtrl = mano.querySelector('[data-tapa-ctrl]'), slider = mano.querySelector('[data-tapa-slider]'), tapaPropia = mano.querySelector('[data-tapa-propia]');
+    function urlDe(b) { var u = URL.createObjectURL(b); urls.push(u); return u; }
+    function vista() {
+      var k = tipo(), media = mano.querySelector('[data-vista-media]'), inp = mano.querySelector('[data-mano-archivos]');
+      var marco = MARCO[k] || 'libre';
+      media.setAttribute('data-marco', marco); media.classList.remove('doc');
+      urls.forEach(function (u) { URL.revokeObjectURL(u); }); urls = [];
+      var fs = Array.prototype.slice.call(inp.files || []), thumbs = mano.querySelector('[data-mano-thumbs]');
+      thumbs.innerHTML = '';
+      fs.forEach(function (f, i) {
+        if (IMG.test(f.name)) { thumbs.insertAdjacentHTML('beforeend', '<img src="' + urlDe(f) + '" alt="' + (i + 1) + '">'); }
+        else { thumbs.insertAdjacentHTML('beforeend', '<span>' + esc(f.name.slice(0, 18)) + '</span>'); }
+      });
+      var imgs = fs.filter(function (f) { return IMG.test(f.name); }), pdf = fs.filter(function (f) { return PDF.test(f.name); })[0], vid = fs.filter(function (f) { return VID.test(f.name); })[0];
+      var pie = mano.querySelector('[data-vista-pie]'); pie.textContent = '';
+      tapaCtrl.hidden = !vid;
+      if (marco === 'logo' && imgs.length) {
+        var u = urlDe(imgs[0]);
+        media.innerHTML = '<div class="pa-logo-fondos"><span style="background:#fff"><img src="' + u + '" alt=""></span><span style="background:#16181f"><img src="' + u + '" alt=""></span><span class="pa-logo-cuadros"><img src="' + u + '" alt=""></span></div>';
+        pie.textContent = 'Fondo claro, oscuro y transparente.';
+      } else if (imgs.length && !vid && marco !== 'doc') {
+        media.innerHTML = '<img src="' + urlDe(imgs[0]) + '" alt="">' + (imgs.length > 1 ? '<span class="pa-vista-badge">1/' + imgs.length + '</span><span class="pa-vista-puntos">' + imgs.map(function (x, i) { return '<i' + (i === 0 ? ' class="on"' : '') + '></i>'; }).join('') + '</span>' : '');
+        if (imgs.length > 1) { pie.textContent = 'Carrusel de ' + imgs.length + ' láminas.'; }
+      } else if (pdf) {
+        media.innerHTML = '<span>Leyendo el PDF…</span>';
+        tapaDe(pdf).then(function (r) {
+          if (!r) { media.innerHTML = '<span>' + esc(pdf.name) + '</span>'; return; }
+          media.innerHTML = '<img src="' + urlDe(r.blob) + '" alt="Página 1">';
+          pie.textContent = pdf.name + ' · ' + r.paginas + (r.paginas === 1 ? ' página' : ' páginas') + '. El cliente lo ve por páginas y lo puede descargar.';
+        });
+      } else if (vid) {
+        media.innerHTML = '<span>Leyendo el video…</span>';
+        var mostrar = function (b) { media.innerHTML = '<img src="' + urlDe(b) + '" alt="Tapa del video"><span class="pa-vista-play" aria-hidden="true">▶</span>'; };
+        if (tapas.get(vid)) { mostrar(tapas.get(vid)); }
+        tapaDe(vid).then(function (r) {
+          if (!r) { media.innerHTML = '<span>' + esc(vid.name) + '</span>'; return; }
+          slider.max = String(Math.max(0.1, Math.floor((r.duracion || 1) * 10) / 10)); slider.disabled = false;
+          mostrar(tapas.get(vid) || r.blob);
+        });
+        pie.textContent = 'Esta es la tapa: elige otro cuadro con la barra o sube una imagen.';
+      } else if (fs.length) {
+        media.innerHTML = '<span>' + esc(fs[0].name) + '</span>';
+      } else {
+        var enl = (mano.querySelector('#m-enlace') || {}).value || '';
+        if (enl && /^https?:\/\//i.test(enl)) { tarjetaLink(enl, media, pie); return; }
+        media.innerHTML = '<span>' + ({ doc: 'Aquí va el PDF', web: 'Pega el link del sitio', vertical: k === 'reel' ? 'Sube el video o pega su link' : 'Imagen o video vertical' }[marco] || 'Sin archivos todavía') + '</span>';
+      }
+      var copy = (M.copy || {})[k] ? (mano.querySelector('[data-mano-copy]').value || '') : '';
+      var cuenta = (M.cuenta || {})[k] ? (mano.querySelector('[data-mano-cuenta]').value || '') : '';
+      mano.querySelector('[data-vista-copy]').textContent = (cuenta ? cuenta + '  ' : '') + copy.slice(0, 220) + (copy.length > 220 ? '…' : '');
+    }
+    // Tarjeta del link (título e imagen que el sitio declara para compartir; miniatura en YouTube y Vimeo).
+    function tarjetaLink(url, media, pie) {
+      var base = (document.querySelector('[data-soltar]') || {}).getAttribute ? document.querySelector('[data-soltar]').getAttribute('data-link-url') : '';
+      media.innerHTML = '<span>Leyendo el link…</span>';
+      if (!base) { return; }
+      ultimoLink = url;
+      fetch(base + (base.indexOf('?') >= 0 ? '&' : '?') + 'url=' + encodeURIComponent(url), { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+        .then(function (r) { return r.json(); }).then(function (d) {
+          if (url !== ultimoLink) { return; }
+          if (!d || !d.ok) { media.innerHTML = '<span>No pudimos leer ese link. El cliente igual lo verá.</span>'; return; }
+          media.innerHTML = (d.imagen ? '<img src="' + esc(d.imagen) + '" alt="" referrerpolicy="no-referrer">' : '<span>Sin imagen para compartir</span>');
+          pie.textContent = [d.sitio, d.titulo].filter(Boolean).join(' · ');
+        }).catch(function () { media.innerHTML = '<span>No pudimos leer ese link.</span>'; });
+    }
+    slider.addEventListener('input', function () {
+      var vid = Array.prototype.slice.call(mano.querySelector('[data-mano-archivos]').files || []).filter(function (f) { return VID.test(f.name); })[0];
+      if (!vid) { return; }
+      clearTimeout(slider._t);
+      slider._t = setTimeout(function () { propias.delete(vid); tapaDe(vid, parseFloat(slider.value)).then(function (r) { if (r) { tapas.set(vid, r.blob); vista(); } }); }, 180);
+    });
+    tapaPropia.addEventListener('change', function () {
+      var vid = Array.prototype.slice.call(mano.querySelector('[data-mano-archivos]').files || []).filter(function (f) { return VID.test(f.name); })[0];
+      var img = tapaPropia.files[0];
+      if (vid && img) { tapas.set(vid, img); propias.add(vid); vista(); }
+    });
+    mano.addEventListener('input', function (e) { if (e.target.id === 'm-enlace') { clearTimeout(linkTimer); linkTimer = setTimeout(vista, 600); } });
+    var listoMano = false;
+    mano.addEventListener('submit', function (e) {
+      var fs = Array.prototype.slice.call(mano.querySelector('[data-mano-archivos]').files || []);
+      if (!listoMano && fs.some(function (f) { return (PDF.test(f.name) || VID.test(f.name)) && !tapas.get(f); })) {
+        e.preventDefault(); e.stopImmediatePropagation();
+        fs.forEach(function (f) { tapaDe(f); });
+        esperarTapas(fs).then(function () { listoMano = true; enviar(mano); });
+        return;
+      }
+      adjuntarTapas(mano, fs);
+    });
+    mano.addEventListener('change', function (e) { if (e.target.name === 'tipo') { aplicar(); } else { vista(); } });
+    mano.addEventListener('input', function (e) { if (e.target.matches('[data-mano-copy], [data-mano-cuenta]')) { vista(); } });
+    aplicar();
+  }
+
+  // ---- Tapas que faltan (PDF y videos subidos antes): se generan aquí, en segundo plano ----
+  var sf = document.querySelector('[data-soltar]');
+  if (sf && T) {
+    var faltan = []; try { faltan = JSON.parse(sf.getAttribute('data-sin-tapa') || '[]'); } catch (e) { faltan = []; }
+    var csrf = (sf.querySelector('input[name="_csrf_token"]') || {}).value || '', destino = sf.getAttribute('data-tapa-url') || '';
+    var siguiente = function () {
+      var a = faltan.shift(); if (!a || !destino) { return; }
+      (a.tipo === 'pdf' ? T.pdf(a.src) : T.video(a.src)).then(function (r) {
+        if (!r || !r.blob) { return null; }
+        var fd = new FormData(); fd.append('_csrf_token', csrf); fd.append('tapa', new File([r.blob], 'tapa.jpg', { type: 'image/jpeg' }));
+        return fetch(destino.replace('__ID__', a.id), { method: 'POST', body: fd, credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+          .then(function (x) { return x.json(); }).then(function (d) {
+            var mini = d && d.ok && document.querySelector('#pieza-' + a.cid + ' .pa-mini');
+            if (mini && mini.querySelector('.pa-ico')) { mini.innerHTML = '<img src="' + URL.createObjectURL(r.blob) + '" alt="">'; }
+          });
+      }).catch(function () {}).then(function () { setTimeout(siguiente, 150); });
+    };
+    if (faltan.length) { setTimeout(siguiente, 800); }
+  }
+})();
+</script>

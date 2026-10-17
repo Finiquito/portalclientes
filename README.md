@@ -74,6 +74,9 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### v0.36.1: arreglo del repositorio
+- Sin cambios en lo que hace el plugin. El `.gitignore` ignoraba cualquier carpeta llamada `entregas/` y dejó `_tapas.js.latte` y `_subida.js.latte` fuera del repo; ahora solo ignora `/entregas/` de la raíz y los dos archivos están versionados. Así un clon limpio corre las pruebas y arma el zip completo.
+
 ### v0.36.0: después de la reunión, un solo «Guardar»
 - **Tareas como tarjetas, más grandes y fáciles de leer.** Arriba van las **creadas**, que ahora se pueden seguir editando desde la reunión (título, detalle, responsable, vence y «Lo ve el cliente»); el cambio pasa a la tarea real y se marca «Cambio sin guardar» hasta que guardas. Si la tarea se borró desde Tareas, la reunión lo dice.
 - **Sugeridas: ✓ Crear o ✕ Descartar**, una sola decisión por tarea (otro clic la deshace). Las que no decides quedan pendientes para otro día. La que escribes a mano se crea al guardar.
