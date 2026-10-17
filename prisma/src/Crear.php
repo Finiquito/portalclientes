@@ -81,7 +81,7 @@ final class Crear
         $this->d("  Enlace de primer ingreso (vence en {$r['vence_dias']} días; se manda al usuario 0, no se guarda):");
         $this->d('  ' . $r['enlace']);
         foreach ($avisos as $a) {
-            $this->d('  ! ' . $a);
+            $this->d(($a === '(omitida)' || str_starts_with($a, 'Prueba de humo') ? '  ✓ ' : '  ! ') . $a);
         }
         return 0;
     }
