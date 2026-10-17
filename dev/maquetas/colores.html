@@ -27,10 +27,10 @@ const q=new URLSearchParams(location.search), oscuro=q.get('tema')==='oscuro';
 document.body.className=oscuro?'oscuro':'claro';
 document.getElementById('sub').textContent=(oscuro?'Modo oscuro':'Modo claro')+' · botón, etiqueta, texto de acento y anillo de foco. La cifra es el contraste (mínimo 4,5 para texto, 3 para el anillo).';
 // [nombre, hex de hoy, hex ajustado, texto hoy, texto nuevo, %tinta claro nuevo]
-const C=[['Naranjo Prisma','#E8552D','#E8552D','#ffffff','#12131a',82],['Azul','#2F5BEA','#2F5BEA','#ffffff','#ffffff',82],['Verde','#118A6B','#038567','#ffffff','#ffffff',82],
+const C=[['Naranjo Prisma','#E8552D','#D54318','#ffffff','#ffffff',82],['Azul','#2F5BEA','#2F5BEA','#ffffff','#ffffff',82],['Verde','#118A6B','#038567','#ffffff','#ffffff',82],
 ['Violeta','#8A4FD6','#8A4FD6','#ffffff','#ffffff',82],['Rosa','#D63A7C','#D4387B','#ffffff','#ffffff',82],['Grafito','#2B2F3A','#2B2F3A','#ffffff','#ffffff',82],
-['Amber','#FFC107','#FFC107','#12131a','#12131a',66],['Blue','#2196F3','#2196F3','#ffffff','#12131a',82],['Blue Grey','#607D8B','#5D7A88','#ffffff','#ffffff',82],
-['Brown','#795548','#795548','#ffffff','#ffffff',82],['Cyan','#00BCD4','#00BCD4','#ffffff','#12131a',72],['Deep Orange','#FF5722','#FF5722','#ffffff','#12131a',82]];
+['Ámbar','#FFC107','#FFC107','#12131a','#12131a',66],['Azul claro','#2196F3','#2196F3','#ffffff','#12131a',82],['Gris azulado','#607D8B','#5D7A88','#ffffff','#ffffff',82],
+['Café','#795548','#795548','#ffffff','#ffffff',82],['Cian','#00BCD4','#00BCD4','#ffffff','#12131a',72],['Verde turquesa','#30DFC4','#30DFC4','#12131a','#12131a',66]];
 const sup=oscuro?'#181a28':'#ffffff';
 function lin(c){c/=255;return c<=.04045?c/12.92:Math.pow((c+.055)/1.055,2.4)}
 function lum(h){const n=parseInt(h.slice(1),16);return .2126*lin(n>>16&255)+.7152*lin(n>>8&255)+.0722*lin(n&255)}
