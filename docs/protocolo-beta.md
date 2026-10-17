@@ -148,7 +148,7 @@ Si el hub cae, el botón guarda el reporte en una cola local y reintenta (el plu
 
 ### 3.2 La "imagen dorada" (la pieza clave)
 
-No intentes automatizar el instalador gráfico de TypeDock cada vez. Haz **una instalación perfecta a mano** y congélala:
+El núcleo trae una API de instalación sin pantalla (ver §10), así que ya no hace falta congelar un volcado SQL. La «imagen» es la distribución limpia de TypeDock (la de hosting compartido) más nuestro plugin y tema. Lo que sigue describe la idea original y queda como respaldo:
 
 - Carpeta de TypeDock instalado, **sin** `.env`, sin storage, sin cachés.
 - Volcado SQL con el esquema del núcleo, **sin** usuarios ni datos.
@@ -293,3 +293,22 @@ Los tres son registros TXT/CNAME en el DNS de `usaprisma.com`. Cada uno responde
 | `~/prisma/secretos/ia.json` | `{"proveedor","clave","dias_prueba","tope_diario"}` | Clave de IA de la beta |
 
 Las claves se escriben a mano en el servidor, nunca en el repo ni en el chat.
+
+---
+
+## 10. Lo que dice el código de TypeDock (core 1.0.0-rc7, revisado)
+
+Hallazgos que cambian el plan (revisado en `github.com/typedock/core`):
+
+| Tema | Qué hace TypeDock | Consecuencia |
+|---|---|---|
+| **Instalación** | `cli/install.php` es interactivo (pide correo y clave), pero hace todo con la clase `Installer` (`writeConfig`, `runMigrations`, `createAdmin`, `seedSiteOptions`, `activateTheme`, `lock`) y `AssetPublisher::publishAll()` | **Se puede instalar sin pantalla.** `prisma crear` escribe `config.php`, corre esas llamadas y listo. No hace falta imagen con volcado SQL |
+| **Configuración** | Un solo `typedock/config.php` por instancia (permisos 0600, fuera del webroot), con BD, `APP_URL`, `APP_KEY`, `MAIL_*`… | El script lo genera con claves nuevas por agencia |
+| **Raíz del código** | `TYPEDOCK_ROOT` (código, config, storage y plugins juntos) y `TYPEDOCK_PUBLIC_DIR` (el webroot) | **El núcleo no se comparte entre agencias:** cada una lleva su copia completa de `typedock/` (con `vendor/`). Lo que sí se comparte por enlace es **el plugin** |
+| **Plugins** | Se descubren con `glob(plugins/*/plugin.json)`; el autoload usa la ruta del plugin | Un enlace simbólico `plugins/portal → ~/prisma/releases/…` funciona |
+| **Assets del plugin** | `AssetPublisher` **copia** los assets a `public_html/plugins/<slug>/assets` | Tras cambiar el enlace de versión hay que correr `php cli/assets-publish.php` en cada instancia |
+| **Actualizar el núcleo** | Desde el admin (Sistema → Actualización) con firma minisign, respaldo y rollback; o `php cli/upgrade.php` | Para controlar versiones en la beta: `SELF_UPDATE_ENABLED=false` en `config.php` y actualizar tú, instancia por instancia |
+| **Migraciones** | `php cli/migrate.php` | El script de actualización lo corre después de cambiar el enlace |
+| **Contraseña del usuario 0** | Existe `PasswordResetService` | Se crea con una clave aleatoria que nadie ve y se le manda el enlace de «restablecer», en vez de un enlace nuevo propio |
+
+**Efecto en `prisma crear`:** copiar la distribución limpia de TypeDock → `config.php` → instalar por la API → copiar/enlazar el plugin y el tema → publicar assets → crear al usuario 0 → correo de bienvenida. Lo único manual sigue siendo el subdominio, la BD y el SSL en hPanel.

@@ -46,7 +46,9 @@ Eso es justo lo que necesitamos para varias agencias: **cada una lleva su propia
 2. Edita `TYPEDOCK_ROOT` en `index.php` e `install.php` para que apunte a esa ruta.
 3. Abre `https://prueba1.usaprisma.com` → instalador → BD nueva y usuario administrador.
 4. Sube `portal-plugin-v0.10.0-beta.zip` con el zip-uploader del admin y comprueba `/admin/portal/...`.
-5. Pégame el árbol resultante (`ls -R` a 3 niveles, sin `storage/`) y el contenido de `index.php`.
+5. Pégame el árbol resultante (`ls -R` a 3 niveles, sin `storage/`).
+
+Esta primera instalación a mano es solo para conocer el terreno. Desde la siguiente, `prisma crear` instala sin pantalla (ver `docs/protocolo-beta.md` §10).
 
 ## 4. Probar el código compartido (enlace simbólico)
 Con lo que me pegues, preparo los comandos exactos. En esencia:
