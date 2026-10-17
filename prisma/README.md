@@ -31,27 +31,35 @@ prisma actualizar --canal=canary --a=portal-0.10.0-beta --sin-http
 2. `prisma secreto prueba1` y completa la base de datos en `secretos/instancias/prueba1.json`.
 3. Simula primero:
    ```bash
-   prisma crear prueba1 --host=prueba1.usaprisma.com --docroot=$HOME/domains/usaprisma.com/public_html/prueba1 \
-           --correo=jefa@agencia.cl --nombre="Estudio Uno" --canal=canary --simular
+   prisma crear prueba1 --host=prueba1.usaprisma.com --docroot=$HOME/domains/prueba1.usaprisma.com/public_html \
+           --correo=DUENA@agencia.cl --nombre="Estudio Uno" --canal=canary --simular
    ```
-4. Quita `--simular`. Al terminar entrega una **clave temporal** (se muestra una sola vez): se la das al usuario 0, que la cambia al entrar en *Usuarios → su usuario → Contraseña*.
+   `--correo` es el de **la dueña de la agencia**, no el tuyo. El admin de respaldo queda a nombre de soporte (`--admin-correo=…`, por defecto `soporte@usaprisma.com`).
+4. Quita `--simular`. Al terminar:
+   - **Para la dueña:** entra a `https://prueba1.usaprisma.com/equipo/entrar`, escribe su correo, recibe un código y el **asistente de bienvenida** la lleva por 5 pantallas (agencia, primer cliente, primer proyecto, equipo). No ve nunca el admin de TypeDock.
+   - **Para ti (soporte):** una clave temporal del admin de respaldo, que se muestra una sola vez y no se le da a la agencia.
+5. **Una vez en todo tu hosting:** un cron en hPanel cada 10 minutos con `php ~/prisma/herramienta/prisma/bin/prisma cola`. Sirve para que salga sola la invitación al cliente a las 6 horas y los demás avisos.
 
 Si algo falla a medias, deshace lo copiado (la base de datos hay que vaciarla a mano).
+
+## Si alguien no puede entrar
+
+```bash
+prisma acceso prueba1        # código de ingreso de emergencia al panel de la dueña (vale 10 minutos)
+prisma clave prueba1         # clave temporal nueva del admin de respaldo (soporte)
+```
+`acceso` va en este orden: la persona escribe su correo en `/equipo/entrar` (genera un código y, si el correo falla, no le llega) y **después** corres el comando y le das el código. Nada se pega en chats.
 
 ## Cambiar un valor del config.php de una agencia
 
 ```bash
 prisma config prueba1 PORTAL_RAIZ=login      # la raíz del sitio lleva al ingreso de clientes
 ```
-Conserva el resto de los valores y los permisos 0600. Las agencias nuevas ya nacen con `PORTAL_RAIZ=login`.
-
-## Si alguien no puede entrar
-
+Para activar el asistente en una agencia creada antes de la beta 0.11:
 ```bash
-prisma clave prueba1                       # clave temporal nueva para el usuario 0 (cierra sus sesiones)
-prisma clave prueba1 --correo=otra@persona.cl
+prisma config prueba1 PORTAL_ONBOARDING=1 PORTAL_PRIMER_COORDINADOR=duena@agencia.cl PORTAL_AGENCIA_NOMBRE="Estudio Uno" PORTAL_CRON_TOKEN=$(php -r 'echo bin2hex(random_bytes(16));')
 ```
-Se muestra una sola vez en pantalla; no la pegues en chats.
+Conserva el resto de los valores y los permisos 0600. Las agencias nuevas ya nacen con `PORTAL_RAIZ=login`.
 
 ## Actualizar
 

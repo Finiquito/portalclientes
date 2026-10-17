@@ -86,6 +86,48 @@ final class EquipoPrueba extends P\EquipoController
     }
 }
 
+/** Asistente de arranque que no mata el proceso: guarda la redirección y la respuesta JSON. */
+final class OnbPrueba extends P\EquipoOnboarding
+{
+    public ?string $redir = null;
+    /** @var array<string, mixed>|null */
+    public ?array $resp = null;
+
+    protected function redirectTo(string $url): void
+    {
+        $this->redir = $url;
+        throw new RuntimeException('redirect');
+    }
+
+    protected function terminate(): void
+    {
+        throw new RuntimeException('fin');
+    }
+
+    protected function json(array $d, int $codigo = 200): void
+    {
+        $this->resp = $d + ['_codigo' => $codigo];
+        throw new RuntimeException('fin');
+    }
+
+    /** @return array{0: string, 1: ?string, 2: ?array} html, redirección, JSON */
+    public function correr(callable $f): array
+    {
+        $this->redir = null;
+        $this->resp = null;
+        ob_start();
+        try {
+            $f();
+        } catch (RuntimeException $e) {
+            if (!in_array($e->getMessage(), ['redirect', 'fin'], true)) {
+                ob_end_clean();
+                throw $e;
+            }
+        }
+        return [(string) ob_get_clean(), $this->redir, $this->resp];
+    }
+}
+
 $pdo = baseLimpia();
 $ctx = portal_dev_contexto($pdo);
 $motor = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
@@ -2824,27 +2866,181 @@ check(str_contains($html, 'Hola, equipo') && str_contains($html, 'ing-logo') && 
 $_SESSION[P\EquipoController::SESION] = $sesEq;
 
 // ---------------------------------------------------------------------------
-seccion('Beta: la raíz del sitio es la puerta del portal');
-$raizDest = null;
-$pubRaiz = new class($ctx) extends P\PortalPublicController {
+seccion('Beta: arranque de la agencia, asistente de bienvenida e invitación programada');
+$pdoO = baseLimpia();
+$ctxO = portal_dev_contexto($pdoO);
+P\Schema::asegurar($pdoO);
+$ajO = new P\AjustesService($pdoO);
+// Sin las variables de prisma crear, el arranque no hace nada.
+P\Arranque::asegurar($pdoO);
+check((new P\EquipoService($pdoO))->listAll() === [] && $ajO->get('global', 'portal', 'arranque_hecho') === '', 'sin PORTAL_PRIMER_COORDINADOR no se crea a nadie');
+putenv('PORTAL_PRIMER_COORDINADOR=camila.soto@estudiopampa.cl');
+putenv('PORTAL_AGENCIA_NOMBRE=Estudio Pampa');
+putenv('PORTAL_CRON_TOKEN=token-de-prueba');
+putenv('PORTAL_ONBOARDING=1');
+P\Arranque::asegurar($pdoO);
+P\Arranque::asegurar($pdoO);
+$eqO = new P\EquipoService($pdoO);
+$duena = $eqO->findByEmail('camila.soto@estudiopampa.cl');
+check($duena !== null && $duena['rol'] === 'coordinador' && (int) $duena['activo'] === 1 && $duena['nombre'] === 'Camila soto' && count($eqO->listAll()) === 1, 'el primer arranque crea a la dueña como Coordinación general, una sola vez');
+check($ajO->get('global', 'portal', 'nombre_equipo') === 'Estudio Pampa' && $ajO->get('global', 'portal', 'cron_token') === 'token-de-prueba', 'deja el nombre de la agencia y la clave del cron');
+
+$svc = new P\OnboardingService($pdoO);
+check($svc->activo() === true, 'el asistente está activo en una agencia beta recién creada');
+$pls = $svc->plantillas();
+check(count($pls) === 3 && $pls[0]['etapas'] !== '', 'ofrece las plantillas de la agencia con sus etapas');
+$idBranding = (string) array_values(array_filter($pls, fn($x) => $x['nombre'] === 'Branding'))[0]['id'];
+
+// Controlador: la página, el guardado y los permisos
+$onb = new OnbPrueba($ctxO);
+$sesPrev = $_SESSION[P\EquipoController::SESION] ?? null;
+unset($_SESSION[P\EquipoController::SESION]);
+[$h, $r] = $onb->correr(fn() => $onb->pagina());
+check($r === '/equipo/entrar', 'sin sesión, el asistente pide entrar');
+$_SESSION[P\EquipoController::SESION] = (string) $duena['id'];
+[$h, $r] = $onb->correr(fn() => $onb->pagina());
+check($r === null && str_contains($h, 'Armemos tu agencia') && str_contains($h, 'id="onb-datos"') && str_contains($h, 'Estudio Pampa') && str_contains($h, '¿Quieres agregar a tu equipo?'), 'la dueña ve el asistente con sus datos');
+check(str_contains($h, '#d54318') && str_contains($h, '#30dfc4') && str_contains($h, 'Campaña digital'), 'trae las dos filas de colores y las plantillas de la agencia');
+$_POST = ['datos' => json_encode(['agencia' => 'X'])];
+[$h, $r, $j] = $onb->correr(fn() => $onb->guardar());
+check(($j['_codigo'] ?? 0) === 400, 'guardar sin la clave de sesión (_csrf) se rechaza');
+$_POST = ['_csrf' => P\PortalSession::csrf(), 'datos' => json_encode(['tuNombre' => 'Camila Soto', 'agencia' => 'Estudio Pampa SpA', 'color' => '#2f5bea', 'paso' => 2])];
+[$h, $r, $j] = $onb->correr(fn() => $onb->guardar());
+check(!empty($j['ok']) && $ajO->get('global', 'portal', 'nombre_equipo') === 'Estudio Pampa SpA' && $ajO->get('global', 'portal', 'color_agencia') === '#2f5bea' && $eqO->find((string) $duena['id'])['nombre'] === 'Camila Soto', 'cada pantalla se guarda: la agencia ya sale con su nombre, su color y el nombre de la dueña');
+$_POST = ['_csrf' => P\PortalSession::csrf(), 'datos' => json_encode(['color' => 'rojo; drop table', 'agencia' => str_repeat('a', 400)])];
+[$h, $r, $j] = $onb->correr(fn() => $onb->guardar());
+check(!empty($j['ok']) && $ajO->get('global', 'portal', 'color_agencia') === '#2f5bea' && mb_strlen($ajO->get('global', 'portal', 'nombre_equipo')) === 120, 'un color inválido se ignora y los textos se acotan');
+// Persona del equipo sin rol de coordinación
+$otra = $eqO->create(['nombre' => 'Andrés', 'email' => 'andres@estudiopampa.cl', 'rol' => 'equipo', 'activo' => 1]);
+$_SESSION[P\EquipoController::SESION] = $otra;
+[$h, $r] = $onb->correr(fn() => $onb->pagina());
+check($r === '/equipo', 'sólo Coordinación general ve el asistente');
+$_POST = ['_csrf' => P\PortalSession::csrf(), 'datos' => '{}'];
+[$h, $r, $j] = $onb->correr(fn() => $onb->guardar());
+check(($j['_codigo'] ?? 0) === 403, 'y tampoco puede guardar');
+$eqO->delete($otra);
+$_SESSION[P\EquipoController::SESION] = (string) $duena['id'];
+
+// Inicio del panel: lleva al asistente; «Guardar y salir» lo pospone con un aviso
+$panel = new EquipoPrueba($ctxO);
+unset($_SESSION['portal_onb_omitido']);
+[$h, $r] = $panel->correr(fn() => $panel->inicio());
+check($r === '/equipo/bienvenida', 'al entrar, la Coordinación general va directo al asistente');
+$_POST = ['_csrf' => P\PortalSession::csrf()];
+[$h, $r, $j] = $onb->correr(fn() => $onb->omitir());
+check(!empty($j['ok']) && ($j['redirect'] ?? '') === '/equipo', '«Guardar y salir» responde que vuelve al panel');
+[$h, $r] = $panel->correr(fn() => $panel->inicio());
+check($r === null && str_contains($h, 'Continuar la configuración') && str_contains($h, '/equipo/bienvenida'), 'el panel se abre con un aviso para continuar la configuración');
+
+// Terminar sin datos: dice qué falta y en qué pantalla
+[$h, $r, $j] = $onb->correr(function () use ($onb) { $_POST = ['_csrf' => P\PortalSession::csrf()]; $onb->finalizar(); });
+check(($j['_codigo'] ?? 0) === 422 && ($j['paso'] ?? 0) === 2 && ($j['campo'] ?? '') === 'cliente', 'terminar sin cliente avisa y devuelve a esa pantalla');
+
+// Servicio: guardar todo y terminar
+$svc->guardar(['cliente' => 'Panadería Ruiz', 'contacto' => 'Josefa Ruiz', 'correo' => 'josefa@panaderiaruiz.cl', 'proyecto' => 'Rebranding 2026', 'plantilla' => $idBranding,
+    'equipo' => ['andres@estudiopampa.cl', 'no-es-correo', 'ANDRES@estudiopampa.cl', 'camila.soto@estudiopampa.cl'], 'invitar' => true, 'paso' => 5], $duena);
+$e5 = $svc->estado($duena);
+check($e5['equipo'] === ['andres@estudiopampa.cl'] && $e5['paso'] === 5 && $e5['max'] === 5, 'el equipo se limpia: sin repetidos, sin correos inválidos y sin la dueña');
+$nO = new P\Notifier($ctxO, $pdoO);
+P\Notifier::$ahora = null;
+$ctxO->correos = [];
+$fin = $svc->finalizar($duena, $nO);
+check(!empty($fin['ok']) && !empty($fin['cliente_id']) && !$svc->activo(), 'terminar crea todo y el asistente deja de estar activo');
+$cli = (new P\ClienteService($pdoO))->find((string) $fin['cliente_id']);
+check($cli !== null && $cli['nombre'] === 'Panadería Ruiz' && $cli['responsable_id'] === $duena['id'], 'el cliente queda a cargo de la dueña');
+$ct = $pdoO->query("SELECT * FROM portal_contactos")->fetchAll();
+check(count($ct) === 1 && $ct[0]['email'] === 'josefa@panaderiaruiz.cl' && $ct[0]['rol'] === 'aprobador' && empty($ct[0]['invitado_en']), 'el contacto queda como colaborador, sin invitar todavía');
+$py = $pdoO->query("SELECT * FROM portal_proyectos")->fetchAll();
+check(count($py) === 1 && $py[0]['nombre'] === 'Rebranding 2026' && (int) $pdoO->query('SELECT COUNT(*) FROM portal_fases')->fetchColumn() === 5 && (int) $pdoO->query('SELECT COUNT(*) FROM portal_tareas')->fetchColumn() > 10, 'el proyecto nace con las etapas y tareas de la plantilla Branding');
+$cola = $pdoO->query("SELECT * FROM portal_correos_cola")->fetchAll();
+$minimo = (new DateTimeImmutable('now', new DateTimeZone('UTC')))->modify('+5 hours 55 minutes')->format('Y-m-d H:i:s');
+check(count($cola) === 1 && $cola[0]['destino'] === 'josefa@panaderiaruiz.cl' && $cola[0]['estado'] === 'pendiente' && $cola[0]['vigencia'] === P\Vigencia::invitacion($ct[0]['id']) && $cola[0]['enviar_desde'] >= $minimo, 'la invitación al cliente queda programada para dentro de 6 horas');
+check($ctxO->correos === [] || count(array_filter($ctxO->correos, fn($c) => $c['to'] === 'josefa@panaderiaruiz.cl')) === 0, 'y no sale todavía');
+$andres = $eqO->findByEmail('andres@estudiopampa.cl');
+check($andres !== null && $andres['rol'] === 'equipo' && count($eqO->delCliente((string) $fin['cliente_id'])) >= 1, 'el equipo queda dado de alta y asignado al cliente');
+check(count(array_filter($ctxO->correos, fn($c) => $c['to'] === 'andres@estudiopampa.cl')) === 1, 'cada persona del equipo recibe su invitación al panel');
+$otraVez = $svc->finalizar($duena, $nO);
+check(!empty($otraVez['ok']) && (int) $pdoO->query('SELECT COUNT(*) FROM portal_clientes')->fetchColumn() === 1 && (int) $pdoO->query('SELECT COUNT(*) FROM portal_correos_cola')->fetchColumn() === 1 && count($eqO->listAll()) === 2, 'terminar dos veces no duplica nada');
+
+// Ficha del cliente: invitación programada, adelantar o cancelar
+$prog = $nO->invitacionProgramada($ct[0]['id']);
+check($prog !== null && P\Vigencia::sigue($pdoO, P\Vigencia::invitacion($ct[0]['id'])) === true, 'la ficha puede ver la invitación programada');
+[$h, $r] = $panel->correr(fn() => $panel->cliente((string) $fin['cliente_id']));
+check(str_contains($h, 'sale automáticamente') && str_contains($h, 'Enviar ahora') && str_contains($h, '/invitacion/cancelar') && !str_contains($h, 'Falta invitar'), 'la ficha del cliente avisa cuándo sale y permite adelantarla o cancelarla');
+$nO->cancelarInvitacionProgramada($ct[0]['id']);
+[$h, $r] = $panel->correr(fn() => $panel->cliente((string) $fin['cliente_id']));
+check($nO->invitacionProgramada($ct[0]['id']) === null && str_contains($h, 'Falta invitar') && !str_contains($h, 'sale automáticamente'), 'cancelar el envío vuelve al aviso de siempre');
+// Reprogramar y dejar que salga sola desde la cola
+$nO->programarInvitacionCliente((new P\ContactoService($pdoO))->find($ct[0]['id']), 6);
+$pdoO->exec("UPDATE portal_correos_cola SET enviar_desde = '2020-01-01 00:00:00' WHERE estado = 'pendiente'");
+$nO->vaciarCola();
+$cj = (new P\ContactoService($pdoO))->find($ct[0]['id']);
+check(count(array_filter($ctxO->correos, fn($c) => $c['to'] === 'josefa@panaderiaruiz.cl')) === 1 && !empty($cj['invitado_en']), 'a su hora la invitación sale sola y marca al contacto como invitado');
+// Si se invita a mano antes, la programada se descarta
+$ct2 = (new P\ContactoService($pdoO))->create(['cliente_id' => (string) $fin['cliente_id'], 'nombre' => 'Pedro', 'email' => 'pedro@panaderiaruiz.cl', 'rol' => 'aprobador']);
+$nO->programarInvitacionCliente((new P\ContactoService($pdoO))->find($ct2), 6);
+(new P\ContactoService($pdoO))->marcarInvitado($ct2);
+check(P\Vigencia::sigue($pdoO, P\Vigencia::invitacion($ct2)) === false, 'invitar a mano antes deja sin efecto la programada');
+[$h, $r] = $panel->correr(fn() => $panel->inicio());
+check($r === null && !str_contains($h, 'Continuar la configuración'), 'terminado el asistente, el aviso del panel desaparece');
+[$h, $r, $j] = $onb->correr(fn() => $onb->pagina());
+check($r === '/equipo', 'y el asistente ya no se abre');
+
+// Raíz del sitio según el momento de la agencia
+$raiz = new class($ctxO) extends P\PortalPublicController {
     public ?string $dest = null;
     protected function redirectTo(string $path, array $query = []): void
     {
         $this->dest = $this->publicUrl($path, $query);
     }
 };
-$sesionPrev = $_SESSION[P\PortalSession::CONTACTO] ?? null;
+unset($_SESSION[P\EquipoController::SESION], $_SESSION[P\PortalSession::CONTACTO]);
+$raiz->raiz();
+check($raiz->dest === '/login', 'terminada la agencia, / lleva al ingreso de clientes');
+$_SESSION[P\PortalSession::CONTACTO] = $ct[0]['id'];
+$raiz->raiz();
+check($raiz->dest === '/portal', 'con la sesión de un cliente, / lleva a su portal');
 unset($_SESSION[P\PortalSession::CONTACTO]);
-$pubRaiz->raiz();
-check($pubRaiz->dest === '/login', 'sin sesión, / lleva al ingreso de clientes');
-$_SESSION[P\PortalSession::CONTACTO] = $jefa;
-$pubRaiz->raiz();
-check($pubRaiz->dest === '/portal', 'con la sesión abierta, / lleva al portal');
-if ($sesionPrev !== null) {
-    $_SESSION[P\PortalSession::CONTACTO] = $sesionPrev;
-} else {
-    unset($_SESSION[P\PortalSession::CONTACTO]);
+$_SESSION[P\EquipoController::SESION] = (string) $duena['id'];
+$raiz->raiz();
+check($raiz->dest === '/equipo', 'con la sesión del equipo, / lleva a su panel');
+unset($_SESSION[P\EquipoController::SESION]);
+$ajO->set('global', 'portal', 'onb_completo', '');
+$raiz->raiz();
+check($raiz->dest === '/equipo/entrar', 'mientras la agencia se arma, / lleva al ingreso del equipo');
+putenv('PORTAL_PRIMER_COORDINADOR');
+putenv('PORTAL_AGENCIA_NOMBRE');
+putenv('PORTAL_CRON_TOKEN');
+putenv('PORTAL_ONBOARDING');
+if ($sesPrev !== null) {
+    $_SESSION[P\EquipoController::SESION] = $sesPrev;
 }
+$_POST = [];
+
+// ---------------------------------------------------------------------------
+seccion('Beta: los 12 colores del asistente se leen bien (contraste AA) en claro y oscuro');
+$paleta = array_column(P\EquipoOnboarding::COLORES, 0);
+check(count($paleta) === 12 && count(array_unique($paleta)) === 12 && count(array_filter($paleta, fn($c) => preg_match('/^#[0-9a-f]{6}$/', $c) === 1)) === 12, 'son 12 colores distintos, en #rrggbb');
+$malos = [];
+foreach ($paleta as $c) {
+    if (P\ColorMarca::contraste(P\ColorMarca::texto($c), $c) < 4.5) {
+        $malos[] = "texto {$c}";
+    }
+    foreach ([false, true] as $osc) {
+        $p = P\ColorMarca::tinta($c, $osc);
+        $soft = $osc ? P\ColorMarca::mezcla($c, 26, '#10111b') : P\ColorMarca::mezcla($c, 11, '#ffffff');
+        $ink = P\ColorMarca::mezcla($c, $p, $osc ? '#ffffff' : '#000000');
+        $sup = $osc ? '#181a28' : '#ffffff';
+        if (P\ColorMarca::contraste($ink, $soft) < 4.5 || P\ColorMarca::contraste($ink, $sup) < 4.5) {
+            $malos[] = ($osc ? 'oscuro ' : 'claro ') . $c . " ({$p}%)";
+        }
+    }
+}
+check($malos === [], 'texto sobre el color, etiqueta y texto de acento cumplen 4,5:1' . ($malos === [] ? '' : ': ' . implode(', ', $malos)));
+check(P\AjustesService::colorTexto('#d54318') === '#ffffff' && P\AjustesService::colorTexto('#2f5bea') === '#ffffff' && P\AjustesService::colorTexto('#2b2f3a') === '#ffffff', 'los colores oscuros llevan texto blanco (el naranjo de la marca incluido)');
+check(P\AjustesService::colorTexto('#ffc107') === '#12131a' && P\AjustesService::colorTexto('#00bcd4') === '#12131a' && P\AjustesService::colorTexto('#30dfc4') === '#12131a' && P\AjustesService::colorTexto('#2196f3') === '#12131a', 'los claros y medios (ámbar, cian, turquesa, azul claro) llevan texto oscuro');
+check(P\ColorMarca::tinta('#ffc107', false) === 66 && P\ColorMarca::tinta('#00bcd4', false) === 72 && P\ColorMarca::tinta('#2f5bea', false) === 82 && P\ColorMarca::tinta('#2f5bea', true) === 52, 'el texto de acento de ámbar y cian se oscurece más; el resto queda como siempre');
+check(P\ColorMarca::mezcla('#ffffff', 50, '#000000') === '#636363' || P\ColorMarca::mezcla('#ffffff', 50, '#000000') === '#626262', 'la mezcla en OKLab da el gris medio esperado');
 
 // ---------------------------------------------------------------------------
 seccion('Beta: carpeta propia por agencia, correo de Prisma y prueba de IA');

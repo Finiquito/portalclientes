@@ -20,6 +20,9 @@ final class Vigencia
     /** Con $version, el aviso vale sólo para esa versión de la invitación (si cambió la hora, sale la nueva). */
     public static function reunion(string $id, ?int $version = null): string { return 'reunion:' . $id . ($version !== null ? ':' . $version : ''); }
 
+    /** Invitación programada al portal: vale mientras la persona no haya sido invitada (a mano o por otra vía). */
+    public static function invitacion(string $contactoId): string { return 'invitacion:' . $contactoId; }
+
     /** Contactos ganados del cliente que siguen como «nuevo». */
     public static function leads(string $clienteId): string { return 'leads:' . $clienteId; }
 
@@ -41,6 +44,8 @@ final class Vigencia
                     WHERE c.id = ? AND c.estado NOT IN ('aprobado', 'cambios') AND e.estado = 'publicada'", $id),
                 // Reunión que existe y no ha terminado.
                 'reunion' => self::reunionVigente($pdo, ...array_pad(explode(':', $id, 2), 2, null)),
+                // Contacto que existe y aún no fue invitado.
+                'invitacion' => self::uno($pdo, "SELECT 1 FROM portal_contactos WHERE id = ? AND (invitado_en IS NULL OR invitado_en = '')", $id),
                 // Quedan contactos nuevos sin atender en una campaña activa.
                 'leads' => self::uno($pdo, "SELECT 1 FROM portal_leads l JOIN portal_proyectos p ON p.id = l.proyecto_id WHERE l.cliente_id = ? AND l.estado = 'nuevo' AND p.con_leads = 1", $id),
                 default => true,

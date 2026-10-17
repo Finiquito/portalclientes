@@ -19,6 +19,14 @@
         </p>
     </section>
 
+    {if !empty($onbPendiente)}
+        <section class="reveal mb-6 flex flex-wrap items-center gap-x-4 gap-y-3 rounded-2xl bg-surface2 px-4 py-3 text-sm" aria-label="Configuración pendiente">
+            <svg class="size-5 flex-none text-brand-ink"><use href="#i-briefcase"/></svg>
+            <p class="min-w-0 flex-1">Te falta terminar de armar tu agencia: tu primer cliente y su proyecto.</p>
+            <a href="/equipo/bienvenida" class="btn btn-soft btn-sm">Continuar la configuración</a>
+        </section>
+    {/if}
+
     <section class="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4" aria-label="Resumen">
         {foreach [
             ['#h-cliente', 'i-chat',      $nCliente,   'Respuestas del cliente'],

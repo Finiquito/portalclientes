@@ -74,6 +74,14 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### beta 0.11 (0.11.0-beta): la agencia beta se arma sola en el panel de equipo
+- **Asistente de bienvenida** (`/equipo/bienvenida`): pantalla completa, 5 pasos (tu agencia → tu primer cliente → su primer proyecto → tu equipo → listo) con guardado automático en cada pantalla. Al terminar deja armado el cliente, su contacto, el proyecto con las etapas de la plantilla elegida, las personas del equipo (asignadas al cliente) y a la dueña como responsable. Sólo existe donde `prisma crear` dejó `PORTAL_ONBOARDING=1` y mientras no se termine; «Guardar y salir» abre el panel con un aviso para continuar.
+- **Primer coordinador automático:** la dueña entra por `/equipo` con un código al correo (sin contraseña). El plugin la crea como Coordinación general la primera vez que arranca (`PORTAL_PRIMER_COORDINADOR`). El admin de TypeDock queda como respaldo de soporte.
+- **Invitación al cliente programada:** por defecto sale 6 horas después (respetando el horario hábil del contacto), para dar tiempo a cargar tareas. En la ficha del cliente aparece «sale automáticamente hoy a las 18:30» con **Enviar ahora** y **Cancelar envío**. Si se invita a mano antes, la programada se descarta.
+- **Colores que siempre se leen:** el texto sobre el color de marca es el de mayor contraste (blanco o casi negro) en vez de una regla fija, el texto de acento se oscurece lo necesario (ámbar, cian…) y el anillo de foco usa ese texto de acento. Paleta de 12 colores en el asistente, todos con contraste AA en claro y oscuro (ver `dev/maquetas/colores.html`). **Esto cambia levemente cómo se ve el color de cada portal** (por ejemplo, los azules medios pasan a texto oscuro).
+- **La raíz del sitio** lleva al ingreso del equipo mientras la agencia se arma, y después al ingreso de clientes (o al panel/portal si ya hay sesión).
+- Fuente del asistente: `portal/templates/equipo/bienvenida.latte` se genera con `python3 dev/maquetas/armar-latte.py` desde la maqueta aprobada y `dev/maquetas/js-onboarding.js`.
+
 ### beta 0.10.1 (0.10.1-beta): la raíz del sitio es la puerta del portal
 - Con `PORTAL_RAIZ=login` en `config.php` (lo deja `prisma crear`; en agencias ya creadas, `prisma config <slug> PORTAL_RAIZ=login`), entrar a `https://agencia.usaprisma.com/` lleva al ingreso de clientes, o a su portal si ya tienen la sesión abierta. Antes se veía la portada vacía de blog del núcleo.
 - Sin esa variable no cambia nada.

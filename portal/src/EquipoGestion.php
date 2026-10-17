@@ -69,6 +69,7 @@ class EquipoGestion extends EquipoController
         $r('POST', 'contactos/@id',                 ContactoAdminController::class, 'update', 'contacto');
         $r('POST', 'contactos/@id/borrar',          ContactoAdminController::class, 'destroy', 'contacto');
         $r('POST', 'contactos/@id/invitar',         ContactoAdminController::class, 'invitar', 'contacto');
+        $r('POST', 'contactos/@id/invitacion/cancelar', ContactoAdminController::class, 'cancelarInvitacion', 'contacto');
 
         $r('GET',  'tareas',                        TareaAdminController::class, 'index');
         $r('GET',  'tareas/nuevo',                  TareaAdminController::class, 'create');

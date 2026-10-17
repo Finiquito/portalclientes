@@ -83,6 +83,18 @@ class EquipoController
         return self::$assets[$nombre];
     }
 
+    protected function onboarding(): OnboardingService
+    {
+        return new OnboardingService($this->pdo());
+    }
+
+    /** Coordinación general de una agencia beta que aún no termina el asistente (y no lo pospuso en esta sesión). */
+    protected function debeHacerOnboarding(array $u): bool
+    {
+        PortalSession::iniciar();
+        return ($u['rol'] ?? '') === 'coordinador' && empty($_SESSION['portal_onb_omitido']) && $this->onboarding()->activo();
+    }
+
     /** @return array<string, mixed>|null */
     protected function usuarioActual(): ?array
     {
@@ -124,6 +136,8 @@ class EquipoController
         return [
             'color'  => $color,
             'texto'  => AjustesService::colorTexto($color),
+            'tintaL' => ColorMarca::tinta($color, false),
+            'tintaD' => ColorMarca::tinta($color, true),
             'titulo' => $m->nombreEquipo(),
             'logo'   => ($r = $m->rutaLogoAgencia()) !== null ? '/portal/marca/agencia?v=' . (int) filemtime($r) : null,
         ];
@@ -556,6 +570,10 @@ class EquipoController
     public function inicio(): void
     {
         $u   = $this->requerirUsuario();
+        if ($this->debeHacerOnboarding($u)) {
+            $this->redirectTo('/equipo/bienvenida');
+            return;
+        }
         $acc = $this->acceso($u);
         $fmt = new Fmt();
         $hoy = (new \DateTimeImmutable('now', new \DateTimeZone(Zona::agencia())))->format('Y-m-d');
@@ -651,6 +669,7 @@ class EquipoController
             $t['responsable_tipo'] === 'equipo' && in_array($t['estado'], ['pendiente', 'en_progreso'], true) && empty($t['responsable_usuario_id'])));
 
         $this->view('inicio.latte', $this->contexto($u, 'inicio', [
+            'onbPendiente' => ($u['rol'] ?? '') === 'coordinador' && $this->onboarding()->activo(),
             'cuentas'      => $acc->todo() ? $this->resumenCuentas($hoy) : null,
             'cargaDeCuentas' => !$acc->todo(),
             'carga'        => $carga,
@@ -978,13 +997,41 @@ class EquipoController
             'cliente'   => $c,
             'marcaCli'  => $this->marcasClientes([$id])[$id],
             'proyectos' => $proyectos,
-            'contactos' => $this->fetchAll('SELECT * FROM portal_contactos WHERE cliente_id = ? ORDER BY nombre', [$id]),
+            'contactos' => $contactos = $this->fetchAll('SELECT * FROM portal_contactos WHERE cliente_id = ? ORDER BY nombre', [$id]),
+            'programadas' => $this->invitacionesProgramadas($contactos),
             'actividad' => (new ActividadService($this->pdo()))->deCliente($id, 10),
             'pais'      => HorarioHabil::PAISES[$c['pais'] ?? 'CL'] ?? null,
             'quien'     => $this->quien($id),
             'gestiona'  => $acc->gestionaCliente($id),
             'responsable' => !empty($c['responsable_id']) ? (new EquipoService($this->pdo()))->find((string) $c['responsable_id']) : null,
         ]));
+    }
+
+    /**
+     * Invitaciones al portal que están en la cola esperando su hora: contactoId => «hoy a las 18:30».
+     *
+     * @param array<int, array<string, mixed>> $contactos
+     * @return array<string, string>
+     */
+    protected function invitacionesProgramadas(array $contactos): array
+    {
+        $n = new Notifier($this->ctx, $this->pdo());
+        $zona = new \DateTimeZone(Zona::agencia());
+        $hoy = new \DateTimeImmutable('today', $zona);
+        $out = [];
+        foreach ($contactos as $c) {
+            if (!empty($c['invitado_en']) || !empty($c['primer_acceso'])) {
+                continue;
+            }
+            $p = $n->invitacionProgramada((string) $c['id']);
+            if ($p === null) {
+                continue;
+            }
+            $t = (new \DateTimeImmutable($p['cuando'], new \DateTimeZone('UTC')))->setTimezone($zona);
+            $dias = (int) $hoy->diff($t->setTime(0, 0))->format('%r%a');
+            $out[(string) $c['id']] = ($dias <= 0 ? 'hoy' : ($dias === 1 ? 'mañana' : 'el ' . $t->format('d/m'))) . ' a las ' . $t->format('H:i');
+        }
+        return $out;
     }
 
     // ---------------------------------------------------------------------

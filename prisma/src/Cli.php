@@ -10,10 +10,13 @@ prisma — administra las agencias beta de Prisma
 
   prisma estado                                  instancias, canales y versiones
   prisma secreto <slug>                          crea la plantilla secretos/instancias/<slug>.json (permisos 600)
-  prisma crear <slug> --host=… --docroot=… --correo=… [--nombre=…] [--canal=estable|canary]
+  prisma crear <slug> --host=… --docroot=… --correo=<de la dueña> [--nombre=…] [--canal=estable|canary]
+                                                 [--admin-correo=soporte@usaprisma.com]
                                                  [--simular] [--sin-http] [--reemplazar-docroot] [--zona=America/Santiago]
   prisma config <slug> CLAVE=valor [CLAVE=valor…] cambia valores del config.php de una agencia (ej.: PORTAL_RAIZ=login)
-  prisma clave <slug> [--correo=…]               genera una clave temporal nueva (se muestra una vez)
+  prisma clave <slug> [--correo=…]               clave temporal nueva del admin de respaldo (se muestra una vez)
+  prisma acceso <slug> [--correo=…]              código de ingreso de emergencia al panel /equipo (vale 10 min)
+  prisma cola [<slug>]                           envía lo que espera en la cola de cada agencia (para el cron cada 10 min)
   prisma version agregar <zip>                   deja una versión del plugin en releases/
   prisma actualizar --canal=… --a=<release>      mueve el canal a esa versión (volver atrás = apuntar a la anterior)
                                                  [--simular] [--sin-http]
@@ -42,10 +45,14 @@ TXT;
                     'host' => $op['host'] ?? '', 'docroot' => $op['docroot'] ?? '', 'correo' => $op['correo'] ?? '',
                     'nombre' => $op['nombre'] ?? '', 'canal' => $op['canal'] ?? 'estable', 'zona' => $op['zona'] ?? 'America/Santiago',
                     'url' => $op['url'] ?? null, 'simular' => isset($op['simular']), 'sin_http' => isset($op['sin-http']),
-                    'reemplazar' => isset($op['reemplazar-docroot']),
+                    'reemplazar' => isset($op['reemplazar-docroot']), 'admin_correo' => $op['admin-correo'] ?? '',
                 ]);
             case 'config':
                 return self::config($casa, array_slice($pos, 1), $dec);
+            case 'acceso':
+                return self::acceso($casa, $pos[1] ?? '', $op, $dec);
+            case 'cola':
+                return self::cola($casa, $pos[1] ?? '', $dec);
             case 'clave':
                 return self::clave($casa, $pos[1] ?? '', $op, $dec);
             case 'secreto':
@@ -118,7 +125,7 @@ TXT;
             $dec("✗ No existe la instancia «{$slug}». Mira prisma estado.");
             return 1;
         }
-        $correo = is_string($op['correo'] ?? null) ? $op['correo'] : (string) ($i['correo'] ?? '');
+        $correo = is_string($op['correo'] ?? null) ? $op['correo'] : (string) ($i['admin_correo'] ?? $i['correo'] ?? '');
         try {
             $r = Proc::instancia('clave', ['root' => $i['typedock'], 'public' => $i['docroot'], 'email' => $correo]);
         } catch (\Throwable $e) {
@@ -129,6 +136,59 @@ TXT;
         $dec($r['clave']);
         $dec("Entra en {$r['login']} y cámbiala en Usuarios → tu usuario → Contraseña. No la pegues en chats.");
         return 0;
+    }
+
+    /** @param array<string, string|true> $op */
+    private static function acceso(Casa $casa, string $slug, array $op, \Closure $dec): int
+    {
+        $i = $casa->instancias()[$slug] ?? null;
+        if ($i === null) {
+            $dec("✗ No existe la instancia «{$slug}». Mira prisma estado.");
+            return 1;
+        }
+        $correo = is_string($op['correo'] ?? null) ? $op['correo'] : (string) ($i['correo'] ?? '');
+        try {
+            $r = Proc::instancia('acceso', ['root' => $i['typedock'], 'public' => $i['docroot'], 'email' => $correo]);
+        } catch (\Throwable $e) {
+            $dec('✗ ' . $e->getMessage());
+            return 1;
+        }
+        $dec("Código de ingreso para {$correo} (vale 10 minutos; invalida el anterior):");
+        $dec($r['codigo']);
+        $dec("Que lo escriba en {$r['login']}. Si pide el correo de nuevo, se genera otro código: hazlo en ese orden (primero ella, después este comando).");
+        return 0;
+    }
+
+    /** Recorre la tarea programada de cada agencia: envía la cola de correos y los avisos. Pensado para un cron cada 10 minutos. */
+    private static function cola(Casa $casa, string $slug, \Closure $dec): int
+    {
+        $malas = 0;
+        foreach ($casa->instancias() as $s => $i) {
+            if (($slug !== '' && $s !== $slug) || ($i['estado'] ?? '') !== 'activa') {
+                continue;
+            }
+            $cfgF = (string) ($i['typedock'] ?? '') . '/config.php';
+            $cfg = is_file($cfgF) ? (require $cfgF) : [];
+            $token = is_array($cfg) ? (string) ($cfg['PORTAL_CRON_TOKEN'] ?? '') : '';
+            $url = rtrim((string) ($i['url'] ?? ''), '/');
+            if ($token === '' || $url === '') {
+                $dec("  ! {$s}: no tiene clave de cron en su config.php");
+                $malas++;
+                continue;
+            }
+            $ctx = stream_context_create(['http' => ['timeout' => 40, 'ignore_errors' => true]]);
+            $r = @file_get_contents($url . '/portal/cron/correos?k=' . rawurlencode($token), false, $ctx);
+            $codigo = 0;
+            foreach ((array) ($http_response_header ?? []) as $h) {
+                if (preg_match('#^HTTP/\S+\s+(\d{3})#', $h, $m)) {
+                    $codigo = (int) $m[1];
+                }
+            }
+            $ok = $r !== false && $codigo === 200;
+            $dec(($ok ? '  ✓ ' : '  ✗ ') . $s . ': ' . ($ok ? trim((string) $r) : 'HTTP ' . ($codigo ?: 'sin respuesta')));
+            $malas += $ok ? 0 : 1;
+        }
+        return $malas > 0 ? 1 : 0;
     }
 
     private static function secreto(Casa $casa, string $slug, \Closure $dec): int

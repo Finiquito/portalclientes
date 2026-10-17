@@ -96,15 +96,10 @@ class AjustesService
         return preg_match('/^#[0-9a-fA-F]{6}$/', $c) === 1 ? strtolower($c) : $porDefecto;
     }
 
-    /** Blanco o casi-negro según la luminancia, para que el texto sobre el color de marca se lea. */
+    /** Blanco o casi-negro, el que más contraste dé sobre el color de marca (ver ColorMarca). */
     public static function colorTexto(string $hex): string
     {
-        $r = hexdec(substr($hex, 1, 2)) / 255;
-        $g = hexdec(substr($hex, 3, 2)) / 255;
-        $b = hexdec(substr($hex, 5, 2)) / 255;
-        $lin = static fn(float $c): float => $c <= 0.03928 ? $c / 12.92 : (($c + 0.055) / 1.055) ** 2.4;
-        $l = 0.2126 * $lin($r) + 0.7152 * $lin($g) + 0.0722 * $lin($b);
-        return $l > 0.42 ? '#12131a' : '#ffffff';
+        return ColorMarca::texto($hex);
     }
 
     /** @return string[] */

@@ -118,7 +118,7 @@ check(str_contains(file_get_contents("$tmp/pub1/index.php"), $td) && str_contain
 $cfg = is_file("$td/config.php") ? file_get_contents("$td/config.php") : '';
 check(is_file("$td/config.php") && (fileperms("$td/config.php") & 0077) === 0, 'config.php con permisos 0600');
 check(str_contains($cfg, "'PORTAL_UPLOAD_DIR' => '$td/storage/portal_uploads'") && str_contains($cfg, "'PORTAL_SECRETOS_DIR' => '$home/secretos/compartido'") && str_contains($cfg, "'PLUGIN_PORTAL' => 'true'"), 'config.php lleva su carpeta de archivos, los secretos compartidos y el plugin activo');
-check(str_contains($cfg, "'PORTAL_RAIZ' => 'login'"), 'config.php reserva la raíz para el portal');
+check(str_contains($cfg, "'PORTAL_RAIZ' => 'login'") && str_contains($cfg, "'PORTAL_ONBOARDING' => '1'") && str_contains($cfg, "'PORTAL_PRIMER_COORDINADOR' => 'jefa@agencia1.cl'") && str_contains($cfg, "'PORTAL_AGENCIA_NOMBRE' => 'Estudio Uno'") && preg_match("/'PORTAL_CRON_TOKEN' => '[0-9a-f]{32}'/", $cfg) === 1, 'config.php reserva la raíz, activa el asistente y deja la dueña, el nombre y la clave del cron');
 check(str_contains($cfg, "'SELF_UPDATE_ENABLED' => 'false'") && str_contains($cfg, "'MAIL_FROM_ADDRESS' => 'notificaciones@usaprisma.com'") && str_contains($cfg, 'Estudio Uno vía Prisma'), 'el núcleo no se auto-actualiza y manda como «vía Prisma»');
 check(is_link("$td/plugins/portal") && basename((string) readlink("$td/plugins/portal")) === 'canary' && is_file("$td/plugins/portal/plugin.json"), 'el plugin es un enlace al canal');
 check(is_dir("$tmp/pub1/plugins/portal/assets"), 'los assets del plugin quedaron publicados en el sitio');
@@ -126,7 +126,7 @@ preg_match('#Clave temporal[^\n]*\n\s+(\S{20})\n#', $o, $m);
 check(isset($m[1]) && !str_contains($o, 'clave-de-prueba') && !str_contains($o, 'password-reset'), 'entrega una clave temporal de 20 caracteres y no imprime otras claves');
 $pdo = new PDO('sqlite:' . $tmp . '/db/agencia1.sqlite');
 $u = $pdo->query("SELECT id, email, role, password_hash FROM users")->fetchAll(PDO::FETCH_ASSOC);
-check(count($u) === 1 && $u[0]['email'] === 'jefa@agencia1.cl' && $u[0]['role'] === 'admin', 'usuario 0 creado como admin');
+check(count($u) === 1 && $u[0]['email'] === 'soporte@usaprisma.com' && $u[0]['role'] === 'admin', 'el admin de TypeDock queda a nombre de soporte, no de la agencia');
 check(isset($m[1]) && password_verify($m[1], $u[0]['password_hash']), 'la clave temporal sirve y en la base solo queda su hash');
 $reg = json_decode(file_get_contents("$home/instancias.json"), true)['instancias']['agencia1'] ?? [];
 check(($reg['canal'] ?? '') === 'canary' && ($reg['version'] ?? '') === $ver1 && ($reg['estado'] ?? '') === 'activa', 'queda en el registro');
@@ -159,12 +159,25 @@ foreach ((array) ($http_response_header ?? []) as $h) {
         $loc = trim(substr($h, 9));
     }
 }
-check(preg_match('#HTTP/\S+ 30[1237]#', $http_response_header[0] ?? '') === 1 && str_ends_with($loc, '/login'), 'la raíz del sitio redirige al ingreso de clientes (/login)');
+check(preg_match('#HTTP/\S+ 30[1237]#', $http_response_header[0] ?? '') === 1 && str_ends_with($loc, '/equipo/entrar'), 'mientras la agencia se arma, la raíz lleva al ingreso del equipo');
 [$cod, $body] = $http('/portal');
 check($cod > 0 && $cod < 500, "el portal responde (HTTP $cod)");
 $pdo2 = new PDO('sqlite:' . $tmp . '/db/agencia1.sqlite');
 $tablas = $pdo2->query("SELECT name FROM sqlite_master WHERE name = 'portal_clientes'")->fetchColumn();
 check($tablas === 'portal_clientes', 'las migraciones del plugin corrieron en la base de ESA agencia');
+$bd = new PDO('sqlite:' . $tmp . '/db/agencia1.sqlite');
+$due = $bd->query("SELECT id, rol, nombre FROM portal_equipo WHERE email = 'jefa@agencia1.cl'")->fetch(PDO::FETCH_ASSOC);
+check($due && $due['rol'] === 'coordinador' && $bd->query("SELECT valor FROM portal_ajustes WHERE clave = 'nombre_equipo'")->fetchColumn() === 'Estudio Uno', 'el primer arranque creó a la dueña como Coordinación general y dejó el nombre de la agencia');
+[$codE, $cuerpoE] = $http('/equipo/entrar');
+check($codE === 200 && str_contains($cuerpoE, 'Panel del equipo'), 'el ingreso del equipo abre');
+[$c, $o] = prisma($home, ['acceso', 'agencia1']);
+preg_match('#\n(\d{6})\n#', $o, $mc);
+$fila = isset($mc[1]) ? $bd->query("SELECT COUNT(*) FROM portal_equipo_codigos WHERE codigo = '{$mc[1]}' AND usado_en IS NULL")->fetchColumn() : 0;
+check($c === 0 && isset($mc[1]) && (int) $fila === 1, 'prisma acceso entrega un código de ingreso de emergencia válido');
+[$c, $o] = prisma($home, ['acceso', 'agencia1', '--correo=nadie@x.cl']);
+check($c === 1 && str_contains($o, 'No hay una persona'), 'prisma acceso avisa si el correo no es de la agencia');
+[$c, $o] = prisma($home, ['cola']);
+check($c === 0 && str_contains($o, '✓ agencia1: ok'), 'prisma cola recorre la tarea programada de cada agencia');
 check(!is_dir("$home/releases/portal-$ver1/storage") && !glob("$home/releases/*/.ia_secret"), 'no se escribió nada de datos dentro de releases/');
 proc_terminate($srv);
 

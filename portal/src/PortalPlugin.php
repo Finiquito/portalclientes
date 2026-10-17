@@ -25,6 +25,7 @@ class PortalPlugin implements PluginInterface
         // Columnas nuevas de portal_tareas (tipo, visible_cliente, completada_en), idempotente.
         try {
             Schema::asegurar($ctx->db()->pdo());
+            Arranque::asegurar($ctx->db()->pdo());   // agencias beta: primer coordinador, nombre y clave del cron
             Zona::desdeAjustes($ctx->db()->pdo());
         } catch (\Throwable) {
             // Si la BD no está lista no bloqueamos el arranque del resto del sistema.
@@ -261,6 +262,13 @@ class PortalPlugin implements PluginInterface
         // Front de agencia (/equipo): usuarios de portal_equipo, con código por correo.
         $eq = new EquipoGestion($ctx);
         $eq->registrar();   // gestión (tareas, entregas, reuniones…): antes que las vistas propias
+        // Asistente de arranque de agencias beta (sólo Coordinación general y mientras esté activo).
+        $onb = new EquipoOnboarding($ctx);
+        \Flight::route('GET /equipo/bienvenida',          [$onb, 'pagina']);
+        \Flight::route('POST /equipo/bienvenida/guardar', [$onb, 'guardar']);
+        \Flight::route('POST /equipo/bienvenida/logo',    [$onb, 'logo']);
+        \Flight::route('POST /equipo/bienvenida/listo',   [$onb, 'finalizar']);
+        \Flight::route('POST /equipo/bienvenida/omitir',  [$onb, 'omitir']);
         \Flight::route('GET /equipo/entrar',          [$eq, 'entrarForm']);
         \Flight::route('POST /equipo/entrar',         [$eq, 'pedirCodigo']);
         \Flight::route('GET /equipo/verificar',       [$eq, 'verificarForm']);
@@ -302,7 +310,7 @@ class PortalPlugin implements PluginInterface
 
     public function getVersion(): string
     {
-        return '0.10.1-beta';
+        return '0.11.0-beta';
     }
 
     public function provides(): array

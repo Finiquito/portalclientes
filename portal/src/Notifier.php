@@ -281,6 +281,51 @@ class Notifier
      */
     public function invitacionCliente(array $contacto, string $mensaje = '', string $firma = ''): bool
     {
+        [$asunto, $html, $texto] = $this->armarInvitacionCliente($contacto, $mensaje, $firma);
+        return $this->enviarCorreo((string) $contacto['email'], $asunto, $html, $texto, false);
+    }
+
+    /**
+     * La misma invitación, pero programada: sale en $horas horas (respetando el horario hábil del contacto), salvo que
+     * antes se envíe a mano o se cancele. Devuelve cuándo sale (UTC, «Y-m-d H:i:s»).
+     *
+     * @param array<string, mixed> $contacto
+     */
+    public function programarInvitacionCliente(array $contacto, int $horas): string
+    {
+        [$asunto, $html, $texto] = $this->armarInvitacionCliente($contacto, '', '');
+        $clienteId = (string) $contacto['cliente_id'];
+        $cuando = $this->cuandoEnviar($clienteId, false, (string) $contacto['id'], $this->ahoraUtc()->modify('+' . max(0, $horas) . ' hours'));
+        $this->encolar($clienteId, (string) $contacto['id'], (string) $contacto['email'], $asunto, $texto, $html, $cuando, null, Vigencia::invitacion((string) $contacto['id']));
+        return $cuando->format('Y-m-d H:i:s');
+    }
+
+    /** La invitación programada de un contacto que todavía no sale: [cuando (UTC), id en la cola] o null. @return array{cuando: string, id: string}|null */
+    public function invitacionProgramada(string $contactoId): ?array
+    {
+        try {
+            Schema::asegurar($this->pdo);
+            $st = $this->pdo->prepare('SELECT id, enviar_desde FROM ' . self::COLA . " WHERE contacto_id = ? AND vigencia = ? AND estado IN ('pendiente', 'enviando') ORDER BY enviar_desde LIMIT 1");
+            $st->execute([$contactoId, Vigencia::invitacion($contactoId)]);
+            $f = $st->fetch();
+            return $f !== false ? ['cuando' => (string) $f['enviar_desde'], 'id' => (string) $f['id']] : null;
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    public function cancelarInvitacionProgramada(string $contactoId): void
+    {
+        try {
+            $this->pdo->prepare('DELETE FROM ' . self::COLA . " WHERE contacto_id = ? AND vigencia = ? AND estado = 'pendiente'")
+                ->execute([$contactoId, Vigencia::invitacion($contactoId)]);
+        } catch (\Throwable) {
+        }
+    }
+
+    /** @param array<string, mixed> $contacto @return array{0: string, 1: string, 2: string} asunto, html, texto */
+    private function armarInvitacionCliente(array $contacto, string $mensaje, string $firma): array
+    {
         $clienteId = (string) $contacto['cliente_id'];
         $agencia = $this->marca()->nombreEquipo();
         $email = (string) $contacto['email'];
@@ -323,7 +368,7 @@ class Notifier
             $this->absoluta('/login?email=' . rawurlencode($email)), $clienteId,
             ['Entras siempre con este correo: ' . $email, 'Puedes elegir qué avisos recibir en Ajustes, dentro del portal.']
         );
-        return $this->enviarCorreo($email, $asunto, $html, $texto, false);
+        return [$asunto, $html, $texto];
     }
 
     /** Invitación a un usuario de agencia: cómo entrar al panel de equipo. */
@@ -392,9 +437,9 @@ class Notifier
     }
 
     /** Instante (UTC) desde el que se puede enviar a este cliente (o a esa persona, si vive en otro país). */
-    public function cuandoEnviar(string $clienteId, bool $inmediato = false, ?string $contactoId = null): \DateTimeImmutable
+    public function cuandoEnviar(string $clienteId, bool $inmediato = false, ?string $contactoId = null, ?\DateTimeImmutable $desde = null): \DateTimeImmutable
     {
-        $ahora = $this->ahoraUtc();
+        $ahora = $desde ?? $this->ahoraUtc();
         [$respetar, $ini, $fin] = $this->horario();
         if ($inmediato || !$respetar) {
             return $ahora;
@@ -516,6 +561,9 @@ class Notifier
         $ok = $this->enviarCorreo((string) $f['destino'], (string) $f['asunto'], (string) $f['html'], (string) $f['texto'], true, ($f['ics'] ?? '') !== '' ? (string) $f['ics'] : null);
         if ($ok) {
             $this->pdo->prepare('UPDATE ' . self::COLA . " SET estado = 'enviado', enviado_en = ?, error = NULL WHERE id = ?")->execute([$ahora->format('Y-m-d H:i:s'), $f['id']]);
+            if (str_starts_with((string) ($f['vigencia'] ?? ''), 'invitacion:')) {
+                (new ContactoService($this->pdo))->marcarInvitado(substr((string) $f['vigencia'], 11));
+            }
             return true;
         }
         if ($this->topeCorreo) {

@@ -78,6 +78,20 @@ class ContactoAdminController
         $this->ui->redirect($volver, $ok ? 'Invitación enviada.' : 'La invitación no salió: revisa el correo en Portal · Ajustes.', $ok ? 'success' : 'error');
     }
 
+    /** Cancela la invitación programada (la que sale sola en unas horas). */
+    public function cancelarInvitacion(string $id): void
+    {
+        $c = $this->service()->find($id);
+        $volver = (string) ($_POST['volver'] ?? '');
+        $volver = preg_match('#^/equipo/clientes/[0-9a-f-]{36}$#', $volver) === 1 ? $volver : $this->ui->url('contactos' . ($c !== null ? '/' . $id : ''));
+        if ($c === null) {
+            $this->ui->redirect($this->ui->url('contactos'), 'Contacto no encontrado.', 'error');
+            return;
+        }
+        (new Notifier($this->ctx, $this->ctx->db()->pdo()))->cancelarInvitacionProgramada($id);
+        $this->ui->redirect($volver, 'Cancelamos el envío programado. Invita a ' . explode(' ', (string) $c['nombre'])[0] . ' cuando quieras.');
+    }
+
     /** «Ver como cliente» desde el admin de TypeDock (sólo lectura). */
     public function verComo(string $id): void
     {

@@ -336,3 +336,16 @@ Ya existe (`prisma/`, ver `prisma/README.md`): `crear`, `secreto`, `version agre
 **Transparencia con la agencia:** en los términos de la beta se avisa que soporte puede entrar a la instancia para ayudar.
 
 **Pendiente de aprobar (diseño visible):** maqueta de las pantallas del asistente y de «Primeros pasos» antes de construir.
+
+### Estado (beta 0.11)
+
+Construido y probado: el asistente de bienvenida en `/equipo/bienvenida` (5 pantallas, guardado en cada una), el primer coordinador automático, la invitación al cliente programada a 6 horas (con «Enviar ahora» y «Cancelar envío» en la ficha del cliente), `prisma crear` con dueña y admin de respaldo separados, `prisma acceso` (código de emergencia), `prisma cola` (cron de toda la flota) y la regla de contraste de colores. Decisiones tomadas por el diseño: el paso 4 se llama «¿Quieres agregar a tu equipo?»; el interruptor de invitar parte encendido y sale en 6 horas; las plantillas son las 3 que el plugin ya trae (Sitio web, Branding, Campaña digital) y sólo se ofrecen en el asistente, sin sembrar nada extra.
+
+## 13. Alta de una agencia, de punta a punta (estado actual)
+
+1. **Tú, en hPanel (≈10 min):** subdominio, base de datos vacía, SSL.
+2. **Tú, por SSH:** `prisma secreto <slug>` y completar la BD; `prisma crear <slug> --host … --docroot … --correo DUENA@… --nombre "…"` (primero con `--simular`).
+3. **`prisma crear` hace solo:** copia TypeDock, enlaza el plugin del canal, instala sin pantalla (migraciones, admin de soporte, assets) y deja en `config.php` la dueña, el nombre, la clave del cron y el asistente activo.
+4. **Tú le avisas a la dueña** que entre a `https://<slug>.usaprisma.com/equipo/entrar` (o a la raíz del sitio, que la lleva ahí mientras se arma).
+5. **La dueña:** código al correo → asistente (5 pantallas) → su panel con su primer cliente y proyecto. La invitación a su cliente sale sola 6 horas después, o antes si ella lo decide.
+6. **Cron único (hPanel):** `prisma cola` cada 10 minutos para toda la flota.

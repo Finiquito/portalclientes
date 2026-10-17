@@ -319,6 +319,8 @@ class PortalPublicController
             'marca'         => [
                 'color'  => $color,
                 'texto'  => AjustesService::colorTexto($color),
+                'tintaL' => ColorMarca::tinta((string) $color, false),
+                'tintaD' => ColorMarca::tinta((string) $color, true),
                 'titulo' => $titulo,
                 'logo'   => !empty($cfg['logo_id']) ? '/portal/archivo/' . $cfg['logo_id'] . '?i=1' : null,
             ],
@@ -395,11 +397,21 @@ class PortalPublicController
 
     /**
      * Raíz del sitio (/) cuando la instalación la reserva para el portal (PORTAL_RAIZ=login, lo deja prisma crear):
-     * quien ya entró va a su portal; el resto, al ingreso de clientes. No hay otra portada.
+     * el equipo con sesión va a su panel, un cliente con sesión a su portal; mientras la agencia se arma (asistente de
+     * arranque), al ingreso del equipo; después, al ingreso de clientes. No hay otra portada.
      */
     public function raiz(): void
     {
-        $this->redirectTo($this->currentContacto() !== null ? 'portal' : 'login');
+        PortalSession::iniciar();
+        if (is_string($_SESSION[EquipoController::SESION] ?? null)) {
+            $this->redirectTo('equipo');
+        } elseif ($this->currentContacto() !== null) {
+            $this->redirectTo('portal');
+        } elseif ((new OnboardingService($this->pdo()))->activo()) {
+            $this->redirectTo('equipo/entrar');   // la agencia aún se está armando: la puerta es la del equipo
+        } else {
+            $this->redirectTo('login');
+        }
     }
 
     public function loginForm(): void

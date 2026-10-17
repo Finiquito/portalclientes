@@ -36,7 +36,7 @@
   --brand: #6d5df6;
   --brand-fg: #ffffff;
   --brand-soft: color-mix(in oklab, var(--brand) 11%, white);
-  --brand-ink: color-mix(in oklab, var(--brand) 82%, black);
+  --brand-ink: color-mix(in oklab, var(--brand) var(--ink-l, 82%), black);
 
   --bg: #f6f5fb;
   --surface: #ffffff;
@@ -55,7 +55,7 @@
   /* Más contraste que antes: superficies un poco más separadas del fondo y textos
      secundarios más claros (el gris anterior se leía poco sobre fondo oscuro). */
   --brand-soft: color-mix(in oklab, var(--brand) 26%, #10111b);
-  --brand-ink: color-mix(in oklab, var(--brand) 52%, white);
+  --brand-ink: color-mix(in oklab, var(--brand) var(--ink-d, 52%), white);
 
   --bg: #0d0e16;
   --surface: #181a28;
@@ -81,7 +81,7 @@
     background-attachment: fixed;
     font-feature-settings: "cv11", "ss01";
   }
-  :focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: .5rem; }
+  :focus-visible { outline: 2px solid var(--brand-ink); outline-offset: 2px; border-radius: .5rem; }
   ::selection { background: color-mix(in oklab, var(--brand) 30%, transparent); }
   [x-cloak], [hidden] { display: none !important; }
 }

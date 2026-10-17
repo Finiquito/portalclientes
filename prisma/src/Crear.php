@@ -33,7 +33,8 @@ final class Crear
         $this->d("  · sitio público en   {$plan['docroot']}");
         $this->d("  · plugin             enlace a canal «{$plan['canal']}» (" . ($plan['version'] ?? '?') . ')');
         $this->d("  · base de datos      {$plan['db_resumen']}");
-        $this->d("  · usuario 0          {$o['correo']}");
+        $this->d("  · dueña (equipo)     {$o['correo']}  → entra por /equipo con un código al correo y hace el asistente");
+        $this->d("  · respaldo (admin)   {$plan['admin_correo']}  → solo soporte; clave temporal al final");
         $this->d('  · correo de Prisma   ' . ($plan['correo'] !== null ? $plan['correo']['desde'] : 'NO configurado (usará el correo del núcleo)'));
         if ($simular) {
             $this->d('Sin cambios: era una simulación.');
@@ -54,7 +55,7 @@ final class Crear
             $this->d('4/6 Instalando (migraciones, usuario 0, assets)…');
             $r = Proc::instancia('instalar', [
                 'root' => $plan['typedock'], 'public' => $plan['docroot'],
-                'config' => $plan['config'], 'admin' => ['email' => $o['correo'], 'name' => $o['nombre']],
+                'config' => $plan['config'], 'admin' => ['email' => $plan['admin_correo'], 'name' => 'Soporte Prisma'],
             ]);
 
             $this->d('5/6 Registrando la instancia…');
@@ -62,7 +63,7 @@ final class Crear
                 $reg[$slug] = [
                     'host' => $plan['host'], 'url' => $plan['url'], 'docroot' => $plan['docroot'], 'typedock' => $plan['typedock'],
                     'canal' => $plan['canal'], 'version' => $plan['version'], 'nucleo' => $r['nucleo'] ?? '',
-                    'correo' => $o['correo'], 'nombre' => $o['nombre'], 'estado' => 'activa', 'creada' => gmdate('c'),
+                    'correo' => $o['correo'], 'admin_correo' => $plan['admin_correo'], 'nombre' => $o['nombre'], 'estado' => 'activa', 'creada' => gmdate('c'),
                 ];
                 return $reg;
             });
@@ -78,9 +79,18 @@ final class Crear
         $this->d('');
         $this->d("✓ «{$slug}» creada.");
         $this->d("  Sitio:  {$plan['url']}/portal   ·   Admin: {$plan['url']}/admin/login");
-        $this->d("  Usuario 0: {$o['correo']}");
-        $this->d('  Clave temporal (se muestra UNA vez; no la pegues en chats; la persona la cambia al entrar):');
-        $this->d('  ' . $r['clave']);
+        $this->d('');
+        $this->d("  PARA LA DUEÑA ({$o['correo']}):");
+        $this->d("    1. Entra a {$plan['url']}/equipo/entrar y escribe su correo: le llega un código de 6 dígitos.");
+        $this->d('    2. Al entrar, el asistente de bienvenida la lleva por 5 pantallas: su agencia, su primer cliente y proyecto, y su equipo.');
+        $this->d("    Si el código no llega: que lo pida igual y corre «prisma acceso {$slug}» (vale 10 minutos).");
+        $this->d('');
+        $this->d("  RESPALDO, SOLO SOPORTE: admin {$plan['admin_correo']} en {$r['login']}");
+        $this->d('    Clave temporal (se muestra UNA vez; no la pegues en chats; no se le da a la agencia):');
+        $this->d('    ' . $r['clave']);
+        $this->d('');
+        $this->d('  Falta una sola vez en tu hosting: una tarea programada (cron) que envíe lo que espera en la cola, como la invitación');
+        $this->d('  a las 6 horas. En hPanel → Cron: cada 10 minutos  php ' . dirname(__DIR__) . '/bin/prisma cola');
         foreach ($avisos as $a) {
             $this->d(($a === '(omitida)' || str_starts_with($a, 'Prueba de humo') ? '  ✓ ' : '  ! ') . $a);
         }
@@ -153,6 +163,10 @@ final class Crear
         $nombre = trim((string) ($o['nombre'] ?? '')) ?: $slug;
         $url = rtrim((string) ($o['url'] ?? ('https://' . $o['host'])), '/');
         $correo = $this->leerCorreo();
+        $adminCorreo = strtolower(trim((string) ($o['admin_correo'] ?? ''))) ?: (getenv('PRISMA_ADMIN_CORREO') ?: 'soporte@usaprisma.com');
+        if (!filter_var($adminCorreo, FILTER_VALIDATE_EMAIL)) {
+            throw new \RuntimeException('El correo de soporte (--admin-correo) no es válido.');
+        }
 
         $config = [
             'APP_NAME' => $nombre, 'APP_URL' => $url, 'APP_DEBUG' => 'false', 'APP_LOCALE' => 'es',
@@ -160,6 +174,10 @@ final class Crear
             'SELF_UPDATE_ENABLED' => 'false',
             'PLUGIN_PORTAL' => 'true',
             'PORTAL_RAIZ' => 'login',
+            'PORTAL_ONBOARDING' => '1',
+            'PORTAL_PRIMER_COORDINADOR' => strtolower((string) $o['correo']),
+            'PORTAL_AGENCIA_NOMBRE' => $nombre,
+            'PORTAL_CRON_TOKEN' => bin2hex(random_bytes(16)),
             'PORTAL_UPLOAD_DIR' => $typedock . '/storage/portal_uploads',
             'PORTAL_SECRETOS_DIR' => $this->casa->carpetaCompartida(),
         ] + $db['config'];
@@ -172,7 +190,7 @@ final class Crear
         }
         return [
             'slug' => $slug, 'host' => (string) $o['host'], 'url' => $url, 'docroot' => $docroot, 'instancia' => $instancia, 'typedock' => $typedock,
-            'canal' => $canal, 'version' => $version, 'config' => $config, 'correo' => $correo, 'db_resumen' => $db['resumen'],
+            'canal' => $canal, 'version' => $version, 'config' => $config, 'admin_correo' => $adminCorreo, 'correo' => $correo, 'db_resumen' => $db['resumen'],
             'preexistentes' => scandir($docroot) ?: [],
         ];
     }

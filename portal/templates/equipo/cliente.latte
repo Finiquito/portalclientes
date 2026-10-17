@@ -33,15 +33,31 @@
 
 {var $sinInvitar = array_values(array_filter($contactos, fn($x) => !$x['invitado_en'] && !$x['primer_acceso']))}
 {if $sinInvitar}
-    <section class="reveal mb-6 flex flex-wrap items-center gap-x-4 gap-y-3 rounded-2xl bg-surface2 px-4 py-3 text-sm" aria-label="Pendientes">
-        <svg class="size-5 flex-none text-brand-ink"><use href="#i-mail"/></svg>
-        <p class="min-w-0 flex-1">Falta invitar a <strong>{implode(' y ', array_map(fn($x) => $x['nombre'], $sinInvitar))}</strong> a su portal. Hazlo cuando el proyecto tenga algo que mostrar.</p>
+    <section class="reveal mb-6 grid gap-3 rounded-2xl bg-surface2 px-4 py-3 text-sm" aria-label="Pendientes">
         {foreach $sinInvitar as $x}
-            <form method="post" action="/equipo/contactos/{$x['id']}/invitar">
-                <input type="hidden" name="_csrf" value="{$csrf}">
-                <input type="hidden" name="volver" value="/equipo/clientes/{$cliente['id']}">
-                <button type="submit" class="btn btn-soft btn-sm">Invitar{if count($sinInvitar) > 1} a {explode(' ', $x['nombre'])[0]}{/if} ahora</button>
-            </form>
+            <div class="flex flex-wrap items-center gap-x-4 gap-y-3">
+                <svg class="size-5 flex-none text-brand-ink"><use href="#i-mail"/></svg>
+                {if isset($programadas[$x['id']])}
+                    <p class="min-w-0 flex-1">La invitación a <strong>{$x['nombre']}</strong> sale automáticamente {$programadas[$x['id']]}. Puedes adelantarla o cancelarla.</p>
+                    <form method="post" action="/equipo/contactos/{$x['id']}/invitar">
+                        <input type="hidden" name="_csrf" value="{$csrf}">
+                        <input type="hidden" name="volver" value="/equipo/clientes/{$cliente['id']}">
+                        <button type="submit" class="btn btn-soft btn-sm">Enviar ahora</button>
+                    </form>
+                    <form method="post" action="/equipo/contactos/{$x['id']}/invitacion/cancelar">
+                        <input type="hidden" name="_csrf" value="{$csrf}">
+                        <input type="hidden" name="volver" value="/equipo/clientes/{$cliente['id']}">
+                        <button type="submit" class="btn btn-ghost btn-sm">Cancelar envío</button>
+                    </form>
+                {else}
+                    <p class="min-w-0 flex-1">Falta invitar a <strong>{$x['nombre']}</strong> a su portal. Hazlo cuando el proyecto tenga algo que mostrar.</p>
+                    <form method="post" action="/equipo/contactos/{$x['id']}/invitar">
+                        <input type="hidden" name="_csrf" value="{$csrf}">
+                        <input type="hidden" name="volver" value="/equipo/clientes/{$cliente['id']}">
+                        <button type="submit" class="btn btn-soft btn-sm">Invitar ahora</button>
+                    </form>
+                {/if}
+            </div>
         {/foreach}
     </section>
 {/if}

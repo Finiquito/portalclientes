@@ -9,6 +9,7 @@ declare(strict_types=1);
  *   php instancia.php instalar   {root, public, config: {...}, admin: {email, name}}
  *   php instancia.php assets     {root, public}
  *   php instancia.php config     {root, public, set: {CLAVE: valor}}  (cambia valores de config.php)
+ *   php instancia.php acceso     {root, public, email}               (código de ingreso al panel /equipo)
  *   php instancia.php clave      {root, public, email}               (clave temporal nueva para un usuario)
  */
 
@@ -63,6 +64,32 @@ try {
         }
         (new TypeDock\Install\Installer(TYPEDOCK_ROOT))->writeConfig(array_map('strval', array_merge($actual, $set)));
         responder(['ok' => true, 'cambiadas' => array_keys($set)]);
+    }
+
+    if ($accion === 'acceso') {
+        typedock_load_config(TYPEDOCK_ROOT);
+        $db = require TYPEDOCK_ROOT . '/config/database.php';
+        $pdo = TypeDock\Core\Database\ConnectionFactory::create($db, TYPEDOCK_ROOT);
+        // El plugin vive en plugins/portal (enlace al canal): se carga sin arrancar TypeDock.
+        spl_autoload_register(static function (string $c): void {
+            $pre = 'TypeDock\\Plugin\\Portal\\';
+            if (strncmp($c, $pre, strlen($pre)) === 0) {
+                $f = TYPEDOCK_ROOT . '/plugins/portal/src/' . str_replace('\\', '/', substr($c, strlen($pre))) . '.php';
+                if (is_file($f)) {
+                    require $f;
+                }
+            }
+        });
+        try {
+            $u = (new TypeDock\Plugin\Portal\EquipoService($pdo))->findByEmail(strtolower((string) ($in['email'] ?? '')));
+        } catch (Throwable $e) {
+            throw new RuntimeException('Todavía no existe el panel de equipo en esta agencia: ábrela una vez en el navegador (/equipo/entrar) para que se cree.');
+        }
+        if ($u === null) {
+            throw new RuntimeException('No hay una persona de la agencia con ese correo (¿ya abrieron /equipo/entrar una vez?).');
+        }
+        $codigo = (new TypeDock\Plugin\Portal\EquipoAuthService($pdo))->generarCodigo((string) $u['id']);
+        responder(['ok' => true, 'codigo' => $codigo, 'login' => rtrim((string) ($_ENV['APP_URL'] ?? ''), '/') . '/equipo/verificar']);
     }
 
     if ($accion === 'clave') {
