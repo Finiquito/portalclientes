@@ -38,6 +38,14 @@ prisma actualizar --canal=canary --a=portal-0.10.0-beta --sin-http
 
 Si algo falla a medias, deshace lo copiado (la base de datos hay que vaciarla a mano).
 
+## Si alguien no puede entrar
+
+```bash
+prisma enlace prueba1          # enlace nuevo para el usuario 0 (invalida el anterior)
+prisma enlace prueba1 --correo=otra@persona.cl --dias=3
+```
+El enlace sirve para definir contraseña; ábrelo tú y no lo pegues en chats.
+
 ## Actualizar
 
 ```bash

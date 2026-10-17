@@ -130,6 +130,12 @@ $tok = $pdo->query("SELECT token_hash, expires_at FROM password_resets")->fetch(
 check($tok && hash('sha256', substr($m[1] ?? '', -64)) === $tok['token_hash'] && strtotime($tok['expires_at']) > time() + 6 * 86400, 'el enlace vale 7 días y solo se guarda su hash');
 $reg = json_decode(file_get_contents("$home/instancias.json"), true)['instancias']['agencia1'] ?? [];
 check(($reg['canal'] ?? '') === 'canary' && ($reg['version'] ?? '') === $ver1 && ($reg['estado'] ?? '') === 'activa', 'queda en el registro');
+[$c, $o] = prisma($home, ['enlace', 'agencia1']);
+preg_match('#token=([0-9a-f]{64})#', $o, $m2);
+$hashes = $pdo->query("SELECT token_hash FROM password_resets")->fetchAll(PDO::FETCH_COLUMN);
+check($c === 0 && isset($m2[1]) && $hashes === [hash('sha256', $m2[1])], 'prisma enlace genera un enlace nuevo e invalida el anterior');
+[$c, $o] = prisma($home, ['enlace', 'agencia1', '--correo=nadie@x.cl']);
+check($c === 1 && str_contains($o, 'No hay un usuario'), 'prisma enlace avisa si el correo no existe');
 [$c, $o] = prisma($home, ['crear', 'agencia1', '--host=a1.test', '--docroot=' . $tmp . '/pubX', '--correo=x@y.cl', '--canal=canary']);
 check($c === 1 && str_contains($o, 'Ya existe'), 'no crea dos veces la misma agencia');
 

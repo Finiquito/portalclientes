@@ -8,6 +8,7 @@ declare(strict_types=1);
  *
  *   php instancia.php instalar   {root, public, config: {...}, admin: {email, name}, dias_enlace}
  *   php instancia.php assets     {root, public}
+ *   php instancia.php enlace     {root, public, email, dias_enlace}   (enlace nuevo de primer ingreso)
  */
 
 function responder(array $d, int $code = 0): never
@@ -35,6 +36,27 @@ try {
         typedock_load_config(TYPEDOCK_ROOT);
         $n = count((new TypeDock\Core\AssetPublisher(TYPEDOCK_ROOT, TYPEDOCK_PUBLIC_DIR))->publishAll());
         responder(['ok' => true, 'publicados' => $n]);
+    }
+
+    if ($accion === 'enlace') {
+        typedock_load_config(TYPEDOCK_ROOT);
+        $db = require TYPEDOCK_ROOT . '/config/database.php';
+        $pdo = TypeDock\Core\Database\ConnectionFactory::create($db, TYPEDOCK_ROOT);
+        $st = $pdo->prepare('SELECT id FROM users WHERE email = ? LIMIT 1');
+        $st->execute([(string) ($in['email'] ?? '')]);
+        $userId = $st->fetchColumn();
+        if ($userId === false) {
+            throw new RuntimeException('No hay un usuario con ese correo en esta instancia.');
+        }
+        $dias = max(1, min(30, (int) ($in['dias_enlace'] ?? 7)));
+        $token = bin2hex(random_bytes(32));
+        $pdo->prepare('DELETE FROM password_resets WHERE user_id = ?')->execute([$userId]);
+        $pdo->prepare('INSERT INTO password_resets (id, user_id, token_hash, expires_at, created_at) VALUES (?, ?, ?, ?, ?)')->execute([
+            typedock_uuid7(), $userId, hash('sha256', $token),
+            (new DateTimeImmutable('+' . $dias . ' days'))->format('Y-m-d H:i:s'),
+            (new DateTimeImmutable())->format('Y-m-d H:i:s'),
+        ]);
+        responder(['ok' => true, 'enlace' => rtrim((string) ($_ENV['APP_URL'] ?? ''), '/') . '/admin/password-reset?token=' . $token, 'vence_dias' => $dias]);
     }
 
     if ($accion === 'instalar') {
