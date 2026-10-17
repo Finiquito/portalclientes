@@ -24,6 +24,7 @@ const url = 'file://' + path.join(__dirname, 'onboarding-agencia.html');
     await p.goto(url + `?limpio=1&demo=1&paso=${paso}`); await p.waitForTimeout(1500);
     if (extra) await extra(); await p.screenshot({path: path.join(salida, nombre)});
   };
+  await dem(1, '1d-color-ambar.png', async () => { await p.click('label[for=c6]'); await p.waitForTimeout(700); });
   await dem(2, '2-cliente.png');
   await dem(3, '3-proyecto.png');
   await dem(4, '4-equipo.png');

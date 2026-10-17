@@ -1,0 +1,56 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Colores de marca: hoy vs ajustado</title>
+<style>
+:root{--font:ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
+*{box-sizing:border-box}body{margin:0;font-family:var(--font);background:var(--bg);color:var(--ink);padding:28px 32px}
+.claro{--bg:#f6f5fb;--surface:#fff;--ink:#15152c;--muted:#6a6983;--line:#e9e7f3}
+.oscuro{--bg:#0d0e16;--surface:#181a28;--ink:#f4f4fb;--muted:#b7b9d0;--line:#34374e}
+h1{font-size:20px;margin:0 0 4px}p.s{margin:0 0 18px;color:var(--muted);font-size:13px}
+.grid{display:grid;grid-template-columns:150px 1fr 1fr;gap:10px 18px;align-items:center}
+.cab{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.fila{display:contents}
+.nom{display:flex;align-items:center;gap:10px;font-weight:650;font-size:14px}
+.nom i{width:26px;height:26px;border-radius:50%;background:var(--b);box-shadow:inset 0 0 0 1px var(--line)}
+.nom small{display:block;font-weight:500;color:var(--muted);font-size:11.5px}
+.cel{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px;position:relative}
+.btn{height:34px;padding:0 14px;border-radius:8px;border:0;font-weight:700;font-size:13.5px;background:var(--b);color:var(--fg)}
+.chip{height:28px;padding:0 12px;border-radius:999px;display:inline-grid;place-items:center;font-weight:700;font-size:12.5px;background:var(--soft);color:var(--tinta)}
+.txt{font-weight:700;font-size:13.5px;color:var(--tinta)}
+.foco{width:34px;height:34px;border-radius:8px;border:2px solid var(--anillo);background:var(--surface)}
+.r{font:600 11px var(--font);margin-left:auto;padding:3px 7px;border-radius:6px;background:color-mix(in srgb,var(--ink) 8%,transparent)}
+.mal{color:#c0264b}.bien{color:#12805c}.oscuro .mal{color:#ff8fab}.oscuro .bien{color:#5ee0ae}
+</style></head><body>
+<h1>Colores de marca: cómo se ven hoy y con el ajuste</h1>
+<p class="s" id="sub"></p>
+<div class="grid" id="g"><div></div><div class="cab">Hoy en el portal</div><div class="cab">Con el ajuste propuesto</div></div>
+<script>
+const q=new URLSearchParams(location.search), oscuro=q.get('tema')==='oscuro';
+document.body.className=oscuro?'oscuro':'claro';
+document.getElementById('sub').textContent=(oscuro?'Modo oscuro':'Modo claro')+' · botón, etiqueta, texto de acento y anillo de foco. La cifra es el contraste (mínimo 4,5 para texto, 3 para el anillo).';
+// [nombre, hex de hoy, hex ajustado, texto hoy, texto nuevo, %tinta claro nuevo]
+const C=[['Naranjo Prisma','#E8552D','#E8552D','#ffffff','#12131a',82],['Azul','#2F5BEA','#2F5BEA','#ffffff','#ffffff',82],['Verde','#118A6B','#038567','#ffffff','#ffffff',82],
+['Violeta','#8A4FD6','#8A4FD6','#ffffff','#ffffff',82],['Rosa','#D63A7C','#D4387B','#ffffff','#ffffff',82],['Grafito','#2B2F3A','#2B2F3A','#ffffff','#ffffff',82],
+['Amber','#FFC107','#FFC107','#12131a','#12131a',66],['Blue','#2196F3','#2196F3','#ffffff','#12131a',82],['Blue Grey','#607D8B','#5D7A88','#ffffff','#ffffff',82],
+['Brown','#795548','#795548','#ffffff','#ffffff',82],['Cyan','#00BCD4','#00BCD4','#ffffff','#12131a',72],['Deep Orange','#FF5722','#FF5722','#ffffff','#12131a',82]];
+const sup=oscuro?'#181a28':'#ffffff';
+function lin(c){c/=255;return c<=.04045?c/12.92:Math.pow((c+.055)/1.055,2.4)}
+function lum(h){const n=parseInt(h.slice(1),16);return .2126*lin(n>>16&255)+.7152*lin(n>>8&255)+.0722*lin(n&255)}
+function cr(a,b){let x=lum(a),y=lum(b);if(x<y)[x,y]=[y,x];return (x+.05)/(y+.05)}
+// color-mix en oklab: lo calculamos con un lienzo para medir el contraste real
+const cv=document.createElement('canvas').getContext('2d',{willReadFrequently:true});
+function resolver(css){cv.clearRect(0,0,1,1);cv.fillStyle='#000';cv.fillStyle=css;cv.fillRect(0,0,1,1);const d=cv.getImageData(0,0,1,1).data;return '#'+[d[0],d[1],d[2]].map(v=>v.toString(16).padStart(2,'0')).join('')}
+function celda(b,fg,pc,nuevo){
+  const soft=oscuro?`color-mix(in oklab, ${b} 26%, #10111b)`:`color-mix(in oklab, ${b} 11%, white)`;
+  const pct=oscuro?52:(nuevo?pc:82), fin=oscuro?'white':'black';
+  const tinta=`color-mix(in oklab, ${b} ${pct}%, ${fin})`;
+  const t=resolver(tinta), s=resolver(soft);
+  const cB=cr(fg,b), cC=cr(t,s), cT=cr(t,sup), cA=cr(nuevo?t:b,sup);
+  const ok=(v,m)=>`<span class="${v>=m?'bien':'mal'}">${v.toFixed(1).replace('.',',')}</span>`;
+  return `<div class="cel" style="--b:${b};--fg:${fg};--soft:${soft};--tinta:${tinta};--anillo:${nuevo?tinta:b}">
+    <button class="btn">Aprobar</button><span class="chip">Etiqueta</span><span class="txt">Texto</span><span class="foco" title="anillo de foco"></span>
+    <span class="r">botón ${ok(cB,4.5)} · etiqueta ${ok(cC,4.5)} · texto ${ok(cT,4.5)} · foco ${ok(cA,3)}</span></div>`;
+}
+const g=document.getElementById('g');
+for(const [n,h0,h1,f0,f1,pc] of C){
+  g.insertAdjacentHTML('beforeend',`<div class="fila"><div class="nom"><i style="--b:${h0}"></i><div>${n}<small>${h0}${h1!==h0?' → '+h1:''}</small></div></div>${celda(h0,f0,82,false)}${celda(h1,f1,pc,true)}</div>`);
+}
+</script></body></html>

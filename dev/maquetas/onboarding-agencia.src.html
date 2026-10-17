@@ -119,9 +119,13 @@ h1 { font-size: clamp(30px, 2.2rem + 1vw, 42px); line-height: 1.1; font-weight: 
 .subir .ico img { width: 100%; height: 100%; object-fit: contain; background: #fff; }
 .subir b { display: block; font-size: 15px; font-weight: 650; }
 .subir span { font-size: 13px; color: var(--ink-3); }
-.colores { display: flex; gap: 10px; padding: 18px 0 0; }
+.colores { display: grid; grid-template-columns: repeat(6, 30px); gap: 8px 10px; padding: 0; }
 .colores input { position: absolute; opacity: 0; pointer-events: none; }
-.colores label { width: 28px; height: 28px; border-radius: 50%; background: var(--c); cursor: pointer; display: block; box-shadow: inset 0 0 0 1px var(--rule); transition: transform 200ms var(--ease), box-shadow 200ms ease; }
+.colores label { width: 30px; height: 30px; border-radius: 50%; background: var(--c); cursor: pointer; display: block; box-shadow: inset 0 0 0 1px var(--rule); transition: transform 200ms var(--ease), box-shadow 200ms ease; }
+.colores label { position: relative; }
+.colores label::after { content: ""; position: absolute; inset: 0; background: var(--cf, #fff); opacity: 0; transform: scale(.6); transition: opacity 200ms ease, transform 260ms var(--ease);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 10.5l3.5 3.5 6.5-7.5'/%3E%3C/svg%3E") center / 15px no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 10.5l3.5 3.5 6.5-7.5'/%3E%3C/svg%3E") center / 15px no-repeat; }
+.colores input:checked + label::after { opacity: 1; transform: none; }
 .colores label:hover { transform: scale(1.12); }
 .colores input:checked + label { box-shadow: inset 0 0 0 1px var(--rule), 0 0 0 3px var(--paper), 0 0 0 5px var(--c); }
 .colores input:focus-visible + label { outline: 2px solid var(--signal); outline-offset: 6px; }
@@ -130,11 +134,11 @@ h1 { font-size: clamp(30px, 2.2rem + 1vw, 42px); line-height: 1.1; font-weight: 
 .vista { margin-top: 28px; border: 1px solid var(--rule); border-radius: 14px; background: var(--surface); padding: 16px 18px; display: grid; gap: 14px; }
 .vista .tit { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
 .vista .fila { display: flex; align-items: center; gap: 12px; }
-.chapa { width: 40px; height: 40px; border-radius: 10px; background: var(--acento); color: #fff; font-weight: 800; display: grid; place-items: center; overflow: hidden; flex: none; transition: background 320ms ease; }
+.chapa { width: 40px; height: 40px; border-radius: 10px; background: var(--acento); color: var(--acento-fg, #fff); font-weight: 800; display: grid; place-items: center; overflow: hidden; flex: none; transition: background 320ms ease; }
 .chapa img { width: 100%; height: 100%; object-fit: contain; background: #fff; }
 .vista .nombre { font-weight: 750; font-size: 17px; letter-spacing: -.01em; }
 .vista .lin { height: 8px; border-radius: 4px; background: var(--rule-soft); }
-.vista .btnv { margin-left: auto; height: 32px; padding: 0 14px; border-radius: 8px; background: var(--acento); color: #fff; font-size: 13px; font-weight: 700; display: grid; place-items: center; transition: background 320ms ease; }
+.vista .btnv { margin-left: auto; height: 32px; padding: 0 14px; border-radius: 8px; background: var(--acento); color: var(--acento-fg, #fff); font-size: 13px; font-weight: 700; display: grid; place-items: center; transition: background 320ms ease; }
 
 /* Plantillas */
 .plantillas { display: grid; gap: 10px; margin-bottom: 8px; }
@@ -212,7 +216,7 @@ body.limpio .maqueta { display: none; }
   .guardado { display: none; }
   .dos { grid-template-columns: 1fr; gap: 0; }
   .marca { grid-template-columns: 1fr; gap: 14px; }
-  .colores { padding-top: 6px; }
+  .colores { grid-template-columns: repeat(6, 1fr); max-width: 320px; }
   .pie .centro { display: none; }
   .sig { padding: 0 22px; }
   main { align-items: start; }
@@ -325,7 +329,8 @@ body.limpio .maqueta { display: none; }
 <script>
 (function () {
   var NOMBRES = ['Tu agencia', 'Tu cliente', 'Su proyecto', 'Tu equipo', 'Listo'];
-  var COLORES = [['#E8552D', 'Naranjo Prisma'], ['#2F5BEA', 'Azul'], ['#118A6B', 'Verde'], ['#8A4FD6', 'Violeta'], ['#D63A7C', 'Rosa'], ['#2B2F3A', 'Grafito']];
+  var COLORES = [['#E8552D', 'Naranjo Prisma'], ['#2F5BEA', 'Azul'], ['#038567', 'Verde'], ['#8A4FD6', 'Violeta'], ['#D4387B', 'Rosa'], ['#2B2F3A', 'Grafito'],
+    ['#FFC107', 'Ámbar'], ['#2196F3', 'Azul claro'], ['#5D7A88', 'Gris azulado'], ['#795548', 'Café'], ['#00BCD4', 'Turquesa'], ['#FF5722', 'Naranja intenso']];
   var PLANTILLAS = [
     ['branding', 'Branding', 'Brief · Propuesta · Diseño · Entrega'],
     ['web', 'Sitio web', 'Brief · Diseño · Desarrollo · Lanzamiento'],
@@ -346,6 +351,11 @@ body.limpio .maqueta { display: none; }
   if (q.get('paso')) estado.paso = Math.min(5, Math.max(1, +q.get('paso')));
   estado.max = Math.max(estado.max, estado.paso);
 
+  // Texto sobre el color de marca: el de mayor contraste (blanco o casi negro). La misma regla irá al plugin.
+  function lin(c) { c /= 255; return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); }
+  function lum(h) { var n = parseInt(h.slice(1), 16); return 0.2126 * lin(n >> 16 & 255) + 0.7152 * lin(n >> 8 & 255) + 0.0722 * lin(n & 255); }
+  function contraste(a, b) { var x = lum(a), y = lum(b); if (x < y) { var t = x; x = y; y = t; } return (x + 0.05) / (y + 0.05); }
+  function textoSobre(h) { return contraste('#ffffff', h) >= contraste('#12131a', h) ? '#ffffff' : '#12131a'; }
   // --- construir guía de pasos, colores y plantillas
   var ol = $('#pasos');
   NOMBRES.forEach(function (n, i) {
@@ -356,7 +366,7 @@ body.limpio .maqueta { display: none; }
   ol.addEventListener('click', function (e) { var b = e.target.closest('button[data-ir]'); if (b && !b.disabled) ir(+b.dataset.ir); });
   var cont = $('#colores');
   COLORES.forEach(function (c, i) {
-    cont.insertAdjacentHTML('beforeend', '<span><input type="radio" name="color" id="c' + i + '" value="' + c[0] + '"><label for="c' + i + '" style="--c:' + c[0] + '" title="' + c[1] + '"><span class="sr" style="position:absolute;width:1px;height:1px;overflow:hidden">' + c[1] + '</span></label></span>');
+    cont.insertAdjacentHTML('beforeend', '<span><input type="radio" name="color" id="c' + i + '" value="' + c[0] + '"><label for="c' + i + '" style="--c:' + c[0] + ';--cf:' + textoSobre(c[0]) + '" title="' + c[1] + '"><span class="sr" style="position:absolute;width:1px;height:1px;overflow:hidden">' + c[1] + '</span></label></span>');
   });
   var pl = $('#plantillas');
   PLANTILLAS.forEach(function (p) {
@@ -367,6 +377,7 @@ body.limpio .maqueta { display: none; }
   document.querySelectorAll('[data-k]').forEach(function (el) { el.value = estado[el.dataset.k] || ''; });
   function pintarColor() {
     document.documentElement.style.setProperty('--acento', estado.color);
+    document.documentElement.style.setProperty('--acento-fg', textoSobre(estado.color));
     document.querySelectorAll('#colores input').forEach(function (i) { i.checked = i.value === estado.color; });
   }
   function pintarPlantilla() { document.querySelectorAll('#plantillas input').forEach(function (i) { i.checked = i.value === estado.plantilla; }); }
