@@ -316,3 +316,23 @@ Hallazgos que cambian el plan (revisado en `github.com/typedock/core`):
 ## 11. Estado de la herramienta `prisma` (beta 0.10)
 
 Ya existe (`prisma/`, ver `prisma/README.md`): `crear`, `secreto`, `version agregar`, `actualizar`, `estado`, con `--simular`. Probada de punta a punta con un TypeDock real sobre SQLite (`tests/prisma.php`). **Pendiente:** probar con MySQL en Hostinger, `respaldar`, `pausar/eliminar`, correo de bienvenida, heartbeat y tablero de tickets.
+
+---
+
+## 12. Decisión: la agencia beta vive en el panel de equipo, no en el admin de TypeDock
+
+**Idea (Richard):** el usuario beta no entra nunca al back de TypeDock. Entra directo al **panel de equipo** (`/equipo`) como **Coordinación general**, pasa por un **onboarding de varias pantallas** y termina con su agencia configurada, un primer cliente, un primer proyecto y él como coordinador. El usuario `admin` + clave queda **solo como respaldo** para soporte.
+
+**Por qué calza:** el panel de equipo ya trae todo lo que una agencia necesita: clientes, proyectos, línea de tiempo, plantillas, actividad y `/equipo/agencia` (ajustes de la agencia: marca, correo, IA, horario), con rol `coordinador` = administra todo. El admin de TypeDock suma cosas que una agencia no debe tocar (plugins, temas, actualizaciones del núcleo, usuarios del sistema).
+
+**Cambios que implica:**
+1. **Primer ingreso por código al correo** (el login del equipo ya funciona así): sin contraseñas ni enlaces que enviar. Requiere que el correo de Prisma funcione.
+2. **Primer coordinador automático:** `prisma crear` deja en `config.php` el correo del dueño de la agencia; el plugin crea al coordinador la primera vez que se entra a `/equipo/entrar` (una sola vez).
+3. **El `admin` de TypeDock queda a nombre de soporte** (no del cliente); la clave temporal la ve solo quien administra la beta.
+4. **Asistente de arranque** en `/equipo`: Tu agencia → (correo e IA) → Tu primer cliente → Su primer proyecto → Listo. Al final, el coordinador queda como responsable del cliente y del proyecto.
+5. **Tarjeta «Primeros pasos»** en el inicio, con avance calculado de los datos reales.
+6. **Respaldo si falla el correo:** `prisma acceso <slug>` entrega un código de ingreso de emergencia.
+
+**Transparencia con la agencia:** en los términos de la beta se avisa que soporte puede entrar a la instancia para ayudar.
+
+**Pendiente de aprobar (diseño visible):** maqueta de las pantallas del asistente y de «Primeros pasos» antes de construir.
