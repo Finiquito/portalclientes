@@ -1,0 +1,57 @@
+{* Tapas generadas en el navegador: página 1 de un PDF (con el visor pdf.js del portal) y un cuadro de un video.
+   Expone window.PortalTapas: pdf(fuente), video(fuente, segundo), conBlob(canvas). *}
+<script n:syntax="off">
+(function () {
+  'use strict';
+  var PDFJS = '/plugins/portal/assets/pdf/pdf.min.js', pdfjs = null;
+  function cargarPdfjs() {
+    if (pdfjs) { return pdfjs; }
+    pdfjs = import(PDFJS).then(function (m) { m.GlobalWorkerOptions.workerSrc = PDFJS.replace('pdf.min.js', 'pdf.worker.min.js'); return m; });
+    return pdfjs;
+  }
+  function aBlob(canvas) {
+    return new Promise(function (ok) { canvas.toBlob(function (b) { ok(b); }, 'image/jpeg', 0.84); });
+  }
+  // fuente: File o URL (mismo origen, con la sesión).
+  function pdf(fuente, ancho) {
+    return cargarPdfjs().then(function (lib) {
+      var cargar = fuente instanceof Blob
+        ? fuente.arrayBuffer().then(function (buf) { return lib.getDocument({ data: buf }).promise; })
+        : lib.getDocument({ url: fuente, withCredentials: true }).promise;
+      return cargar.then(function (doc) {
+        return doc.getPage(1).then(function (p) {
+          var v1 = p.getViewport({ scale: 1 }), esc = (ancho || 520) / v1.width, v = p.getViewport({ scale: esc });
+          var c = document.createElement('canvas'); c.width = Math.round(v.width); c.height = Math.round(v.height);
+          var ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+          return p.render({ canvasContext: ctx, viewport: v }).promise.then(function () {
+            return aBlob(c).then(function (b) { return { canvas: c, blob: b, paginas: doc.numPages }; });
+          });
+        });
+      });
+    });
+  }
+  // Un cuadro del video en el segundo pedido (por defecto, 1 s o un tercio si es más corto).
+  function video(fuente, segundo) {
+    return new Promise(function (ok, mal) {
+      var v = document.createElement('video'), url = fuente instanceof Blob ? URL.createObjectURL(fuente) : fuente;
+      v.muted = true; v.playsInline = true; v.preload = 'auto'; v.crossOrigin = 'use-credentials'; v.src = url;
+      var listo = false;
+      v.addEventListener('loadedmetadata', function () {
+        var t = typeof segundo === 'number' ? segundo : Math.min(1, (v.duration || 3) / 3);
+        v.currentTime = Math.max(0, Math.min(t, (v.duration || t) - 0.05));
+      });
+      v.addEventListener('seeked', function () {
+        if (listo) { return; } listo = true;
+        var max = 720, esc = Math.min(1, max / Math.max(v.videoWidth, v.videoHeight || 1));
+        var c = document.createElement('canvas'); c.width = Math.round(v.videoWidth * esc) || 1; c.height = Math.round(v.videoHeight * esc) || 1;
+        c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
+        var dur = v.duration;
+        aBlob(c).then(function (b) { if (fuente instanceof Blob) { URL.revokeObjectURL(url); } ok({ canvas: c, blob: b, duracion: dur }); });
+      });
+      v.addEventListener('error', function () { mal(new Error('video')); });
+      setTimeout(function () { if (!listo) { mal(new Error('tiempo')); } }, 15000);
+    });
+  }
+  window.PortalTapas = { pdf: pdf, video: video };
+})();
+</script>
