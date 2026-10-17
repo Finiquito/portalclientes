@@ -190,6 +190,11 @@ class PortalPlugin implements PluginInterface
         // original, no el reescrito, así que el router de Core nunca las
         // vería si dependiéramos de .htaccess.
         $publico = new PortalPublicController($ctx);
+        // En las agencias beta la raíz del sitio es la puerta del portal (el núcleo trae una portada vacía de blog).
+        // Los plugins cargan antes que las rutas del núcleo, así que esta gana. Sin PORTAL_RAIZ no se toca nada.
+        if (Compartido::entorno('PORTAL_RAIZ') === 'login') {
+            \Flight::route('GET /', [$publico, 'raiz']);
+        }
         \Flight::route('GET /login',                          [$publico, 'loginForm']);
         \Flight::route('POST /login',                         [$publico, 'requestCode']);
         \Flight::route('GET /verificar',                      [$publico, 'verifyForm']);
@@ -297,7 +302,7 @@ class PortalPlugin implements PluginInterface
 
     public function getVersion(): string
     {
-        return '0.10.0-beta';
+        return '0.10.1-beta';
     }
 
     public function provides(): array

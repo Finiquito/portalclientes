@@ -74,6 +74,10 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### beta 0.10.1 (0.10.1-beta): la raíz del sitio es la puerta del portal
+- Con `PORTAL_RAIZ=login` en `config.php` (lo deja `prisma crear`; en agencias ya creadas, `prisma config <slug> PORTAL_RAIZ=login`), entrar a `https://agencia.usaprisma.com/` lleva al ingreso de clientes, o a su portal si ya tienen la sesión abierta. Antes se veía la portada vacía de blog del núcleo.
+- Sin esa variable no cambia nada.
+
 ### beta 0.10 (0.10.0-beta): base para las betas (código compartido, correo de Prisma y prueba de IA)
 - **Cada agencia con su carpeta de archivos.** Si el plugin se instala una sola vez y se enlaza en varias agencias (`releases/`), ya no adivina dónde guardar los archivos de los clientes y la clave de cifrado: exige `PORTAL_UPLOAD_DIR` en cada instancia. En una instalación normal no cambia nada.
 - **Correo de Prisma.** Si la agencia no configuró su propio SMTP, los avisos salen por el correo de la beta (`correo.json` en `PORTAL_SECRETOS_DIR`, fuera del web-root y del repo) como «Nombre de la agencia vía Prisma», con las respuestas al correo de la agencia. Si pone su SMTP, sale por el suyo. Tope diario por agencia: lo que sobra queda en cola para el día siguiente sin gastar intentos.

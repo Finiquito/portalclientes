@@ -159,6 +159,7 @@ final class Crear
             'APP_TIMEZONE' => (string) ($o['zona'] ?? 'America/Santiago'),
             'SELF_UPDATE_ENABLED' => 'false',
             'PLUGIN_PORTAL' => 'true',
+            'PORTAL_RAIZ' => 'login',
             'PORTAL_UPLOAD_DIR' => $typedock . '/storage/portal_uploads',
             'PORTAL_SECRETOS_DIR' => $this->casa->carpetaCompartida(),
         ] + $db['config'];

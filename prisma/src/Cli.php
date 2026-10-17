@@ -12,6 +12,7 @@ prisma — administra las agencias beta de Prisma
   prisma secreto <slug>                          crea la plantilla secretos/instancias/<slug>.json (permisos 600)
   prisma crear <slug> --host=… --docroot=… --correo=… [--nombre=…] [--canal=estable|canary]
                                                  [--simular] [--sin-http] [--reemplazar-docroot] [--zona=America/Santiago]
+  prisma config <slug> CLAVE=valor [CLAVE=valor…] cambia valores del config.php de una agencia (ej.: PORTAL_RAIZ=login)
   prisma clave <slug> [--correo=…]               genera una clave temporal nueva (se muestra una vez)
   prisma version agregar <zip>                   deja una versión del plugin en releases/
   prisma actualizar --canal=… --a=<release>      mueve el canal a esa versión (volver atrás = apuntar a la anterior)
@@ -43,6 +44,8 @@ TXT;
                     'url' => $op['url'] ?? null, 'simular' => isset($op['simular']), 'sin_http' => isset($op['sin-http']),
                     'reemplazar' => isset($op['reemplazar-docroot']),
                 ]);
+            case 'config':
+                return self::config($casa, array_slice($pos, 1), $dec);
             case 'clave':
                 return self::clave($casa, $pos[1] ?? '', $op, $dec);
             case 'secreto':
@@ -77,6 +80,34 @@ TXT;
             }
         }
         return [$pos, $op];
+    }
+
+    /** @param list<string> $args slug y pares CLAVE=valor */
+    private static function config(Casa $casa, array $args, \Closure $dec): int
+    {
+        $slug = array_shift($args) ?? '';
+        $i = $casa->instancias()[$slug] ?? null;
+        if ($i === null || $args === []) {
+            $dec('✗ Uso: prisma config <slug> CLAVE=valor [CLAVE=valor…]   (la instancia debe existir)');
+            return 2;
+        }
+        $set = [];
+        foreach ($args as $a) {
+            $kv = explode('=', $a, 2);
+            if (count($kv) !== 2) {
+                $dec("✗ «{$a}» no es CLAVE=valor");
+                return 2;
+            }
+            $set[$kv[0]] = $kv[1];
+        }
+        try {
+            $r = Proc::instancia('config', ['root' => $i['typedock'], 'public' => $i['docroot'], 'set' => $set]);
+        } catch (\Throwable $e) {
+            $dec('✗ ' . $e->getMessage());
+            return 1;
+        }
+        $dec('✓ config.php de «' . $slug . '» actualizado: ' . implode(', ', $r['cambiadas']));
+        return 0;
     }
 
     /** @param array<string, string|true> $op */

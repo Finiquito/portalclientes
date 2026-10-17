@@ -118,6 +118,7 @@ check(str_contains(file_get_contents("$tmp/pub1/index.php"), $td) && str_contain
 $cfg = is_file("$td/config.php") ? file_get_contents("$td/config.php") : '';
 check(is_file("$td/config.php") && (fileperms("$td/config.php") & 0077) === 0, 'config.php con permisos 0600');
 check(str_contains($cfg, "'PORTAL_UPLOAD_DIR' => '$td/storage/portal_uploads'") && str_contains($cfg, "'PORTAL_SECRETOS_DIR' => '$home/secretos/compartido'") && str_contains($cfg, "'PLUGIN_PORTAL' => 'true'"), 'config.php lleva su carpeta de archivos, los secretos compartidos y el plugin activo');
+check(str_contains($cfg, "'PORTAL_RAIZ' => 'login'"), 'config.php reserva la raíz para el portal');
 check(str_contains($cfg, "'SELF_UPDATE_ENABLED' => 'false'") && str_contains($cfg, "'MAIL_FROM_ADDRESS' => 'notificaciones@usaprisma.com'") && str_contains($cfg, 'Estudio Uno vía Prisma'), 'el núcleo no se auto-actualiza y manda como «vía Prisma»');
 check(is_link("$td/plugins/portal") && basename((string) readlink("$td/plugins/portal")) === 'canary' && is_file("$td/plugins/portal/plugin.json"), 'el plugin es un enlace al canal');
 check(is_dir("$tmp/pub1/plugins/portal/assets"), 'los assets del plugin quedaron publicados en el sitio');
@@ -150,6 +151,15 @@ $http = function (string $ruta) use ($puerto): array {
 };
 [$cod] = $http('/admin/login');
 check($cod === 200, "el admin de la agencia abre (HTTP $cod)");
+$sinSeguir = stream_context_create(['http' => ['timeout' => 20, 'ignore_errors' => true, 'follow_location' => 0]]);
+@file_get_contents("http://127.0.0.1:$puerto/", false, $sinSeguir);
+$loc = '';
+foreach ((array) ($http_response_header ?? []) as $h) {
+    if (stripos($h, 'Location:') === 0) {
+        $loc = trim(substr($h, 9));
+    }
+}
+check(preg_match('#HTTP/\S+ 30[1237]#', $http_response_header[0] ?? '') === 1 && str_ends_with($loc, '/login'), 'la raíz del sitio redirige al ingreso de clientes (/login)');
 [$cod, $body] = $http('/portal');
 check($cod > 0 && $cod < 500, "el portal responde (HTTP $cod)");
 $pdo2 = new PDO('sqlite:' . $tmp . '/db/agencia1.sqlite');
@@ -175,6 +185,14 @@ $reg = json_decode(file_get_contents("$home/instancias.json"), true)['instancias
 check($c === 0 && $reg['version'] === $ver1, 'volver atrás es apuntar a la versión anterior');
 [$c, $o] = prisma($home, ['estado']);
 check($c === 0 && str_contains($o, 'agencia1') && str_contains($o, 'canary'), 'estado lista las instancias');
+
+// --- prisma config ---
+[$c, $o] = prisma($home, ['config', 'agencia1', 'PORTAL_RAIZ=nada', 'FOO_BAR=1']);
+$cfg2 = file_get_contents("$td/config.php");
+check($c === 0 && str_contains($cfg2, "'PORTAL_RAIZ' => 'nada'") && str_contains($cfg2, "'FOO_BAR' => '1'") && str_contains($cfg2, "'PORTAL_UPLOAD_DIR' => '$td/storage/portal_uploads'") && (fileperms("$td/config.php") & 0077) === 0, 'prisma config cambia valores sin perder el resto y mantiene permisos 0600');
+[$c, $o] = prisma($home, ['config', 'agencia1', 'mala=1']);
+check($c === 1 && str_contains($o, 'inválido'), 'prisma config rechaza nombres raros');
+[$c, $o] = prisma($home, ['config', 'agencia1', 'PORTAL_RAIZ=login']);
 
 // --- fallo a medias: se deshace ---
 mkdir("$tmp/pub3", 0755, true);

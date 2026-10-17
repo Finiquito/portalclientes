@@ -38,6 +38,13 @@ prisma actualizar --canal=canary --a=portal-0.10.0-beta --sin-http
 
 Si algo falla a medias, deshace lo copiado (la base de datos hay que vaciarla a mano).
 
+## Cambiar un valor del config.php de una agencia
+
+```bash
+prisma config prueba1 PORTAL_RAIZ=login      # la raíz del sitio lleva al ingreso de clientes
+```
+Conserva el resto de los valores y los permisos 0600. Las agencias nuevas ya nacen con `PORTAL_RAIZ=login`.
+
 ## Si alguien no puede entrar
 
 ```bash

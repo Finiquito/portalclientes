@@ -393,6 +393,15 @@ class PortalPublicController
         return ['nombre' => $nombre, 'logo' => $this->marca()->urlLogoCliente($clienteId, '') ?: null, 'iniciales' => (new Fmt())->iniciales($nombre)];
     }
 
+    /**
+     * Raíz del sitio (/) cuando la instalación la reserva para el portal (PORTAL_RAIZ=login, lo deja prisma crear):
+     * quien ya entró va a su portal; el resto, al ingreso de clientes. No hay otra portada.
+     */
+    public function raiz(): void
+    {
+        $this->redirectTo($this->currentContacto() !== null ? 'portal' : 'login');
+    }
+
     public function loginForm(): void
     {
         $email = trim((string) ($_GET['email'] ?? ''));

@@ -2824,6 +2824,29 @@ check(str_contains($html, 'Hola, equipo') && str_contains($html, 'ing-logo') && 
 $_SESSION[P\EquipoController::SESION] = $sesEq;
 
 // ---------------------------------------------------------------------------
+seccion('Beta: la raíz del sitio es la puerta del portal');
+$raizDest = null;
+$pubRaiz = new class($ctx) extends P\PortalPublicController {
+    public ?string $dest = null;
+    protected function redirectTo(string $path, array $query = []): void
+    {
+        $this->dest = $this->publicUrl($path, $query);
+    }
+};
+$sesionPrev = $_SESSION[P\PortalSession::CONTACTO] ?? null;
+unset($_SESSION[P\PortalSession::CONTACTO]);
+$pubRaiz->raiz();
+check($pubRaiz->dest === '/login', 'sin sesión, / lleva al ingreso de clientes');
+$_SESSION[P\PortalSession::CONTACTO] = $jefa;
+$pubRaiz->raiz();
+check($pubRaiz->dest === '/portal', 'con la sesión abierta, / lleva al portal');
+if ($sesionPrev !== null) {
+    $_SESSION[P\PortalSession::CONTACTO] = $sesionPrev;
+} else {
+    unset($_SESSION[P\PortalSession::CONTACTO]);
+}
+
+// ---------------------------------------------------------------------------
 seccion('Beta: carpeta propia por agencia, correo de Prisma y prueba de IA');
 // Código compartido (enlace simbólico a releases/): no se adivina la carpeta de archivos.
 $lanzo = false;

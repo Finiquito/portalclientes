@@ -8,6 +8,7 @@ declare(strict_types=1);
  *
  *   php instancia.php instalar   {root, public, config: {...}, admin: {email, name}}
  *   php instancia.php assets     {root, public}
+ *   php instancia.php config     {root, public, set: {CLAVE: valor}}  (cambia valores de config.php)
  *   php instancia.php clave      {root, public, email}               (clave temporal nueva para un usuario)
  */
 
@@ -47,6 +48,21 @@ try {
         typedock_load_config(TYPEDOCK_ROOT);
         $n = count((new TypeDock\Core\AssetPublisher(TYPEDOCK_ROOT, TYPEDOCK_PUBLIC_DIR))->publishAll());
         responder(['ok' => true, 'publicados' => $n]);
+    }
+
+    if ($accion === 'config') {
+        $actual = is_file(TYPEDOCK_ROOT . '/config.php') ? require TYPEDOCK_ROOT . '/config.php' : null;
+        if (!is_array($actual)) {
+            throw new RuntimeException('No encuentro config.php en esta instancia.');
+        }
+        $set = (array) ($in['set'] ?? []);
+        foreach ($set as $k => $v) {
+            if (preg_match('/^[A-Z][A-Z0-9_]{1,63}$/', (string) $k) !== 1) {
+                throw new RuntimeException('Nombre de variable inválido: ' . $k);
+            }
+        }
+        (new TypeDock\Install\Installer(TYPEDOCK_ROOT))->writeConfig(array_map('strval', array_merge($actual, $set)));
+        responder(['ok' => true, 'cambiadas' => array_keys($set)]);
     }
 
     if ($accion === 'clave') {
