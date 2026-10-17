@@ -51,8 +51,8 @@ cd ~/prisma
 unzip -q prisma-herramienta.zip -d herramienta
 echo 'alias prisma="php ~/prisma/herramienta/prisma/bin/prisma"' >> ~/.bashrc && source ~/.bashrc
 
-mkdir -p distribucion && unzip -q typedock-shared.zip -d distribucion/typedock-shared
-ls distribucion/typedock-shared          # debe mostrar: public_html  typedock
+mkdir -p distribucion && unzip -q typedock-shared.zip -d distribucion
+ls distribucion/typedock-shared          # debe mostrar: public_html  typedock   (el zip ya trae la carpeta typedock-shared/)
 
 prisma version agregar ~/prisma/portal-plugin-v0.10.0-beta.zip
 prisma actualizar --canal=canary --a=portal-0.10.0-beta --sin-http

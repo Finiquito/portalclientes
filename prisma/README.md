@@ -11,7 +11,7 @@ unzip prisma-herramienta.zip -d herramienta
 echo 'alias prisma="php ~/prisma/herramienta/prisma/bin/prisma"' >> ~/.bashrc && source ~/.bashrc
 
 # la distribución limpia de TypeDock (typedock-shared.zip), descomprimida así:
-mkdir -p distribucion && unzip typedock-shared.zip -d distribucion/typedock-shared
+mkdir -p distribucion && unzip typedock-shared.zip -d distribucion   # el zip ya trae la carpeta typedock-shared/
 #   → distribucion/typedock-shared/typedock/   y   distribucion/typedock-shared/public_html/
 
 # el SMTP y la clave de IA de la beta, que ven todas las agencias (permisos 600, a mano, nunca en el chat):
