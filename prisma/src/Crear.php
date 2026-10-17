@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace Prisma;
 
-/** `prisma crear <slug>`: levanta una agencia nueva, de la distribución limpia de TypeDock al enlace de primer ingreso. */
+/** `prisma crear <slug>`: levanta una agencia nueva, de la distribución limpia de TypeDock a la clave temporal del usuario 0. */
 final class Crear
 {
     private const PLACEHOLDERS = ['index.html', 'default.php', '.htaccess', 'cgi-bin', '.well-known'];
@@ -54,7 +54,7 @@ final class Crear
             $this->d('4/6 Instalando (migraciones, usuario 0, assets)…');
             $r = Proc::instancia('instalar', [
                 'root' => $plan['typedock'], 'public' => $plan['docroot'],
-                'config' => $plan['config'], 'admin' => ['email' => $o['correo'], 'name' => $o['nombre']], 'dias_enlace' => 7,
+                'config' => $plan['config'], 'admin' => ['email' => $o['correo'], 'name' => $o['nombre']],
             ]);
 
             $this->d('5/6 Registrando la instancia…');
@@ -78,8 +78,9 @@ final class Crear
         $this->d('');
         $this->d("✓ «{$slug}» creada.");
         $this->d("  Sitio:  {$plan['url']}/portal   ·   Admin: {$plan['url']}/admin/login");
-        $this->d("  Enlace de primer ingreso (vence en {$r['vence_dias']} días; se manda al usuario 0, no se guarda):");
-        $this->d('  ' . $r['enlace']);
+        $this->d("  Usuario 0: {$o['correo']}");
+        $this->d('  Clave temporal (se muestra UNA vez; no la pegues en chats; la persona la cambia al entrar):');
+        $this->d('  ' . $r['clave']);
         foreach ($avisos as $a) {
             $this->d(($a === '(omitida)' || str_starts_with($a, 'Prueba de humo') ? '  ✓ ' : '  ! ') . $a);
         }
@@ -274,7 +275,8 @@ final class Crear
                     $codigo = (int) $m[1];
                 }
             }
-            if ($r === false || $codigo === 0 || $codigo >= 500) {
+            $malo = $r === false || $codigo === 0 || $codigo >= 500 || ($ruta !== '/' && $codigo >= 400);
+            if ($malo) {
                 $avisos[] = "No pude abrir {$que} ({$url}{$ruta}" . ($codigo ? ", HTTP {$codigo}" : '') . '). Si el DNS o el SSL del subdominio recién se crearon, espera unos minutos y reintenta.';
             }
         }

@@ -34,17 +34,17 @@ prisma actualizar --canal=canary --a=portal-0.10.0-beta --sin-http
    prisma crear prueba1 --host=prueba1.usaprisma.com --docroot=$HOME/domains/usaprisma.com/public_html/prueba1 \
            --correo=jefa@agencia.cl --nombre="Estudio Uno" --canal=canary --simular
    ```
-4. Quita `--simular`. Al terminar entrega el **enlace de primer ingreso** (vale 7 días): mándaselo al usuario 0.
+4. Quita `--simular`. Al terminar entrega una **clave temporal** (se muestra una sola vez): se la das al usuario 0, que la cambia al entrar en *Usuarios → su usuario → Contraseña*.
 
 Si algo falla a medias, deshace lo copiado (la base de datos hay que vaciarla a mano).
 
 ## Si alguien no puede entrar
 
 ```bash
-prisma enlace prueba1          # enlace nuevo para el usuario 0 (invalida el anterior)
-prisma enlace prueba1 --correo=otra@persona.cl --dias=3
+prisma clave prueba1                       # clave temporal nueva para el usuario 0 (cierra sus sesiones)
+prisma clave prueba1 --correo=otra@persona.cl
 ```
-El enlace sirve para definir contraseña; ábrelo tú y no lo pegues en chats.
+Se muestra una sola vez en pantalla; no la pegues en chats.
 
 ## Actualizar
 

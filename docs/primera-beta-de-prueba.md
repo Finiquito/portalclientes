@@ -94,7 +94,7 @@ prisma crear prueba1 --host=prueba1.usaprisma.com \
 # 2) de verdad (mismo comando sin --simular)
 ```
 
-Al final entrega un **enlace de primer ingreso** (vale 7 días). Ábrelo, define tu clave y entra a `https://prueba1.usaprisma.com/admin`. Si algo falla a medias, deshace lo copiado; solo hay que **vaciar la base de datos** antes de reintentar.
+Al final entrega una **clave temporal** (se muestra una sola vez; no la pegues en el chat). Entra a `https://prueba1.usaprisma.com/admin/login` con tu correo y esa clave, y cámbiala en *Usuarios → tu usuario → Contraseña*. Si la pierdes: `prisma clave prueba1`. Si algo falla a medias, deshace lo copiado; solo hay que **vaciar la base de datos** antes de reintentar.
 
 ## 6. Lista de pruebas
 
@@ -102,8 +102,8 @@ Marca cada una. Si una falla, pégame el mensaje.
 
 **Instalación**
 - [ ] `prisma crear` termina sin errores y la prueba de humo dice que inicio, portal y admin responden.
-- [ ] Entras con el enlace de primer ingreso y `/admin/portal/...` abre.
-- [ ] El enlace de primer ingreso **no sirve una segunda vez** después de usarlo.
+- [ ] Entras con la clave temporal, la cambias, y `/admin/portal/...` abre.
+- [ ] `prisma clave prueba1` genera otra y la anterior deja de servir.
 
 **Aislamiento** (lo que prometes en la landing)
 - [ ] Sube un archivo a un cliente de prueba. Luego en SSH:

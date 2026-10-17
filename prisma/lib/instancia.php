@@ -6,10 +6,21 @@ declare(strict_types=1);
  * Recibe un JSON por stdin (nunca por argumentos: así las claves no aparecen en `ps`) y
  * responde con una última línea JSON {"ok": true, ...} o {"ok": false, "error": "..."}.
  *
- *   php instancia.php instalar   {root, public, config: {...}, admin: {email, name}, dias_enlace}
+ *   php instancia.php instalar   {root, public, config: {...}, admin: {email, name}}
  *   php instancia.php assets     {root, public}
- *   php instancia.php enlace     {root, public, email, dias_enlace}   (enlace nuevo de primer ingreso)
+ *   php instancia.php clave      {root, public, email}               (clave temporal nueva para un usuario)
  */
+
+/** Clave temporal legible (sin 0/O, 1/l/I). */
+function clave_temporal(int $largo = 20): string
+{
+    $a = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    $c = '';
+    for ($i = 0; $i < $largo; $i++) {
+        $c .= $a[random_int(0, strlen($a) - 1)];
+    }
+    return $c;
+}
 
 function responder(array $d, int $code = 0): never
 {
@@ -38,7 +49,7 @@ try {
         responder(['ok' => true, 'publicados' => $n]);
     }
 
-    if ($accion === 'enlace') {
+    if ($accion === 'clave') {
         typedock_load_config(TYPEDOCK_ROOT);
         $db = require TYPEDOCK_ROOT . '/config/database.php';
         $pdo = TypeDock\Core\Database\ConnectionFactory::create($db, TYPEDOCK_ROOT);
@@ -48,15 +59,12 @@ try {
         if ($userId === false) {
             throw new RuntimeException('No hay un usuario con ese correo en esta instancia.');
         }
-        $dias = max(1, min(30, (int) ($in['dias_enlace'] ?? 7)));
-        $token = bin2hex(random_bytes(32));
-        $pdo->prepare('DELETE FROM password_resets WHERE user_id = ?')->execute([$userId]);
-        $pdo->prepare('INSERT INTO password_resets (id, user_id, token_hash, expires_at, created_at) VALUES (?, ?, ?, ?, ?)')->execute([
-            typedock_uuid7(), $userId, hash('sha256', $token),
-            (new DateTimeImmutable('+' . $dias . ' days'))->format('Y-m-d H:i:s'),
-            (new DateTimeImmutable())->format('Y-m-d H:i:s'),
+        $clave = clave_temporal();
+        $pdo->prepare('UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?')->execute([
+            password_hash($clave, PASSWORD_BCRYPT), (new DateTimeImmutable())->format('Y-m-d H:i:s'), $userId,
         ]);
-        responder(['ok' => true, 'enlace' => rtrim((string) ($_ENV['APP_URL'] ?? ''), '/') . '/admin/password-reset?token=' . $token, 'vence_dias' => $dias]);
+        $pdo->prepare('DELETE FROM sessions WHERE user_id = ?')->execute([$userId]);   // cierra sesiones abiertas
+        responder(['ok' => true, 'clave' => $clave, 'login' => rtrim((string) ($_ENV['APP_URL'] ?? ''), '/') . '/admin/login']);
     }
 
     if ($accion === 'instalar') {
@@ -75,27 +83,17 @@ try {
         }
 
         $db = require TYPEDOCK_ROOT . '/config/database.php';
-        // Clave aleatoria que nadie ve: la persona entra con el enlace de «restablecer contraseña».
-        $userId = $installer->createAdmin($db, (string) ($admin['email'] ?? ''), (string) ($admin['name'] ?? ''), rtrim(strtr(base64_encode(random_bytes(30)), '+/', '-_'), '='));
+        // Clave temporal: se muestra una sola vez y la persona la cambia al entrar (Usuarios → su usuario → Contraseña).
+        $clave = clave_temporal();
+        $userId = $installer->createAdmin($db, (string) ($admin['email'] ?? ''), (string) ($admin['name'] ?? ''), $clave);
         $installer->seedSiteOptions($db, ['name' => (string) ($_ENV['APP_NAME'] ?? 'TypeDock')]);
         $installer->activateTheme($db, 'default');
         $installer->lock(defined('TYPEDOCK_VERSION') ? TYPEDOCK_VERSION : 'desconocida');
         (new TypeDock\Core\AssetPublisher(TYPEDOCK_ROOT, TYPEDOCK_PUBLIC_DIR))->publishAll();
 
-        // Enlace de primer ingreso: el servicio del núcleo dura 1 hora; para un correo de bienvenida
-        // damos más días. Se guarda sólo el hash.
-        $dias = max(1, (int) ($in['dias_enlace'] ?? 7));
-        $token = bin2hex(random_bytes(32));
-        $pdo = TypeDock\Core\Database\ConnectionFactory::create($db, TYPEDOCK_ROOT);
-        $pdo->prepare('INSERT INTO password_resets (id, user_id, token_hash, expires_at, created_at) VALUES (?, ?, ?, ?, ?)')->execute([
-            typedock_uuid7(), $userId, hash('sha256', $token),
-            (new DateTimeImmutable('+' . $dias . ' days'))->format('Y-m-d H:i:s'),
-            (new DateTimeImmutable())->format('Y-m-d H:i:s'),
-        ]);
         responder([
             'ok' => true, 'user_id' => $userId, 'nucleo' => defined('TYPEDOCK_VERSION') ? TYPEDOCK_VERSION : '',
-            'enlace' => rtrim((string) ($_ENV['APP_URL'] ?? ''), '/') . '/admin/password-reset?token=' . $token,
-            'vence_dias' => $dias,
+            'clave' => $clave, 'login' => rtrim((string) ($_ENV['APP_URL'] ?? ''), '/') . '/admin/login',
         ]);
     }
 

@@ -140,7 +140,7 @@ Si el hub cae, el botón guarda el reporte en una cola local y reintenta (el plu
 | 5. Escribir `.env`/config con la BD, URL, claves | **Script** | genera claves nuevas **por instancia** (AES, token de heartbeat) |
 | 6. Importar el esquema (volcado limpio) y correr migraciones | **Script** | |
 | 7. Enlazar `plugins/portal → current` y activar el plugin | **Script** | |
-| 8. Crear el **usuario 0** (admin de esa agencia) con un enlace de primer ingreso | **Script** | |
+| 8. Crear el **usuario 0** (admin de esa agencia) con una clave temporal | **Script** | |
 | 9. Registrar la instancia en `instancias.json` / hub | **Script** | |
 | 10. Prueba de humo (abre `/portal` y `/equipo`, espera 200) | **Script** | |
 | 11. Mandarle el correo de bienvenida con el enlace | **Script**, tú lo revisas | |
@@ -158,7 +158,7 @@ El núcleo trae una API de instalación sin pantalla (ver §10), así que ya no 
 
 ### 3.3 Usuario 0 y primer recorrido (esto sí va en el plugin)
 
-**Enlace de primer ingreso:** token de un solo uso, guardado como hash, vence en 7 días. El usuario 0 define su clave y entra. No se manda ninguna contraseña por correo.
+**Primer ingreso (actual):** clave temporal aleatoria, mostrada una vez por `prisma crear`, que el usuario 0 cambia al entrar. **Meta:** enlace de un solo uso por correo, cuando el núcleo de TypeDock conecte el restablecimiento de contraseña (hoy no lo hace).
 
 **Asistente de arranque** (primera vez que entra, saltable, retomable):
 1. **Tu agencia:** nombre, logo, color (usa la personalización que ya existe).
@@ -199,7 +199,7 @@ El núcleo trae una API de instalación sin pantalla (ver §10), así que ya no 
 | 1 | Sacar el storage/clave del `__DIR__` (§1.2) + prueba | Sin esto el enlace compartido filtra datos entre agencias | Chico |
 | 2 | Imagen dorada + `prisma crear` a mano en una beta de prueba | Valida todo el flujo con un caso real | Mediano |
 | 3 | Botón de ayuda → correo + issue (tickets MVP) | Ya sirve desde la primera beta | Chico |
-| 4 | Asistente de arranque + «Primeros pasos» + enlace de primer ingreso | Lo que ve la agencia el día 1 | Mediano |
+| 4 | Asistente de arranque + «Primeros pasos» + primer ingreso | Lo que ve la agencia el día 1 | Mediano |
 | 5 | `release.sh`, manifest, canal canary/estable, `prisma actualizar` | Cuando haya 3+ betas | Mediano |
 | 6 | Heartbeat + registro en el hub | Para ver la flota | Chico |
 | 7 | Tablero de tickets, votos, página de novedades | Cuando haya volumen | Mediano |
@@ -309,7 +309,7 @@ Hallazgos que cambian el plan (revisado en `github.com/typedock/core`):
 | **Assets del plugin** | `AssetPublisher` **copia** los assets a `public_html/plugins/<slug>/assets` | Tras cambiar el enlace de versión hay que correr `php cli/assets-publish.php` en cada instancia |
 | **Actualizar el núcleo** | Desde el admin (Sistema → Actualización) con firma minisign, respaldo y rollback; o `php cli/upgrade.php` | Para controlar versiones en la beta: `SELF_UPDATE_ENABLED=false` en `config.php` y actualizar tú, instancia por instancia |
 | **Migraciones** | `php cli/migrate.php` | El script de actualización lo corre después de cambiar el enlace |
-| **Contraseña del usuario 0** | Existe `PasswordResetService` | Se crea con una clave aleatoria que nadie ve y se le manda el enlace de «restablecer», en vez de un enlace nuevo propio |
+| **Contraseña del usuario 0** | `PasswordResetService` existe pero **no está conectado a ninguna página** en rc7 (el enlace `/admin/password-reset` da 404) | Se crea con una clave temporal aleatoria que `prisma` muestra una vez; la persona la cambia en *Usuarios → su usuario*. `prisma clave` la regenera. Cuando el núcleo traiga el restablecimiento, se pasa a enlace |
 
 **Efecto en `prisma crear`:** copiar la distribución limpia de TypeDock → `config.php` → instalar por la API → copiar/enlazar el plugin y el tema → publicar assets → crear al usuario 0 → correo de bienvenida. Lo único manual sigue siendo el subdominio, la BD y el SSL en hPanel.
 

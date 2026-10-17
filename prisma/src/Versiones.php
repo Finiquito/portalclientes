@@ -151,6 +151,6 @@ final class Versiones
                 $codigo = (int) $m[1];
             }
         }
-        return $r !== false && $codigo > 0 && $codigo < 500;
+        return $r !== false && $codigo > 0 && $codigo < 400;
     }
 }

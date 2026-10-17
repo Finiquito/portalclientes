@@ -12,7 +12,7 @@ prisma — administra las agencias beta de Prisma
   prisma secreto <slug>                          crea la plantilla secretos/instancias/<slug>.json (permisos 600)
   prisma crear <slug> --host=… --docroot=… --correo=… [--nombre=…] [--canal=estable|canary]
                                                  [--simular] [--sin-http] [--reemplazar-docroot] [--zona=America/Santiago]
-  prisma enlace <slug> [--correo=…] [--dias=7]   genera un enlace nuevo de primer ingreso / restablecer contraseña
+  prisma clave <slug> [--correo=…]               genera una clave temporal nueva (se muestra una vez)
   prisma version agregar <zip>                   deja una versión del plugin en releases/
   prisma actualizar --canal=… --a=<release>      mueve el canal a esa versión (volver atrás = apuntar a la anterior)
                                                  [--simular] [--sin-http]
@@ -43,8 +43,8 @@ TXT;
                     'url' => $op['url'] ?? null, 'simular' => isset($op['simular']), 'sin_http' => isset($op['sin-http']),
                     'reemplazar' => isset($op['reemplazar-docroot']),
                 ]);
-            case 'enlace':
-                return self::enlace($casa, $pos[1] ?? '', $op, $dec);
+            case 'clave':
+                return self::clave($casa, $pos[1] ?? '', $op, $dec);
             case 'secreto':
                 return self::secreto($casa, $pos[1] ?? '', $dec);
             case 'version':
@@ -80,7 +80,7 @@ TXT;
     }
 
     /** @param array<string, string|true> $op */
-    private static function enlace(Casa $casa, string $slug, array $op, \Closure $dec): int
+    private static function clave(Casa $casa, string $slug, array $op, \Closure $dec): int
     {
         $i = $casa->instancias()[$slug] ?? null;
         if ($i === null) {
@@ -89,14 +89,14 @@ TXT;
         }
         $correo = is_string($op['correo'] ?? null) ? $op['correo'] : (string) ($i['correo'] ?? '');
         try {
-            $r = Proc::instancia('enlace', ['root' => $i['typedock'], 'public' => $i['docroot'], 'email' => $correo, 'dias_enlace' => (int) ($op['dias'] ?? 7)]);
+            $r = Proc::instancia('clave', ['root' => $i['typedock'], 'public' => $i['docroot'], 'email' => $correo]);
         } catch (\Throwable $e) {
             $dec('✗ ' . $e->getMessage());
             return 1;
         }
-        $dec("Enlace nuevo para {$correo} (vence en {$r['vence_dias']} días; el anterior dejó de servir):");
-        $dec($r['enlace']);
-        $dec('Ábrelo tú mismo en el navegador; no lo compartas por chat.');
+        $dec("Clave temporal nueva para {$correo} (las sesiones abiertas se cerraron; la anterior ya no sirve):");
+        $dec($r['clave']);
+        $dec("Entra en {$r['login']} y cámbiala en Usuarios → tu usuario → Contraseña. No la pegues en chats.");
         return 0;
     }
 
