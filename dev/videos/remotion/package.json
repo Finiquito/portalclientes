@@ -1,0 +1,18 @@
+{
+  "name": "prisma-videos-remotion",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Edición con movimiento (Remotion) de los videos de recorrido de Prisma. Ver README.md.",
+  "scripts": {
+    "estudio": "remotion studio src/index.ts",
+    "render": "node render.js"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.536",
+    "@types/react": "19.3.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "remotion": "4.0.536",
+    "typescript": "7.0.2"
+  }
+}

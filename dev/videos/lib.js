@@ -9,6 +9,9 @@ const FONT = 'data:font/woff2;base64,' + fs.readFileSync(RAIZ + '/theme/prisma/a
 const LOGO = fs.readFileSync(__dirname + '/logo.svg.txt', 'utf8');
 const PIEZAS = fs.readFileSync(__dirname + '/piezas.svg.txt', 'utf8');
 const OVERLAY = fs.readFileSync(__dirname + '/overlay.js', 'utf8');
+// Modo crudo (VIDEO_CRUDO=<carpeta>): graba la pantalla limpia, sin tarjetas ni globos, y deja un
+// eventos-<n>.json con los tiempos (textos, cursor, clics, cambios de página) para editarla en dev/videos/remotion.
+const CRUDO = process.env.VIDEO_CRUDO || '';
 const esperar = ms => new Promise(r => setTimeout(r, ms));
 // Tiempo de lectura: ~210 palabras por minuto más un respiro.
 const lectura = html => { const n = html.replace(/<[^>]+>/g, ' ').trim().split(/\s+/).length; return Math.max(1700, 800 + n * 250); };
@@ -44,7 +47,18 @@ async function video({nombre, quien = 'equipo', email = 'camila@estudiopampa.cl'
   await ctx.addInitScript({content: `window.__DM_FONT=${JSON.stringify(FONT)};\n` + OVERLAY});
   const p = await ctx.newPage();
   p.on('pageerror', e => console.log('ERR', e.message));
-  const dm = (fn, ...a) => p.evaluate(([fn, a]) => window.__dm[fn](...a), [fn, a]);
+  const ev = [];
+  const marca = o => { if (CRUDO) ev.push({t: Date.now() / 1000, ...o}); };
+  const dm = (fn, ...a) => {
+    if (CRUDO) {
+      if (fn === 'globo') { marca({tipo: 'globo', html: a[0], lado: a[1] || ''}); return Promise.resolve(); }
+      if (fn === 'sinGlobo') { marca({tipo: 'globoFin'}); return Promise.resolve(); }
+      if (fn === 'mover') marca({tipo: 'ir', x: a[0], y: a[1], ms: a[2]});
+      if (fn === 'clic') marca({tipo: 'clic'});
+    }
+    return p.evaluate(([fn, a]) => window.__dm[fn](...a), [fn, a]);
+  };
+  p.on('framenavigated', f => { if (f === p.mainFrame()) marca({tipo: 'nav', url: new URL(f.url()).pathname}); });
   const dir = path.join(__dirname, 'cuadros'); fs.rmSync(dir, {recursive: true, force: true}); fs.mkdirSync(dir);
   const cdp = await ctx.newCDPSession(p); const cuadros = []; let n = 0;
   cdp.on('Page.screencastFrame', async f => { const nom = 'c' + String(n++).padStart(5, '0') + '.jpg'; fs.writeFileSync(path.join(dir, nom), Buffer.from(f.data, 'base64')); cuadros.push([nom, f.metadata.timestamp]); try { await cdp.send('Page.screencastFrameAck', {sessionId: f.sessionId}); } catch (e) {} });
@@ -63,14 +77,19 @@ async function video({nombre, quien = 'equipo', email = 'camila@estudiopampa.cl'
   };
 
   await p.goto(B + inicio); await p.waitForLoadState('networkidle');
-  await dm('cursor', false);
-  await dm('tarjeta', portadaHtml(portada), false, portada.titulo.replace(/<[^>]+>/g, '').length > 62); await esperar(650);
-  await cdp.send('Page.startScreencast', {format: 'jpeg', quality: 92, maxWidth: 1080, maxHeight: 1350, everyNthFrame: 1});
-  await esperar(Math.max(3000, 700 + (portada.titulo + ' ' + (portada.bajada || '')).replace(/<[^>]+>/g, ' ').trim().split(/\s+/).length * 210));
-  await dm('quitarTarjetas'); await esperar(500); await dm('cursor', true); await esperar(250);
+  if (CRUDO) {
+    await cdp.send('Page.startScreencast', {format: 'jpeg', quality: 92, maxWidth: 1080, maxHeight: 1350, everyNthFrame: 1});
+    await dm('cursor', true); await esperar(500);
+  } else {
+    await dm('cursor', false);
+    await dm('tarjeta', portadaHtml(portada), false, portada.titulo.replace(/<[^>]+>/g, '').length > 62); await esperar(650);
+    await cdp.send('Page.startScreencast', {format: 'jpeg', quality: 92, maxWidth: 1080, maxHeight: 1350, everyNthFrame: 1});
+    await esperar(Math.max(3000, 700 + (portada.titulo + ' ' + (portada.bajada || '')).replace(/<[^>]+>/g, ' ').trim().split(/\s+/).length * 210));
+    await dm('quitarTarjetas'); await esperar(500); await dm('cursor', true); await esperar(250);
+  }
   await guion(h);
   await dm('sinGlobo'); await dm('cursor', false);
-  await dm('tarjeta', cierreHtml(cierre), false, false, 'cierre'); await esperar(4600);
+  if (CRUDO) { await esperar(700); } else { await dm('tarjeta', cierreHtml(cierre), false, false, 'cierre'); await esperar(4600); }
   const tFin = Date.now() / 1000; await cdp.send('Page.stopScreencast'); await esperar(300);
   await ctx.close(); await b.close();
 
@@ -79,7 +98,12 @@ async function video({nombre, quien = 'equipo', email = 'camila@estudiopampa.cl'
   txt += `file '${dir}/${cuadros[cuadros.length - 1][0]}'\n`;
   const lista = path.join(__dirname, 'lista.txt'); fs.writeFileSync(lista, txt);
   fs.mkdirSync(SALIDA, {recursive: true});
-  const out = path.join(SALIDA, `prisma-${nombre}-1080x1350.mp4`);
+  const out = CRUDO ? path.join(CRUDO, `crudo-${nombre.split('-')[0]}.mp4`) : path.join(SALIDA, `prisma-${nombre}-1080x1350.mp4`);
+  if (CRUDO) {
+    fs.mkdirSync(CRUDO, {recursive: true});
+    const t0 = cuadros[0][1];
+    fs.writeFileSync(path.join(CRUDO, `eventos-${nombre.split('-')[0]}.json`), JSON.stringify({duracion: +(fin - t0).toFixed(3), ancho: W, alto: H, eventos: ev.map(e => ({...e, t: +(e.t - t0).toFixed(3)}))}, null, 1));
+  }
   execFileSync(ffmpeg(), ['-y', '-loglevel', 'error', '-f', 'concat', '-safe', '0', '-i', lista, '-vf', 'scale=1080:1350:flags=lanczos,fps=30', '-c:v', 'libx264', '-preset', 'slow', '-crf', '18', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', out]);
   const hoja = process.env.VIDEO_HOJAS ? path.join(process.env.VIDEO_HOJAS, `hoja-${nombre}.png`) : null;
   if (hoja) { execFileSync(ffmpeg(), ['-y', '-loglevel', 'error', '-i', out, '-vf', 'fps=1/2.5,scale=270:-1,tile=6x4', '-frames:v', '1', hoja]); }

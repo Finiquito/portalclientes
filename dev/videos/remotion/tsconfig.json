@@ -1,0 +1,7 @@
+{
+  "compilerOptions": {
+    "target": "ES2022", "module": "ESNext", "moduleResolution": "bundler", "jsx": "react-jsx",
+    "strict": false, "skipLibCheck": true, "resolveJsonModule": true, "noEmit": true, "esModuleInterop": true
+  },
+  "include": ["src"]
+}

@@ -1,0 +1,284 @@
+{
+ "duracion": 56.365,
+ "ancho": 864,
+ "alto": 1080,
+ "eventos": [
+  {
+   "t": -0.804,
+   "tipo": "nav",
+   "url": "/portal"
+  },
+  {
+   "t": 0.49,
+   "tipo": "ir",
+   "x": 309.59999999999997,
+   "y": 131.096875,
+   "ms": 900
+  },
+  {
+   "t": 1.453,
+   "tipo": "globo",
+   "html": "Josefa entra con su correo y un código.<small>Sin contraseñas que olvidar.</small>",
+   "lado": ""
+  },
+  {
+   "t": 5.254,
+   "tipo": "globoFin"
+  },
+  {
+   "t": 5.524,
+   "tipo": "ir",
+   "x": 384,
+   "y": 1042.4,
+   "ms": 900
+  },
+  {
+   "t": 6.485,
+   "tipo": "clic"
+  },
+  {
+   "t": 6.777,
+   "tipo": "nav",
+   "url": "/portal/entregas"
+  },
+  {
+   "t": 7.302,
+   "tipo": "clic"
+  },
+  {
+   "t": 7.571,
+   "tipo": "nav",
+   "url": "/portal/entregas/01a14d8a-3199-766a-bc6f-5dd8d49dd882"
+  },
+  {
+   "t": 8.411,
+   "tipo": "ir",
+   "x": 156,
+   "y": 594.015625,
+   "ms": 900
+  },
+  {
+   "t": 9.372,
+   "tipo": "globo",
+   "html": "La grilla le llega tal como se verá en Instagram.",
+   "lado": ""
+  },
+  {
+   "t": 12.672,
+   "tipo": "globoFin"
+  },
+  {
+   "t": 12.944,
+   "tipo": "ir",
+   "x": 156,
+   "y": 664.015625,
+   "ms": 600
+  },
+  {
+   "t": 13.606,
+   "tipo": "clic"
+  },
+  {
+   "t": 13.868,
+   "tipo": "nav",
+   "url": "/portal/contenidos/01a14d8a-31fb-72d3-a2c6-946ff127d765"
+  },
+  {
+   "t": 14.508,
+   "tipo": "ir",
+   "x": 640,
+   "y": 477.5041198730469,
+   "ms": 900
+  },
+  {
+   "t": 15.479,
+   "tipo": "clic"
+  },
+  {
+   "t": 16.599,
+   "tipo": "globo",
+   "html": "Pasa las láminas como en el celular.",
+   "lado": ""
+  },
+  {
+   "t": 17.098,
+   "tipo": "clic"
+  },
+  {
+   "t": 18.843,
+   "tipo": "globoFin"
+  },
+  {
+   "t": 19.584,
+   "tipo": "ir",
+   "x": 174,
+   "y": 453.390625,
+   "ms": 900
+  },
+  {
+   "t": 20.545,
+   "tipo": "clic"
+  },
+  {
+   "t": 20.804,
+   "tipo": "nav",
+   "url": "/portal/contenidos/01a14d8a-31fb-72d3-a2c6-946ff127d765"
+  },
+  {
+   "t": 21.933,
+   "tipo": "ir",
+   "x": 432,
+   "y": 482.265625,
+   "ms": 800
+  },
+  {
+   "t": 22.796,
+   "tipo": "globo",
+   "html": "Le encanta. Lo aprueba con un toque.",
+   "lado": "arriba"
+  },
+  {
+   "t": 25.346,
+   "tipo": "globoFin"
+  },
+  {
+   "t": 25.607,
+   "tipo": "clic"
+  },
+  {
+   "t": 25.864,
+   "tipo": "nav",
+   "url": "/portal/contenidos/01a14d8a-326c-76d4-8db9-232375416588"
+  },
+  {
+   "t": 26.689,
+   "tipo": "ir",
+   "x": 196.3515625,
+   "y": 845.328125,
+   "ms": 900
+  },
+  {
+   "t": 27.651,
+   "tipo": "globo",
+   "html": "¿Algo no la convence?<small>Marca el punto exacto en la imagen.</small>",
+   "lado": ""
+  },
+  {
+   "t": 31.202,
+   "tipo": "globoFin"
+  },
+  {
+   "t": 31.462,
+   "tipo": "clic"
+  },
+  {
+   "t": 32.003,
+   "tipo": "ir",
+   "x": 432,
+   "y": 562.9296875,
+   "ms": 900
+  },
+  {
+   "t": 32.964,
+   "tipo": "clic"
+  },
+  {
+   "t": 34.221,
+   "tipo": "ir",
+   "x": 462,
+   "y": 543.9296875,
+   "ms": 300
+  },
+  {
+   "t": 34.583,
+   "tipo": "globo",
+   "html": "Punto marcado.",
+   "lado": ""
+  },
+  {
+   "t": 35.883,
+   "tipo": "globoFin"
+  },
+  {
+   "t": 36.156,
+   "tipo": "ir",
+   "x": 432,
+   "y": 1378.84375,
+   "ms": 800
+  },
+  {
+   "t": 37.017,
+   "tipo": "clic"
+  },
+  {
+   "t": 37.66,
+   "tipo": "ir",
+   "x": 211.20000000000002,
+   "y": 630.5,
+   "ms": 600
+  },
+  {
+   "t": 40.649,
+   "tipo": "ir",
+   "x": 245.5,
+   "y": 713.5,
+   "ms": 700
+  },
+  {
+   "t": 41.411,
+   "tipo": "globo",
+   "html": "Y pide el cambio ahí mismo, con el punto marcado.",
+   "lado": "arriba"
+  },
+  {
+   "t": 44.711,
+   "tipo": "globoFin"
+  },
+  {
+   "t": 44.972,
+   "tipo": "clic"
+  },
+  {
+   "t": 45.244,
+   "tipo": "nav",
+   "url": "/portal/contenidos/01a14d8a-3290-7456-bf12-c6f4fff09243"
+  },
+  {
+   "t": 46.784,
+   "tipo": "ir",
+   "x": 432,
+   "y": 661.84375,
+   "ms": 900
+  },
+  {
+   "t": 47.745,
+   "tipo": "clic"
+  },
+  {
+   "t": 48.032,
+   "tipo": "nav",
+   "url": "/portal/entregas/01a14d8a-3199-766a-bc6f-5dd8d49dd882"
+  },
+  {
+   "t": 48.879,
+   "tipo": "ir",
+   "x": 432,
+   "y": 704.015625,
+   "ms": 1000
+  },
+  {
+   "t": 49.941,
+   "tipo": "globo",
+   "html": "Y a mí me llega todo junto, en un solo aviso:<small>qué aprobó, qué cambia y dónde.</small>",
+   "lado": ""
+  },
+  {
+   "t": 55.392,
+   "tipo": "globoFin"
+  },
+  {
+   "t": 55.651,
+   "tipo": "globoFin"
+  }
+ ]
+}

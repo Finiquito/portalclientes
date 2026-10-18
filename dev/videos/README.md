@@ -12,3 +12,8 @@ y cierre «Beta gratis · Cupos limitados». La IA es simulada (sólo dev): no h
 - `lib.js`: motor (tarjetas, cursor, globos, tiempos de lectura, captura a 1,25× y MP4).
 - `overlay.js`: la capa visual. `arte/`: piezas de ejemplo (se regeneran con `node arte.js` y `node logo.js`).
 - Guiones: `v1-cliente`, `v2-grilla`, `v3-imagenes`, `v4-reunion`, `v5-pedir-archivos`, `v6-mensajes`, `v7-mi-dia`.
+
+## Edición con movimiento (video 1)
+
+El video 1 tiene una versión editada con gancho de post-its, textos que se descubren, cámara con zoom, transiciones de cajas y sonido:
+ver `remotion/README.md`. Para grabar la pantalla limpia que usa esa edición: `VIDEO_CRUDO=<carpeta> node dev/videos/v1-cliente.js`.

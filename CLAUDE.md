@@ -29,7 +29,8 @@
   - videos pares: «Es simple y fácil de implementar. Si me funciona a mí, te puede funcionar a ti.»
   - y en todos, el botón «Prueba la beta gratis → usaprisma.com» con «Cupos limitados».
 - Cómo grabar: ver `dev/videos/README.md` (datos con `preparar.sh`, servidor en el puerto 8082 con `PORTAL_IA_DEMO=1`, IA simulada). `node dev/videos/laminas.js <carpeta>` deja la vista previa de portadas y cierres para que él las apruebe antes de grabar.
-- **Narración del video 1:** guion por bloques con tiempos en `dev/videos/narracion-v1.md`. Él genera un MP3 por bloque en ElevenLabs (`01.mp3` … `10.mp3`). Después hay que montar cada clip en su segundo sobre el video con ffmpeg (`pip install imageio-ffmpeg`).
+- **Edición con movimiento (Remotion):** `dev/videos/remotion/` (video 1: gancho de post-its, textos que se descubren, transiciones de cajas, sonido). Se graba la pantalla limpia con `VIDEO_CRUDO=<carpeta>` y se edita ahí; ver su `README.md`. Para esto se instaló la skill `remotion-motion-graphics` (github.com/haidrrrry/claude-remotion-skill) en `~/.claude/skills/`.
+- **Narración del video 1:** guion por bloques con tiempos en `dev/videos/narracion-v1.md`. Él genera un MP3 por bloque en ElevenLabs (`01.mp3` … `10.mp3`). Después se montan los clips sobre el video editado con `dev/videos/remotion/montar-narracion.sh`; los tiempos de la versión editada están en la misma tabla.
 
 ## Marketing (ya hecho)
 - Post de LinkedIn en primera persona (freelancer, caos de WhatsApp y correo, beta gratis a cambio de comentarios), imágenes para el post y para la story.
