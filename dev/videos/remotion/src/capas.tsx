@@ -17,7 +17,18 @@ export const Fondo: React.FC = () => {
   );
 };
 
-const RUIDO = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E")`;
+// Fondo suave de las ventanas: degradado de color claro con grano visible (para que no se vea plano).
+export const FondoMarco: React.FC<{opacity?: number}> = ({opacity = 1}) => {
+  const f = useCurrentFrame();
+  return (
+    <AbsoluteFill style={{opacity, background: `linear-gradient(155deg, ${T.c.marcoA}, ${T.c.marcoB} 60%, #efe3ee)`}}>
+      <div style={{position: 'absolute', width: 900, height: 900, borderRadius: '50%', top: -380, right: -280, background: `radial-gradient(circle, ${T.c.sky2}77, transparent 64%)`, filter: 'blur(40px)', transform: `translateY(${Math.sin(f / 80) * 24}px)`}} />
+      <AbsoluteFill style={{backgroundImage: RUIDO, backgroundSize: '220px', backgroundPosition: `${(f * 5) % 220}px ${(f * 9) % 220}px`, opacity: 0.17, mixBlendMode: 'multiply'}} />
+    </AbsoluteFill>
+  );
+};
+
+export const RUIDO = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E")`;
 // Capas finales: grano de película (muy leve, para no ensuciar la interfaz) y viñeta.
 export const GranoViñeta: React.FC = () => {
   const f = useCurrentFrame();

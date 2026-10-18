@@ -1,109 +1,85 @@
 import React from 'react';
-import {AbsoluteFill, Freeze, OffthreadVideo, Sequence, interpolate, spring, staticFile, useCurrentFrame, useVideoConfig} from 'remotion';
+import {AbsoluteFill, Freeze, OffthreadVideo, Sequence, staticFile, useCurrentFrame} from 'remotion';
 import {T} from './theme';
-import {clamp} from './capas';
-import {TRAMOS, TRANS, ZOOMS, Trans, seg, FPS} from './data';
+import {FondoMarco} from './capas';
+import {Ventana, geom} from './Ventana';
+import {TRAMOS, TRANS, ZOOMV, seg, FPS} from './data';
 
-const cl01 = (x: number) => Math.max(0, Math.min(1, x));
-type Est = {transform: string; borderRadius: number; filter?: string; opacity: number; sombra: number};
+const e = (u: number) => T.ease.inOut(Math.max(0, Math.min(1, u)));
 
-// Cómo ENTRA la pantalla nueva (s = resorte 0→1, con un pequeño rebote).
-export const entra = (tipo: Trans['tipo'], s: number): Est => {
-  const r = 1 - s;
-  const m = (tx: number, ty: number, ry: number, rz: number, sk: number, sc: number, sy = 1) =>
-    `perspective(1800px) translate(${tx}px, ${ty}px) rotateY(${ry}deg) rotateZ(${rz}deg) skewX(${sk}deg) scale(${sc}) scaleY(${sy})`;
-  switch (tipo) {
-    case 'izq': return {transform: m(r * 1180, 0, r * -14, r * 5, r * -8, 0.88 + 0.12 * s), borderRadius: r * 70, filter: `blur(${cl01(r) * 10}px)`, opacity: 1, sombra: cl01(r * 4)};
-    case 'der': return {transform: m(r * -1180, 0, r * 14, r * -5, r * 8, 0.88 + 0.12 * s), borderRadius: r * 70, filter: `blur(${cl01(r) * 10}px)`, opacity: 1, sombra: cl01(r * 4)};
-    case 'empuje': return {transform: m(0, r * 1450, 0, 0, 0, 0.92 + 0.08 * s, 1 + r * 0.08), borderRadius: r * 80, filter: `blur(${cl01(r) * 8}px)`, opacity: 1, sombra: cl01(r * 4)};
-    case 'abre': return {transform: m(0, 0, 0, 0, 0, 0.5 + 0.5 * s), borderRadius: r * 170, filter: `blur(${cl01(r) * 6}px)`, opacity: Math.min(1, s * 3), sombra: cl01(r * 4)};
-    case 'partir': return {transform: m(0, 0, 0, 0, 0, 0.9 + 0.1 * s), borderRadius: 0, filter: undefined, opacity: 1, sombra: 0};
+// ----- El video grabado (en vivo, con sus cambios de velocidad) y un cuadro congelado -----
+export const Vivo: React.FC = () => (
+  <>
+    {TRAMOS.map((t, i) => {
+      const a = seg(t.out[0]), b = seg(t.out[1]);
+      const rate = t.congelar ? 1 : (t.raw[1] - t.raw[0]) / (t.out[1] - t.out[0]);
+      const v = <OffthreadVideo src={staticFile('crudo-1.mp4')} startFrom={Math.round(t.raw[0] * FPS)} playbackRate={rate} muted style={{width: T.W, height: T.H}} />;
+      return <Sequence key={i} from={a} durationInFrames={b - a + (i < TRAMOS.length - 1 ? 0 : 400)}>{t.congelar ? <Freeze frame={0}>{v}</Freeze> : v}</Sequence>;
+    })}
+  </>
+);
+const Congelado: React.FC<{raw: number; desde: number}> = ({raw, desde}) => (
+  <Sequence from={desde} durationInFrames={120}><Freeze frame={0}><OffthreadVideo src={staticFile('crudo-1.mp4')} startFrom={Math.round(raw * FPS)} muted style={{width: T.W, height: T.H}} /></Freeze></Sequence>
+);
+
+type Capa = {tipo: 'vivo' | 'cong'; m: number; tx?: number; ty?: number; sc?: number; op?: number; z?: number; fx?: number; fy?: number; bg?: number};
+
+// Zoom dentro de la ventana: la pantalla se achica en el marco, se acerca al cursor y vuelve.
+const zoomEstado = (f: number) => {
+  for (const zv of ZOOMV) {
+    const l = f - zv.f, a = 14, b = a + 16, c = b + zv.sostiene, d = c + 16, g = d + 14;
+    if (l < 0 || l > g) continue;
+    const m = l < a ? e(l / a) : l < d ? 1 : 1 - e((l - d) / 14);
+    const z = l < a ? 1 : l < b ? 1 + (zv.z - 1) * e((l - a) / 16) : l < c ? zv.z : l < d ? zv.z - (zv.z - 1) * e((l - c) / 16) : 1;
+    return {m, z, fx: zv.fx, fy: zv.fy};
   }
-};
-// Cómo SALE la pantalla vieja (q = 0→1).
-export const sale = (tipo: Trans['tipo'], q: number): Est => {
-  const m = (tx: number, ty: number, ry: number, rz: number, sk: number, sc: number) =>
-    `perspective(1800px) translate(${tx}px, ${ty}px) rotateY(${ry}deg) rotateZ(${rz}deg) skewX(${sk}deg) scale(${sc})`;
-  switch (tipo) {
-    case 'izq': return {transform: m(-q * 1180, 0, q * 14, -q * 6, q * 8, 1 - q * 0.14), borderRadius: q * 70, filter: `blur(${q * 10}px)`, opacity: 1, sombra: cl01(q * 4)};
-    case 'der': return {transform: m(q * 1180, 0, -q * 14, q * 6, -q * 8, 1 - q * 0.14), borderRadius: q * 70, filter: `blur(${q * 10}px)`, opacity: 1, sombra: cl01(q * 4)};
-    case 'empuje': return {transform: m(0, -q * 1450, 0, 0, 0, 1 - q * 0.08), borderRadius: q * 80, filter: `blur(${q * 8}px)`, opacity: 1, sombra: cl01(q * 4)};
-    case 'abre': return {transform: m(0, 0, 0, 0, 0, 1 + q * 0.35), borderRadius: 0, filter: `blur(${q * 10}px)`, opacity: 1 - q, sombra: 0};
-    default: return {transform: 'none', borderRadius: 0, opacity: 1, sombra: 0};
-  }
-};
-const caja = (e: Est): React.CSSProperties => ({
-  position: 'absolute', inset: 0, overflow: 'hidden', transform: e.transform, borderRadius: e.borderRadius, filter: e.filter, opacity: e.opacity,
-  boxShadow: `0 40px 110px rgba(20,28,64,${0.4 * e.sombra})`, willChange: 'transform',
-});
-
-const Video: React.FC<{raw: number; rate?: number; congelar?: boolean}> = ({raw, rate = 1, congelar}) => {
-  const v = <OffthreadVideo src={staticFile('crudo-1.mp4')} startFrom={Math.round(raw * FPS)} playbackRate={rate} muted style={{width: T.W, height: T.H}} />;
-  return <div style={{position: 'absolute', inset: 0, background: T.c.paper}}>{congelar ? <Freeze frame={0}>{v}</Freeze> : v}</div>;
+  return null;
 };
 
-// Zoom de cámara hacia el cursor: entra justo antes del clic, se sostiene y vuelve.
-const zoomEn = (f: number, bloqueado: boolean) => {
-  let mejor = {z: 1, fx: 0.5, fy: 0.5};
-  if (bloqueado) return mejor;
-  for (const z of ZOOMS) {
-    const l = f - (z.f - 12);
-    if (l < 0 || l > 12 + 34 + 18) continue;
-    const env = l < 12 ? T.ease.out(l / 12) : l < 46 ? 1 : 1 - T.ease.inOut((l - 46) / 18);
-    const zz = 1 + (z.z - 1) * env;
-    if (zz > mejor.z) mejor = {z: zz, fx: z.fx, fy: z.fy};
+// Qué capas se ven en el cuadro f (cada transición es distinta; las hay sin movimiento).
+export const capasEn = (f: number): Capa[] => {
+  const tr = TRANS.find(t => f >= seg(t.out) && f < seg(t.out) + t.D);
+  if (tr) {
+    const u = (f - seg(tr.out)) / tr.D;
+    if (tr.tipo === 'zoom') {            // se achica en el marco; adentro cambia la pantalla; el marco crece
+      const m = u < 0.4 ? e(u / 0.4) : u < 0.58 ? 1 : 1 - e((u - 0.58) / 0.42);
+      const k = e((u - 0.42) / 0.14);
+      return [{tipo: 'cong', m, op: 1 - k}, {tipo: 'vivo', m, op: k}];
+    }
+    if (tr.tipo === 'encima') {          // la nueva se sobrepone a la vieja
+      const k = e(u);
+      return [{tipo: 'cong', m: 0, sc: 1 - 0.015 * k}, {tipo: 'vivo', m: 0.3 * (1 - k), ty: (1 - k) * 110, op: Math.min(1, k * 4.5), bg: 0}];
+    }
+    if (tr.tipo === 'empuje') {          // una ventana empuja a la otra
+      const mA = u < 0.28 ? e(u / 0.28) : 1;
+      const v = e((u - 0.28) / 0.46);
+      const mB = u < 0.74 ? 1 : 1 - e((u - 0.74) / 0.26);
+      return [{tipo: 'cong', m: mA, tx: -v * 1180}, {tipo: 'vivo', m: mB, tx: (1 - v) * 1180 * (mB === 1 ? 1 : 0), bg: mB}];
+    }
+    return [{tipo: 'cong', m: 0, op: 1 - u}, {tipo: 'vivo', m: 0, op: u}];   // corte: sin movimiento
   }
-  return mejor;
+  const z = zoomEstado(f);
+  if (z) return [{tipo: 'vivo', m: z.m, z: z.z, fx: z.fx, fy: z.fy}];
+  return [{tipo: 'vivo', m: 0}];
 };
 
 export const Pantallas: React.FC<{desde: number; hasta: number}> = ({desde, hasta}) => {
   const f = useCurrentFrame();
-  const {fps} = useVideoConfig();
-  if (f < seg(desde) - 1 || f > seg(hasta) + 30) return null;
-
-  const activa = TRANS.find(t => f >= seg(t.out) - 1 && f <= seg(t.out) + t.D + 4);
-  const dentro = activa ? f - seg(activa.out) : 0;
-  const s = activa ? spring({frame: dentro, fps, config: {damping: 13, stiffness: 95, mass: 0.85}, durationInFrames: activa.D + 4}) : 1;
-  const q = activa ? interpolate(dentro, [0, activa.D * 0.9], [0, 1], {...clamp, easing: T.ease.inOut}) : 1;
-
-  const cam = zoomEn(f, !!activa && dentro < activa.D + 6);
-  const deriva = 1 + Math.sin(f / 40) * 0.006;
-  const tramos = TRAMOS.map((t, i) => {
-    const a = seg(t.out[0]), b = seg(t.out[1]);
-    const rate = t.congelar ? 1 : (t.raw[1] - t.raw[0]) / (t.out[1] - t.out[0]);
-    return (
-      <Sequence key={i} from={a} durationInFrames={b - a + (i < TRAMOS.length - 1 ? 0 : 20)}>
-        <Video raw={t.raw[0]} rate={rate} congelar={t.congelar} />
-      </Sequence>
-    );
-  });
-  // Se sostiene el «aprobado» con un empujón lento de cámara.
-  const hold = TRAMOS.find(t => t.congelar)!;
-  const empuje = hold ? interpolate(f, [seg(hold.out[0]), seg(hold.out[1])], [1, 1.1], {...clamp, easing: T.ease.inOut}) : 1;
-  const ent = activa && activa.tipo !== 'partir' ? entra(activa.tipo, s) : activa ? entra('partir', s) : null;
-
+  if (f < seg(desde) - 1 || f > seg(hasta)) return null;
+  const capas = capasEn(f);
+  const tr = TRANS.find(t => f >= seg(t.out) && f < seg(t.out) + t.D);
+  const bg = Math.min(1, capas.reduce((a, c) => Math.max(a, c.bg ?? c.m), 0) * 2);
   return (
     <AbsoluteFill>
-      {activa && activa.rawA !== undefined && (
-        activa.tipo === 'partir' ? (
-          <>
-            {(['arriba', 'abajo'] as const).map(mitad => (
-              <div key={mitad} style={{position: 'absolute', inset: 0, clipPath: mitad === 'arriba' ? 'inset(0 0 50% 0)' : 'inset(50% 0 0 0)', transform: `translateY(${(mitad === 'arriba' ? -1 : 1) * q * 760}px) rotateZ(${(mitad === 'arriba' ? -1 : 1) * q * 3}deg)`, transformOrigin: mitad === 'arriba' ? '50% 100%' : '50% 0%', filter: `blur(${q * 6}px)`, opacity: 1 - Math.max(0, q - 0.85) * 6}}>
-                <Sequence from={seg(activa.out)} durationInFrames={activa.D + 6}><Video raw={activa.rawA} congelar /></Sequence>
-              </div>
-            ))}
-          </>
-        ) : (
-          <div style={caja(sale(activa.tipo, q))}>
-            <Sequence from={seg(activa.out)} durationInFrames={activa.D + 6}><Video raw={activa.rawA} congelar /></Sequence>
-          </div>
-        )
-      )}
-      <div style={ent ? caja(ent) : {position: 'absolute', inset: 0, overflow: 'hidden'}}>
-        <div style={{position: 'absolute', inset: 0, transform: `scale(${cam.z * deriva * empuje})`, transformOrigin: `${cam.fx * 100}% ${cam.fy * 100}%`}}>
-          {tramos}
-        </div>
-      </div>
+      <FondoMarco opacity={bg} />
+      {capas.map((c, i) => {
+        const g = geom(c.m);
+        return (
+          <Ventana key={i} rect={g} tx={c.tx} ty={c.ty} sc={c.sc} op={c.op} sombra={c.m} z={c.z} fx={c.fx} fy={c.fy}>
+            {c.tipo === 'vivo' ? <Vivo /> : tr ? <Congelado raw={tr.rawA} desde={seg(tr.out)} /> : null}
+          </Ventana>
+        );
+      })}
     </AbsoluteFill>
   );
 };

@@ -9,6 +9,9 @@ const comun = ['--overwrite'].concat(navegador ? ['--browser-executable=' + nave
 const out = path.join(__dirname, 'out'); fs.mkdirSync(out, {recursive: true});
 const corre = args => { const r = spawnSync('npx', [...base, ...args, ...comun], {cwd: __dirname, stdio: 'inherit'}); if (r.status) process.exit(r.status); };
 if (modo === 'cuadros') {
+  const r = spawnSync('node', ['cuadros.js', out, ...process.argv.slice(3)], {cwd: __dirname, stdio: 'inherit'}); process.exit(r.status || 0);
+}
+if (false) {
   for (const s of process.argv.slice(3)) corre(['still', 'src/index.ts', 'V1', path.join(out, `cuadro-${s}.png`), `--frame=${Math.round(parseFloat(s) * 30)}`]);
 } else {
   const salida = process.argv[3] || path.join(out, modo === 'final' ? 'video-1.mp4' : 'previa-1.mp4');

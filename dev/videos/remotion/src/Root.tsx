@@ -6,8 +6,10 @@ import {T} from './theme';
 
 // Tipografía del landing (Schibsted Grotesk), cargada antes de dibujar el primer cuadro.
 const espera = delayRender('tipografía');
-new FontFace('Schibsted', `url(${staticFile('schibsted.woff2')})`, {weight: '400 900'}).load()
-  .then(f => { (document as any).fonts.add(f); continueRender(espera); })
+Promise.all([
+  new FontFace('Schibsted', `url(${staticFile('schibsted.woff2')})`, {weight: '400 900'}).load(),
+  new FontFace('Caveat', `url(${staticFile('caveat.woff2')})`, {weight: '700'}).load(),   // letra de los post-its
+]).then(fs => { fs.forEach(f => (document as any).fonts.add(f)); continueRender(espera); })
   .catch(() => continueRender(espera));
 
 export const Root: React.FC = () => (

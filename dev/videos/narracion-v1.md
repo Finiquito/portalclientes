@@ -15,11 +15,13 @@ Un clip de audio por bloque (ElevenLabs → `01.mp3` … `10.mp3`). Cada clip se
 | 09 | 0:53,4 | 7 s | Y a mí me llega todo junto: qué aprobó, qué cambia y dónde. Simple, para no gastar mi tiempo en ordenar. |
 | 10 | 1:00,4 | 4 s | Puedes inscribirte para la beta gratis. Pruébalo y me cuentas cómo te va. |
 
-Tiempos de la **versión editada con movimiento** (64,6 s; ver `remotion/README.md`). Qué se ve en cada momento:
+Tiempos de la **versión editada con movimiento** (64,6 s; ver `remotion/README.md`), **provisorios** hasta tener la duración real de cada MP3. Qué se ve en cada momento:
 
-- 0:00–0:12 · clips 01 y 02: los post-its van llenando la pantalla; el «¡CAOS!» cae en el segundo 3,4 y los post-its de «Tareas de Google» y «Jira» aparecen en los segundos 5,1 y 7,9.
-- 0:12 · clip 03: todo se ordena y aparece la portada; la grilla de Josefa llega en el segundo 16,8.
-- Del clip 04 al 09: cada bloque empieza justo cuando cambia la pantalla.
+- 0:00–0:09 · clips 01 y 02: la portada limpia y, encima, los post-its y las notificaciones (hasta tapar ~70 % de la pantalla). El post-it «Tareas de Google» cae en el segundo 5 y el de «Jira» en el 7.
+- 0:09–0:10,4: todo cae por gravedad y queda «Buenas noches, Josefa».
+- 0:12 · clip 03: primer texto; la grilla llega en el segundo 16,8.
+- Del clip 04 al 09: cada bloque empieza cuando cambia la pantalla.
+- ~0:56 · «Simple, para no gastar mi tiempo en ordenar»: la pantalla se mete en la ventana, se vuelve tarjeta sobre la foto y el texto sube; luego, la lámina final (clip 10, 1:01).
 
 Para montar los MP3 sobre el video: `bash dev/videos/remotion/montar-narracion.sh video.mp4 <carpeta-con-01.mp3…10.mp3> salida.mp4`.
 
