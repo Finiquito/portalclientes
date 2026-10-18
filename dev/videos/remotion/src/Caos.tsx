@@ -2,6 +2,7 @@ import React from 'react';
 import {spring, useCurrentFrame, useVideoConfig} from 'remotion';
 import {T, azar} from './theme';
 import {seg} from './data';
+import {RUIDO} from './capas';
 
 // El caos: post-its y notificaciones que tapan la portada y después caen por gravedad.
 export const T_CAIDA = 9.25;
@@ -75,8 +76,11 @@ const SIM: number[][][] = (() => {
 })();
 
 // ----- Post-it realista: degradado suave, esquina doblada, cinta o papel rayado -----
-const mezcla = (hex: string, a: number) => {
-  const n = parseInt(hex.slice(1), 16); const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+const rgbDe = (c: string) => { if (c.startsWith('rgb')) return c.match(/\d+/g)!.slice(0, 3).map(Number); const n = parseInt(c.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
+// mezcla(color, a): aclara (a>0) u oscurece (a<0). mezcla(color, 0, otro, k): lo mezcla con «otro» en proporción k.
+const mezcla = (c: string, a: number, otro?: string, k = 0) => {
+  let [r, g, b] = rgbDe(c);
+  if (otro) { const o = rgbDe(otro); r += (o[0] - r) * k; g += (o[1] - g) * k; b += (o[2] - b) * k; }
   const m = (v: number) => Math.max(0, Math.min(255, Math.round(a >= 0 ? v + (255 - v) * a : v * (1 + a))));
   return `rgb(${m(r)},${m(g)},${m(b)})`;
 };
@@ -85,15 +89,17 @@ export const PostIt: React.FC<{n: Nota; sombra: number}> = ({n, sombra}) => {
   const cinta = n.var % 3 === 1 || lineado;
   const doblado = !lineado && n.var % 2 === 0;
   const c = 54;
-  const base = lineado ? '#f3e6d4' : n.color;
+  // Papel mate: el color se apaga un poco con crema, casi sin degradado y sin franja brillante.
+  const base = lineado ? T.c.papelRayado : mezcla(n.color, 0, T.c.papel, 0.14);
   return (
-    <div style={{position: 'absolute', left: 0, top: 0, width: n.w, height: n.h, filter: `drop-shadow(0 ${12 * sombra}px ${14 * sombra}px rgba(20,28,64,0.32))`}}>
-      <div style={{position: 'absolute', inset: 0, background: lineado ? `repeating-linear-gradient(180deg, transparent 0 ${n.h / 9 - 2}px, rgba(120,90,70,0.32) ${n.h / 9 - 2}px ${n.h / 9}px), linear-gradient(160deg, ${mezcla(base, 0.3)}, ${base} 70%, ${mezcla(base, -0.06)})` : `linear-gradient(160deg, ${mezcla(base, 0.38)} 0%, ${base} 55%, ${mezcla(base, -0.1)} 100%)`, clipPath: doblado ? `polygon(0 0, 100% 0, 100% 100%, ${c}px 100%, 0 calc(100% - ${c}px))` : undefined}} />
-      {!lineado && <div style={{position: 'absolute', left: 0, right: 0, top: 0, height: '15%', background: 'rgba(255,255,255,0.22)'}} />}
-      {lineado && [0.12, 0.3, 0.48, 0.66, 0.84].map((y, i) => <div key={i} style={{position: 'absolute', left: 10, top: `${y * 100}%`, width: 16, height: 16, borderRadius: '50%', background: 'rgba(20,28,64,0.18)', boxShadow: 'inset 0 2px 3px rgba(0,0,0,0.25)'}} />)}
-      {doblado && <div style={{position: 'absolute', left: 0, top: n.h - c, width: c, height: c, background: `linear-gradient(135deg, ${mezcla(base, -0.22)}, ${mezcla(base, 0.25)})`, clipPath: 'polygon(0 0, 100% 100%, 100% 0)', filter: 'drop-shadow(2px 3px 3px rgba(0,0,0,0.3))'}} />}
-      {cinta && <div style={{position: 'absolute', left: '50%', top: -16, width: 104, height: 36, marginLeft: -52, background: 'rgba(204,158,94,0.86)', transform: `rotate(${(n.var % 5) - 2}deg)`, boxShadow: '0 2px 5px rgba(0,0,0,0.22)'}} />}
-      <div style={{position: 'absolute', left: lineado ? 46 : 24, right: 18, top: lineado ? 26 : 40, fontFamily: 'Caveat, cursive', fontWeight: 700, fontSize: n.esp ? 38 : 47, lineHeight: 0.98, color: '#232a58', transform: `rotate(${((n.var % 4) - 1.5) * 0.9}deg)`}}>{n.texto}</div>
+    <div style={{position: 'absolute', left: 0, top: 0, width: n.w, height: n.h, filter: `drop-shadow(0 ${5 * sombra}px ${6 * sombra}px rgba(20,28,64,0.20)) drop-shadow(0 ${16 * sombra}px ${22 * sombra}px rgba(20,28,64,0.10))`}}>
+      <div style={{position: 'absolute', inset: 0, overflow: 'hidden', background: lineado ? `repeating-linear-gradient(180deg, transparent 0 ${n.h / 9 - 2}px, rgba(110,84,66,0.30) ${n.h / 9 - 2}px ${n.h / 9}px), ${base}` : `linear-gradient(168deg, ${mezcla(base, 0.035)} 0%, ${base} 60%, ${mezcla(base, -0.05)} 100%)`, boxShadow: 'inset 0 0 0 1px rgba(20,28,64,0.07)', clipPath: doblado ? `polygon(0 0, 100% 0, 100% 100%, ${c}px 100%, 0 calc(100% - ${c}px))` : undefined}}>
+        <div style={{position: 'absolute', inset: 0, backgroundImage: RUIDO, backgroundSize: '160px', opacity: 0.2, mixBlendMode: 'multiply'}} />
+      </div>
+      {lineado && [0.12, 0.3, 0.48, 0.66, 0.84].map((y, i) => <div key={i} style={{position: 'absolute', left: 10, top: `${y * 100}%`, width: 16, height: 16, borderRadius: '50%', background: 'rgba(20,28,64,0.16)', boxShadow: 'inset 0 2px 3px rgba(0,0,0,0.22)'}} />)}
+      {doblado && <div style={{position: 'absolute', left: 0, top: n.h - c, width: c, height: c, background: `linear-gradient(135deg, ${mezcla(base, -0.14)}, ${mezcla(base, 0.06)})`, clipPath: 'polygon(0 0, 100% 100%, 100% 0)', filter: 'drop-shadow(2px 3px 3px rgba(0,0,0,0.22))'}} />}
+      {cinta && <div style={{position: 'absolute', left: '50%', top: -16, width: 104, height: 36, marginLeft: -52, background: `${T.c.cinta}d6`, transform: `rotate(${(n.var % 5) - 2}deg)`, boxShadow: '0 2px 4px rgba(0,0,0,0.18)'}} />}
+      <div style={{position: 'absolute', left: lineado ? 46 : 24, right: 18, top: lineado ? 26 : 34, fontFamily: 'Caveat, cursive', fontWeight: 700, fontSize: n.esp ? 38 : 47, lineHeight: 0.98, color: T.c.notaTinta, opacity: 0.94, transform: `rotate(${((n.var % 4) - 1.5) * 0.9}deg)`}}>{n.texto}</div>
     </div>
   );
 };
@@ -104,7 +110,7 @@ const Icono: React.FC<{app: 'chat' | 'mail'}> = ({app}) => app === 'chat'
   : <svg viewBox="0 0 24 24" width="34" height="34"><rect x="2.5" y="5" width="19" height="14" rx="2.6" fill="#fff" /><path d="M3.5 7l8.5 6.2L20.5 7" fill="none" stroke={T.c.sky1} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>;
 export const Tarjeta: React.FC<{n: Notif}> = ({n}) => (
   <div style={{width: n.w, height: n.h, boxSizing: 'border-box', padding: '0 24px', display: 'flex', alignItems: 'center', gap: 20, background: 'rgba(252,252,255,0.96)', borderRadius: 28, boxShadow: '0 12px 30px rgba(20,28,64,0.26)', fontFamily: T.font, color: T.c.ink}}>
-    <div style={{width: 68, height: 68, borderRadius: 17, flex: 'none', display: 'grid', placeItems: 'center', background: n.app === 'chat' ? 'linear-gradient(160deg,#3fd47a,#1fa65a)' : `linear-gradient(160deg,${T.c.sky2},${T.c.sky1})`}}><Icono app={n.app} /></div>
+    <div style={{width: 68, height: 68, borderRadius: 17, flex: 'none', display: 'grid', placeItems: 'center', background: n.app === 'chat' ? `linear-gradient(160deg,${T.c.chat1},${T.c.chat2})` : `linear-gradient(160deg,${T.c.sky2},${T.c.sky1})`}}><Icono app={n.app} /></div>
     <div style={{flex: 1, minWidth: 0}}>
       <div style={{display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 27, fontWeight: 800, letterSpacing: '-0.01em'}}><span style={{overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis'}}>{n.quien}</span><span style={{fontSize: 21, fontWeight: 500, color: T.c.ink3, flex: 'none'}}>{n.hora}</span></div>
       <div style={{fontSize: 26, fontWeight: 500, color: T.c.ink2, marginTop: 3, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis'}}>{n.texto}</div>

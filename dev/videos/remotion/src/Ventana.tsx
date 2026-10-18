@@ -20,9 +20,9 @@ export const Ventana: React.FC<Props> = ({rect, tx = 0, ty = 0, sc = 1, op = 1, 
   const {x, y, w, h, bar, radius} = rect;
   const k = w / 1080;
   return (
-    <div style={{position: 'absolute', left: x, top: y, width: w, height: h, borderRadius: radius, overflow: 'hidden', opacity: op, transform: `translate(${tx}px, ${ty}px) scale(${sc})`, transformOrigin: '50% 50%', background: '#f9fafd', boxShadow: sombra > 0 ? `0 ${34 * sombra}px ${90 * sombra}px rgba(20,28,64,${0.30 * sombra})` : undefined, willChange: 'transform'}}>
+    <div style={{position: 'absolute', left: x, top: y, width: w, height: h, borderRadius: radius, overflow: 'hidden', opacity: op, transform: `translate(${tx}px, ${ty}px) scale(${sc})`, transformOrigin: '50% 50%', background: T.c.paper, boxShadow: sombra > 0 ? `0 ${34 * sombra}px ${90 * sombra}px rgba(20,28,64,${0.30 * sombra})` : undefined, willChange: 'transform'}}>
       {bar > 1 && (
-        <div style={{position: 'absolute', left: 0, right: 0, top: 0, height: bar, background: '#f2f4fa', borderBottom: '1px solid rgba(20,28,64,0.08)', opacity: barOp, display: 'flex', alignItems: 'center', gap: 10, paddingLeft: 24, overflow: 'hidden'}}>
+        <div style={{position: 'absolute', left: 0, right: 0, top: 0, height: bar, background: T.c.barra, borderBottom: '1px solid rgba(20,28,64,0.08)', opacity: barOp, display: 'flex', alignItems: 'center', gap: 10, paddingLeft: 24, overflow: 'hidden'}}>
           {[0, 1, 2].map(i => <div key={i} style={{width: 15, height: 15, borderRadius: '50%', background: 'rgba(20,28,64,0.20)'}} />)}
           <div style={{marginLeft: 28, height: 30, width: '44%', borderRadius: 15, background: 'rgba(20,28,64,0.07)'}} />
         </div>

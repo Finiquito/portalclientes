@@ -11,6 +11,8 @@ export const T = {
     peach: '#ff8a6b', soft: '#c7cdf0',
     sky1: '#5fb0e4', sky2: '#a9d6f2',
     notas: ['#ffd84a', '#ff7fb4', '#4cc9f0', '#ffa94d', '#c3a6f0', '#ffb3a7', '#a8e063'],
+    chat1: '#3fd47a', chat2: '#1fa65a',                 // icono de chat (genérico, sin marca)
+    notaTinta: '#2b3160', papelRayado: '#f1e8da', papel: '#f4efe6', cinta: '#cc9e5e', barra: '#f2f4fa',
     marcoA: '#d9e3f6', marcoB: '#e8e2f5',   // fondo suave detrás de las ventanas
   },
   font: 'Schibsted, ui-sans-serif, system-ui, sans-serif',

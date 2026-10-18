@@ -13,9 +13,9 @@ import {AVISOS, T_CIERRE_V, T_SWAP, seg} from './data';
 // Video 1 · «Lo que ve mi cliente»: portada → caos de post-its y avisos → recorrido en ventana → tarjeta final → lámina de cierre.
 export const V1: React.FC = () => {
   const f = useCurrentFrame();
-  const portadaOp = interpolate(f, [seg(T_SWAP), seg(T_SWAP) + 8], [1, 0], clamp);   // bajo el caos, se cambia por la pantalla de Josefa
+  const portadaOp = interpolate(f, [seg(T_SWAP), seg(T_SWAP) + 8], [1, 0], {...clamp, easing: T.ease.in});   // bajo el caos, se cambia por la pantalla de Josefa
   const inicioLamina = seg(T_CIERRE_V) + DUR_CIERRE - 14;
-  const lam = interpolate(f, [inicioLamina, inicioLamina + 14], [0, 1], clamp);
+  const lam = interpolate(f, [inicioLamina, inicioLamina + 14], [0, 1], {...clamp, easing: T.ease.out});
   return (
     <AbsoluteFill style={{backgroundColor: T.c.paper2}}>
       <Pantallas desde={T_SWAP} hasta={T_CIERRE_V} />
