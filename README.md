@@ -74,6 +74,16 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### v0.40.0: «Azul firme», un look más plano y firme en todo el portal
+- **Estilo nuevo, el mismo orden.** Sin sombras ni degradados de fondo, esquinas más chicas y parejas (8 px en tarjetas, 6 px en botones, campos y chips), líneas finas en lugar de sombras y títulos de sección con una división suave.
+- **Una sola tinta, un solo azul.** Textos, íconos, fechas y la pestaña activa del menú van en un azul oscuro común a todos los portales. El acento sigue siendo el color de cada cliente (botones, enlaces, foco, avance).
+- **Chips de borde grueso**, sin relleno tintado: el color intenso va en el borde y el texto. Sobre una imagen mantienen un fondo sólido para leerse.
+- **Íconos sin recuadro de color** y fechas con borde azul; la de hoy va rellena.
+- **Un bloque lleno con el color del cliente**: «Te toca a ti» en el portal del cliente y «Vencidas» en el panel del equipo, sólo cuando hay algo pendiente.
+- **«Novedades» en azul invertido.** En el portal del cliente ahora va **debajo de «Próximas reuniones»**, al pie de la primera pantalla (en escritorio; en el celular sigue el orden de lectura). En el panel del equipo queda al final de la columna.
+- **Contenidos de una entrega**: primero el estado y las piezas; el formulario con los datos de la entrega pasa al final. Al crear una entrega nueva, el formulario sigue arriba.
+- `portal.css` sube a `?v=35` para que el navegador tome los estilos.
+
 ### v0.36.1: arreglo del repositorio
 - Sin cambios en lo que hace el plugin. El `.gitignore` ignoraba cualquier carpeta llamada `entregas/` y dejó `_tapas.js.latte` y `_subida.js.latte` fuera del repo; ahora solo ignora `/entregas/` de la raíz y los dos archivos están versionados. Así un clon limpio corre las pruebas y arma el zip completo.
 

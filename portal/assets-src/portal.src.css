@@ -26,9 +26,9 @@
   --color-danger: var(--danger);
   --color-info: var(--info);
 
-  --radius-card: 1.25rem;
-  --shadow-soft: 0 1px 2px rgb(20 20 43 / .04), 0 10px 28px -14px rgb(20 20 43 / .12);
-  --shadow-pop: 0 2px 4px rgb(20 20 43 / .06), 0 18px 40px -16px rgb(20 20 43 / .22);
+  --radius-card: .5rem;
+  --shadow-soft: none;
+  --shadow-pop: none;
 }
 
 /* ---- Tokens. --brand y --brand-fg los pone el servidor con el color del cliente ---- */
@@ -38,17 +38,22 @@
   --brand-soft: color-mix(in oklab, var(--brand) 11%, white);
   --brand-ink: color-mix(in oklab, var(--brand) 82%, black);
 
-  --bg: #f6f5fb;
+  /* Tinta: un solo azul oscuro para todos los portales; el acento es --brand (el del cliente). */
+  --azul: #14204d;
+  --bg: #f5f6fa;
   --surface: #ffffff;
-  --surface-2: #f3f2f9;
-  --line: #e9e7f3;
-  --ink: #15152c;
-  --muted: #6a6983;
+  --surface-2: #eef0f6;
+  --line: color-mix(in oklab, var(--azul) 16%, var(--bg));
+  --ink: var(--azul);
+  --ink-80: color-mix(in oklab, var(--azul) 82%, white);
+  --muted: #5b6586;
+  --activo-bg: var(--azul);
+  --activo-fg: #ffffff;
 
-  --ok: #12805c;
-  --warn: #a15c07;
-  --danger: #c0264b;
-  --info: #2454c5;
+  --ok: #0a8a5a;
+  --warn: #c26a00;
+  --danger: #d1203f;
+  --info: #1f4fd8;
   color-scheme: light;
 }
 .dark {
@@ -68,6 +73,10 @@
   --warn: #f6c06e;
   --danger: #ff8fab;
   --info: #93b4ff;
+  --azul: #22348a;
+  --ink-80: color-mix(in oklab, var(--ink) 85%, var(--bg));
+  --activo-bg: var(--surface-2);
+  --activo-fg: var(--ink);
   color-scheme: dark;
 }
 
@@ -375,3 +384,70 @@
   .adm .pa-lote { background: var(--brand-soft); color: var(--brand-ink); }
   .adm .pa-ia-meta { border-top-color: color-mix(in oklab, var(--brand) 25%, transparent); color: var(--muted); }
   .adm .pa-ia-txt p { color: var(--muted); }
+
+
+/* =========================================================================
+   Azul firme (v0.40): plano, esquinas chicas, un solo azul oscuro como tinta y
+   chips de borde grueso. El acento sigue siendo --brand (el color de cada cliente).
+   Va FUERA de @layer para ganarle a las utilidades de Tailwind (rounded-*, shadow-*).
+   ========================================================================= */
+*:not(.pin), *:not(.pin)::before, *:not(.pin)::after { box-shadow: none !important; }
+body { background: var(--bg) !important; background-image: none !important; }
+.hero-arcs { display: none !important; }
+
+/* Esquinas: una escala corta */
+.rounded-3xl, .rounded-2xl, .rounded-xl { border-radius: .5rem !important; }
+.rounded-lg { border-radius: .375rem !important; }
+.btn, .field, .form-input, select, textarea, .opcion, .nav-item, .chip, .pa-chip { border-radius: .375rem !important; }
+.btn-sm { border-radius: .3125rem !important; }
+.card { border: 1px solid var(--line) !important; }
+a.card { transition: background .12s; }
+a.card:hover { background: var(--surface-2) !important; transform: none !important; }
+.btn:active { transform: none; }
+.card > div:first-child:has(> h2) { border-bottom: 1px solid var(--line); padding-bottom: .85rem !important; margin-bottom: .35rem; }
+#contenido .card ul > li + li { border-top: 1px solid var(--line); }
+h1, h2 { letter-spacing: -.03em; }
+.text-3xl, .chip, .avatar { font-variant-numeric: tabular-nums; }
+section[aria-label="Resumen"] .text-3xl { font-size: 2.5rem; line-height: 1; }
+
+/* Chips: borde grueso y texto del mismo color intenso; el fondo es el de la tarjeta para leerse sobre imágenes */
+.chip, .pa-chip { background: var(--surface) !important; border: 1.5px solid currentColor !important; font-weight: 700; }
+.chip-muted { color: color-mix(in oklab, var(--ink) 72%, var(--bg)); }
+.chip-brand { color: var(--brand-ink); }
+
+/* Íconos y fechas: un solo azul, sin recuadros de color */
+.text-brand-ink { color: var(--ink-80); }
+span.flex:has(> svg)[class*="size-"] { background: transparent !important; border: 1px solid var(--line); color: var(--ink-80) !important; }
+[class*="size-12"][class*="flex-col"] { background: transparent !important; border: 1.5px solid var(--ink-80); color: var(--ink-80) !important; }
+[class*="size-12"][class*="flex-col"].bg-brand { background: var(--ink) !important; border-color: var(--ink); color: var(--bg) !important; }
+
+/* Botones y campos */
+.btn-primary:hover { background: color-mix(in oklab, var(--brand) 86%, black); }
+.btn-ghost { border-color: color-mix(in oklab, var(--ink) 30%, var(--bg)); }
+.field:focus, .form-input:focus { outline: 2px solid color-mix(in oklab, var(--brand) 45%, transparent) !important; outline-offset: 0 !important; border-color: var(--brand) !important; }
+
+/* Menú: la pestaña activa va en la tinta */
+.nav-item[aria-current="page"] { background: var(--activo-bg) !important; color: var(--activo-fg) !important; }
+.nav-item[aria-current="page"] .chip { background: transparent !important; color: var(--activo-fg); }
+.page-header { padding-bottom: .25rem; }
+
+/* Bloque de urgencia: lleno con el color del cliente, con el ícono integrado (.kpi-alerta) */
+.kpi-alerta { --ink: var(--brand-fg); --muted: color-mix(in oklab, var(--brand-fg) 82%, var(--brand)); background: var(--brand) !important; border-color: var(--brand) !important; color: var(--brand-fg); }
+.kpi-alerta:hover { background: color-mix(in oklab, var(--brand) 88%, black) !important; }
+.kpi-alerta span.flex:has(> svg) { border: 0; color: var(--brand-fg) !important; padding: 0; width: auto; height: auto; justify-content: flex-start; }
+.kpi-alerta svg { width: 1.75rem; height: 1.75rem; }
+section[aria-label="Resumen"] a span.flex:has(> svg) { border: 0; width: auto; height: auto; justify-content: flex-start; }
+section[aria-label="Resumen"] a span.flex > svg { width: 1.6rem; height: 1.6rem; }
+
+/* Bloque de novedades: fondo azul invertido (.bloque-azul) */
+.bloque-azul { --surface: var(--azul); --ink: #fff; --muted: color-mix(in oklab, #fff 72%, var(--azul)); --line: rgb(255 255 255 / .2); --brand-ink: #fff;
+  --ok: #5ee0ae; --warn: #f6c06e; --danger: #ff8fab; --info: #93b4ff;
+  background: var(--surface) !important; border-color: var(--surface) !important; color: #fff; }
+.bloque-azul span.flex:has(> svg) { background: transparent !important; border: 1px solid rgb(255 255 255 / .3); color: #fff !important; }
+
+/* Columna lateral nivelada: el bloque azul queda al pie de la primera pantalla.
+   Sólo en escritorio, donde la columna va al lado. Si el contenido es más alto que la pantalla, fluye normal. */
+@media (min-width: 1280px) {
+  .aside-nivelada { display: flex; flex-direction: column; align-self: start; min-height: calc(100dvh - 4.125rem); }
+  .aside-nivelada > .bloque-azul { margin-top: auto; }
+}
