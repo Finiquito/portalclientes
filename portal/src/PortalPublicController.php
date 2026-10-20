@@ -571,6 +571,7 @@ class PortalPublicController
         $nombre = trim($pref['apodo'] ?? '') !== '' ? trim($pref['apodo']) : $fmt->primerNombre((string) $c['nombre']);
 
         $this->ctx->view('templates/public/inicio.latte', $this->contexto($c, 'inicio', [
+            'campanas'    => $this->campanasConGrafico($c, $proyectos),
             'nombre'      => $nombre,
             'frase'       => $this->frase($pref, $clienteId, $nombre, $fmt),
             'proyectos'   => $proyectos,
@@ -585,6 +586,42 @@ class PortalPublicController
             'multiples'   => count($proyectos) > 1,
             'pasos'       => $this->primerosPasos($c, $pref, $meTocan),
         ]));
+    }
+
+    /**
+     * Campañas (proyectos con contactos ganados) activas que ya llevan al menos 14 días recibiendo contactos:
+     * cada una muestra su evolución en Inicio. Sólo para quien ve contactos ganados, y sólo números (sin personas).
+     *
+     * @param array<int, array<string, mixed>> $proyectos
+     * @return array<int, array<string, mixed>>
+     */
+    private function campanasConGrafico(array $contacto, array $proyectos): array
+    {
+        if (!$this->veLeads($contacto)) {
+            return [];
+        }
+        $clienteId = (string) $contacto['cliente_id'];
+        $svc = new LeadService($this->pdo());
+        $linea = new LeadLinea($this->pdo());
+        $out = [];
+        foreach ($svc->proyectosDe($clienteId) as $p) {
+            if ((string) $p['estado'] !== 'activo') {
+                continue;
+            }
+            $ls = $svc->lista(['cliente_id' => $clienteId, 'proyecto_id' => (string) $p['id']]);
+            if (!LeadStats::conGrafico($ls)) {
+                continue;
+            }
+            $ev = $linea->deEstado($clienteId, [(string) $p['id']]);
+            $acum = LeadStats::acumulado($ls, $ev);
+            $emb = LeadStats::embudo($ls, $ev);
+            $out[] = [
+                'id' => (string) $p['id'], 'nombre' => (string) $p['nombre'], 'etiquetas' => LeadService::publicoEtiquetas((string) $p['publico']),
+                'dias' => $acum['dias'], 'total' => count($ls), 'nuevosSemana' => LeadStats::nuevosSemana($ls),
+                'contactados' => $emb['contactados'], 'ganados' => $emb['ganados'], 'grafico' => LeadStats::datosGrafico($acum),
+            ];
+        }
+        return $out;
     }
 
     /** @param array<string, string> $pref */

@@ -3,6 +3,7 @@
 {block title}{$l['nombre']}{/block}
 
 {block content}
+<link rel="stylesheet" href="/plugins/portal/assets/leads.css?v=2">
 {var $anonimo = !empty($l['anonimizado_en'])}
 <a href="/portal/contactos-ganados" class="reveal mb-3 inline-flex items-center gap-1.5 text-sm font-semibold text-muted transition hover:text-ink">
     <svg class="size-4"><use href="#i-back"/></svg> Contactos ganados
@@ -18,6 +19,7 @@
                 <div class="flex flex-wrap items-center gap-2">
                     <span class="chip {$chips[$l['estado']]}">{$estados[$l['estado']]}</span>
                     {if $l['campana']}<span class="chip chip-muted">{$l['campana']}</span>{/if}
+                    <span class="ll">{foreach \TypeDock\Plugin\Portal\LeadService::publicoEtiquetas($l['proyecto_publico'] ?? '') as $t}<span class="ll-pub" data-p="{$t}">{$t}</span> {/foreach}</span>
                 </div>
                 <h1 class="mt-2 break-words text-2xl font-extrabold leading-tight tracking-tight sm:text-3xl">{$l['nombre']}</h1>
                 {if $l['empresa'] && $l['empresa'] !== $l['nombre']}<p class="mt-0.5 text-muted">{$l['empresa']}</p>{/if}
@@ -33,20 +35,14 @@
         {/if}
     </section>
 
-    {if !$anonimo}
-    <form method="post" action="/portal/contactos-ganados/{$l['id']}" class="card card-pad reveal space-y-5" style="--i:1">
-        <input type="hidden" name="_csrf" value="{$csrf}">
-        <h2 class="text-lg font-extrabold tracking-tight">Seguimiento</h2>
+    <section class="reveal" style="--i:1" aria-label="Línea de tiempo">
+        {include '../_lead_linea.latte', l: $l, eventos: $eventos, estados: $estados, base: '/portal/contactos-ganados/' . $l['id'], csrfCampo: '_csrf', csrfValor: $csrf, ahora: $ahora, fmt: $fmt, origenes: $origenes, puedeEditar: !$vistaPrevia}
+    </section>
 
-        <fieldset>
-            <legend class="label">Estado</legend>
-            <div class="grid grid-cols-2 gap-2.5 sm:grid-cols-5">
-                {foreach $estados as $k => $nombre}
-                    <label class="opcion"><input type="radio" name="estado" value="{$k}" class="sr-only" {if $l['estado'] === $k}checked{/if}><span class="font-semibold">{$nombre}</span></label>
-                {/foreach}
-            </div>
-            {if $l['estado_por'] && $l['estado_en']}<p class="mt-2 text-xs text-muted">Último cambio: {$l['estado_por']}, {$fmt->rel($l['estado_en'])}.</p>{/if}
-        </fieldset>
+    {if !$anonimo}
+    <form method="post" action="/portal/contactos-ganados/{$l['id']}" class="card card-pad reveal space-y-5" style="--i:2">
+        <input type="hidden" name="_csrf" value="{$csrf}">
+        <h2 class="text-lg font-extrabold tracking-tight">Próximo paso y datos</h2>
 
         <div class="grid gap-4 sm:grid-cols-[minmax(0,1fr)_11rem]">
             <div>
@@ -57,11 +53,6 @@
                 <label for="l-fecha" class="label">¿Cuándo?</label>
                 <input id="l-fecha" name="proximo_paso_fecha" type="date" class="field" value="{$l['proximo_paso_fecha']}">
             </div>
-        </div>
-
-        <div>
-            <label for="l-notas" class="label">Notas</label>
-            <textarea id="l-notas" name="notas" rows="4" maxlength="5000" data-autogrow class="field" placeholder="Lo que conversaron, qué le interesa…">{$l['notas']}</textarea>
         </div>
 
         <details class="rounded-2xl border border-line px-4 py-3">

@@ -64,6 +64,29 @@
         </a>
     </section>
 
+    {* Evolución de la campaña: aparece cuando lleva 14 días o más recibiendo contactos *}
+    {if !empty($campanas)}
+        <link rel="stylesheet" href="/plugins/portal/assets/leads.css?v=2">
+        {foreach $campanas as $camp}
+        <section class="ll ll-graf reveal mt-5" style="--i:4" aria-labelledby="h-camp-{$iterator->counter}">
+            <div class="ll-graf-cab">
+                <div>
+                    <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap"><h2 id="h-camp-{$iterator->counter}">{$camp['nombre']}</h2>{foreach $camp['etiquetas'] as $t}<span class="ll-pub" data-p="{$t}">{$t}</span>{/foreach}</div>
+                    <p class="ll-sub">Así van llegando tus contactos · {$camp['dias']} días de campaña</p>
+                </div>
+                <a href="/portal/contactos-ganados?proyecto={$camp['id']}" class="text-sm font-semibold text-brand-ink hover:underline">Ver contactos →</a>
+            </div>
+            {include '../_lead_grafico.latte', grafico: $camp['grafico'], corto: true, botones: false}
+            <div class="ll-cifras">
+                <div><b>{$camp['total']}</b><span>han llegado{if $camp['nuevosSemana'] > 0} · <em>+{$camp['nuevosSemana']} esta semana</em>{/if}</span></div>
+                <div><b>{$camp['contactados']}</b><span>ya fueron contactados</span></div>
+                <div><b>{$camp['ganados']}</b><span>terminaron en ganado</span></div>
+            </div>
+        </section>
+        {/foreach}
+        {include '../_lead_scripts.latte'}
+    {/if}
+
     {* Pedir algo *}
     <section class="card reveal mt-5 flex flex-wrap items-center gap-x-4 gap-y-3 p-4 sm:p-5" style="--i:4" aria-labelledby="h-pedir">
         <span class="flex size-11 flex-none items-center justify-center rounded-xl bg-brand-soft text-brand-ink"><svg class="size-5"><use href="#i-plus"/></svg></span>

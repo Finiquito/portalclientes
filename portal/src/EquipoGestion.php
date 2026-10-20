@@ -131,6 +131,8 @@ class EquipoGestion extends EquipoController
         $r('POST', 'proyectos/@id/importar/confirmar', LeadAdminController::class, 'importarConfirmar', 'proyecto', 'cuenta');
         $r('POST', 'leads/@id/anonimizar',          LeadAdminController::class, 'anonimizar', 'lead', 'cuenta');
         $r('POST', 'leads/@id/eliminar',            LeadAdminController::class, 'eliminar', 'lead', 'cuenta');
+        $r('POST', 'leads/@id/linea',               LeadAdminController::class, 'linea', 'lead');
+        $r('POST', 'leads/@id/linea/@eid/fecha',    LeadAdminController::class, 'lineaFecha', 'lead');
         $r('POST', 'leads/@id/mailchimp',           LeadAdminController::class, 'mcRevisar', 'lead');
         $r('POST', 'proyectos/@id/mailchimp/clave', LeadAdminController::class, 'mcClave', 'proyecto', 'cuenta');
         $r('POST', 'proyectos/@id/mailchimp/quitar', LeadAdminController::class, 'mcQuitar', 'proyecto', 'cuenta');

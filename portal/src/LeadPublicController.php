@@ -87,7 +87,13 @@ class LeadPublicController extends PortalPublicController
             'paso_desc'   => fn($a, $b) => strcmp($paso($b) === '9999-12-31' ? '' : $paso($b), $paso($a) === '9999-12-31' ? '' : $paso($a)),
         ]);
 
+        $eventos = (new LeadLinea($this->pdo()))->deEstado($clienteId, $f['proyecto_id'] !== '' ? [$f['proyecto_id']] : []);
+        $acum = LeadStats::acumulado($base, $eventos);
         $this->ctx->view('templates/public/leads.latte', $this->contexto($c, 'leads') + [
+            'grafico'   => LeadStats::datosGrafico($acum),
+            'embudo'    => LeadStats::embudo($base, $eventos),
+            'tiempos'   => LeadStats::tiempos($base, $eventos),
+            'nuevosSemana' => LeadStats::nuevosSemana($base),
             'pag'       => $pag,
             'leads'     => $pag->cortar($leads),
             'f'         => $f,
@@ -177,7 +183,7 @@ class LeadPublicController extends PortalPublicController
         if ($p === null || (string) $p['cliente_id'] !== (string) $c['cliente_id']) {
             $r = ['error' => 'Elige la campaña a la que pertenece.'];
         } else {
-            $r = $svc->crear($p, $_POST, 'manual', (string) $c['nombre']);
+            $r = $svc->crear($p, $_POST, 'manual', (string) $c['nombre'], null, 'cliente');
         }
         if (isset($r['error'])) {
             PortalSession::iniciar();
@@ -217,7 +223,46 @@ class LeadPublicController extends PortalPublicController
             'estados'  => LeadService::ESTADOS,
             'chips'    => LeadService::CHIPS,
             'origenes' => LeadService::ORIGENES,
+            'eventos'  => (new LeadLinea($this->pdo()))->eventos($id),
+            'ahora'    => (new \DateTimeImmutable())->format('Y-m-d\TH:i'),
         ]);
+    }
+
+    /** El contacto del cliente de la sesión, o vuelve a la lista (con CSRF). */
+    private function leadPropio(array $c, string $id): ?array
+    {
+        $this->exigirCsrf('portal/contactos-ganados/' . $id);
+        $l = $this->leads()->delCliente($id, (string) $c['cliente_id']);
+        if ($l === null || $this->leads()->proyecto((string) $l['proyecto_id']) === null) {
+            PortalSession::flash('error', 'No encontramos ese contacto.');
+            $this->redirectTo('portal/contactos-ganados');
+            return null;
+        }
+        return $l;
+    }
+
+    /** Agrega a la línea de tiempo una nota, un cambio de estado, o las dos cosas, con la fecha en que ocurrió. */
+    public function linea(string $id): void
+    {
+        $c = $this->requerirAcceso();
+        if (($l = $this->leadPropio($c, $id)) === null) {
+            return;
+        }
+        $error = (new LeadLinea($this->pdo()))->agregar($l, $_POST, (string) $c['nombre'], 'cliente');
+        PortalSession::flash($error === null ? 'ok' : 'error', $error ?? 'Guardado en la línea de tiempo.');
+        $this->redirectTo('portal/contactos-ganados/' . $id);
+    }
+
+    /** Corrige a mano la fecha de un movimiento; la línea se reordena sola. */
+    public function lineaFecha(string $id, string $eid): void
+    {
+        $c = $this->requerirAcceso();
+        if (($l = $this->leadPropio($c, $id)) === null) {
+            return;
+        }
+        $error = (new LeadLinea($this->pdo()))->cambiarFecha($l, $eid, (string) ($_POST['ocurrio_en'] ?? ''));
+        PortalSession::flash($error === null ? 'ok' : 'error', $error ?? 'Fecha corregida.');
+        $this->redirectTo('portal/contactos-ganados/' . $id);
     }
 
     /** «Revisar ahora» en Mailchimp, desde la ficha. */
@@ -247,8 +292,8 @@ class LeadPublicController extends PortalPublicController
             $this->redirectTo('portal/contactos-ganados');
             return;
         }
-        $datos = array_intersect_key($_POST, array_flip(['nombre', 'correo', 'telefono', 'empresa', 'estado', 'notas', 'proximo_paso', 'proximo_paso_fecha']));
-        $error = $svc->actualizar($l, $datos, (string) $c['nombre']);
+        $datos = array_intersect_key($_POST, array_flip(['nombre', 'correo', 'telefono', 'empresa', 'proximo_paso', 'proximo_paso_fecha']));
+        $error = $svc->actualizar($l, $datos, (string) $c['nombre'], 'cliente');
         PortalSession::flash($error === null ? 'ok' : 'error', $error ?? 'Guardado.');
         $this->redirectTo('portal/contactos-ganados/' . $id);
     }

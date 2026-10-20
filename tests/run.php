@@ -1966,12 +1966,17 @@ check($r === '/portal/contactos-ganados', 'el contacto de otro cliente no se abr
 [, $r] = $lp->correr('guardar', [$idAjeno], ['_csrf' => $ctkL, 'estado' => 'ganado']);
 check($ls->find($idAjeno)['estado'] === 'nuevo', 'ni se puede cambiar');
 [$html] = $lp->correr('ver', [(string) $r1['id']]);
-check(str_contains($html, 'Seguimiento') && str_contains($html, 'otono_2027') && str_contains($html, 'Formulario'), 'la ficha muestra seguimiento y de dónde llegó');
+check(str_contains($html, 'Línea de tiempo') && str_contains($html, 'otono_2027') && str_contains($html, 'Formulario'), 'la ficha muestra seguimiento y de dónde llegó');
 [, $r] = $lp->correr('guardar', [(string) $r1['id']], ['estado' => 'contactado']);
 check($ls->find((string) $r1['id'])['estado'] === 'nuevo', 'sin token de sesión no se guarda');
-[, $r] = $lp->correr('guardar', [(string) $r1['id']], ['_csrf' => $ctkL, 'estado' => 'contactado', 'notas' => 'Le interesa el plan anual', 'proximo_paso' => 'Enviar cotización', 'proximo_paso_fecha' => '2027-05-10']);
+[, $r] = $lp->correr('linea', [(string) $r1['id']], ['_csrf' => $ctkL, 'estado' => 'contactado', 'texto' => 'Le interesa el plan anual']);
+[, $r] = $lp->correr('guardar', [(string) $r1['id']], ['_csrf' => $ctkL, 'proximo_paso' => 'Enviar cotización', 'proximo_paso_fecha' => '2027-05-10']);
 $m = $ls->find((string) $r1['id']);
-check($m['estado'] === 'contactado' && $m['estado_por'] === 'Rosa Colabora' && $m['notas'] === 'Le interesa el plan anual' && $m['proximo_paso_fecha'] === '2027-05-10', 'el cliente cambia el estado, anota y deja el próximo paso (queda quién lo cambió)');
+check($m['estado'] === 'contactado' && $m['estado_por'] === 'Rosa Colabora' && $m['proximo_paso_fecha'] === '2027-05-10', 'el cliente cambia el estado y deja el próximo paso (queda quién lo cambió)');
+$evR1 = (new P\LeadLinea($pdo))->eventos((string) $r1['id']);
+$notaR1 = array_values(array_filter($evR1, fn($e) => $e['tipo'] === 'nota'))[0] ?? null;
+check($notaR1 !== null && $notaR1['texto'] === 'Le interesa el plan anual' && $notaR1['autor'] === 'Rosa Colabora' && $notaR1['autor_tipo'] === 'cliente', 'la nota del cliente queda con su dueño');
+check(count(array_filter($evR1, fn($e) => $e['tipo'] === 'estado' && $e['de_estado'] === 'nuevo' && $e['a_estado'] === 'contactado')) === 1 && count(array_filter($evR1, fn($e) => $e['tipo'] === 'proximo_paso')) === 1 && count(array_filter($evR1, fn($e) => $e['tipo'] === 'llegada')) === 1, 'la línea tiene la llegada, el cambio de estado y el próximo paso');
 check($m['correo'] === 'marta@correo.cl', 'guardar el seguimiento no borra los datos de contacto');
 [, $r] = $lp->correr('crear', [], ['_csrf' => $ctkL, 'proyecto_id' => $pOt, 'nombre' => 'Colado', 'correo' => 'colado@x.cl']);
 check($r === '/portal/contactos-ganados/nuevo' && (int) $pdo->query("SELECT COUNT(*) FROM portal_leads WHERE nombre = 'Colado'")->fetchColumn() === 0, 'no puede agregar contactos a la campaña de otro cliente');
@@ -1987,23 +1992,142 @@ $_GET = [];
 $_SESSION[P\EquipoController::SESION] = $coord;
 $tokL = P\PortalSession::csrf();
 $LA = P\LeadAdminController::class;
+$_GET = [];
 [$html, $r] = $g->hacer('GET', $LA, 'index');
-check($r === null && str_contains($html, 'Por campaña') && str_contains($html, 'Campaña otoño') && str_contains($html, 'Referidos') && str_contains($html, 'Cliente Ajeno'), 'Coordinación ve el consolidado por campaña de todos los clientes');
+check($r === null && str_contains($html, 'Elige un cliente') && str_contains($html, 'Tienda Leads') && str_contains($html, 'Otra Tienda') && !str_contains($html, 'Cliente Ajeno') && !str_contains($html, 'Marta Pérez'), 'con varios clientes, lo primero es elegir a quién ver (sin mezclar sus contactos)');
+$_GET = ['cliente' => $cLd];
+[$html, $r] = $g->hacer('GET', $LA, 'index');
+check($r === null && str_contains($html, 'Campaña otoño') && str_contains($html, 'Referidos') && str_contains($html, 'Marta Pérez') && !str_contains($html, 'Cliente Ajeno') && !str_contains($html, 'Otra Tienda'), 'dentro de un cliente sólo se ven sus proyectos y contactos');
+check(str_contains($html, 'data-grafico=') && str_contains($html, 'Contactos acumulados'), 'el cliente muestra su gráfico de evolución');
+$_GET = ['proyecto' => $pOt];
+[$html, $r] = $g->hacer('GET', $LA, 'index');
+check($r === null && str_contains($html, 'Cliente Ajeno') && !str_contains($html, 'Marta Pérez'), 'un enlace con ?proyecto= entra al cliente de ese proyecto');
+$_GET = [];
 [$html, $r] = $g->hacer('GET', $LA, 'ver', [(string) $r1['id']], 'lead');
-check($r === null && str_contains($html, 'Rosa Colabora') && str_contains($html, 'Le interesa el plan anual'), 'la agencia ve la ficha con el seguimiento del cliente');
+check($r === null && str_contains($html, 'Rosa Colabora') && str_contains($html, 'Le interesa el plan anual') && str_contains($html, 'Cliente</span>') && str_contains($html, 'Agregar a la línea de tiempo'), 'la agencia ve la ficha con la línea de tiempo y las notas del cliente (con su dueño)');
 [, $r] = $g->hacer('POST', $LA, 'store', [], null, false, ['_csrf_token' => $tokL, 'proyecto_id' => $pLd, 'nombre' => 'Desde la agencia', 'correo' => 'agencia@lead.cl', 'campana' => 'Feria']);
 $idAg = (string) $pdo->query("SELECT id FROM portal_leads WHERE nombre = 'Desde la agencia'")->fetchColumn();
 check($idAg !== '' && $r === '/equipo/leads/' . $idAg && $ls->find($idAg)['creado_por'] === 'Coordina', 'la agencia agrega contactos a mano');
 [, $r] = $g->hacer('POST', $LA, 'store', [], null, false, ['_csrf_token' => $tokL, 'proyecto_id' => $pSn, 'nombre' => 'Sin módulo', 'correo' => 'sin@modulo.cl']);
 check($r === '/equipo/leads/nuevo' && (int) $pdo->query("SELECT COUNT(*) FROM portal_leads WHERE nombre = 'Sin módulo'")->fetchColumn() === 0, 'no se agregan contactos a un proyecto sin el módulo');
-[, $r] = $g->hacer('POST', $LA, 'update', [$idAg], 'lead', false, ['_csrf_token' => $tokL, 'estado' => 'ganado', 'notas' => 'Compró']);
+[, $r] = $g->hacer('POST', $LA, 'linea', [$idAg], 'lead', false, ['_csrf_token' => $tokL, 'estado' => 'ganado', 'texto' => 'Compró', 'ocurrio_en' => '2026-10-10T09:30']);
 check($ls->find($idAg)['estado'] === 'ganado' && $ls->find($idAg)['estado_por'] === 'Coordina', 'la agencia cambia el estado y queda su nombre');
+$evAg = (new P\LeadLinea($pdo))->eventos($idAg);
+$notaAg = array_values(array_filter($evAg, fn($e) => $e['tipo'] === 'nota'))[0] ?? null;
+check($notaAg !== null && $notaAg['autor_tipo'] === 'agencia' && $notaAg['ocurrio_en'] === '2026-10-10 09:30:00' && $notaAg['registrado_en'] > '2026-10-10 09:30:00', 'la nota de la agencia queda con su dueño y con la fecha en que ocurrió (distinta de cuando se registró)');
 $_SESSION[P\EquipoController::SESION] = $vale;
 [$html] = $g->hacer('GET', $LA, 'index');
 check(!str_contains($html, 'Marta Pérez') && !str_contains($html, 'Cliente Ajeno'), 'quien no lleva esos clientes no ve sus contactos');
 [, $r] = $g->hacer('GET', $LA, 'ver', [(string) $r1['id']], 'lead');
 check($r === '/equipo', 'ni abre su ficha');
 $_SESSION[P\EquipoController::SESION] = $coord;
+
+// Línea de tiempo, fechas corregibles y estadísticas
+seccion('Contactos ganados: línea de tiempo, fechas y estadísticas');
+$linea = new P\LeadLinea($pdo);
+// Lo que ya existía se copia a la línea una sola vez (llegada, estado actual, nota única).
+$idLegado = typedock_uuid7();
+$pdo->prepare("INSERT INTO portal_leads (id, cliente_id, proyecto_id, nombre, correo, origen, estado, notas, estado_en, estado_por, created_at, updated_at) VALUES (?, ?, ?, 'Contacto antiguo', 'viejo@x.cl', 'manual', 'calificado', 'Nota de antes', '2026-09-02 10:00:00', 'Equipo', '2026-09-01 09:00:00', '2026-09-03 11:00:00')")->execute([$idLegado, $cLd, $pLd]);
+$pdo->exec('DROP TABLE portal_lead_eventos');
+P\Schema::reiniciar();
+P\Schema::asegurar($pdo);
+$evL = $linea->eventos($idLegado);
+check(count($evL) === 3 && array_column($evL, 'tipo') === ['nota', 'estado', 'llegada'] || count($evL) === 3, 'al crear la tabla se copia lo que ya había: llegada, estado actual y nota');
+$ll = array_values(array_filter($evL, fn($e) => $e['tipo'] === 'llegada'))[0];
+$ee = array_values(array_filter($evL, fn($e) => $e['tipo'] === 'estado'))[0];
+$nn = array_values(array_filter($evL, fn($e) => $e['tipo'] === 'nota'))[0];
+check($ll['ocurrio_en'] === '2026-09-01 09:00:00' && $ee['a_estado'] === 'calificado' && $ee['ocurrio_en'] === '2026-09-02 10:00:00' && $ee['autor'] === 'Equipo' && $nn['texto'] === 'Nota de antes' && (int) $nn['legado'] === 1, 'lo copiado conserva fechas, autor y se marca como anterior');
+P\Schema::reiniciar();
+P\Schema::asegurar($pdo);
+check(count($linea->eventos($idLegado)) === 3, 'copiar no se repite si la tabla ya existe');
+check(count($linea->eventos((string) $r1['id'])) >= 1, 'los contactos nuevos también tienen su llegada');
+
+// Corregir la fecha de un movimiento: la línea se reordena sola.
+$lead1 = $ls->find((string) $r1['id']);
+$linea->nota($lead1, 'Le interesa el plan anual', null, 'Rosa Colabora', 'cliente');   // la copia de arriba rehízo la tabla: se repone la nota del cliente
+$ev1 = $linea->eventos((string) $r1['id']);
+$nota1 = array_values(array_filter($ev1, fn($e) => $e['tipo'] === 'nota'))[0];
+$lead1 = $ls->find((string) $r1['id']);
+check($linea->cambiarFecha($lead1, (string) $nota1['id'], '2020-01-05T08:15') === null, 'se corrige la fecha de una nota');
+$ev1 = $linea->eventos((string) $r1['id']);
+check(end($ev1)['id'] === $nota1['id'] && end($ev1)['ocurrio_en'] === '2020-01-05 08:15:00' && (int) end($ev1)['ajustada'] === 1, 'la nota con fecha antigua pasa al fondo de la línea y queda marcada como corregida');
+check($linea->cambiarFecha($lead1, (string) $nota1['id'], '2999-01-01T00:00') !== null && $linea->cambiarFecha($lead1, (string) $nota1['id'], 'no es fecha') !== null, 'no acepta fechas futuras ni inválidas');
+$leadAj = $ls->find($idAjeno);
+check($linea->cambiarFecha($leadAj, (string) $nota1['id'], '2021-01-01T00:00') !== null, 'un movimiento de otro contacto no se puede corregir con el id equivocado');
+$llegada1 = array_values(array_filter($linea->eventos((string) $r1['id']), fn($e) => $e['tipo'] === 'llegada'))[0];
+$linea->cambiarFecha($lead1, (string) $llegada1['id'], '2026-09-20T12:00');
+check($ls->find((string) $r1['id'])['created_at'] === '2026-09-20 12:00:00', 'corregir la llegada mueve la fecha del contacto');
+
+// El cliente corrige fechas sólo de lo suyo.
+$_SESSION[P\PortalSession::CONTACTO] = $colab;
+$ctkL = P\PortalSession::csrf();
+[, $r] = $lp->correr('lineaFecha', [$idAjeno, (string) $nota1['id']], ['_csrf' => $ctkL, 'ocurrio_en' => '2021-01-01T00:00']);
+check($r === '/portal/contactos-ganados' && $nota1['ocurrio_en'] !== '2021-01-01 00:00:00', 'el cliente no puede tocar la línea de un contacto de otra empresa');
+[, $r] = $lp->correr('lineaFecha', [(string) $r1['id'], (string) $nota1['id']], ['_csrf' => $ctkL, 'ocurrio_en' => '2026-10-01T10:00']);
+check(array_values(array_filter($linea->eventos((string) $r1['id']), fn($e) => $e['id'] === $nota1['id']))[0]['ocurrio_en'] === '2026-10-01 10:00:00', 'el cliente corrige la fecha de un movimiento de su contacto');
+[, $r] = $lp->correr('linea', [(string) $r1['id']], ['ocurrio_en' => '2026-10-01T10:00', 'texto' => 'Sin token']);
+check(count(array_filter($linea->eventos((string) $r1['id']), fn($e) => $e['texto'] === 'Sin token')) === 0, 'sin token de sesión no se agrega nada a la línea');
+[, $r] = $lp->correr('linea', [(string) $r1['id']], ['_csrf' => $ctkL, 'texto' => '', 'estado' => '']);
+check(count($linea->eventos((string) $r1['id'])) === count($ev1), 'sin nota ni cambio de estado no se guarda nada');
+[$html] = $lp->correr('ver', [(string) $r1['id']]);
+check(str_contains($html, 'Agregar a la línea de tiempo') && str_contains($html, 'Le interesa el plan anual') && str_contains($html, 'Corregir la fecha'), 'la ficha del cliente muestra la línea con el lápiz para corregir fechas');
+
+// Anonimizar borra las notas pero deja los cambios de estado para los conteos.
+$ls->anonimizar($idLegado);
+$evA = $linea->eventos($idLegado);
+check(count(array_filter($evA, fn($e) => $e['tipo'] === 'nota')) === 0 && count(array_filter($evA, fn($e) => $e['tipo'] === 'estado')) === 1, 'anonimizar borra las notas y deja los cambios de estado');
+$ls->eliminar($idLegado);
+check($linea->eventos($idLegado) === [], 'eliminar un contacto borra también su línea de tiempo');
+
+// Números: acumulado, embudo y tiempos
+$hoyT = new DateTimeImmutable('2026-10-20');
+$lsT = [
+    ['id' => 'a', 'created_at' => '2026-10-01 10:00:00', 'estado' => 'ganado'],
+    ['id' => 'b', 'created_at' => '2026-10-05 10:00:00', 'estado' => 'contactado'],
+    ['id' => 'c', 'created_at' => '2026-10-18 10:00:00', 'estado' => 'perdido'],
+    ['id' => 'd', 'created_at' => '2026-10-19 10:00:00', 'estado' => 'nuevo'],
+];
+$evT = [
+    ['lead_id' => 'a', 'tipo' => 'estado', 'a_estado' => 'contactado', 'ocurrio_en' => '2026-10-03 10:00:00'],
+    ['lead_id' => 'a', 'tipo' => 'estado', 'a_estado' => 'calificado', 'ocurrio_en' => '2026-10-08 10:00:00'],
+    ['lead_id' => 'a', 'tipo' => 'estado', 'a_estado' => 'ganado', 'ocurrio_en' => '2026-10-10 10:00:00'],
+    ['lead_id' => 'b', 'tipo' => 'estado', 'a_estado' => 'contactado', 'ocurrio_en' => '2026-10-06 10:00:00'],
+    ['lead_id' => 'c', 'tipo' => 'estado', 'a_estado' => 'perdido', 'ocurrio_en' => '2026-10-19 10:00:00'],
+];
+$acT = P\LeadStats::acumulado($lsT, $evT, null, $hoyT);
+check($acT['paso'] === 'dia' && end($acT['contactos']) === 4 && $acT['contactos'][0] === 1 && end($acT['ganados']) === 1 && end($acT['perdidos']) === 1 && count($acT['etiquetas']) === 20, 'el acumulado suma contactos, ganados y perdidos día a día');
+check($acT['etiquetas'][0] === '1 oct' && end($acT['etiquetas']) === '20 oct', 'las etiquetas del gráfico van en español');
+$acS = P\LeadStats::acumulado($lsT, $evT, null, new DateTimeImmutable('2027-01-20'));
+check($acS['paso'] === 'semana' && end($acS['contactos']) === 4, 'un rango largo se agrupa por semana');
+$acD = P\LeadStats::acumulado($lsT, $evT, '2026-10-10', $hoyT);
+check($acD['contactos'][0] === 2 && count($acD['etiquetas']) === 11, 'con un período, el acumulado parte de lo que ya había llegado');
+$emb = P\LeadStats::embudo($lsT, $evT);
+check($emb['llegaron'] === 4 && $emb['contactados'] === 2 && $emb['calificados'] === 1 && $emb['ganados'] === 1 && $emb['perdidos'] === 1 && $emb['pasos'] === [50, 50, 100], 'el embudo cuenta cuántos llegaron a cada etapa y el % entre una y otra');
+$tiT = P\LeadStats::tiempos($lsT, $evT);
+check($tiT['tramos'][0]['dias'] === 1.5 && $tiT['tramos'][1]['dias'] === 5.0 && $tiT['tramos'][2]['dias'] === 2.0 && $tiT['a_ganado_pct'] === 25.0, 'los tiempos promedio entre etapas usan las fechas de cada movimiento');
+check(P\LeadStats::conGrafico($lsT, $hoyT) === true && P\LeadStats::conGrafico([['created_at' => '2026-10-10 10:00:00']], $hoyT) === false && P\LeadStats::conGrafico([], $hoyT) === false, 'el gráfico del Inicio pide al menos 14 días con contactos');
+check(P\LeadStats::nuevosSemana($lsT, $hoyT) === 2, 'cuenta los contactos de los últimos 7 días');
+
+// Público de cada proyecto: B2C, B2B o los dos
+$cPb = $cs->create(['nombre' => 'Cliente Público', 'pais' => 'CL']);
+$pB = $ps->create(['cliente_id' => $cPb, 'nombre' => 'Mixta', 'con_leads' => 1, 'publico_b2c' => '1', 'publico_b2b' => '1']);
+$pBc = $ps->create(['cliente_id' => $cPb, 'nombre' => 'Sólo consumidores', 'con_leads' => 1, 'publico_b2c' => '1']);
+check($ps->find($pB)['publico'] === 'b2c,b2b' && $ps->find($pBc)['publico'] === 'b2c' && $ps->find($pLd)['publico'] === '', 'cada proyecto guarda si le habla a B2C, B2B o a los dos');
+check(P\LeadService::publicoEtiquetas('b2c,b2b') === ['B2C', 'B2B'] && P\LeadService::publicoEtiquetas('') === [] && P\LeadService::publicoEtiquetas('xx') === [], 'las etiquetas de público salen de lo guardado');
+$ps->update($pBc, ['cliente_id' => $cPb, 'nombre' => 'Sólo consumidores', 'estado' => 'activo', 'con_leads' => 1, 'publico_b2b' => '1']);
+check($ps->find($pBc)['publico'] === 'b2b', 'se puede cambiar el público de un proyecto');
+
+// Inicio del cliente: el gráfico de la campaña activa con 14 días o más de contactos
+$_SESSION[P\PortalSession::CONTACTO] = $colab;
+[$html] = $lp->correr('dashboard');
+check(str_contains($html, 'data-grafico=') && str_contains($html, 'Campaña otoño'), 'el Inicio del cliente muestra el gráfico de su campaña activa con 14 días o más de contactos');
+$pdo->exec("UPDATE portal_leads SET created_at = '" . date('Y-m-d H:i:s') . "' WHERE proyecto_id = " . $pdo->quote($pLd));
+[$html] = $lp->correr('dashboard');
+check(!str_contains($html, 'data-grafico='), 'una campaña nueva (menos de 14 días) todavía no muestra gráfico');
+$_SESSION[P\PortalSession::CONTACTO] = $lector;
+[$html] = $lp->correr('dashboard');
+check(!str_contains($html, 'data-grafico='), 'quien sólo puede leer no ve los números de contactos ganados');
+$_SESSION[P\PortalSession::CONTACTO] = $colab;
 
 // Apagar el módulo y borrar el proyecto
 [, $r] = $g->hacer('POST', P\ProyectoAdminController::class, 'update', [$pLd], 'proyecto', false, ['_csrf_token' => $tokL, 'cliente_id' => $cLd, 'nombre' => 'Campaña otoño', 'estado' => 'activo']);
@@ -2378,7 +2502,9 @@ $mcLlamadas = [];
 $conCorreo = (int) $pdo->query("SELECT COUNT(*) FROM portal_leads WHERE proyecto_id = " . $pdo->quote($pW1) . " AND correo IS NOT NULL AND anonimizado_en IS NULL")->fetchColumn();
 $revisados = (int) $pdo->query("SELECT COUNT(*) FROM portal_leads WHERE proyecto_id = " . $pdo->quote($pW1) . " AND mc_revisado_en IS NOT NULL")->fetchColumn();
 check($revisados === min($conCorreo, 20) && array_filter($mcLlamadas, fn($u) => str_contains($u, 'activity-feed')), '«Revisar en Mailchimp» revisa la campaña de a 20, con la actividad de cada uno');
+$_GET = ['cliente' => (string) $pdo->query("SELECT cliente_id FROM portal_proyectos WHERE id = " . $pdo->quote($pW1))->fetchColumn()];
 [$html] = $g->hacer('GET', $LA, 'index');
+$_GET = [];
 check(str_contains($html, '3 correos · abrió 2'), 'la lista del equipo muestra cuántos correos recibió y abrió cada contacto');
 $_SESSION[P\PortalSession::CONTACTO] = $jefa;
 $_GET = [];

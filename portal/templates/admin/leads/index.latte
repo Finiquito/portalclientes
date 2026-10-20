@@ -1,32 +1,72 @@
 {layout $plugin_ui_layout}
 
-{block page_title}Contactos ganados{/block}
+{block page_title}{$cliente['nombre']} · Contactos ganados{/block}
 
 {block content}
 <link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=17">
+<link rel="stylesheet" href="/plugins/portal/assets/leads.css?v=2">
+{var $hayPublico = false}
+{foreach $proyectos as $p}{if $p['publico'] !== ''}{var $hayPublico = true}{/if}{/foreach}
+<div class="ll">
+{if $variosClientes}<p class="ll-mig"><a href="{$admin_url('leads')}">Contactos ganados</a> / <b>{$cliente['nombre']}</b></p>{/if}
+</div>
 <div class="page-header">
-    <h1>Contactos ganados</h1>
-    {if $proyectos}<div class="pa-row">
-        {if $total > 0}<a href="{$admin_url('leads/exportar')}{if array_filter($filtros->todos())}?{http_build_query(array_filter($filtros->todos()))}{/if}" class="btn">Descargar CSV</a>{/if}
+    <h1>{$cliente['nombre']}{if !$variosClientes} · Contactos ganados{/if}</h1>
+    <div class="pa-row">
+        {if $total > 0}<a href="{$admin_url('leads/exportar')}?{http_build_query(array_filter($filtros->todos()))}" class="btn">Descargar CSV</a>{/if}
         {if $mcProyecto}<form method="post" action="{$admin_url('proyectos/' . $filtros->get('proyecto') . '/mailchimp/revisar')}" style="display:inline"><input type="hidden" name="_csrf_token" value="{$csrf_token}"><button type="submit" class="btn">Revisar en Mailchimp</button></form>{/if}
         <a href="{$admin_url('leads/importar')}{if $filtros->get('proyecto')}?proyecto={$filtros->get('proyecto')}{/if}" class="btn">Importar CSV</a>
         <a href="{$admin_url('leads/fuentes')}{if $filtros->get('proyecto')}?proyecto={$filtros->get('proyecto')}{/if}" class="btn">Formularios y Mailchimp</a>
         <a href="{$admin_url('leads/nuevo')}{if $filtros->get('proyecto')}?proyecto={$filtros->get('proyecto')}{/if}" class="btn btn-primary">Agregar contacto</a>
-    </div>{/if}
+    </div>
 </div>
 
 {if $flash_success}<div class="alert alert-success">{$flash_success}</div>{/if}
 {if $flash_error}<div class="alert alert-error">{$flash_error}</div>{/if}
 
-{if !$proyectos}
-    <div class="card">
-        <p style="margin:0"><strong>Todavía no hay proyectos con contactos ganados.</strong></p>
-        <p class="pa-muted" style="margin:.4rem 0 0">Edita el proyecto de la campaña y marca «Con contactos ganados». Desde ahí el cliente ve en su portal las personas que llegan y les da seguimiento.</p>
-        <p style="margin:.9rem 0 0"><a href="{$admin_url('proyectos')}" class="btn">Ir a proyectos</a></p>
+<div class="ll">
+    {* Un proyecto = una campaña: una tarjeta cada uno *}
+    <div class="ll-grid" style="grid-template-columns:repeat(auto-fill,minmax(17rem,1fr))">
+    {foreach $tarjetas as $p}
+        <a class="ll-card" href="{$filtros->url(['proyecto' => $filtros->es('proyecto', $p['id']) ? '' : $p['id']])}" {if $filtros->es('proyecto', $p['id'])}aria-current="true" style="outline:2px solid var(--ll-ink);outline-offset:-2px"{/if}>
+            <div style="display:flex;gap:.4rem;flex-wrap:wrap;min-height:1.3rem">{foreach $p['etiquetas'] as $t}<span class="ll-pub" data-p="{$t}">{$t}</span>{/foreach}{if $p['estado'] !== 'activo'}<span class="ll-chip" data-e="nuevo">{$p['estado'] === 'pausado' ? 'Pausado' : 'Cerrado'}</span>{/if}</div>
+            <h3 style="margin-top:.45rem">{$p['nombre']}</h3>
+            <p class="ll-sub">{if $p['desde']}Desde {$fmt->fecha($p['desde'])}{else}Todavía sin contactos{/if}</p>
+            <div style="display:flex;align-items:baseline;gap:.5rem;margin-top:.7rem"><b style="font-size:2rem;font-weight:800;letter-spacing:-.04em;line-height:1">{$p['total']}</b><span class="ll-sub" style="margin:0">{$p['total'] === 1 ? 'contacto' : 'contactos'}{if $p['nuevos_semana'] > 0} · {$p['nuevos_semana']} esta semana{/if}</span></div>
+            {if $p['total'] > 0}<div class="ll-barra">{foreach $estados as $k => $txt}{if $p['conteo'][$k] > 0}<i data-e="{$k}" style="flex:{$p['conteo'][$k]}" title="{$txt}: {$p['conteo'][$k]}"></i>{/if}{/foreach}</div>{/if}
+        </a>
+    {/foreach}
     </div>
-{else}
 
-<div class="pa-filtros">
+    {* Evolución *}
+    <section class="ll-graf" style="margin-top:1.25rem" aria-labelledby="h-evo">
+        <div class="ll-graf-cab">
+            <div><h2 id="h-evo">Contactos acumulados</h2><p class="ll-sub">Cuántas personas han llegado en total, a lo largo del tiempo{if $filtros->get('proyecto')} · solo el proyecto elegido{/if}</p></div>
+            <div style="display:flex;gap:.6rem;flex-wrap:wrap">
+                {if $hayPublico}
+                <div class="ll-seg" role="navigation" aria-label="Público">
+                    <a href="{$filtros->url(['publico' => ''])}" {if $filtros->es('publico', '')}aria-current="true"{/if}>Todos</a>
+                    {foreach $publicos as $k => $txt}<a href="{$filtros->url(['publico' => $k])}" {if $filtros->es('publico', $k)}aria-current="true"{/if}>{$txt}</a>{/foreach}
+                </div>
+                {/if}
+                <div class="ll-seg" role="navigation" aria-label="Período">
+                    <a href="{$filtros->url(['periodo' => '30'])}" {if $filtros->es('periodo', '30')}aria-current="true"{/if}>30 días</a>
+                    <a href="{$filtros->url(['periodo' => '90'])}" {if $filtros->es('periodo', '90')}aria-current="true"{/if}>90 días</a>
+                    <a href="{$filtros->url(['periodo' => '365'])}" {if $filtros->es('periodo', '365')}aria-current="true"{/if}>Año</a>
+                    <a href="{$filtros->url(['periodo' => ''])}" {if $filtros->es('periodo', '')}aria-current="true"{/if}>Todo</a>
+                </div>
+            </div>
+        </div>
+        {if empty($grafico['etiquetas'])}
+            <p class="ll-aviso" style="margin:1rem 0 .2rem">Todavía no llegan contactos con estos filtros.</p>
+        {else}
+            {include '../../_lead_grafico.latte', grafico: $grafico, corto: false, botones: true}
+            {include '../../_lead_embudo.latte', embudo: $embudo, tiempos: $tiempos}
+        {/if}
+    </section>
+</div>
+
+<div class="pa-filtros" style="margin-top:1.25rem">
     <div class="pa-pills" role="navigation" aria-label="Estado">
         <a href="{$filtros->url(['estado' => ''])}" class="pa-pill" {if $filtros->es('estado', '')}aria-current="true"{/if}>Todos <span class="pa-n">{$total}</span></a>
         {foreach $estados as $k => $txt}
@@ -34,33 +74,34 @@
         {/foreach}
     </div>
     <form method="get" action="{$filtros->url(['proyecto' => '', 'q' => ''])}" class="pa-selects" data-auto>
+        <input type="hidden" name="cliente" value="{$clienteId}">
         <input type="hidden" name="estado" value="{$filtros->get('estado')}">
+        <input type="hidden" name="publico" value="{$filtros->get('publico')}">
+        <input type="hidden" name="periodo" value="{$filtros->get('periodo')}">
         <label for="f-proy">Proyecto</label>
         <select id="f-proy" name="proyecto" class="form-input" style="width:auto">
             <option value="">Todos los proyectos</option>
             {foreach $proyectos as $p}
-                <option value="{$p['id']}" {if $filtros->es('proyecto', $p['id'])}selected{/if}>{$p['cliente_nombre']} · {$p['nombre']}</option>
+                <option value="{$p['id']}" {if $filtros->es('proyecto', $p['id'])}selected{/if}>{$p['nombre']}</option>
             {/foreach}
         </select>
         <label for="f-q">Buscar</label>
         <input id="f-q" type="search" name="q" value="{$filtros->get('q')}" class="form-input" style="width:auto" placeholder="Nombre, correo, teléfono…">
         <button type="submit" class="btn btn-sm">Filtrar</button>
-        {if $filtros->get('proyecto') || $filtros->get('q')}<a href="{$filtros->url(['proyecto' => '', 'q' => ''])}" class="pa-muted">Quitar filtros</a>{/if}
+        {if $filtros->get('proyecto') || $filtros->get('q') || $filtros->get('publico')}<a href="{$filtros->url(['proyecto' => '', 'q' => '', 'publico' => ''])}" class="pa-muted">Quitar filtros</a>{/if}
     </form>
 </div>
 
-{* Consolidado: por proyecto y campaña *}
-{if $porCampana}
-<div class="card" style="overflow-x:auto">
-    <h2 class="pa-h2">Por campaña</h2>
-    <table class="table">
+{if $porCampana && ($filtros->get('proyecto') === '')}
+<details class="card" style="overflow-x:auto">
+    <summary class="pa-h2" style="cursor:pointer">Detalle por campaña (según el texto de cada contacto)</summary>
+    <table class="table" style="margin-top:.6rem">
         <thead><tr><th>Proyecto · campaña</th><th>Total</th>{foreach $estados as $k => $txt}<th>{$txt}</th>{/foreach}</tr></thead>
         <tbody>
         {foreach $porCampana as $g}
             <tr>
                 <td>
                     <a href="{$filtros->url(['proyecto' => $g['proyecto_id']])}" class="pa-proy"><span class="pa-dot" style="background: {($colorProy[$g['proyecto_id']] ?? '#94a3b8')|noescape}" aria-hidden="true"></span><strong>{$g['proyecto']}</strong></a>
-                    <div class="pa-muted">{$g['cliente']}</div>
                 </td>
                 <td><strong>{$g['total']}</strong></td>
                 {foreach $estados as $k => $txt}<td>{$g['estados'][$k] ?: '—'}</td>{/foreach}
@@ -77,7 +118,7 @@
         {/foreach}
         </tbody>
     </table>
-</div>
+</details>
 {/if}
 
 {if empty($leads)}
@@ -85,7 +126,7 @@
 {else}
 <div class="card" style="overflow-x:auto">
     <table class="table">
-        <thead><tr><th>Contacto</th><th>Cliente · proyecto</th><th>Estado</th><th>Próximo paso</th><th>Llegó</th></tr></thead>
+        <thead><tr><th>Contacto</th><th>Proyecto</th><th>Estado</th><th>Próximo paso</th><th>Llegó</th></tr></thead>
         <tbody>
         {foreach $leads as $l}
             {var $abierto = !in_array($l['estado'], ['ganado', 'perdido'], true)}
@@ -96,7 +137,9 @@
                     {if $l['empresa'] && $l['empresa'] !== $l['nombre']}<div class="pa-muted">{$l['empresa']}</div>{/if}
                 </td>
                 <td>
-                    {include '../_cliente.latte', marcasCli: $marcasCli, cid: $l['cliente_id'], nombre: $l['cliente_nombre'], sub: $l['proyecto_nombre'] . ($l['campana'] ? ' · ' . $l['campana'] : ''), fmt: $fmt}
+                    <span class="pa-proy"><span class="pa-dot" style="background: {($colorProy[$l['proyecto_id']] ?? '#94a3b8')|noescape}" aria-hidden="true"></span><strong>{$l['proyecto_nombre']}</strong></span>
+                    {if $l['campana']}<div class="pa-muted">{$l['campana']}</div>{/if}
+                    <span class="ll">{foreach \TypeDock\Plugin\Portal\LeadService::publicoEtiquetas($l['proyecto_publico']) as $t} <span class="ll-pub" data-p="{$t}">{$t}</span>{/foreach}</span>
                 </td>
                 <td><span class="pa-chip {$chips[$l['estado']]}">{$estados[$l['estado']]}</span>{if $l['mc_estado'] && isset($mcEstados[$l['mc_estado']])}<div class="pa-muted" style="margin-top:.25rem">Mailchimp: {$mcEstados[$l['mc_estado']][0]}</div>{/if}{var $correos = \TypeDock\Plugin\Portal\LeadService::mcCorreos($l)}{if $correos}<div class="pa-muted">{$correos}</div>{/if}</td>
                 <td>{if $l['proximo_paso'] && $abierto}{$l['proximo_paso']}{if $l['proximo_paso_fecha']}<div class="pa-muted" {if $l['proximo_paso_fecha'] < $hoy}style="color:#e11d48;font-weight:700"{/if}>{$fmt->fechaCorta($l['proximo_paso_fecha'])}</div>{/if}{else}<span class="pa-muted">—</span>{/if}</td>
@@ -108,6 +151,6 @@
 </div>
 {include '../_paginacion.latte', pag: $pag}
 {/if}
-{/if}
 {include '../_filtros.js.latte'}
+{include '../../_lead_scripts.latte'}
 {/block}

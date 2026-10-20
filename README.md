@@ -74,6 +74,18 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### v0.43.0: contactos ganados con línea de tiempo, campañas B2C/B2B y evolución
+Reúne las tres etapas que estaban planeadas (v0.41, v0.42 y v0.43).
+- **Elegir cliente primero (panel del equipo y admin).** `/equipo/leads` es ahora una pantalla con una tarjeta por cliente (total, barra por estado, B2C/B2B y cuántos llegaron esta semana). Al entrar, **sólo se ven los proyectos y contactos de ese cliente**: nunca se mezclan. Quien lleva un solo cliente entra directo. Los enlaces antiguos con `?proyecto=` siguen funcionando.
+- **Línea de tiempo de cada contacto (agencia y cliente).** Cada contacto tiene su llegada, cada cambio de estado, sus notas (con dueño: **Agencia** o **Cliente**) y los próximos pasos. Un solo cuadro agrega una nota, cambia el estado, o las dos cosas, con la fecha en que ocurrió (viene con la de ahora y se puede ajustar). Cada movimiento tiene un **lápiz para corregir su fecha**; la línea se reordena sola y queda «fecha corregida» (se guarda también cuándo se registró). Lo ven y lo pueden corregir la agencia y el cliente. Los contactos que ya existían copian su llegada, su estado actual y su nota única (como «Nota anterior»); las etapas por las que pasaron antes no se guardaron nunca y no se pueden reconstruir. Anonimizar borra las notas y deja los cambios de estado para los conteos.
+- **A quién le habla cada proyecto: B2C, B2B o los dos** (casillas en el formulario del proyecto). Aparece como etiqueta en las tarjetas, las listas y la ficha, y filtra el gráfico y la lista.
+- **Evolución del cliente** (equipo y portal del cliente, en Contactos ganados): línea de **contactos acumulados** con puntos, filtros por público y período, botones para ver ganados y perdidos, embudo («de una etapa a la siguiente», con el % entre etapas) y tiempos promedio entre etapas.
+- **Gráfico en el Inicio del cliente**, con el nombre del proyecto: aparece cuando la campaña está activa y lleva **14 días o más** recibiendo contactos (contados desde el primero). Sólo números, sin nombres de personas, y sólo para quien ya ve contactos ganados.
+- **Gráficos con Chart.js 4.5.1** (licencia MIT, `assets/chart.umd.js`, incluido en el plugin; sin CDN). Los colores siguen al color de cada cliente y al modo claro u oscuro.
+- Estados con un color propio en todo el panel: Nuevo gris, Contactado azul, Calificado ámbar, Ganado verde, Perdido rojo.
+- Datos: migración `0014_lead_linea.sql` (tabla `portal_lead_eventos`) y columna `portal_proyectos.publico`; también las garantiza `Schema.php`. No se borra nada.
+- `portal.css` sube a `?v=38`; `leads.css` es nuevo (`?v=2`).
+
 ### v0.40.2: «Novedades» siempre en el color opuesto
 - El bloque de **Novedades** va **siempre en el opuesto del fondo**: en modo claro, azul del sistema (`#14204d`) con texto claro; en modo oscuro, **gris clarito** con texto azul. Los estados (aprobado, en revisión…) y los íconos usan sus tonos de modo claro dentro del gris para leerse bien.
 - `portal.css` sube a `?v=37`.

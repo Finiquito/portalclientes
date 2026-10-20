@@ -1,0 +1,48 @@
+{layout $plugin_ui_layout}
+
+{block page_title}Contactos ganados{/block}
+
+{block content}
+<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=17">
+<link rel="stylesheet" href="/plugins/portal/assets/leads.css?v=2">
+<div class="page-header">
+    <h1>Contactos ganados</h1>
+</div>
+
+{if $flash_success}<div class="alert alert-success">{$flash_success}</div>{/if}
+{if $flash_error}<div class="alert alert-error">{$flash_error}</div>{/if}
+
+{if $sinProyectos}
+    <div class="card">
+        <p style="margin:0"><strong>Todavía no hay proyectos con contactos ganados.</strong></p>
+        <p class="pa-muted" style="margin:.4rem 0 0">Edita el proyecto de la campaña y marca «Con contactos ganados». Desde ahí el cliente ve en su portal las personas que llegan y les da seguimiento.</p>
+        <p style="margin:.9rem 0 0"><a href="{$admin_url('proyectos')}" class="btn">Ir a proyectos</a></p>
+    </div>
+{else}
+<div class="ll">
+    <p class="ll-aviso" style="margin:0 0 1rem">Elige un cliente. Cada cliente se ve por separado: sus proyectos, sus contactos y sus números.</p>
+    <div class="ll-grid">
+    {foreach $tarjetas as $c}
+        {var $m = $marcasCli[$c['id']] ?? null}
+        <a class="ll-card" href="{$admin_url('leads')}?cliente={$c['id']}">
+            <div class="ll-cab">
+                <span class="ll-av" style="{if $m && !empty($m['color'])}background:{$m['color']|noescape};color:{($m['texto'] ?? '#fff')|noescape}{/if}">{if $m && !empty($m['logo'])}<img src="{$m['logo']}" alt="">{else}{$fmt->iniciales($c['nombre'])}{/if}</span>
+                <div><h2>{$c['nombre']}</h2><p class="ll-sub">{$c['proyectos']} {$c['proyectos'] === 1 ? 'proyecto' : 'proyectos'} con contactos ganados</p></div>
+                <div class="ll-num"><b>{$c['total']}</b><span>{$c['total'] === 1 ? 'contacto' : 'contactos'}</span></div>
+            </div>
+            {if $c['total'] > 0}
+            <div class="ll-barra" role="img" aria-label="Contactos por estado">
+                {foreach $estados as $k => $txt}{if $c['conteo'][$k] > 0}<i data-e="{$k}" style="flex:{$c['conteo'][$k]}" title="{$txt}: {$c['conteo'][$k]}"></i>{/if}{/foreach}
+            </div>
+            <div class="ll-leyenda">{foreach $estados as $k => $txt}<span><i data-e="{$k}"></i>{$txt} <b>{$c['conteo'][$k]}</b></span>{/foreach}</div>
+            {/if}
+            <div class="ll-pie">
+                <div class="tags">{foreach $c['publico'] as $p}<span class="ll-pub" data-p="{$p}">{$p}</span>{/foreach}</div>
+                <span class="nv">{if $c['nuevos_semana'] > 0}{$c['nuevos_semana']} {$c['nuevos_semana'] === 1 ? 'nuevo' : 'nuevos'} esta semana · {/if}Entrar →</span>
+            </div>
+        </a>
+    {/foreach}
+    </div>
+</div>
+{/if}
+{/block}

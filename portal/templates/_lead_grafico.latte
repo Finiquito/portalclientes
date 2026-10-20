@@ -1,0 +1,12 @@
+{* Línea de contactos acumulados (Chart.js). Parámetros: $grafico (LeadStats::datosGrafico), $corto (bool: más bajo),
+   $botones (bool: Ganados y Perdidos se pueden encender). Los scripts van una vez por página: _lead_scripts.latte *}
+<div data-grafico-wrap>
+    {if $botones}
+    <div class="ll-chips" role="group" aria-label="Qué mostrar en el gráfico">
+        <button type="button" data-serie="contactos" class="on" aria-pressed="true"><i></i>Contactos</button>
+        <button type="button" data-serie="ganados" aria-pressed="false"><i></i>Ganados</button>
+        <button type="button" data-serie="perdidos" aria-pressed="false"><i></i>Perdidos</button>
+    </div>
+    {/if}
+    <div class="ll-chart{if $corto} corto{/if}"><canvas data-grafico="{json_encode($grafico, \JSON_UNESCAPED_UNICODE)}" role="img" aria-label="Cuántos contactos han llegado en total, a lo largo del tiempo"></canvas></div>
+</div>

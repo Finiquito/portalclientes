@@ -56,6 +56,14 @@
 
         <label class="pa-check mt-3"><input type="checkbox" name="con_leads" value="1" {if (int) ($proyecto['con_leads'] ?? 0) === 1}checked{/if}> <span><strong>Con contactos ganados</strong> (leads): el cliente ve en su portal los contactos que llegan por esta campaña y puede darles seguimiento.</span></label>
 
+        {var $pubGuardado = explode(',', (string) ($proyecto['publico'] ?? ''))}
+        <p class="form-label mt-3" style="margin-bottom:.1rem">A quién le habla este proyecto</p>
+        <div class="pa-row" style="gap:1.2rem">
+            <label class="pa-check" style="margin-top:.25rem"><input type="checkbox" name="publico_b2c" value="1" {if in_array('b2c', $pubGuardado, true)}checked{/if}> <span><strong>B2C</strong> · consumidores</span></label>
+            <label class="pa-check" style="margin-top:.25rem"><input type="checkbox" name="publico_b2b" value="1" {if in_array('b2b', $pubGuardado, true)}checked{/if}> <span><strong>B2B</strong> · empresas</span></label>
+        </div>
+        <p class="form-hint mt-1">Puedes marcar los dos si el proyecto es mixto. Sirve para filtrar y para ver de un vistazo de qué se trata cada proyecto en Contactos ganados.</p>
+
         <p class="mt-4">
             <button type="submit" class="btn btn-primary">Guardar</button>
         </p>

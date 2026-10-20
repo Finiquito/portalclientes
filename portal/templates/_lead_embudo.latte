@@ -1,0 +1,27 @@
+{* De una etapa a la siguiente y cuánto tardan. Parámetros: $embudo (LeadStats::embudo), $tiempos (LeadStats::tiempos) *}
+{var $nombres = ['nuevo' => 'Nuevo', 'contactado' => 'Contactado', 'calificado' => 'Calificado', 'ganado' => 'Ganado']}
+{var $base = max(1, $embudo['llegaron'])}
+<div class="ll-dos">
+    <div>
+        <p class="ll-tit">De una etapa a la siguiente</p>
+        <div class="ll-emb">
+            <div class="r"><b>Llegaron</b><div class="bar"><i data-e="nuevo" style="width:100%;background:var(--e-nuevo)"></i></div><span class="v">{$embudo['llegaron']}</span></div>
+            {if $embudo['pasos'][0] !== null}<div class="pc">{$embudo['pasos'][0]}% pasa a contactado</div>{/if}
+            <div class="r"><b>Contactados</b><div class="bar"><i style="width:{round($embudo['contactados'] * 100 / $base)}%;background:var(--e-contactado)"></i></div><span class="v">{$embudo['contactados']}</span></div>
+            {if $embudo['pasos'][1] !== null}<div class="pc">{$embudo['pasos'][1]}% pasa a calificado</div>{/if}
+            <div class="r"><b>Calificados</b><div class="bar"><i style="width:{round($embudo['calificados'] * 100 / $base)}%;background:var(--e-calificado)"></i></div><span class="v">{$embudo['calificados']}</span></div>
+            {if $embudo['pasos'][2] !== null}<div class="pc">{$embudo['pasos'][2]}% llega a ganado</div>{/if}
+            <div class="r"><b>Ganados</b><div class="bar"><i style="width:{round($embudo['ganados'] * 100 / $base)}%;background:var(--e-ganado)"></i></div><span class="v">{$embudo['ganados']}</span></div>
+            {if $embudo['perdidos'] > 0}<p class="ll-aviso" style="margin-top:.2rem">Además, {$embudo['perdidos']} {$embudo['perdidos'] === 1 ? 'quedó' : 'quedaron'} como perdidos.</p>{/if}
+        </div>
+    </div>
+    <div>
+        <p class="ll-tit">Cuánto tardan</p>
+        <div class="ll-vel">
+            {foreach $tiempos['tramos'] as $t}
+                <div><b>{if $t['dias'] === null}—{else}{str_replace('.', ',', (string) $t['dias'])} {$t['dias'] === 1.0 ? 'día' : 'días'}{/if}</b><span>de {$nombres[$t['de']]} a {$nombres[$t['a']]}</span></div>
+            {/foreach}
+            <div><b>{if $tiempos['a_ganado_pct'] === null}—{else}{str_replace('.', ',', (string) $tiempos['a_ganado_pct'])} %{/if}</b><span>de llegada a ganado</span></div>
+        </div>
+    </div>
+</div>

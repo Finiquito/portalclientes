@@ -4,6 +4,7 @@
 
 {block content}
 <link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=17">
+<link rel="stylesheet" href="/plugins/portal/assets/leads.css?v=2">
 {var $anonimo = $l && !empty($l['anonimizado_en'])}
 <div class="page-header">
     <h1>{if $l}{$l['nombre']}{else}Agregar contacto{/if}</h1>
@@ -19,6 +20,7 @@
         <span class="pa-chip {$chips[$l['estado']]}">{$estados[$l['estado']]}</span>
         <span class="pa-chip gris">{$origenes[$l['origen']] ?? $l['origen']}</span>
         {if $l['campana']}<span class="pa-chip gris">{$l['campana']}</span>{/if}
+        <span class="ll">{foreach \TypeDock\Plugin\Portal\LeadService::publicoEtiquetas($l['proyecto_publico'] ?? '') as $t}<span class="ll-pub" data-p="{$t}">{$t}</span> {/foreach}</span>
     </p>
     <p class="pa-muted" style="margin:0">
         {$l['cliente_nombre']} · {$l['proyecto_nombre']} · llegó {$fmt->rel($l['created_at'])}
@@ -30,7 +32,7 @@
 </div>
 {/if}
 
-{if !$anonimo}
+{if !$l}
 <div class="card">
     <form method="post" action="{if $l}{$admin_url('leads/' . $l['id'])}{else}{$admin_url('leads')}{/if}">
         <input type="hidden" name="_csrf_token" value="{$csrf_token}">
@@ -74,6 +76,30 @@
 
         <p class="mt-4"><button type="submit" class="btn btn-primary">{if $l}Guardar{else}Agregar{/if}</button></p>
     </form>
+</div>
+{/if}
+
+{if $l}
+<div class="ll ll-ficha">
+    <div>
+        {include '../../_lead_linea.latte', l: $l, eventos: $eventos, estados: $estados, base: $admin_url('leads/' . $l['id']), csrfCampo: '_csrf_token', csrfValor: $csrf_token, ahora: $ahora, fmt: $fmt, origenes: $origenes, puedeEditar: true}
+    </div>
+    <div>
+        {if !$anonimo}
+        <form method="post" action="{$admin_url('leads/' . $l['id'])}" class="card" style="margin:0 0 1rem">
+            <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+            <h2 class="pa-h2" style="margin-top:0">Datos y próximo paso</h2>
+            <label class="form-label">Nombre</label><input type="text" name="nombre" maxlength="255" class="form-input" value="{$l['nombre']}">
+            <label class="form-label mt-3">Empresa</label><input type="text" name="empresa" maxlength="255" class="form-input" value="{$l['empresa']}">
+            <label class="form-label mt-3">Correo</label><input type="email" name="correo" maxlength="255" class="form-input" value="{$l['correo']}">
+            <label class="form-label mt-3">Teléfono</label><input type="tel" name="telefono" maxlength="64" class="form-input" value="{$l['telefono']}">
+            <p class="form-hint mt-1">Basta con un correo o un teléfono.</p>
+            <label class="form-label mt-3">Próximo paso</label><input type="text" name="proximo_paso" maxlength="255" class="form-input" value="{$l['proximo_paso']}">
+            <label class="form-label mt-3">¿Cuándo?</label><input type="date" name="proximo_paso_fecha" class="form-input" value="{$l['proximo_paso_fecha']}">
+            <p class="mt-4"><button type="submit" class="btn btn-primary">Guardar</button></p>
+        </form>
+        {/if}
+    </div>
 </div>
 {/if}
 
