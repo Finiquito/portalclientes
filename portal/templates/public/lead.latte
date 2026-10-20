@@ -3,7 +3,7 @@
 {block title}{$l['nombre']}{/block}
 
 {block content}
-<link rel="stylesheet" href="/plugins/portal/assets/leads.css?v=2">
+<link rel="stylesheet" href="/plugins/portal/assets/leads.css?v=3">
 {var $anonimo = !empty($l['anonimizado_en'])}
 <a href="/portal/contactos-ganados" class="reveal mb-3 inline-flex items-center gap-1.5 text-sm font-semibold text-muted transition hover:text-ink">
     <svg class="size-4"><use href="#i-back"/></svg> Contactos ganados
@@ -19,7 +19,6 @@
                 <div class="flex flex-wrap items-center gap-2">
                     <span class="chip {$chips[$l['estado']]}">{$estados[$l['estado']]}</span>
                     {if $l['campana']}<span class="chip chip-muted">{$l['campana']}</span>{/if}
-                    <span class="ll">{foreach \TypeDock\Plugin\Portal\LeadService::publicoEtiquetas($l['proyecto_publico'] ?? '') as $t}<span class="ll-pub" data-p="{$t}">{$t}</span> {/foreach}</span>
                 </div>
                 <h1 class="mt-2 break-words text-2xl font-extrabold leading-tight tracking-tight sm:text-3xl">{$l['nombre']}</h1>
                 {if $l['empresa'] && $l['empresa'] !== $l['nombre']}<p class="mt-0.5 text-muted">{$l['empresa']}</p>{/if}
@@ -95,9 +94,9 @@
     <section class="card card-pad reveal text-sm" style="--i:2">
         <h2 class="font-extrabold">De dónde llegó</h2>
         <dl class="mt-3 space-y-2.5">
-            <div><dt class="text-xs text-muted">Proyecto</dt><dd class="font-semibold">{$l['proyecto_nombre']}</dd></div>
-            <div><dt class="text-xs text-muted">Origen</dt><dd class="font-semibold">{$origenes[$l['origen']] ?? $l['origen']}</dd></div>
-            {if $l['campana']}<div><dt class="text-xs text-muted">Campaña</dt><dd class="break-words font-semibold">{$l['campana']}</dd></div>{/if}
+            <div><dt class="text-xs text-muted">Campaña</dt><dd class="font-semibold">{$l['proyecto_nombre']}<span class="ll">{foreach \TypeDock\Plugin\Portal\LeadService::publicoEtiquetas($l['proyecto_publico'] ?? '') as $t} <span class="ll-pub" data-p="{$t}">{$t}</span>{/foreach}</span></dd></div>
+            <div><dt class="text-xs text-muted">Origen</dt><dd class="break-words font-semibold">{$l['campana'] ?: ($origenes[$l['origen']] ?? $l['origen'])}</dd></div>
+            <div><dt class="text-xs text-muted">Cómo llegó</dt><dd class="font-semibold">{$origenes[$l['origen']] ?? $l['origen']}</dd></div>
             {if $l['utm_source'] || $l['utm_medium']}<div><dt class="text-xs text-muted">Fuente / medio</dt><dd class="break-words font-semibold">{$l['utm_source'] ?: '—'} / {$l['utm_medium'] ?: '—'}</dd></div>{/if}
             <div><dt class="text-xs text-muted">Llegó</dt><dd class="font-semibold">{$fmt->fecha($l['created_at'])}</dd></div>
             {if $l['creado_por'] && $l['origen'] === 'manual'}<div><dt class="text-xs text-muted">Lo agregó</dt><dd class="font-semibold">{$l['creado_por']}</dd></div>{/if}

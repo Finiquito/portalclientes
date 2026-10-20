@@ -87,9 +87,18 @@ class LeadPublicController extends PortalPublicController
             'paso_desc'   => fn($a, $b) => strcmp($paso($b) === '9999-12-31' ? '' : $paso($b), $paso($a) === '9999-12-31' ? '' : $paso($a)),
         ]);
 
+        $porProy = [];
+        foreach ($svc->lista(['cliente_id' => $clienteId]) as $l) {
+            $porProy[(string) $l['proyecto_id']] = ($porProy[(string) $l['proyecto_id']] ?? 0) + 1;
+        }
+        $campanasCli = array_map(fn(array $p): array => [
+            'id' => (string) $p['id'], 'nombre' => (string) $p['nombre'], 'estado' => (string) $p['estado'],
+            'etiquetas' => LeadService::publicoEtiquetas((string) $p['publico']), 'total' => $porProy[(string) $p['id']] ?? 0,
+        ], $proyectos);
         $eventos = (new LeadLinea($this->pdo()))->deEstado($clienteId, $f['proyecto_id'] !== '' ? [$f['proyecto_id']] : []);
         $acum = LeadStats::acumulado($base, $eventos);
         $this->ctx->view('templates/public/leads.latte', $this->contexto($c, 'leads') + [
+            'misCampanas' => $campanasCli,
             'grafico'   => LeadStats::datosGrafico($acum),
             'embudo'    => LeadStats::embudo($base, $eventos),
             'tiempos'   => LeadStats::tiempos($base, $eventos),

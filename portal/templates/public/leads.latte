@@ -3,7 +3,7 @@
 {block title}Contactos ganados{/block}
 
 {block content}
-<link rel="stylesheet" href="/plugins/portal/assets/leads.css?v=2">
+<link rel="stylesheet" href="/plugins/portal/assets/leads.css?v=3">
 <header class="reveal flex flex-wrap items-end justify-between gap-4 pb-5 pt-1">
     <div>
         <h1 class="text-3xl font-extrabold tracking-tight sm:text-4xl">Contactos ganados</h1>
@@ -11,9 +11,25 @@
     </div>
     <div class="flex flex-wrap gap-2">
         {if $total > 0}<a href="{$exportar}" class="btn btn-ghost btn-sm"><svg class="size-4"><use href="#i-download"/></svg> Descargar CSV</a>{/if}
-        {if !$vistaPrevia}<a href="/portal/contactos-ganados/nuevo" class="btn btn-primary btn-sm"><svg class="size-4"><use href="#i-plus"/></svg> Agregar contacto</a>{/if}
+        {if !$vistaPrevia}<a href="/portal/contactos-ganados/nuevo" class="btn btn-primary btn-sm"><svg class="size-4"><use href="#i-plus"/></svg> Agregar contacto</a>
+        {else}<span title="En vista previa se puede mirar todo, pero no agregar contactos"><span class="btn btn-primary btn-sm" aria-disabled="true"><svg class="size-4"><use href="#i-plus"/></svg> Agregar contacto</span></span>{/if}
     </div>
 </header>
+
+{* Las campañas del cliente (un proyecto = una campaña) con a quién le hablan: el B2C o B2B vive aquí, no en cada fila *}
+{if count($misCampanas) > 0}
+<section class="ll reveal" style="--i:1;margin-bottom:1.25rem" aria-label="Tus campañas">
+    <div class="ll-campanas">
+        {foreach $misCampanas as $c}
+        <a href="/portal/contactos-ganados?proyecto={$c['id']}" class="ll-camp" {if $f['proyecto_id'] === $c['id']}aria-current="true"{/if}>
+            <span class="ll-camp-n"><span class="ll-camp-dot" style="background:{($colorProy[$c['id']] ?? '#94a3b8')|noescape}" aria-hidden="true"></span>{$c['nombre']}{foreach $c['etiquetas'] as $t} <span class="ll-pub" data-p="{$t}">{$t}</span>{/foreach}{if $c['estado'] !== 'activo'} <span class="ll-chip" data-e="nuevo">{$c['estado'] === 'pausado' ? 'Pausada' : 'Cerrada'}</span>{/if}</span>
+            <span class="ll-camp-t"><b>{$c['total']}</b> {$c['total'] === 1 ? 'contacto' : 'contactos'}</span>
+        </a>
+        {/foreach}
+        {if $f['proyecto_id'] !== ''}<a href="/portal/contactos-ganados" class="ll-camp ll-camp-todas">Ver todas</a>{/if}
+    </div>
+</section>
+{/if}
 
 {* Evolución: contactos acumulados, de una etapa a la siguiente y cuánto tardan *}
 {if $total > 0 && !empty($grafico['etiquetas'])}
@@ -57,7 +73,7 @@
     {/if}
     {if $campanas}
     <div>
-        <label for="l-c" class="label">Campaña</label>
+        <label for="l-c" class="label">Origen</label>
         <select id="l-c" name="campana" class="field">
             <option value="">Todas</option>
             {foreach $campanas as $cp}<option value="{$cp}" {if $f['campana'] === $cp}selected{/if}>{$cp}</option>{/foreach}
@@ -82,7 +98,8 @@
                 <thead>
                     <tr class="text-left text-xs font-bold text-muted">
                         {var $sc = $pag->sentidoColumna('nombre')}<th class="whitespace-nowrap border-b border-line px-3 py-2.5" {if $sc}aria-sort="{$sc === 'asc' ? 'ascending' : 'descending'}"{/if}><a href="{$pag->urlColumna('nombre')}" class="inline-flex items-center gap-1 hover:text-ink {$sc ? 'text-ink' : ''}">Contacto<span aria-hidden="true" class="{$sc ? '' : 'opacity-30'}">{$sc === 'asc' ? '↑' : ($sc === 'desc' ? '↓' : '↕')}</span></a></th>
-                        <th class="whitespace-nowrap border-b border-line px-3 py-2.5">Campaña</th>
+                        {if count($proyectos) > 1}<th class="whitespace-nowrap border-b border-line px-3 py-2.5">Proyecto</th>{/if}
+                        <th class="whitespace-nowrap border-b border-line px-3 py-2.5">Origen</th>
                         {var $sc = $pag->sentidoColumna('estado')}<th class="whitespace-nowrap border-b border-line px-3 py-2.5" {if $sc}aria-sort="{$sc === 'asc' ? 'ascending' : 'descending'}"{/if}><a href="{$pag->urlColumna('estado')}" class="inline-flex items-center gap-1 hover:text-ink {$sc ? 'text-ink' : ''}">Estado<span aria-hidden="true" class="{$sc ? '' : 'opacity-30'}">{$sc === 'asc' ? '↑' : ($sc === 'desc' ? '↓' : '↕')}</span></a></th>
                         <th class="whitespace-nowrap border-b border-line px-3 py-2.5">Mailchimp</th>
                         {var $sc = $pag->sentidoColumna('llego')}<th class="whitespace-nowrap border-b border-line px-3 py-2.5" {if $sc}aria-sort="{$sc === 'asc' ? 'ascending' : 'descending'}"{/if}><a href="{$pag->urlColumna('llego')}" class="inline-flex items-center gap-1 hover:text-ink {$sc ? 'text-ink' : ''}">Llegó<span aria-hidden="true" class="{$sc ? '' : 'opacity-30'}">{$sc === 'asc' ? '↑' : ($sc === 'desc' ? '↓' : '↕')}</span></a></th>
@@ -100,11 +117,8 @@
                             <span class="block break-all text-xs text-muted">{$l['correo'] ?: $l['telefono']}</span>
                             {if $l['empresa'] && $l['empresa'] !== $l['nombre']}<span class="block text-xs text-muted">{$l['empresa']}</span>{/if}
                         </td>
-                        <td class="px-3 py-3">
-                            {if count($proyectos) > 1}<span class="inline-flex items-center gap-1.5 font-semibold"><span aria-hidden="true" style="display:inline-block;width:.6rem;height:.6rem;border-radius:9999px;flex:none;background:{($colorProy[$l['proyecto_id']] ?? '#94a3b8')|noescape}"></span>{$l['proyecto_nombre']}</span>{/if}
-                            <span class="block {count($proyectos) > 1 ? 'text-xs text-muted' : ''}">{$l['campana'] ?: 'Sin campaña'}</span>
-                            <span class="ll">{foreach \TypeDock\Plugin\Portal\LeadService::publicoEtiquetas($l['proyecto_publico'] ?? '') as $t}<span class="ll-pub" data-p="{$t}">{$t}</span> {/foreach}</span>
-                        </td>
+                        {if count($proyectos) > 1}<td class="px-3 py-3"><span class="inline-flex items-center gap-1.5 font-semibold"><span aria-hidden="true" style="display:inline-block;width:.6rem;height:.6rem;border-radius:9999px;flex:none;background:{($colorProy[$l['proyecto_id']] ?? '#94a3b8')|noescape}"></span>{$l['proyecto_nombre']}</span></td>{/if}
+                        <td class="px-3 py-3">{$l['campana'] ?: ($origenes[$l['origen']] ?? $l['origen'])}</td>
                         <td class="px-3 py-3"><span class="chip {$chips[$l['estado']]}">{$estados[$l['estado']]}</span></td>
                         <td class="px-3 py-3">
                             {if $l['mc_estado'] && isset($mcEstados[$l['mc_estado']])}
@@ -112,7 +126,7 @@
                                 {if $correos}<span class="mt-0.5 flex items-center gap-1 text-xs text-muted"><svg class="size-3.5"><use href="#i-mail"/></svg>{$correos}</span>{/if}
                             {else}<span class="text-muted">—</span>{/if}
                         </td>
-                        <td class="whitespace-nowrap px-3 py-3">{$fmt->rel($l['created_at'])}<span class="block text-xs text-muted">{$origenes[$l['origen']] ?? $l['origen']}</span></td>
+                        <td class="whitespace-nowrap px-3 py-3">{$fmt->rel($l['created_at'])}</td>
                         <td class="px-3 py-3">
                             {if $l['proximo_paso'] && $abierto}{$l['proximo_paso']}{if $l['proximo_paso_fecha']}<span class="mt-0.5 flex items-center gap-1 text-xs {$vencido ? 'font-bold text-danger' : 'text-muted'}"><svg class="size-3.5"><use href="#i-clock"/></svg>{$fmt->fechaCorta($l['proximo_paso_fecha'])}</span>{/if}{else}<span class="text-muted">—</span>{/if}
                         </td>

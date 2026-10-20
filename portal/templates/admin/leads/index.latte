@@ -4,7 +4,7 @@
 
 {block content}
 <link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=17">
-<link rel="stylesheet" href="/plugins/portal/assets/leads.css?v=2">
+<link rel="stylesheet" href="/plugins/portal/assets/leads.css?v=3">
 {var $hayPublico = false}
 {foreach $proyectos as $p}{if $p['publico'] !== ''}{var $hayPublico = true}{/if}{/foreach}
 <div class="ll">
@@ -126,7 +126,7 @@
 {else}
 <div class="card" style="overflow-x:auto">
     <table class="table">
-        <thead><tr><th>Contacto</th><th>Proyecto</th><th>Estado</th><th>Próximo paso</th><th>Llegó</th></tr></thead>
+        <thead><tr><th>Contacto</th><th>Campaña · origen</th><th>Estado</th><th>Próximo paso</th><th>Llegó</th></tr></thead>
         <tbody>
         {foreach $leads as $l}
             {var $abierto = !in_array($l['estado'], ['ganado', 'perdido'], true)}
@@ -139,7 +139,6 @@
                 <td>
                     <span class="pa-proy"><span class="pa-dot" style="background: {($colorProy[$l['proyecto_id']] ?? '#94a3b8')|noescape}" aria-hidden="true"></span><strong>{$l['proyecto_nombre']}</strong></span>
                     {if $l['campana']}<div class="pa-muted">{$l['campana']}</div>{/if}
-                    <span class="ll">{foreach \TypeDock\Plugin\Portal\LeadService::publicoEtiquetas($l['proyecto_publico']) as $t} <span class="ll-pub" data-p="{$t}">{$t}</span>{/foreach}</span>
                 </td>
                 <td><span class="pa-chip {$chips[$l['estado']]}">{$estados[$l['estado']]}</span>{if $l['mc_estado'] && isset($mcEstados[$l['mc_estado']])}<div class="pa-muted" style="margin-top:.25rem">Mailchimp: {$mcEstados[$l['mc_estado']][0]}</div>{/if}{var $correos = \TypeDock\Plugin\Portal\LeadService::mcCorreos($l)}{if $correos}<div class="pa-muted">{$correos}</div>{/if}</td>
                 <td>{if $l['proximo_paso'] && $abierto}{$l['proximo_paso']}{if $l['proximo_paso_fecha']}<div class="pa-muted" {if $l['proximo_paso_fecha'] < $hoy}style="color:#e11d48;font-weight:700"{/if}>{$fmt->fechaCorta($l['proximo_paso_fecha'])}</div>{/if}{else}<span class="pa-muted">—</span>{/if}</td>

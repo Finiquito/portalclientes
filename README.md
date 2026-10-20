@@ -74,6 +74,13 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### v0.43.1: contactos ganados, ajustes de la lista del cliente
+- **«Origen» en vez de «Campaña»** en la lista del cliente (y en el filtro): la campaña es el proyecto; lo que trae cada contacto (WhatsApp, Instagram, formulario…) es su origen. Si no trae uno, se muestra cómo llegó (Formulario, Ingreso manual…). La columna «Llegó» ya no repite el origen.
+- **B2C / B2B fuera de cada fila.** Ahora se ve sólo en los datos de la campaña: arriba de la lista del cliente (una tarjeta por campaña, con su etiqueta y su total, que además filtra), en la ficha junto a «Campaña», en las tarjetas de proyecto y al elegir cliente en el equipo.
+- Si el cliente tiene más de un proyecto, la lista suma una columna «Proyecto».
+- **«Agregar contacto» siempre se ve** en la lista del cliente. En vista previa (cuando la agencia mira como cliente) aparece desactivado, con la explicación, en vez de desaparecer.
+- `leads.css` sube a `?v=3`.
+
 ### v0.43.0: contactos ganados con línea de tiempo, campañas B2C/B2B y evolución
 Reúne las tres etapas que estaban planeadas (v0.41, v0.42 y v0.43).
 - **Elegir cliente primero (panel del equipo y admin).** `/equipo/leads` es ahora una pantalla con una tarjeta por cliente (total, barra por estado, B2C/B2B y cuántos llegaron esta semana). Al entrar, **sólo se ven los proyectos y contactos de ese cliente**: nunca se mezclan. Quien lleva un solo cliente entra directo. Los enlaces antiguos con `?proyecto=` siguen funcionando.

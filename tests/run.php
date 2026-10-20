@@ -2117,6 +2117,17 @@ check(P\LeadService::publicoEtiquetas('b2c,b2b') === ['B2C', 'B2B'] && P\LeadSer
 $ps->update($pBc, ['cliente_id' => $cPb, 'nombre' => 'Sólo consumidores', 'estado' => 'activo', 'con_leads' => 1, 'publico_b2b' => '1']);
 check($ps->find($pBc)['publico'] === 'b2b', 'se puede cambiar el público de un proyecto');
 
+// Lista del cliente: «Origen» en vez de «Campaña»; el B2C/B2B va con los datos de la campaña, no en cada fila
+$ps->update($pLd, ['cliente_id' => $cLd, 'nombre' => 'Campaña otoño', 'estado' => 'activo', 'con_leads' => 1, 'publico_b2c' => '1']);
+$_SESSION[P\PortalSession::CONTACTO] = $colab;
+$_GET = [];
+[$html] = $lp->correr('lista');
+check(str_contains($html, '>Origen<') && !str_contains($html, '>Campaña</th>'), 'la columna de la lista del cliente se llama «Origen»');
+check(substr_count($html, 'data-p="B2C"') === 1 && str_contains($html, 'Tus campañas'), 'el B2C aparece una vez, en los datos de la campaña, y no en cada fila');
+check(str_contains($html, 'Agregar contacto') && str_contains($html, '/portal/contactos-ganados/nuevo'), 'el botón para agregar un contacto está en la lista del cliente');
+[$html] = $lp->correr('ver', [(string) $r1['id']]);
+check(str_contains($html, 'Campaña otoño') && str_contains($html, 'data-p="B2C"') && str_contains($html, 'Origen'), 'la ficha muestra el B2C junto a la campaña y el origen del contacto');
+
 // Inicio del cliente: el gráfico de la campaña activa con 14 días o más de contactos
 $_SESSION[P\PortalSession::CONTACTO] = $colab;
 [$html] = $lp->correr('dashboard');
