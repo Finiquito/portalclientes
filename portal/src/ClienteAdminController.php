@@ -175,7 +175,7 @@ class ClienteAdminController
 
         $aj->setMuchos('cliente', $id, [
             'titulo' => mb_substr(trim((string) ($_POST['titulo'] ?? '')), 0, 60),
-            'color'  => AjustesService::colorValido((string) ($_POST['color'] ?? '')),
+            'color'  => AjustesService::colorValido(Paleta::elegir((string) ($_POST['color'] ?? ''), (string) ($aj->todos('cliente', $id)['color'] ?? ''))),
             'frases' => json_encode(AjustesService::frasesDesdeTexto((string) ($_POST['frases'] ?? '')), JSON_UNESCAPED_UNICODE),
         ]);
 

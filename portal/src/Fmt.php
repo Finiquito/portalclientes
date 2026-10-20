@@ -334,7 +334,7 @@ final class Fmt
             $usados[] = $mejor;
         }
         foreach ($out as &$m) {
-            $m['texto'] = AjustesService::colorTexto($m['color']);
+            $m['texto'] = Paleta::marca($m['color'])['texto'];
         }
         return $out;
     }

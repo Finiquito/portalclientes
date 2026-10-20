@@ -264,7 +264,7 @@ check(str_contains($html, '--brand: #6d5df6'), 'inicio: usa el color por defecto
 
 (new P\AjustesService($pdo))->set('global', 'portal', 'color_agencia', '#e4572e');
 [$html] = $ctl->correr(fn() => $ctl->inicio());
-check(str_contains($html, '--brand: #e4572e'), 'inicio: usa el color de agencia de Ajustes');
+check(str_contains($html, '--brand: ' . P\Paleta::marca('#e4572e')['color']), 'inicio: usa el color de agencia de Ajustes (ya ajustado por la paleta)');
 
 [$html] = $ctl->correr(fn() => $ctl->clientes());
 check(str_contains($html, 'Cliente Uno') && str_contains($html, 'Dos A'), 'clientes: completo + proyecto suelto');
@@ -2749,6 +2749,22 @@ check(P\ListaRecordada::restaurar('/equipo/tareas') === null, 'sin página de or
 $_SERVER['HTTP_REFERER'] = 'https://proyectos.ejemplo.cl/equipo/tareas/1';
 check(P\ListaRecordada::restaurar('/admin/portal/leads') === null && P\ListaRecordada::restaurar('/equipo/tareas') === 'proyecto=x', 'cada lista recuerda lo suyo');
 unset($_SERVER['HTTP_REFERER']); $_SESSION['portal_listas'] = [];
+
+seccion('Paleta de marca: 12 colores y sus normas de contraste');
+check(count(P\Paleta::COLORES) === 12, 'la paleta tiene 12 colores');
+foreach (P\Paleta::COLORES as $k => $c) {
+    $m = P\Paleta::marca($c[1]);
+    check(P\Paleta::contraste($m['color'], $m['texto']) >= 4.5, "{$c[0]}: el texto del botón llega a 4,5:1");
+    check(P\Paleta::contraste($m['tinta'], '#ffffff') >= 4.5, "{$c[0]}: el acento de texto sobre claro llega a 4,5:1");
+}
+check(P\Paleta::marca('#e8552d')['color'] === '#d54318', 'Naranjo Prisma se oscurece a #d54318');
+check(P\Paleta::marca('#2196f3')['texto'] === P\Paleta::TEXTO_OSCURO, 'Azul claro lleva texto oscuro');
+check(P\Paleta::marca('#2f5bea')['color'] === '#2f5bea' && P\Paleta::marca('#2f5bea')['texto'] === '#ffffff', 'Azul queda igual con texto blanco');
+$cx = P\Paleta::marca('#e07b39');
+check(P\Paleta::contraste($cx['color'], $cx['texto']) >= 4.5 || $cx['texto'] === P\Paleta::TEXTO_OSCURO, 'un color antiguo fuera de la paleta también se ajusta');
+check(P\Paleta::elegir('#118a6b', '#6d5df6') === '#118a6b', 'se acepta un color de la paleta');
+check(P\Paleta::elegir('#123456', '#6d5df6') === '#6d5df6', 'un color fuera de la paleta no reemplaza al actual');
+check(P\Paleta::elegir('xx', '') === '', 'sin color válido ni actual vuelve vacío (el defecto)');
 
 seccion('Plantillas: compilan sin avisos (el TypeDock real convierte un aviso en error)');
 $dirT = dirname(__DIR__) . '/portal/templates';

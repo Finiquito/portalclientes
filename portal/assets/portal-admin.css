@@ -469,3 +469,13 @@ div.pa-ve-fila { cursor: default; }
 .pa-ve-pie p { margin: 0; flex: 1; min-width: 14rem; }
 @media (max-width: 640px) { .pa-t { grid-template-columns: 1fr; } .pa-t-ia { margin-left: 0; } }
 @media (prefers-reduced-motion: reduce) { .pa-sw, .pa-sw::after { transition: none; } }
+
+/* Selector de color de marca (admin/_paleta.latte) */
+.pa-paleta { display: grid; grid-template-columns: repeat(auto-fill, minmax(7.4rem, 1fr)); gap: .5rem; margin-top: .5rem; max-width: 40rem; }
+.pa-col { position: relative; display: flex; align-items: center; gap: .55rem; padding: .4rem .55rem .4rem .4rem; border: 1px solid color-mix(in srgb, currentColor 20%, transparent); border-radius: .4rem; cursor: pointer; font-size: .8125rem; font-weight: 650; }
+.pa-col input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
+.pa-col-chip { width: 1.6rem; height: 1.6rem; flex: none; border-radius: .3rem; display: grid; place-items: center; }
+.pa-col-chip svg { width: .9rem; height: .9rem; opacity: 0; }
+.pa-col:has(input:checked) { border-color: currentColor; box-shadow: 0 0 0 1px currentColor; }
+.pa-col:has(input:checked) .pa-col-chip svg { opacity: 1; }
+.pa-col:has(input:focus-visible) { outline: 2px solid currentColor; outline-offset: 2px; }

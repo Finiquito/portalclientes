@@ -298,6 +298,7 @@ class PortalPublicController
         $pref      = $this->ajustes()->todos('contacto', (string) $contacto['id']);
 
         $color = AjustesService::colorValido($cfg['color'] ?? '');
+        $pal   = Paleta::marca($color);
         $tema  = in_array($pref['tema'] ?? '', ['claro', 'oscuro'], true) ? $pref['tema'] : 'auto';
 
         $pendientes = (int) ($this->fetchOne(
@@ -317,8 +318,9 @@ class PortalPublicController
             'contacto'      => $contacto,
             'cliente'       => $cliente,
             'marca'         => [
-                'color'  => $color,
-                'texto'  => AjustesService::colorTexto($color),
+                'color'  => $pal['color'],
+                'texto'  => $pal['texto'],
+                'tinta'  => $pal['tinta'],
                 'titulo' => $titulo,
                 'logo'   => !empty($cfg['logo_id']) ? '/portal/archivo/' . $cfg['logo_id'] . '?i=1' : null,
             ],

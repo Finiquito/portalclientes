@@ -86,10 +86,11 @@ final class CorreoPlantilla
 
     private static function html(array $d): string
     {
-        $color   = AjustesService::colorValido((string) ($d['color'] ?? ''), '#6d5df6');
+        $pal     = Paleta::marca(AjustesService::colorValido((string) ($d['color'] ?? ''), '#6d5df6'));
+        $color   = $pal['color'];
         $tinte   = self::mezclar($color, '#ffffff', 0.86);
         $acento  = self::acento($color);
-        $textoBt = AjustesService::colorTexto($color);
+        $textoBt = $pal['texto'];
         $ag      = (array) ($d['agencia'] ?? []);
         $agNombre = (string) ($ag['nombre'] ?? '') !== '' ? (string) $ag['nombre'] : 'Equipo';
         $compacto = !empty($d['compacto']);

@@ -74,6 +74,14 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### v0.40.1: paleta de 12 colores y arreglos de «Azul firme»
+- **Colores de marca elegibles (agencia y cada cliente).** El selector libre se cambia por 12 colores: Naranjo Prisma, Azul, Verde, Violeta, Rosa, Grafito, Ámbar, Azul claro, Gris azulado, Café, Cian y Verde turquesa. Un portal con un color antiguo lo conserva, y aparece como «Actual» hasta que se elija uno de la lista.
+- **Normas de contraste, en los dos portales y en los correos.** El texto del botón llega a 4,5:1 como mínimo y el aro de foco a 3:1, en claro y en oscuro. Naranjo Prisma, Verde, Rosa y Gris azulado se oscurecen un poco para aguantar texto blanco; Ámbar, Azul claro, Cian y Verde turquesa llevan texto oscuro (`#10131f`). Lo que se guarda es el color elegido: el ajuste se aplica al pintar.
+- **Aro de foco** en el tono de acento legible (claro en oscuro, oscuro en claro), no en el color crudo de la marca.
+- **«Novedades»** es siempre el azul del sistema (`#14204d`), también en modo oscuro, y al pasar el cursor la fila se lee (antes quedaba blanco sobre claro).
+- **Inicio del equipo:** se marca con el color del cliente la tarjeta **«Asignadas a ti»** (cuando hay tareas). «Vencidas» ya no se rellena: su cifra va en rojo si hay alguna.
+- `portal.css` sube a `?v=36` y `portal-admin.css` a `?v=17`.
+
 ### v0.40.0: «Azul firme», un look más plano y firme en todo el portal
 - **Estilo nuevo, el mismo orden.** Sin sombras ni degradados de fondo, esquinas más chicas y parejas (8 px en tarjetas, 6 px en botones, campos y chips), líneas finas en lugar de sombras y títulos de sección con una división suave.
 - **Una sola tinta, un solo azul.** Textos, íconos, fechas y la pestaña activa del menú van en un azul oscuro común a todos los portales. El acento sigue siendo el color de cada cliente (botones, enlaces, foco, avance).

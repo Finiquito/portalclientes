@@ -115,15 +115,16 @@ class EquipoController
         return new EquipoAcceso($this->pdo(), $u);
     }
 
-    /** @return array{color: string, texto: string, titulo: string, logo: ?string} */
+    /** @return array{color: string, texto: string, tinta: string, titulo: string, logo: ?string} */
     protected function marca(): array
     {
         $cfg   = $this->ajustes()->todos('global', 'portal');
-        $color = AjustesService::colorValido($cfg['color_agencia'] ?? '');
+        $pal   = Paleta::marca(AjustesService::colorValido($cfg['color_agencia'] ?? ''));
         $m     = new MarcaService($this->pdo());
         return [
-            'color'  => $color,
-            'texto'  => AjustesService::colorTexto($color),
+            'color'  => $pal['color'],
+            'texto'  => $pal['texto'],
+            'tinta'  => $pal['tinta'],
             'titulo' => $m->nombreEquipo(),
             'logo'   => ($r = $m->rutaLogoAgencia()) !== null ? '/portal/marca/agencia?v=' . (int) filemtime($r) : null,
         ];
@@ -714,10 +715,10 @@ class EquipoController
         $out = [];
         foreach (array_unique($clienteIds) as $cid) {
             $cfg = $this->ajustes()->todos('cliente', (string) $cid);
-            $color = AjustesService::colorValido($cfg['color'] ?? '');
+            $pal = Paleta::marca(AjustesService::colorValido($cfg['color'] ?? ''));
             $out[$cid] = [
-                'color' => $color,
-                'texto' => AjustesService::colorTexto($color),
+                'color' => $pal['color'],
+                'texto' => $pal['texto'],
                 'logo'  => !empty($cfg['logo_id']) ? '/portal/marca/cliente/' . $cid : null,
             ];
         }

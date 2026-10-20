@@ -36,7 +36,9 @@
   --brand: #6d5df6;
   --brand-fg: #ffffff;
   --brand-soft: color-mix(in oklab, var(--brand) 11%, white);
-  --brand-ink: color-mix(in oklab, var(--brand) 82%, black);
+  /* Acento para texto y enlaces: el servidor manda --brand-ink-claro ya oscurecido hasta 4,5:1 sobre blanco (Paleta). */
+  --brand-ink: var(--brand-ink-claro, color-mix(in oklab, var(--brand) 82%, black));
+  --foco: var(--brand-ink);
 
   /* Tinta: un solo azul oscuro para todos los portales; el acento es --brand (el del cliente). */
   --azul: #14204d;
@@ -61,6 +63,7 @@
      secundarios más claros (el gris anterior se leía poco sobre fondo oscuro). */
   --brand-soft: color-mix(in oklab, var(--brand) 26%, #10111b);
   --brand-ink: color-mix(in oklab, var(--brand) 52%, white);
+  --foco: var(--brand-ink);
 
   --bg: #0d0e16;
   --surface: #181a28;
@@ -73,7 +76,6 @@
   --warn: #f6c06e;
   --danger: #ff8fab;
   --info: #93b4ff;
-  --azul: #22348a;
   --ink-80: color-mix(in oklab, var(--ink) 85%, var(--bg));
   --activo-bg: var(--surface-2);
   --activo-fg: var(--ink);
@@ -90,7 +92,7 @@
     background-attachment: fixed;
     font-feature-settings: "cv11", "ss01";
   }
-  :focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: .5rem; }
+  :focus-visible { outline: 2px solid var(--foco); outline-offset: 2px; border-radius: .5rem; }
   ::selection { background: color-mix(in oklab, var(--brand) 30%, transparent); }
   [x-cloak], [hidden] { display: none !important; }
 }
@@ -424,7 +426,7 @@ span.flex:has(> svg)[class*="size-"] { background: transparent !important; borde
 /* Botones y campos */
 .btn-primary:hover { background: color-mix(in oklab, var(--brand) 86%, black); }
 .btn-ghost { border-color: color-mix(in oklab, var(--ink) 30%, var(--bg)); }
-.field:focus, .form-input:focus { outline: 2px solid color-mix(in oklab, var(--brand) 45%, transparent) !important; outline-offset: 0 !important; border-color: var(--brand) !important; }
+.field:focus, .form-input:focus { outline: 2px solid var(--foco) !important; outline-offset: 0 !important; border-color: var(--foco) !important; }
 
 /* Menú: la pestaña activa va en la tinta */
 .nav-item[aria-current="page"] { background: var(--activo-bg) !important; color: var(--activo-fg) !important; }
@@ -432,7 +434,7 @@ span.flex:has(> svg)[class*="size-"] { background: transparent !important; borde
 .page-header { padding-bottom: .25rem; }
 
 /* Bloque de urgencia: lleno con el color del cliente, con el ícono integrado (.kpi-alerta) */
-.kpi-alerta { --ink: var(--brand-fg); --muted: color-mix(in oklab, var(--brand-fg) 82%, var(--brand)); background: var(--brand) !important; border-color: var(--brand) !important; color: var(--brand-fg); }
+.kpi-alerta { --foco: var(--brand-fg); --ink: var(--brand-fg); --muted: color-mix(in oklab, var(--brand-fg) 82%, var(--brand)); background: var(--brand) !important; border-color: var(--brand) !important; color: var(--brand-fg); }
 .kpi-alerta:hover { background: color-mix(in oklab, var(--brand) 88%, black) !important; }
 .kpi-alerta span.flex:has(> svg) { border: 0; color: var(--brand-fg) !important; padding: 0; width: auto; height: auto; justify-content: flex-start; }
 .kpi-alerta svg { width: 1.75rem; height: 1.75rem; }
@@ -440,9 +442,10 @@ section[aria-label="Resumen"] a span.flex:has(> svg) { border: 0; width: auto; h
 section[aria-label="Resumen"] a span.flex > svg { width: 1.6rem; height: 1.6rem; }
 
 /* Bloque de novedades: fondo azul invertido (.bloque-azul) */
-.bloque-azul { --surface: var(--azul); --ink: #fff; --muted: color-mix(in oklab, #fff 72%, var(--azul)); --line: rgb(255 255 255 / .2); --brand-ink: #fff;
+.bloque-azul { --foco: #fff; --surface: var(--azul); --surface-2: rgb(255 255 255 / .12); --ink: #fff; --muted: color-mix(in oklab, #fff 72%, var(--azul)); --line: rgb(255 255 255 / .2); --brand-ink: #fff;
   --ok: #5ee0ae; --warn: #f6c06e; --danger: #ff8fab; --info: #93b4ff;
   background: var(--surface) !important; border-color: var(--surface) !important; color: #fff; }
+.bloque-azul a:hover { color: #fff; }
 .bloque-azul span.flex:has(> svg) { background: transparent !important; border: 1px solid rgb(255 255 255 / .3); color: #fff !important; }
 
 /* Columna lateral nivelada: el bloque azul queda al pie de la primera pantalla.
