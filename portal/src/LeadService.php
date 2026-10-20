@@ -574,9 +574,7 @@ class LeadService
             if (($pref['avisos_email'] ?? '1') === '0' || ($pref['avisos_leads'] ?? '1') === '0') {
                 continue;
             }
-            [$html, $texto] = $n->componer($asunto, $cuerpo, ['etiqueta' => 'Contactos ganados', 'boton' => 'Ver contactos'], 'Hola ' . $n->primerNombre((string) $c['nombre']) . ',',
-                $n->absoluta('/portal/contactos-ganados'), $clienteId, ['Puedes desactivar este aviso en Ajustes dentro del portal.']);
-            $n->agrupado($c, $clienteId, Vigencia::leads($clienteId), $asunto, $html, $texto);
+            $n->alBuzonCliente($c, $clienteId, $asunto, $cuerpo, '/portal/contactos-ganados', 'leads', null, Vigencia::leads($clienteId), true);
             $avisados++;
         }
         return $avisados;

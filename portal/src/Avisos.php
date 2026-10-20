@@ -13,14 +13,18 @@ use TypeDock\Core\PluginContext;
  *            «mio»: lo que es suyo (es responsable) y, de lo que no tiene responsable, lo de
  *            los clientes o proyectos que tiene asignados. Si nadie tiene asignado ese cliente,
  *            le llega a Coordinación para que no se pierda.
- *   cómo     agrupado (por defecto) | instante
- *            agrupado: se juntan en un buzón y salen en un solo correo cuando hay 5 o cuando
- *            el más antiguo cumple 3 horas, lo que pase antes; sólo en el horario de la agencia.
- *            Las urgencias salen siempre al tiro.
+ *   cómo     siempre agrupado: no hay avisos sueltos. Se juntan en un buzón y salen en un solo correo
+ *            a horas fijas (HORAS_ENVIO: 10:00, 13:00 y 16:00, hora de la agencia), o antes si se juntan
+ *            JUNTOS (10). Una urgencia adelanta el envío a la próxima pasada del cron (máx. 15 minutos).
+ *            Sólo de lunes a viernes dentro del horario hábil.
  *   resumen  1 (por defecto) | 0: resumen del día de lunes a viernes a las 8:30 (hora de la
  *            agencia), con lo que llegó en la noche. Si no hay nada, no se manda.
  *
- * Los contactos del cliente pueden pedir su propio resumen de la mañana (desactivado por defecto).
+ * Los contactos del cliente reciben sus avisos con la misma lógica (horas fijas en su zona, o antes si se
+ * juntan JUNTOS_CLIENTE = 6) y pueden pedir su propio resumen de la mañana (desactivado por defecto).
+ * Antes de salir, cada aviso se revisa (Vigencia): si ya se resolvió, se descarta.
+ * Quedan fuera del agrupado: los códigos de acceso y las invitaciones, cancelaciones y recordatorios de reunión
+ * (llevan el calendario y salen una vez).
  *
  * Todo lo programado (agrupados, resúmenes, vencimientos, recordatorios) lo corre correr():
  * la tarea programada del hosting cada 15 minutos y, de respaldo, las visitas al portal.
@@ -29,8 +33,10 @@ final class Avisos
 {
     public const BUZON  = 'portal_avisos_buzon';
     public const MARCAS = 'portal_avisos_marcas';
-    public const JUNTOS = 5;
-    public const HORAS  = 3;
+    public const JUNTOS = 10;
+    public const JUNTOS_CLIENTE = 6;
+    /** Horas fijas de envío (hora local de quien recibe). */
+    public const HORAS_ENVIO = ['10:00', '13:00', '16:00'];
     public const HORA_RESUMEN  = '08:30';
     /** Si la tarea programada no corrió en la mañana, después de esta hora el resumen ya no se manda. */
     private const RESUMEN_HASTA = '12:00';
@@ -44,16 +50,14 @@ final class Avisos
 
     // ---- Preferencias ------------------------------------------------------------
 
-    /** @return array{que: string, como: string, resumen: bool} */
+    /** @return array{que: string, resumen: bool} */
     public static function preferencias(AjustesService $aj, string $usuarioId): array
     {
         $t = $aj->todos('equipo', $usuarioId);
         // Antes había un solo sí/no («avisos»): un «no» se respeta como «nada».
         $que = $t['avisos_que'] ?? (($t['avisos'] ?? '1') === '0' ? 'nada' : 'mio');
-        $como = $t['avisos_como'] ?? 'agrupado';
         return [
             'que'     => in_array($que, ['mio', 'todo', 'nada'], true) ? $que : 'mio',
-            'como'    => in_array($como, ['agrupado', 'instante'], true) ? $como : 'agrupado',
             'resumen' => ($t['resumen_diario'] ?? '1') !== '0',
         ];
     }
@@ -165,13 +169,18 @@ final class Avisos
     }
 
     /** @param ?string $vigencia marca de Vigencia: si deja de aplicar antes de salir, el aviso se descarta */
-    public function guardar(string $usuarioId, ?string $clienteId, ?string $proyectoId, string $clave, string $asunto, string $detalle, ?string $ruta, ?string $vigencia = null): void
+    public function guardar(string $usuarioId, ?string $clienteId, ?string $proyectoId, string $clave, string $asunto, string $detalle, ?string $ruta, ?string $vigencia = null, bool $urgente = false, string $para = 'equipo', bool $reemplaza = false): void
     {
         Schema::asegurar($this->pdo);
+        if ($reemplaza) {
+            // Un aviso que se va actualizando (p. ej. «tienes 3 contactos nuevos»): el nuevo reemplaza al que seguía esperando.
+            $this->pdo->prepare('DELETE FROM ' . self::BUZON . ' WHERE usuario_id = ? AND clave = ? AND enviado_en IS NULL')->execute([$usuarioId, mb_substr($clave, 0, 120)]);
+        }
         $this->pdo->prepare(
-            'INSERT INTO ' . self::BUZON . ' (id, usuario_id, cliente_id, proyecto_id, clave, asunto, detalle, ruta, vigencia, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+            'INSERT INTO ' . self::BUZON . ' (id, usuario_id, cliente_id, proyecto_id, clave, asunto, detalle, ruta, vigencia, urgente, para, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         )->execute([typedock_uuid7(), $usuarioId, $clienteId, $proyectoId, mb_substr($clave, 0, 120), mb_substr($asunto, 0, 500),
-            $detalle !== '' ? mb_substr($detalle, 0, 1000) : null, $ruta !== null ? mb_substr($ruta, 0, 255) : null, $vigencia, $this->ahora()->format('Y-m-d H:i:s')]);
+            $detalle !== '' ? mb_substr($detalle, 0, 1000) : null, $ruta !== null ? mb_substr($ruta, 0, 255) : null, $vigencia, $urgente ? 1 : 0,
+            $para === 'cliente' ? 'cliente' : 'equipo', $this->ahora()->format('Y-m-d H:i:s')]);
     }
 
     /** Saca del buzón lo que ya no hace falta avisar (la tarea se completó, la reunión se borró…). */
@@ -215,39 +224,67 @@ final class Avisos
      * asunto; varias novedades de lo mismo (misma clave) se juntan en una.
      *
      * @param array<int, array<string, mixed>> $items
+     * @param string  $base '/equipo' (las rutas son del panel) o '' (ya vienen completas, como las del portal del cliente)
+     * @param ?int    $max  tarjetas a mostrar como mucho; el resto se resume en una línea («y N más»)
+     * @param ?string $zona zona horaria para la hora de cada tarjeta; null = sin hora (correo al cliente)
      * @return array<int, array<string, mixed>>
      */
-    public function bloquesBuzon(array $items): array
+    public function bloquesBuzon(array $items, string $base = '/equipo', ?int $max = null, ?string $zona = '')
     {
         $colores = Fmt::coloresTodos($this->pdo);
+        $zona = $zona === '' ? Zona::agencia() : $zona;
         $grupos = [];
+        $vistas = [];
+        $extra = 0;
         foreach ($items as $i) {
-            $g = (string) ($i['proyecto_id'] ?: $i['cliente_id'] ?: '-');
-            $grupos[$g]['titulo'] = trim(($i['cliente_nombre'] ?? '') . (($i['proyecto_nombre'] ?? '') !== '' ? ' · ' . $i['proyecto_nombre'] : '')) ?: 'General';
-            $grupos[$g]['color'] = $colores[(string) $i['proyecto_id']] ?? '';
             $k = (string) ($i['clave'] ?: $i['id']);
+            $g = (string) ($i['proyecto_id'] ?: $i['cliente_id'] ?: '-');
+            if (!isset($vistas[$g . '|' . $k])) {
+                if ($max !== null && count($vistas) >= $max) {
+                    $extra++;
+                    continue;
+                }
+                $vistas[$g . '|' . $k] = true;
+            }
+            $quien = $base === '' ? (string) ($i['proyecto_nombre'] ?? '') : trim(($i['cliente_nombre'] ?? '') . (($i['proyecto_nombre'] ?? '') !== '' ? ' · ' . $i['proyecto_nombre'] : ''));
+            $grupos[$g]['titulo'] = $quien !== '' ? $quien : ($base === '' ? '' : 'General');
+            $grupos[$g]['color'] = $colores[(string) $i['proyecto_id']] ?? '';
             $previo = $grupos[$g]['items'][$k] ?? null;
             $grupos[$g]['items'][$k] = $i + ['n' => ($previo['n'] ?? 0) + 1];
         }
         $bloques = [];
         foreach ($grupos as $g) {
-            $bloques[] = ['seccion' => ['titulo' => $g['titulo'], 'color' => $g['color']]];
+            if ($g['titulo'] !== '') {
+                $bloques[] = ['seccion' => ['titulo' => $g['titulo'], 'color' => $g['color']]];
+            }
             $tarjetas = [];
             foreach ($g['items'] as $i) {
                 $mas = $i['n'] > 1 ? ($i['n'] - 1 === 1 ? ' · y 1 novedad más' : ' · y ' . ($i['n'] - 1) . ' novedades más') : '';
+                $ruta = (string) $i['ruta'];
                 $tarjetas[] = [
                     'titulo'  => (string) $i['asunto'],
                     'detalle' => trim((string) ($i['detalle'] ?? '')) . $mas,
-                    'chip'    => $this->local(new \DateTimeImmutable((string) $i['created_at'], new \DateTimeZone('UTC')))->format('H:i'),
-                    'url'     => $this->n->absoluta('/equipo' . ((string) $i['ruta'] !== '' ? '/' . ltrim((string) $i['ruta'], '/') : '')),
+                    'chip'    => $zona === null ? '' : $this->local(new \DateTimeImmutable((string) $i['created_at'], new \DateTimeZone('UTC')), $zona)->format('H:i'),
+                    'url'     => $this->n->absoluta($base === '' ? ($ruta !== '' ? $ruta : '/portal') : $base . ($ruta !== '' ? '/' . ltrim($ruta, '/') : '')),
                 ];
             }
             $bloques[] = ['tarjetas' => $tarjetas];
         }
+        if ($extra > 0) {
+            $bloques[] = ['p' => 'Y ' . ($extra === 1 ? '1 novedad más' : $extra . ' novedades más') . ': las ves al abrir ' . ($base === '' ? 'tu portal' : 'el panel') . '.'];
+        }
         return $bloques;
     }
 
-    /** Correo agrupado con lo pendiente de una persona. @param array<string, mixed> $u */
+    /** «10:00, 13:00 y 16:00» */
+    public static function horasTexto(): string
+    {
+        $h = self::HORAS_ENVIO;
+        $ultima = array_pop($h);
+        return $h === [] ? (string) $ultima : implode(', ', $h) . ' y ' . $ultima;
+    }
+
+    /** Correo agrupado con lo pendiente de una persona del equipo. @param array<string, mixed> $u */
     public function enviarAgrupado(array $u): bool
     {
         $items = $this->pendientes((string) $u['id']);
@@ -261,19 +298,43 @@ final class Avisos
             : $n . ' novedades' . ($proyectos > 1 ? ' de ' . $proyectos . ' proyectos' : ' en ' . ($items[0]['proyecto_nombre'] ?: $items[0]['cliente_nombre']));
         [$html, $texto] = $this->n->componer($asunto, '', [
             'etiqueta' => 'Novedades', 'titulo' => 'Tus novedades', 'resaltado' => 'novedades', 'boton' => 'Abrir el panel',
-            'bloques' => $this->bloquesBuzon($items), 'compacto' => true,
+            'bloques' => $this->bloquesBuzon($items, '/equipo', self::JUNTOS), 'compacto' => true,
             'preheader' => implode(' · ', array_slice(array_map(fn($i) => (string) $i['asunto'], $items), 0, 3)),
         ], 'Hola ' . $this->n->primerNombre((string) $u['nombre']) . ',', $this->n->absoluta('/equipo'), null, [
-            'Te llegan agrupadas: cuando se juntan ' . self::JUNTOS . ' o cada ' . self::HORAS . ' horas. Las urgencias llegan al tiro.',
-            'Puedes cambiarlo en «Mis ajustes» del panel.',
+            'Te llegan agrupadas: a las ' . self::horasTexto() . ' (hora de ' . Zona::nombre() . '), o antes si se juntan ' . self::JUNTOS . '.',
+            'Puedes cambiar qué te llega en «Mis ajustes» del panel.',
         ]);
         return $this->n->enviarCorreo((string) $u['email'], $asunto, $html, $texto);
     }
 
+    /** Correo agrupado con lo pendiente de un contacto del cliente. @param array<string, mixed> $c contacto: id, nombre, email, cliente_id */
+    public function enviarAgrupadoCliente(array $c): bool
+    {
+        $items = $this->pendientes((string) $c['id']);
+        if ($items === []) {
+            return false;
+        }
+        $this->marcarEnviados($items);
+        if ((new AjustesService($this->pdo))->get('contacto', (string) $c['id'], 'avisos_email', '1') === '0' || trim((string) $c['email']) === '') {
+            return false;
+        }
+        $n = count($items);
+        $asunto = $n === 1 ? (string) $items[0]['asunto'] : $n . ' novedades en tu portal';
+        [$html, $texto] = $this->n->componer($asunto, '', [
+            'etiqueta' => 'Novedades', 'titulo' => 'Novedades en tu portal', 'resaltado' => 'novedades', 'boton' => 'Abrir mi portal',
+            'bloques' => $this->bloquesBuzon($items, '', self::JUNTOS_CLIENTE, null), 'compacto' => true,
+            'preheader' => implode(' · ', array_slice(array_map(fn($i) => (string) $i['asunto'], $items), 0, 3)),
+        ], 'Hola ' . $this->n->primerNombre((string) $c['nombre']) . ',', $this->n->absoluta('/portal'), (string) $c['cliente_id'] ?: null, [
+            'Te llegan agrupadas: a las ' . self::horasTexto() . ' (tu hora), o antes si se juntan ' . self::JUNTOS_CLIENTE . '.',
+            'Puedes desactivar estos avisos en Ajustes dentro del portal.',
+        ]);
+        return $this->n->enviarCorreo((string) $c['email'], $asunto, $html, $texto);
+    }
+
     private function enHorarioAgencia(): bool
     {
-        [, $ini, $fin] = $this->n->horario();
-        return HorarioHabil::dentro($this->ahora(), Zona::pais(), $ini, $fin);
+        [$respetar, $ini, $fin] = $this->n->horario();
+        return !$respetar || HorarioHabil::dentro($this->ahora(), Zona::pais(), $ini, $fin);
     }
 
     private function diaHabil(\DateTimeImmutable $local): bool
@@ -281,39 +342,106 @@ final class Avisos
         return (int) $local->format('N') <= 5;
     }
 
-    /** Antes de las 8:30 de un día hábil lo pendiente espera al resumen (si la persona lo recibe). */
-    private function esperaResumen(string $usuarioId, bool $quiereResumen): bool
+    /**
+     * Última hora fija de envío que ya pasó hoy en esa zona (en UTC), o null si no hay: fin de semana,
+     * antes de la primera hora, o horas que caen fuera del horario hábil.
+     */
+    private function ultimaHoraDeEnvio(string $zona): ?\DateTimeImmutable
     {
-        $l = $this->local();
-        return $quiereResumen && $this->diaHabil($l) && $l->format('H:i') < self::HORA_RESUMEN
-            && !$this->marcado('resumen:e:' . $usuarioId . ':' . $l->format('Y-m-d'));
+        $l = $this->local(null, $zona);
+        if (!$this->diaHabil($l)) {
+            return null;
+        }
+        [$respetar, $ini, $fin] = $this->n->horario();
+        $mejor = null;
+        foreach (self::HORAS_ENVIO as $h) {
+            [$hh, $mm] = array_map('intval', explode(':', $h));
+            if ($respetar && ($hh < $ini || $hh >= $fin)) {
+                continue;
+            }
+            $t = $l->setTime($hh, $mm);
+            if ($t <= $l) {
+                $mejor = $t;
+            }
+        }
+        return $mejor?->setTimezone(new \DateTimeZone('UTC'));
     }
 
-    /** Envía los agrupados que ya juntaron 5 o cumplieron 3 horas. @return int correos enviados */
+    /**
+     * ¿Toca enviarle ahora lo que tiene pendiente? Sí si se juntó el tope, si hay una urgencia, o si
+     * ya pasó una hora fija desde que llegó algo (lo que llegó después espera a la siguiente).
+     */
+    private function tocaEnviar(string $destinoId, int $pendientes, int $urgentes, int $tope, ?\DateTimeImmutable $corte): bool
+    {
+        if ($pendientes >= $tope || $urgentes > 0) {
+            return true;
+        }
+        if ($corte === null) {
+            return false;
+        }
+        $st = $this->pdo->prepare('SELECT COUNT(*) FROM ' . self::BUZON . ' WHERE usuario_id = ? AND enviado_en IS NULL AND created_at <= ?');
+        $st->execute([$destinoId, $corte->format('Y-m-d H:i:s')]);
+        return (int) $st->fetchColumn() > 0;
+    }
+
+    /** @return array<int, array<string, mixed>> destinatarios con avisos pendientes: usuario_id, n, urg */
+    private function conPendientes(string $para): array
+    {
+        $st = $this->pdo->prepare(
+            'SELECT usuario_id, COUNT(*) AS n, SUM(CASE WHEN urgente = 1 THEN 1 ELSE 0 END) AS urg FROM ' . self::BUZON
+            . " WHERE enviado_en IS NULL AND COALESCE(para, 'equipo') = ? GROUP BY usuario_id"
+        );
+        $st->execute([$para]);
+        return $st->fetchAll();
+    }
+
+    /** Envía los agrupados del equipo y del cliente que ya les toca. @return int correos enviados */
     public function barrer(): int
     {
         Schema::asegurar($this->pdo);
-        if (!$this->enHorarioAgencia()) {
-            return 0;   // de noche y fines de semana se junta; sale en el resumen o al abrir el día
-        }
         $this->depurar();
-        $limite = $this->ahora()->modify('-' . self::HORAS . ' hours')->format('Y-m-d H:i:s');
-        $filas = $this->pdo->query('SELECT usuario_id, COUNT(*) AS n, MIN(created_at) AS primero FROM ' . self::BUZON . ' WHERE enviado_en IS NULL GROUP BY usuario_id');
+        return $this->barrerEquipo() + $this->barrerClientes();
+    }
+
+    private function barrerEquipo(): int
+    {
+        if (!$this->enHorarioAgencia()) {
+            return 0;   // de noche y fines de semana se junta; sale en el resumen o a la primera hora del día
+        }
+        $corte = $this->ultimaHoraDeEnvio(Zona::agencia());
         $eq = new EquipoService($this->pdo);
-        $aj = new AjustesService($this->pdo);
         $enviados = 0;
-        foreach ($filas ? $filas->fetchAll() : [] as $f) {
+        foreach ($this->conPendientes('equipo') as $f) {
             $u = $eq->find((string) $f['usuario_id']);
             if ($u === null || (int) $u['activo'] !== 1) {
                 $this->marcarEnviados($this->pendientes((string) $f['usuario_id']));   // ya no está: se descarta
                 continue;
             }
-            $pref = self::preferencias($aj, (string) $u['id']);
-            if ($this->esperaResumen((string) $u['id'], $pref['resumen'])) {
+            if ($this->tocaEnviar((string) $f['usuario_id'], (int) $f['n'], (int) $f['urg'], self::JUNTOS, $corte)) {
+                $enviados += $this->enviarAgrupado($u) ? 1 : 0;
+            }
+        }
+        return $enviados;
+    }
+
+    private function barrerClientes(): int
+    {
+        [$respetar, $ini, $fin] = $this->n->horario();
+        $enviados = 0;
+        foreach ($this->conPendientes('cliente') as $f) {
+            $st = $this->pdo->prepare('SELECT id, nombre, email, cliente_id FROM portal_contactos WHERE id = ?');
+            $st->execute([(string) $f['usuario_id']]);
+            $c = $st->fetch();
+            if ($c === false) {
+                $this->marcarEnviados($this->pendientes((string) $f['usuario_id']));
                 continue;
             }
-            if ((int) $f['n'] >= self::JUNTOS || (string) $f['primero'] <= $limite || $pref['como'] === 'instante') {
-                $enviados += $this->enviarAgrupado($u) ? 1 : 0;
+            $pais = Zona::paisPersona($this->pdo, (string) $c['cliente_id'], (string) $c['id']);
+            if ($respetar && !HorarioHabil::dentro($this->ahora(), $pais, $ini, $fin)) {
+                continue;
+            }
+            if ($this->tocaEnviar((string) $c['id'], (int) $f['n'], 0, self::JUNTOS_CLIENTE, $this->ultimaHoraDeEnvio(HorarioHabil::zonaDe($pais)))) {
+                $enviados += $this->enviarAgrupadoCliente($c) ? 1 : 0;
             }
         }
         return $enviados;

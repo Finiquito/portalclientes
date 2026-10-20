@@ -335,7 +335,7 @@
 <section class="card pa-seccion" id="cron">
     <header class="pa-sec-cab">
         <h2>Tarea programada (cron)</h2>
-        <p>Necesaria para el resumen de la mañana, los avisos agrupados, los vencimientos y los recordatorios de reunión.</p>
+        <p>Necesaria para el resumen de la mañana, los avisos agrupados (a las {\TypeDock\Plugin\Portal\Avisos::horasTexto()}), los vencimientos y los recordatorios de reunión.</p>
     </header>
 
     <div class="pa-fila">
@@ -344,18 +344,20 @@
             <p class="pa-fila-ayuda">Sin ella, todo eso sale sólo cuando alguien entra al portal o al panel.</p>
         </div>
         <div class="pa-fila-campo">
-            {if $correo['cronUltimo'] !== ''}<span class="pa-chip ok">Última vez que corrió: {$correo['cronUltimo']}</span>
+            {if $correo['cronEstado'] === 'ok'}<span class="pa-chip ok">Funcionando · última vez: {$correo['cronUltimo']}</span>
+            {elseif $correo['cronEstado'] === 'atrasado'}<span class="pa-chip warn">Hace más de 1 hora que no corre · última vez: {$correo['cronUltimo']}</span>
             {else}<span class="pa-chip warn">Todavía no corre</span>{/if}
+            {if $correo['cronMala'] !== ''}<p class="pa-fila-ayuda" style="margin-top:.5rem">Llegó una llamada con la clave incorrecta ({$correo['cronMala']}): revisa que el comando de Hostinger lleve la clave actual. Si ya la corregiste, ignora este aviso.</p>{/if}
         </div>
     </div>
 
     <div class="pa-fila">
         <div>
             <p class="pa-fila-et">Comando</p>
-            <p class="pa-fila-ayuda">En Hostinger: hPanel → Avanzado → Cron Jobs, cada 15 minutos.</p>
+            <p class="pa-fila-ayuda">En Hostinger: hPanel → Avanzado → Cron Jobs → Personalizado, con el horario <code>*/15 * * * *</code> (todas las horas, cada 15 minutos).</p>
         </div>
         <div class="pa-fila-campo">
-            <code style="display:block;white-space:pre-wrap;word-break:break-all;padding:.75rem;border-radius:.6rem;background:color-mix(in srgb, currentColor 6%, transparent)">*/15 * * * * curl -s "{$correo['cronUrl']}" &gt; /dev/null</code>
+            <code style="display:block;white-space:pre-wrap;word-break:break-all;padding:.75rem;border-radius:.6rem;background:color-mix(in srgb, currentColor 6%, transparent)">*/15 * * * * curl -sL -m 60 "{$correo['cronUrl']}" &gt; /dev/null</code>
             <form method="post" action="{$admin_url('ajustes/cron-clave')}" onsubmit="return confirm('La clave actual deja de funcionar: tendrás que actualizar el comando en Hostinger. ¿Seguir?');">
                 <input type="hidden" name="_csrf_token" value="{$csrf_token}">
                 <button type="submit" class="btn btn-sm">Generar clave nueva</button>

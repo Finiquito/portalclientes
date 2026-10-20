@@ -188,6 +188,18 @@ class ActividadAdminController
             $u = (new \DateTimeImmutable($ultimo, new \DateTimeZone('UTC')))->setTimezone(new \DateTimeZone(Zona::agencia()));
             $cronUltimo = $dias[(int) $u->format('w')] . ' ' . $u->format('d/m H:i');
         }
+        // Estado del cron: ¿corre? ¿hace cuánto? ¿llegó alguna llamada con la clave mala?
+        $cronEstado = 'nunca';
+        if ($ultimo !== '') {
+            $hace = time() - (new \DateTimeImmutable($ultimo, new \DateTimeZone('UTC')))->getTimestamp();
+            $cronEstado = $hace > 3600 ? 'atrasado' : 'ok';
+        }
+        $mala = $aj->get('global', 'portal', 'cron_clave_mala');
+        $cronMala = '';
+        if ($mala !== '') {
+            $m = (new \DateTimeImmutable($mala, new \DateTimeZone('UTC')))->setTimezone(new \DateTimeZone(Zona::agencia()));
+            $cronMala = $dias[(int) $m->format('w')] . ' ' . $m->format('d/m H:i');
+        }
         $cola = [];
         foreach ($n->cola() as $f) {
             $pais = $f['cliente_id'] ? $n->paisDeContacto(isset($f['contacto_id']) ? (string) $f['contacto_id'] : null, (string) $f['cliente_id']) : HorarioHabil::PAIS_DEFECTO;
@@ -196,7 +208,7 @@ class ActividadAdminController
             $cola[] = $f;
         }
         return [
-            'modo' => $n->modo(), 'respetar' => $respetar, 'ini' => $ini, 'fin' => $fin, 'cronUltimo' => $cronUltimo,
+            'modo' => $n->modo(), 'respetar' => $respetar, 'ini' => $ini, 'fin' => $fin, 'cronUltimo' => $cronUltimo, 'cronEstado' => $cronEstado, 'cronMala' => $cronMala,
             'tieneLogo' => $marca->rutaLogoAgencia() !== null, 'icono' => $marca->urlIcono(), 'diag' => $n->diagnostico(),
             'cronUrl' => Notifier::baseUrl() . '/portal/cron/correos?k=' . $token, 'cola' => $cola,
             'metodoHtml' => $n->diagnostico()['metodos'], 'smtp' => $n->smtpVista(),

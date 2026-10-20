@@ -132,15 +132,16 @@ class Notifier
      * Aviso al equipo por algo que pasó en un cliente o proyecto.
      *
      *  - El correo de copia de Ajustes (opcional) recibe todo, al tiro, con enlace al admin.
-     *  - Cada persona del equipo recibe lo que le toca según sus preferencias (Avisos::leToca):
-     *    al instante o agrupado (Avisos::BUZON). Las urgencias salen siempre al tiro.
+     *  - Cada persona del equipo recibe lo que le toca según sus preferencias (Avisos::leToca), siempre
+     *    agrupado (Avisos::BUZON): a horas fijas o cuando se juntan 10. Una urgencia adelanta el envío
+     *    a la próxima pasada del cron, junto con lo demás que esté pendiente.
      *
      * $op además de lo de componer():
      *   proyecto_id / cliente_id   de qué cliente es (arma el encabezado y define a quién le toca)
      *   responsable                id del equipo de quien es el asunto (p. ej. responsable de la tarea)
      *   solo_responsable           true: sólo a esa persona (p. ej. «te asignaron una tarea»)
      *   actor                      id del equipo que lo hizo (no se le avisa a sí mismo)
-     *   urgente                    true: no espera al agrupado
+     *   urgente                    true: no espera la próxima hora fija (sale en la siguiente pasada del cron)
      *   clave                      para agrupar varias novedades de lo mismo (por defecto, la ruta)
      *   detalle                    una línea para el correo agrupado
      *   vigencia                   marca de Vigencia: si mientras espera deja de aplicar, no sale
@@ -162,25 +163,18 @@ class Notifier
             $to = '';
         }
 
-        // Personas del equipo: a cada una lo suyo.
+        // Personas del equipo: a cada una lo suyo, al buzón (sale agrupado).
         $avisos = new Avisos($this->ctx, $this->pdo, $this);
         $enviados = [strtolower($to)];
-        $url = $this->absoluta('/equipo' . ($rutaAdmin !== null ? '/' . ltrim($rutaAdmin, '/') : ''));
         foreach ($avisos->destinatarios($pid, $cid, $op) as $u) {
             $mail = strtolower((string) $u['email']);
             if (in_array($mail, $enviados, true)) {
                 continue;
             }
             $enviados[] = $mail;
-            if ($u['como'] === 'agrupado' && empty($op['urgente'])) {
-                $avisos->guardar((string) $u['id'], $cid, $pid, (string) ($op['clave'] ?? $rutaAdmin ?? $asunto), $asunto,
-                    (string) ($op['detalle'] ?? mb_substr(trim(preg_replace('/\s+/u', ' ', $cuerpo) ?? ''), 0, 160)), $rutaAdmin,
-                    isset($op['vigencia']) ? (string) $op['vigencia'] : null);
-                continue;
-            }
-            $pieEq = array_merge($pie, [Avisos::pieMotivo($u)]);
-            [$html, $texto] = $this->componer($asunto, $cuerpo, $op + ['boton' => 'Abrir en el panel'], null, $url, $cid, $pieEq, $contexto);
-            $this->enviarCorreo($mail, $asunto, $html, $texto);
+            $avisos->guardar((string) $u['id'], $cid, $pid, (string) ($op['clave'] ?? $rutaAdmin ?? $asunto), $asunto,
+                (string) ($op['detalle'] ?? mb_substr(trim(preg_replace('/\s+/u', ' ', $cuerpo) ?? ''), 0, 160)), $rutaAdmin,
+                isset($op['vigencia']) ? (string) $op['vigencia'] : null, !empty($op['urgente']));
         }
     }
 
@@ -222,7 +216,11 @@ class Notifier
 
     /**
      * Aviso a los contactos de un cliente (o a uno solo) que no hayan desactivado los avisos.
-     * Respeta el horario hábil del país del cliente: fuera de él, queda en cola.
+     * Va al buzón y sale agrupado, a horas fijas en el horario hábil de la persona (Avisos::barrer).
+     * Con $op['inmediato'] sale ya (respetando el horario hábil): sólo para lo que la persona está esperando.
+     *
+     * $op además de lo de componer(): proyecto_id, clave (agrupa novedades de lo mismo; por defecto la ruta),
+     * detalle (una línea para el correo agrupado), vigencia (si deja de aplicar, no sale), contactos, inmediato.
      *
      * @param array<string, mixed> $op
      */
@@ -249,12 +247,29 @@ class Notifier
             if ($this->ajustes()->get('contacto', (string) $c['id'], 'avisos_email', '1') === '0') {
                 continue;
             }
+            if (empty($op['inmediato'])) {
+                $detalle = (string) ($op['detalle'] ?? mb_substr(trim(preg_replace('/\s+/u', ' ', $cuerpo) ?: (string) ($op['preheader'] ?? '')), 0, 160));
+                $this->alBuzonCliente($c, $clienteId, $asunto, $detalle, $ruta, (string) ($op['clave'] ?? $ruta), isset($op['proyecto_id']) ? (string) $op['proyecto_id'] : null,
+                    isset($op['vigencia']) ? (string) $op['vigencia'] : null);
+                continue;
+            }
             [$html, $texto] = $this->componer(
                 $asunto, $cuerpo, $op, 'Hola ' . $this->primerNombre((string) $c['nombre']) . ',', $this->absoluta($ruta), $clienteId,
                 ['Puedes desactivar estos avisos en Ajustes dentro del portal.']
             );
-            $this->aContacto($c, $clienteId, $asunto, $html, $texto, !empty($op['inmediato']), null, isset($op['vigencia']) ? (string) $op['vigencia'] : null);
+            $this->aContacto($c, $clienteId, $asunto, $html, $texto, true, null, isset($op['vigencia']) ? (string) $op['vigencia'] : null);
         }
+    }
+
+    /**
+     * Deja un aviso para un contacto del cliente en el buzón: sale agrupado, a horas fijas (Avisos::barrer).
+     *
+     * @param array<string, mixed> $contacto id
+     * @param bool $reemplaza el aviso nuevo reemplaza al que seguía esperando con la misma clave
+     */
+    public function alBuzonCliente(array $contacto, string $clienteId, string $asunto, string $detalle, string $ruta, string $clave, ?string $proyectoId = null, ?string $vigencia = null, bool $reemplaza = false): void
+    {
+        (new Avisos($this->ctx, $this->pdo, $this))->guardar((string) $contacto['id'], $clienteId, $proyectoId, $clave, $asunto, $detalle, $ruta, $vigencia, false, 'cliente', $reemplaza);
     }
 
     /** Código de acceso (siempre al tiro), con la marca del cliente del contacto. */
@@ -427,47 +442,6 @@ class Notifier
         } else {
             $this->encolar($clienteId, (string) $contacto['id'], (string) $contacto['email'], $asunto, $texto, $html, $cuando, $ics, $vigencia);
         }
-    }
-
-    /**
-     * Aviso que se agrupa: si ya hay uno igual esperando en la cola para ese contacto (misma
-     * marca de vigencia), se reemplaza su contenido en vez de sumar otro correo; y entre dos
-     * envíos pasan al menos $minutosEntre minutos (los que lleguen entremedio salen juntos).
-     * Respeta el horario hábil de la persona.
-     *
-     * @param array<string, mixed> $contacto id, email
-     */
-    public function agrupado(array $contacto, string $clienteId, string $marca, string $asunto, string $html, string $texto, int $minutosEntre = 60): void
-    {
-        Schema::asegurar($this->pdo);
-        $cid = (string) $contacto['id'];
-        $st = $this->pdo->prepare('SELECT id FROM ' . self::COLA . " WHERE contacto_id = ? AND vigencia = ? AND estado = 'pendiente'");
-        $st->execute([$cid, $marca]);
-        $pend = $st->fetchColumn();
-        if ($pend !== false) {
-            $this->pdo->prepare('UPDATE ' . self::COLA . ' SET asunto = ?, texto = ?, html = ? WHERE id = ?')
-                ->execute([mb_substr($asunto, 0, 500), $texto, $html, (string) $pend]);
-            return;
-        }
-        $clave = 'ultimo_aviso:' . $marca;
-        $cuando = $this->cuandoEnviar($clienteId, false, $cid);
-        $ultimo = $this->ajustes()->get('contacto', $cid, $clave);
-        if ($ultimo !== '') {
-            try {
-                $siguiente = (new \DateTimeImmutable($ultimo, new \DateTimeZone('UTC')))->modify('+' . $minutosEntre . ' minutes');
-                if ($siguiente > $cuando) {
-                    $cuando = $siguiente;
-                }
-            } catch (\Throwable) {
-            }
-        }
-        if ($cuando <= $this->ahoraUtc()) {
-            $this->enviarCorreo((string) $contacto['email'], $asunto, $html, $texto, true);
-        } else {
-            $this->encolar($clienteId, $cid, (string) $contacto['email'], $asunto, $texto, $html, $cuando, null, $marca);
-        }
-        // Se anota cuándo sale (ahora o cuando le toque en la cola) para espaciar el siguiente.
-        $this->ajustes()->set('contacto', $cid, $clave, max($cuando, $this->ahoraUtc())->format('Y-m-d H:i:s'));
     }
 
     /**

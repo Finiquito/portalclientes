@@ -163,12 +163,15 @@ class PortalPublicController
         $esperada = (string) $this->ajustes()->get('global', 'portal', 'cron_token');
         $k = (string) ($_GET['k'] ?? '');
         header('Content-Type: text/plain; charset=utf-8');
+        $aj = $this->ajustes();
+        $ahoraUtc = (new \DateTimeImmutable('now', new \DateTimeZone('UTC')))->format('Y-m-d H:i:s');
         if ($esperada === '' || !hash_equals($esperada, $k)) {
+            // Se anota para que Ajustes avise «llegó una llamada, pero con la clave mala».
+            $aj->set('global', 'portal', 'cron_clave_mala', $ahoraUtc);
             http_response_code(403);
             echo 'Clave incorrecta.';
         } else {
-            $aj = $this->ajustes();
-            $aj->set('global', 'portal', 'cron_ultimo', (new \DateTimeImmutable('now', new \DateTimeZone('UTC')))->format('Y-m-d H:i:s'));
+            $aj->set('global', 'portal', 'cron_ultimo', $ahoraUtc);
             $r = (new Avisos($this->ctx, $this->pdo(), $this->notificador()))->correr();
             echo 'ok ' . $this->notificador()->vaciarCola(50)
                 . ' · agrupados ' . $r['barrer'] . ' · resúmenes ' . $r['resumenes'] . ' · vencimientos ' . $r['vencimientos'] . ' · recordatorios ' . $r['recordatorios'];

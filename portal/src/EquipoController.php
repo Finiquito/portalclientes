@@ -539,10 +539,8 @@ class EquipoController
         }
         $tema = (string) ($_POST['tema'] ?? 'auto');
         $que = (string) ($_POST['avisos_que'] ?? 'mio');
-        $como = (string) ($_POST['avisos_como'] ?? 'agrupado');
         $this->ajustes()->setMuchos('equipo', (string) $u['id'], [
             'avisos_que'     => in_array($que, ['mio', 'todo', 'nada'], true) ? $que : 'mio',
-            'avisos_como'    => in_array($como, ['agrupado', 'instante'], true) ? $como : 'agrupado',
             'resumen_diario' => !empty($_POST['resumen_diario']) ? '1' : '0',
             'tema'           => in_array($tema, ['claro', 'oscuro'], true) ? $tema : 'auto',
         ]);

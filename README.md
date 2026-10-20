@@ -74,6 +74,15 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### v0.44.0: avisos siempre agrupados y diagnóstico del cron
+- **No hay correos sueltos.** Los avisos al equipo y al cliente se juntan y salen en un solo correo a horas fijas: **10:00, 13:00 y 16:00** (hora de quien recibe), de lunes a viernes y dentro del horario hábil. Salen antes si se juntan **10** (equipo) o **6** (cliente); el correo muestra hasta ese número y resume el resto («Y N novedades más»). Lo que llega después de una hora fija espera a la siguiente.
+- Antes de salir, cada aviso se revisa: si ya se resolvió (la tarea se completó, el contenido se aprobó), se descarta; si no queda nada, no se manda correo.
+- Se quitó **«Al instante»** de «Mis ajustes» del equipo. Una **urgencia** adelanta el envío a la próxima pasada del cron (máx. 15 minutos) y sale junto con lo demás pendiente, con su motivo.
+- Siguen saliendo al tiro: el código de acceso, las invitaciones, cancelaciones y recordatorios de reuniones (llevan el calendario) y lo que la persona está esperando (p. ej. la confirmación de una reunión pedida).
+- Contactos ganados: el aviso «tienes N contactos nuevos» se actualiza mientras espera, en vez de sumar correos.
+- **Cron:** el comando de Ajustes usa `curl -sL -m 60` (sigue redirecciones); el horario correcto es `*/15 * * * *`. Ajustes muestra si el cron funciona, si lleva más de 1 hora sin correr y si llegó una llamada con la clave incorrecta.
+- El resumen de la mañana (08:30) sigue igual y se lleva lo que llegó en la noche.
+
 ### v0.43.3: gráfico «Por día» y público sin repetir
 - El gráfico de volumen tiene un selector **Acumulado | Por día** (**Por semana** en rangos largos): barras suaves de los que llegaron cada día y línea azul de los contactados. Recuerda tu última elección. Está en Contactos ganados del equipo y del cliente; el gráfico del Inicio queda como estaba.
 - El filtro **Todos / B2C / B2B** solo aparece si lo que miras mezcla los dos públicos. Si es de un solo tipo, se muestra únicamente esa etiqueta.

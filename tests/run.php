@@ -475,8 +475,15 @@ $_SESSION[P\EquipoController::SESION] = $ana;
 $ctx->correos = [];
 (new P\AjustesService($pdo))->set('global', 'portal', 'email_avisos', 'jefe@agencia.cl');
 $n = new P\Notifier($ctx, $pdo);
-(new P\AjustesService($pdo))->set('equipo', $ana, 'avisos_como', 'instante');
+// Los avisos salen agrupados: esta ayuda hace pasar el cron en un miércoles lejano, a las 16:05 de la agencia, cuando todo lo pendiente ya cumplió su hora.
+$vaciarAvisos = function () use ($ctx, $pdo): void {
+    $antes = P\Notifier::$ahora;
+    P\Notifier::$ahora = (new DateTimeImmutable('2031-01-15 16:05', new DateTimeZone(P\Zona::agencia())))->setTimezone(new DateTimeZone('UTC'));
+    (new P\Avisos($ctx, $pdo))->barrer();
+    P\Notifier::$ahora = $antes;
+};
 $n->alEquipo('María comentó', '', 'tareas/' . $tMia, ['proyecto_id' => $p1a]);
+$vaciarAvisos();
 $para = array_column($ctx->correos, 'to');
 check(in_array('jefe@agencia.cl', $para, true) && in_array('ana@agencia.cl', $para, true), 'aviso al correo de Ajustes y a la persona asignada');
 $aAna = array_values(array_filter($ctx->correos, fn($c) => $c['to'] === 'ana@agencia.cl'))[0] ?? ['body' => ''];
@@ -492,11 +499,11 @@ check(!in_array('ana@agencia.cl', array_column($ctx->correos, 'to'), true), 'no 
 
 // Mis ajustes
 $_SERVER['REQUEST_METHOD'] = 'POST';
-$_POST = ['_csrf' => $tok, 'tema' => 'claro', 'avisos_que' => 'nada', 'avisos_como' => 'instante'];
+$_POST = ['_csrf' => $tok, 'tema' => 'claro', 'avisos_que' => 'nada'];
 $ctl->correr(fn() => $ctl->guardarAjustes());
 $prefAna = P\Avisos::preferencias(new P\AjustesService($pdo), $ana);
-check($prefAna['que'] === 'nada' && $prefAna['como'] === 'instante' && !$prefAna['resumen'], 'Mis ajustes: guarda qué, cómo y el resumen de la mañana');
-$_POST = ['_csrf' => $tok, 'tema' => 'claro', 'avisos_que' => 'mio', 'avisos_como' => 'instante', 'resumen_diario' => '1'];
+check($prefAna['que'] === 'nada' && !isset($prefAna['como']) && !$prefAna['resumen'], 'Mis ajustes: guarda qué avisos y el resumen de la mañana (ya no hay «al instante»)');
+$_POST = ['_csrf' => $tok, 'tema' => 'claro', 'avisos_que' => 'mio', 'resumen_diario' => '1'];
 $ctl->correr(fn() => $ctl->guardarAjustes());
 $_SERVER['REQUEST_METHOD'] = 'GET';
 
@@ -678,9 +685,12 @@ check($contar() === 0 && str_contains((string) ($_SESSION['td_flash']['mensaje']
 P\PortalSession::tomarFlash();
 
 $ctx->correos = [];
+$pdo->exec('DELETE FROM portal_avisos_buzon');
 [, $r] = $sp->correr('crear', [], ['_csrf' => $ctk, 'tipo' => 'pedido', 'proyecto_id' => $p1a, 'titulo' => 'Banner promo', 'detalle' => 'Formato 1080x1080', 'urgencia' => 'urgente', 'motivo_urgencia' => 'Sale el lunes']);
 $sid = (string) $pdo->query("SELECT id FROM portal_solicitudes WHERE titulo = 'Banner promo'")->fetchColumn();
 check($sid !== '' && $r === '/portal/solicitudes/' . $sid, 'pedido urgente con motivo: guardado');
+check(array_filter($ctx->correos, fn($c) => $c['to'] === 'ana@agencia.cl') === [], 'el aviso al equipo no sale suelto: queda en el buzón');
+$vaciarAvisos();
 $aviso = array_values(array_filter($ctx->correos, fn($c) => $c['to'] === 'ana@agencia.cl'))[0] ?? null;
 check($aviso !== null && str_contains($aviso['subject'], '[URGENTE]') && str_contains($aviso['body'], 'Sale el lunes'), 'aviso al equipo asignado, marcado urgente y con el motivo');
 check(str_contains((string) ($aviso['body'] ?? ''), '/equipo/solicitudes/' . $sid), 'el aviso enlaza a la solicitud en el panel');
@@ -721,13 +731,15 @@ check($r === '/equipo', 'solicitud de un proyecto ajeno: bloqueada');
 check(str_contains($html, 'Aceptar y crear la tarea') && str_contains($html, 'value="' . $ss->fechaSugerida('urgente') . '"'), 'ficha con la fecha sugerida por la urgencia');
 
 $ctx->correos = [];
+$pdo->exec('DELETE FROM portal_avisos_buzon');
 [, $r] = $g->hacer('POST', $S, 'aceptar', [$sid], 'solicitud', false, ['_csrf_token' => $tok, 'titulo' => 'Banner promo', 'descripcion' => 'Formato 1080x1080', 'fecha_vencimiento' => '2026-10-02', 'responsable_usuario_id' => $ana, 'mensaje' => 'Lo tomamos']);
 $sAc = $ss->find($sid);
 $tarea = $ts->find((string) $sAc['tarea_id']);
 check($sAc['estado'] === 'en_curso' && $tarea !== null && $tarea['responsable_usuario_id'] === $ana && (int) $tarea['visible_cliente'] === 1 && $tarea['fecha_vencimiento'] === '2026-10-02', 'aceptar crea la tarea visible, con responsable y fecha');
 check($r === '/equipo/tareas/' . $sAc['tarea_id'], 'después de aceptar se abre la tarea');
-$enCola = (int) $pdo->query("SELECT COUNT(*) FROM portal_correos_cola WHERE destino = 'clara@uno.cl' AND asunto LIKE 'Tomamos%'")->fetchColumn();
-check(count(array_filter($ctx->correos, fn($c) => $c['to'] === 'clara@uno.cl' && str_contains($c['subject'], 'Tomamos'))) + $enCola === 1, 'el cliente recibe el aviso (o queda en cola hasta su horario hábil)');
+$enBuzon = (int) $pdo->query("SELECT COUNT(*) FROM portal_avisos_buzon WHERE para = 'cliente' AND enviado_en IS NULL AND asunto LIKE 'Tomamos%'")->fetchColumn();
+$vaciarAvisos();
+check($enBuzon >= 1 && count(array_filter($ctx->correos, fn($c) => $c['to'] === 'clara@uno.cl' && str_contains($c['subject'], 'Tomamos'))) === 1, 'el cliente recibe el aviso agrupado a su hora (no suelto)');
 [, $r] = $g->hacer('POST', $S, 'aceptar', [$sid], 'solicitud', false, ['_csrf_token' => $tok]);
 check((int) $pdo->query("SELECT COUNT(*) FROM portal_tareas WHERE titulo = 'Banner promo'")->fetchColumn() === 1, 'aceptar dos veces no duplica la tarea');
 check($ss->urgentesAbiertas($c1) === 1, 'la urgencia sigue abierta mientras la tarea no esté lista');
@@ -1352,7 +1364,7 @@ $p5 = $ps->create(['cliente_id' => $c5, 'nombre' => 'Cinco A']);
 $luz = (new P\ContactoService($pdo))->create(['cliente_id' => $c5, 'nombre' => 'Luz Cinco', 'email' => 'luz@cinco.cl', 'rol' => 'aprobador']);
 $eq->asignar($ana, $c5);
 foreach ([$ana, $coord, $beto['id']] as $uid) {
-    $aj->setMuchos('equipo', $uid, ['avisos_que' => 'mio', 'avisos_como' => 'agrupado', 'resumen_diario' => '1']);
+    $aj->setMuchos('equipo', $uid, ['avisos_que' => 'mio', 'resumen_diario' => '1']);
 }
 $av = new P\Avisos($ctx, $pdo);
 $pdo->exec('DELETE FROM portal_avisos_buzon');   // lo que dejaron las pruebas anteriores
@@ -1381,18 +1393,40 @@ for ($i = 1; $i <= 3; $i++) {
 }
 $n->alEquipo('Luz subió archivos', '', 'tareas/t-dos', ['proyecto_id' => $p5]);
 check($para('ana@agencia.cl') === [] && count($av->pendientes($ana)) === 4, 'agrupado: los avisos esperan en el buzón');
-check($av->barrer() === 0, 'con 4 avisos y menos de 3 horas, todavía no sale');
+check($av->barrer() === 0, 'con 4 avisos y antes de la primera hora fija (10:00), todavía no sale');
 $n->alEquipo('[URGENTE] Se cayó la web', '', 'solicitudes/s1', ['proyecto_id' => $p5, 'urgente' => true]);
-check(count($para('ana@agencia.cl')) === 1 && count($av->pendientes($ana)) === 4, 'las urgencias salen al tiro');
-$n->alEquipo('Luz aprobó', '', 'tareas/t-tres', ['proyecto_id' => $p5]);
+check($para('ana@agencia.cl') === [] && count($av->pendientes($ana)) === 5, 'las urgencias tampoco salen sueltas: esperan en el buzón');
 $ctx->correos = [];
-check($av->barrer() === 1 && count($av->pendientes($ana)) === 0, 'con 5 avisos sale un solo correo agrupado');
+check($av->barrer() === 1 && count($av->pendientes($ana)) === 0, 'una urgencia adelanta la próxima pasada: sale un solo correo con todo lo pendiente');
 $cuerpo = $para('ana@agencia.cl')[0]['body'] ?? '';
-check(str_contains($cuerpo, 'CLIENTE CINCO · CINCO A') && str_contains($cuerpo, 'Luz comentó (3)') && str_contains($cuerpo, 'y 2 novedades más') && !str_contains($cuerpo, 'Luz comentó (1)'), 'ordenado por proyecto y con lo repetido junto');
+check(str_contains($cuerpo, 'CLIENTE CINCO · CINCO A') && str_contains($cuerpo, 'Luz comentó (3)') && str_contains($cuerpo, 'y 2 novedades más') && !str_contains($cuerpo, 'Luz comentó (1)') && str_contains($cuerpo, 'Se cayó la web'), 'ordenado por proyecto y con lo repetido junto');
+check(str_contains($cuerpo, '10:00, 13:00 y 16:00'), 'el correo explica a qué horas salen');
 $n->alEquipo('Uno solo', '', 'tareas/t-uno', ['proyecto_id' => $p5]);
-P\Notifier::$ahora = $enAgencia('2027-01-13 13:05');
+check($av->barrer() === 0, 'sin urgencia y antes de la hora fija, un aviso espera');
+P\Notifier::$ahora = $enAgencia('2027-01-13 10:05');
 $ctx->correos = [];
-check($av->barrer() === 1, 'a las 3 horas sale aunque sea uno');
+check($av->barrer() === 1, 'a las 10:00 sale lo que ya había llegado, aunque sea uno');
+check($av->barrer() === 0, 'y no se repite en la misma pasada');
+P\Notifier::$ahora = $enAgencia('2027-01-13 10:20');
+$n->alEquipo('Llegó después de las 10', '', 'tareas/t-uno', ['proyecto_id' => $p5]);
+P\Notifier::$ahora = $enAgencia('2027-01-13 10:40');
+check($av->barrer() === 0, 'lo que llega después de la hora fija espera a la siguiente');
+P\Notifier::$ahora = $enAgencia('2027-01-13 13:05');
+check($av->barrer() === 1, 'a las 13:00 sale');
+for ($i = 1; $i <= P\Avisos::JUNTOS; $i++) {
+    $n->alEquipo("Aviso {$i}", '', 'tareas/t-n' . $i, ['proyecto_id' => $p5]);
+}
+$ctx->correos = [];
+check($av->barrer() === 1 && count($av->pendientes($ana)) === 0, 'al juntarse 10 salen antes de la hora fija');
+$cuerpo = $para('ana@agencia.cl')[0]['body'] ?? '';
+check(str_contains($cuerpo, 'Aviso 10'), 'y entran todos en el correo');
+for ($i = 1; $i <= P\Avisos::JUNTOS + 3; $i++) {
+    $n->alEquipo("Otro {$i}", '', 'tareas/t-m' . $i, ['proyecto_id' => $p5]);
+}
+$ctx->correos = [];
+$av->barrer();
+$cuerpo = $para('ana@agencia.cl')[0]['body'] ?? '';
+check(str_contains($cuerpo, 'Y 3 novedades más'), 'el correo muestra hasta 10 y resume el resto');
 $n->alEquipo('De noche', '', 'tareas/t-uno', ['proyecto_id' => $p5]);
 P\Notifier::$ahora = $enAgencia('2027-01-13 23:30');
 check($av->barrer() === 0, 'de noche no se barre');
@@ -1422,22 +1456,26 @@ $av->resumenes();
 check(str_contains(($para('luz@cinco.cl')[0]['body'] ?? ''), 'Enviar textos'), 'el contacto que lo pidió recibe su resumen con lo que le toca');
 
 // Vencimientos
-$aj->set('equipo', $ana, 'avisos_como', 'instante');
+$pdo->exec('DELETE FROM portal_avisos_buzon');
 $ts->create(['proyecto_id' => $p5, 'titulo' => 'Mañana sin falta', 'asignado' => 'equipo', 'responsable_usuario_id' => $ana, 'fecha_vencimiento' => '2027-01-16']);
 $ctx->correos = [];
 $av->vencimientos();
 $av->vencimientos();
-check(count(array_filter($para('ana@agencia.cl'), fn($c) => str_contains($c['subject'], 'Vence mañana: «Mañana sin falta»'))) === 1, 'vence mañana: un aviso, una sola vez');
-check(count(array_filter($para('ana@agencia.cl'), fn($c) => str_contains($c['subject'], 'Se atrasó: «Entregar logo»'))) === 1, 'atrasada: un aviso');
+$filasBuzon = fn(string $como): int => (int) $pdo->query("SELECT COUNT(*) FROM portal_avisos_buzon WHERE asunto LIKE " . $pdo->quote($como . '%'))->fetchColumn();
+check($filasBuzon('Vence mañana: «Mañana sin falta»') === 1, 'vence mañana: un aviso, una sola vez');
+check($filasBuzon('Se atrasó: «Entregar logo»') === 1, 'atrasada: un aviso');
+$vaciarAvisos();
+$bodyAna = implode(' ', array_column($para('ana@agencia.cl'), 'body'));
+check(str_contains($bodyAna, 'Vence mañana: «Mañana sin falta»') && str_contains($bodyAna, 'Se atrasó: «Entregar logo»'), 'y salen en el correo agrupado, no sueltos');
 
 // Te asignaron una tarea
 $_SESSION[P\EquipoController::SESION] = $coord;
 $tok = P\PortalSession::csrf();
 $ctx->correos = [];
-$aj->set('equipo', $beto['id'], 'avisos_como', 'instante');
 $eq->asignar($beto['id'], $c5);
 $g->hacer('POST', $T, 'store', [], null, false, ['_csrf_token' => $tok, 'titulo' => 'Diseñar banner', 'proyecto_id' => $p5, 'asignado' => 'equipo', 'responsable_usuario_id' => $beto['id']]);
-check(count(array_filter($para('beto@agencia.cl'), fn($c) => str_contains($c['subject'], 'Te asignaron: «Diseñar banner»'))) === 1, 'a quien le asignan una tarea le llega el aviso');
+$vaciarAvisos();
+check(count(array_filter($para('beto@agencia.cl'), fn($c) => str_contains($c['subject'], 'Te asignaron: «Diseñar banner»'))) === 1, 'a quien le asignan una tarea le llega el aviso (agrupado)');
 check($para('ana@agencia.cl') === [], 'a los demás no');
 
 // Reuniones con convocados
@@ -1477,7 +1515,8 @@ $pdo->exec("DELETE FROM portal_correos_cola");
 $av->recordatorios();
 $av->recordatorios();
 $recCola = (int) $pdo->query("SELECT COUNT(*) FROM portal_correos_cola WHERE destino = 'luz@cinco.cl' AND asunto LIKE 'Mañana: Kickoff Cinco%'")->fetchColumn();
-check(count(array_filter($para('ana@agencia.cl'), fn($c) => str_starts_with($c['subject'], 'Mañana: Kickoff Cinco'))) === 1 && count($para('luz@cinco.cl')) + $recCola === 1, 'recordatorio el día anterior, una sola vez, a cada convocado');
+$recBuzon = (int) $pdo->query("SELECT COUNT(*) FROM portal_avisos_buzon WHERE usuario_id = " . $pdo->quote($ana) . " AND enviado_en IS NULL AND asunto LIKE 'Mañana: Kickoff Cinco%'")->fetchColumn();
+check($recBuzon === 1 && count($para('luz@cinco.cl')) + $recCola === 1, 'recordatorio el día anterior, una sola vez: a la persona del equipo en su buzón y al cliente en su correo');
 
 // Borrar la reunión cancela
 $ctx->correos = [];
@@ -1507,7 +1546,7 @@ check(count($tr['creadas']) === 3 && count($tr['sugeridas']) === 1 && $tr['suger
     'un solo Guardar: crea las marcadas y la escrita a mano, descarta las marcadas y deja pendiente lo que no se decidió');
 check(str_contains($flT, '3 tareas creadas (1 la ve el cliente)') && str_contains($flT, '1 sugerencia descartada') && str_contains($flT, 'próxima reunión agendada')
     && str_contains($flT, 'resumen publicado') && str_contains($flT, 'le avisamos por correo'), 'el mensaje dice lo que pasó');
-check(count(array_filter($ctx->correos, fn($c) => str_contains($c['subject'], 'Novedades de la reunión «Revisión Cinco»'))) + (int) $pdo->query("SELECT COUNT(*) FROM portal_correos_cola WHERE asunto LIKE 'Novedades de la reunión «Revisión Cinco»%'")->fetchColumn() >= 1,
+check(count(array_filter($ctx->correos, fn($c) => str_contains($c['subject'], 'Novedades de la reunión «Revisión Cinco»'))) + (int) $pdo->query("SELECT COUNT(*) FROM portal_avisos_buzon WHERE asunto LIKE 'Novedades de la reunión «Revisión Cinco»%'")->fetchColumn() >= 1,
     'y el correo al cliente sale en el mismo Guardar');
 $rTv = $rs->find($rT);
 $proxT = $rs->find((string) $rTv['prox_reunion_id']);
@@ -1593,14 +1632,57 @@ $nv = new P\Notifier($ctx, $pdo);
 $tPend = $ts->create(['proyecto_id' => $p5, 'titulo' => 'Mandar el logo en alta', 'asignado' => 'cliente', 'visible_cliente' => 1]);
 $nv->alCliente($c5, null, 'Tienes algo pendiente: Mandar el logo en alta', '', '/portal/tareas/' . $tPend, ['vigencia' => P\Vigencia::tarea($tPend)]);
 $nv->alCliente($c5, null, 'Nuevo comentario', 'Hola', '/portal');
-$enCola = fn(string $asunto) => (string) $pdo->query("SELECT estado FROM portal_correos_cola WHERE asunto = " . $pdo->quote($asunto))->fetchColumn();
-check($enCola('Tienes algo pendiente: Mandar el logo en alta') === 'pendiente', 'el aviso al cliente espera su horario hábil');
+$enCola = fn(string $asunto) => (string) ($pdo->query("SELECT enviado_en FROM portal_avisos_buzon WHERE asunto = " . $pdo->quote($asunto))->fetchColumn() ?: 'pendiente');
+check($enCola('Tienes algo pendiente: Mandar el logo en alta') === 'pendiente', 'el aviso al cliente espera en el buzón hasta su hora');
 $ts->cambiarEstado($tPend, 'hecha');
-P\Notifier::$ahora = $enAgencia('2027-02-04 09:00');
+P\Notifier::$ahora = $enAgencia('2027-02-04 10:05');
 $ctx->correos = [];
-$nv->vaciarCola(50);
-check($enCola('Tienes algo pendiente: Mandar el logo en alta') === 'descartado' && $para('luz@cinco.cl') !== [] && !in_array('Tienes algo pendiente: Mandar el logo en alta', array_column($ctx->correos, 'subject'), true), 'si la tarea se completó mientras esperaba, el aviso se descarta (y lo demás sale)');
+$av->barrer();
+check($enCola('Tienes algo pendiente: Mandar el logo en alta') !== 'pendiente' && $para('luz@cinco.cl') !== [] && !in_array('Tienes algo pendiente: Mandar el logo en alta', array_column($ctx->correos, 'subject'), true), 'si la tarea se completó mientras esperaba, el aviso se descarta (y lo demás sale)');
 check(P\Vigencia::sigue($pdo, null) && P\Vigencia::sigue($pdo, 'otra:cosa'), 'sin marca o con una marca desconocida, el aviso sale');
+
+// Cliente: agrupado a horas fijas, tope de 6 y «inmediato» sólo para lo que espera
+$pdo->exec('DELETE FROM portal_avisos_buzon');
+P\Notifier::$ahora = $enAgencia('2027-02-10 09:00');   // miércoles
+$ctx->correos = [];
+for ($i = 1; $i <= 3; $i++) {
+    $nv->alCliente($c5, (string) $luz, "Aviso cliente {$i}", '', '/portal/tareas/x' . $i);
+}
+P\Notifier::$ahora = $enAgencia('2027-02-10 09:45');
+$av->barrer();
+check($para('luz@cinco.cl') === [], 'cliente: antes de la primera hora fija (10:00) no sale nada');
+P\Notifier::$ahora = $enAgencia('2027-02-10 10:05');
+$av->barrer();
+$aLuz = $para('luz@cinco.cl');
+check(count($aLuz) === 1 && $aLuz[0]['subject'] === '3 novedades en tu portal' && str_contains($aLuz[0]['body'], '10:00, 13:00 y 16:00'), 'cliente: a las 10:00 sale un solo correo con los 3 avisos');
+$ctx->correos = [];
+for ($i = 1; $i <= P\Avisos::JUNTOS_CLIENTE; $i++) {
+    $nv->alCliente($c5, (string) $luz, "Otro aviso {$i}", '', '/portal/tareas/y' . $i);
+}
+$av->barrer();
+check(count($para('luz@cinco.cl')) === 1 && !str_contains($para('luz@cinco.cl')[0]['body'], 'novedades más'), 'cliente: al juntarse 6 salen antes de la hora, todos en un correo');
+$ctx->correos = [];
+for ($i = 1; $i <= 8; $i++) {
+    $nv->alCliente($c5, (string) $luz, "Más aviso {$i}", '', '/portal/tareas/z' . $i);
+}
+$av->barrer();
+check(str_contains($para('luz@cinco.cl')[0]['body'] ?? '', 'Y 2 novedades más'), 'cliente: el correo muestra 6 y resume el resto');
+$ctx->correos = [];
+$nv->alCliente($c5, (string) $luz, 'Algo que espera', 'Hola', '/portal', ['inmediato' => true]);
+check(count($para('luz@cinco.cl')) === 1, 'cliente: lo marcado «inmediato» (lo que la persona espera) sí sale al tiro');
+$ctx->correos = [];
+$nv->alCliente($c5, (string) $luz, 'Se pasó la hora', '', '/portal');
+P\Notifier::$ahora = $enAgencia('2027-02-10 10:50');
+$av->barrer();
+check($para('luz@cinco.cl') === [], 'cliente: lo que llega después de la hora fija espera a la siguiente (13:00)');
+P\Notifier::$ahora = $enAgencia('2027-02-10 13:05');
+$av->barrer();
+check(count($para('luz@cinco.cl')) === 1, 'cliente: y sale a las 13:00');
+P\Notifier::$ahora = $enAgencia('2027-02-13 11:00');   // sábado
+$nv->alCliente($c5, (string) $luz, 'De fin de semana', '', '/portal');
+$ctx->correos = [];
+$av->barrer();
+check($para('luz@cinco.cl') === [], 'cliente: el fin de semana no sale nada');
 
 // Buzón del equipo
 $aj->set('equipo', $beto['id'], 'avisos_como', 'agrupado');
@@ -2234,6 +2316,10 @@ check($r['ok'] && $r['codigo'] === 201 && $r['gracias'] === 'https://pasteleria.
 check($lola && abs(strtotime((string) $lola['created_at']) - time()) < 120, 'la hora de llegada se guarda como el resto del portal (no «hace 3 h» recién llegado)');
 check($lola && $lola['origen'] === 'formulario' && $lola['proyecto_id'] === $pW1 && $lola['fuente_id'] === $fu['id'] && $lola['campana'] === 'tortas', 'queda en su campaña, con su fuente y los UTM');
 check((int) $fs->find($fu['id'])['total'] === 1 && $fs->find($fu['id'])['ultimo_uso_en'] !== null, 'la fuente cuenta los contactos y su último uso');
+$idDora = (string) $pdo->query("SELECT id FROM portal_contactos WHERE email = 'dora@pasteleria.cl'")->fetchColumn();
+$buzonDora = fn(): array => $pdo->query("SELECT asunto FROM portal_avisos_buzon WHERE usuario_id = " . $pdo->quote($idDora) . " AND enviado_en IS NULL")->fetchAll(PDO::FETCH_COLUMN);
+check(count($buzonDora()) === 1 && array_filter($ctx->correos, fn($c) => $c['to'] === 'dora@pasteleria.cl') === [], 'el aviso al cliente no sale suelto: espera su hora en el buzón');
+$vaciarAvisos();
 $aDora = array_values(array_filter($ctx->correos, fn($c) => $c['to'] === 'dora@pasteleria.cl'));
 check(count($aDora) === 1 && str_contains($aDora[0]['subject'], 'Tortas de verano') && !str_contains($aDora[0]['body'], 'lola'), 'avisa a la colaboradora, sin datos de la persona en el correo');
 check(!in_array('sara@pasteleria.cl', array_column($ctx->correos, 'to'), true) && !in_array('vera@pasteleria.cl', array_column($ctx->correos, 'to'), true), 'no avisa a quien lo apagó ni a quien sólo puede leer');
@@ -2241,10 +2327,10 @@ check(!in_array('sara@pasteleria.cl', array_column($ctx->correos, 'to'), true) &
 $r = $en->enviar($fu['token'], '{"name":"Beto Make","email":"beto@make.com","campaign_name":"Meta tortas"}', '10.0.0.9', true);
 $beto = $pdo->query("SELECT * FROM portal_leads WHERE correo = 'beto@make.com'")->fetch();
 check($r['ok'] && $r['codigo'] === 201 && $beto && $beto['origen'] === 'webhook' && $beto['campana'] === 'Meta tortas', 'Make envía JSON con el token en la cabecera X-Portal-Token');
-$enCola = $pdo->query("SELECT asunto FROM portal_correos_cola WHERE destino = 'dora@pasteleria.cl' AND estado = 'pendiente'")->fetchAll(PDO::FETCH_COLUMN);
+$enCola = $buzonDora();
 check(count(array_filter($ctx->correos, fn($c) => $c['to'] === 'dora@pasteleria.cl')) === 1 && count($enCola) === 1 && str_contains($enCola[0], '2 contactos nuevos'), 'el segundo no sale al tiro: espera agrupado con el total');
 $en->enviar($fu['token'], '{"name":"Caro Make","email":"caro@make.com"}', '10.0.0.9', true);
-$enCola = $pdo->query("SELECT asunto FROM portal_correos_cola WHERE destino = 'dora@pasteleria.cl' AND estado = 'pendiente'")->fetchAll(PDO::FETCH_COLUMN);
+$enCola = $buzonDora();
 check(count($enCola) === 1 && str_contains($enCola[0], '3 contactos nuevos'), 'el siguiente actualiza el mismo correo en espera (3 contactos)');
 $pdo->exec("UPDATE portal_leads SET estado = 'contactado' WHERE cliente_id = " . $pdo->quote($cW));
 check(!P\Vigencia::sigue($pdo, P\Vigencia::leads($cW)), 'si ya los atendió antes de que salga, el aviso se descarta');
@@ -2371,6 +2457,7 @@ $pdo->exec("DELETE FROM portal_ajustes WHERE clave LIKE 'ultimo_aviso:%'");
 $rita = $pdo->query("SELECT * FROM portal_leads WHERE correo = 'rita@x.cl'")->fetch();
 check($r === '/equipo/leads?proyecto=' . $pW1 && $contarW() === $antes + 3, 'al confirmar entran sólo los nuevos');
 check($rita && $rita['origen'] === 'csv_meta' && $rita['creado_por'] === 'Coordina' && substr((string) $rita['created_at'], 0, 10) === '2026-02-20', 'quedan con origen Meta y la fecha en que llegaron de verdad');
+$vaciarAvisos();
 check(count(array_filter($ctx->correos, fn($c) => $c['to'] === 'dora@pasteleria.cl')) === 1, 'el cliente recibe un solo aviso por toda la importación');
 $_FILES = ['archivo' => ['name' => 'leads-meta.csv', 'tmp_name' => $tmp, 'error' => UPLOAD_ERR_OK, 'size' => filesize($tmp)]];
 [$html] = $g->hacer('POST', $LA, 'importarRevisar', [], null, false, ['_csrf_token' => $tokI, 'proyecto' => $pW1]);

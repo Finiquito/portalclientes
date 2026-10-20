@@ -350,8 +350,9 @@ class SolicitudPublicController extends PortalPublicController
             'etiqueta' => $urgente ? 'Urgente' : 'Solicitud nueva', 'titulo' => $asunto, 'resaltado' => $quien,
             'proyecto_id' => (string) $s['proyecto_id'], 'cliente_id' => (string) $s['cliente_id'], 'bloques' => $bloques,
             'preheader' => mb_substr(trim((string) $s['detalle']) ?: $asunto, 0, 110), 'boton' => 'Revisar la solicitud',
-            // Urgente o «algo dejó de funcionar»: no espera al correo agrupado.
-            'urgente' => $urgente || $s['tipo'] === 'problema', 'detalle' => $detalle,
+            // Urgente o «algo dejó de funcionar»: no espera la próxima hora fija (sale en la siguiente pasada del cron).
+            'urgente' => $urgente || $s['tipo'] === 'problema',
+            'detalle' => $detalle . ($urgente && trim((string) $s['motivo_urgencia']) !== '' ? ' · Motivo: ' . mb_substr(trim((string) $s['motivo_urgencia']), 0, 300) : ''),
         ]);
     }
 }

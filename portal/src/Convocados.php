@@ -344,11 +344,9 @@ final class Convocados
             if ($pref['que'] === 'nada') {
                 return 0;
             }
-            if ($pref['como'] === 'agrupado') {
-                (new Avisos($this->ctx, $this->pdo, $this->n))->guardar((string) $u['id'], $cid, (string) $r['proyecto_id'], 'reuniones/' . $r['id'],
-                    $asunto, $cuando, 'reuniones/' . $r['id'], Vigencia::reunion((string) $r['id']));
-                return 1;
-            }
+            (new Avisos($this->ctx, $this->pdo, $this->n))->guardar((string) $u['id'], $cid, (string) $r['proyecto_id'], 'reuniones/' . $r['id'],
+                $asunto, $cuando, 'reuniones/' . $r['id'], Vigencia::reunion((string) $r['id']));
+            return 1;
         }
         [, , $contexto] = $this->n->contextoAviso(['proyecto_id' => (string) $r['proyecto_id']]);
         [$html, $texto] = $this->n->componer($asunto, '', $op + ['boton' => 'Abrir en el panel'], 'Hola ' . $this->n->primerNombre((string) $u['nombre']) . ',',

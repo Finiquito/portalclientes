@@ -236,7 +236,7 @@ final class Schema
         }
         // Columnas que llegaron después: invitación de calendario en la cola y marca de vigencia
         // (ver Vigencia: si el aviso ya no hace falta, no sale).
-        foreach ([['portal_correos_cola', 'ics', 'TEXT'], ['portal_correos_cola', 'vigencia', 'VARCHAR(80)'], ['portal_avisos_buzon', 'vigencia', 'VARCHAR(80)']] as [$t, $col, $def]) {
+        foreach ([['portal_correos_cola', 'ics', 'TEXT'], ['portal_correos_cola', 'vigencia', 'VARCHAR(80)'], ['portal_avisos_buzon', 'vigencia', 'VARCHAR(80)'], ['portal_avisos_buzon', 'urgente', 'INTEGER NOT NULL DEFAULT 0'], ['portal_avisos_buzon', 'para', "VARCHAR(8) NOT NULL DEFAULT 'equipo'"]] as [$t, $col, $def]) {
             if (self::existe($pdo, $t, 'id') && !self::existe($pdo, $t, $col)) {
                 $pdo->exec("ALTER TABLE {$t} ADD COLUMN {$col} {$def}");
             }
