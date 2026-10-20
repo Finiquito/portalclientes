@@ -74,6 +74,9 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### v0.44.1: el comando del cron en Ajustes va sin el horario
+- Ajustes mostraba la línea completa (`*/15 * * * * curl …`) y al pegarla entera en Hostinger fallaba («failed to run command '*/15'»). Ahora muestra solo el comando y, aparte, cómo llenar los selectores de horario.
+
 ### v0.44.0: avisos siempre agrupados y diagnóstico del cron
 - **No hay correos sueltos.** Los avisos al equipo y al cliente se juntan y salen en un solo correo a horas fijas: **10:00, 13:00 y 16:00** (hora de quien recibe), de lunes a viernes y dentro del horario hábil. Salen antes si se juntan **10** (equipo) o **6** (cliente); el correo muestra hasta ese número y resume el resto («Y N novedades más»). Lo que llega después de una hora fija espera a la siguiente.
 - Antes de salir, cada aviso se revisa: si ya se resolvió (la tarea se completó, el contenido se aprobó), se descarta; si no queda nada, no se manda correo.

@@ -354,10 +354,11 @@
     <div class="pa-fila">
         <div>
             <p class="pa-fila-et">Comando</p>
-            <p class="pa-fila-ayuda">En Hostinger: hPanel → Avanzado → Cron Jobs → Personalizado, con el horario <code>*/15 * * * *</code> (todas las horas, cada 15 minutos).</p>
+            <p class="pa-fila-ayuda">En Hostinger: hPanel → Avanzado → Cron Jobs → <strong>Personalizado</strong>. Copia <strong>solo el comando</strong> en «Comando a ejecutar»; el horario va en los selectores de abajo, no en el comando.</p>
         </div>
         <div class="pa-fila-campo">
-            <code style="display:block;white-space:pre-wrap;word-break:break-all;padding:.75rem;border-radius:.6rem;background:color-mix(in srgb, currentColor 6%, transparent)">*/15 * * * * curl -sL -m 60 "{$correo['cronUrl']}" &gt; /dev/null</code>
+            <code style="display:block;white-space:pre-wrap;word-break:break-all;padding:.75rem;border-radius:.6rem;background:color-mix(in srgb, currentColor 6%, transparent)">curl -sL -m 60 "{$correo['cronUrl']}" &gt; /dev/null</code>
+            <p class="pa-fila-ayuda" style="margin-top:.5rem">Horario: <strong>Minuto</strong> «Cada 15 minutos» (<code>*/15</code>) y <strong>Hora</strong>, <strong>Día</strong>, <strong>Mes</strong> y <strong>Día de la semana</strong> en «Cada» (<code>*</code>). Así queda <code>*/15 * * * *</code>.</p>
             <form method="post" action="{$admin_url('ajustes/cron-clave')}" onsubmit="return confirm('La clave actual deja de funcionar: tendrás que actualizar el comando en Hostinger. ¿Seguir?');">
                 <input type="hidden" name="_csrf_token" value="{$csrf_token}">
                 <button type="submit" class="btn btn-sm">Generar clave nueva</button>
