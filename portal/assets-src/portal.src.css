@@ -441,12 +441,15 @@ span.flex:has(> svg)[class*="size-"] { background: transparent !important; borde
 section[aria-label="Resumen"] a span.flex:has(> svg) { border: 0; width: auto; height: auto; justify-content: flex-start; }
 section[aria-label="Resumen"] a span.flex > svg { width: 1.6rem; height: 1.6rem; }
 
-/* Bloque de novedades: fondo azul invertido (.bloque-azul) */
+/* Bloque de novedades (.bloque-azul): siempre el opuesto del fondo.
+   En claro va azul del sistema con texto claro; en oscuro, gris clarito con texto azul. */
 .bloque-azul { --foco: #fff; --surface: var(--azul); --surface-2: rgb(255 255 255 / .12); --ink: #fff; --muted: color-mix(in oklab, #fff 72%, var(--azul)); --line: rgb(255 255 255 / .2); --brand-ink: #fff;
   --ok: #5ee0ae; --warn: #f6c06e; --danger: #ff8fab; --info: #93b4ff;
-  background: var(--surface) !important; border-color: var(--surface) !important; color: #fff; }
-.bloque-azul a:hover { color: #fff; }
-.bloque-azul span.flex:has(> svg) { background: transparent !important; border: 1px solid rgb(255 255 255 / .3); color: #fff !important; }
+  background: var(--surface) !important; border-color: var(--surface) !important; color: var(--ink); }
+.dark .bloque-azul { --foco: var(--azul); --surface: #e9ecf4; --surface-2: rgb(20 32 77 / .08); --ink: var(--azul); --muted: #55608a; --line: rgb(20 32 77 / .16); --brand-ink: var(--azul);
+  --ok: #0a8a5a; --warn: #b45f00; --danger: #d1203f; --info: #1f4fd8; }
+.bloque-azul a:hover { color: var(--ink); }
+.bloque-azul span.flex:has(> svg) { background: transparent !important; border: 1px solid var(--line); color: var(--ink) !important; }
 
 /* Columna lateral nivelada: el bloque azul queda al pie de la primera pantalla.
    Sólo en escritorio, donde la columna va al lado. Si el contenido es más alto que la pantalla, fluye normal. */

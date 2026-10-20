@@ -74,6 +74,10 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### v0.40.2: «Novedades» siempre en el color opuesto
+- El bloque de **Novedades** va **siempre en el opuesto del fondo**: en modo claro, azul del sistema (`#14204d`) con texto claro; en modo oscuro, **gris clarito** con texto azul. Los estados (aprobado, en revisión…) y los íconos usan sus tonos de modo claro dentro del gris para leerse bien.
+- `portal.css` sube a `?v=37`.
+
 ### v0.40.1: paleta de 12 colores y arreglos de «Azul firme»
 - **Colores de marca elegibles (agencia y cada cliente).** El selector libre se cambia por 12 colores: Naranjo Prisma, Azul, Verde, Violeta, Rosa, Grafito, Ámbar, Azul claro, Gris azulado, Café, Cian y Verde turquesa. Un portal con un color antiguo lo conserva, y aparece como «Actual» hasta que se elija uno de la lista.
 - **Normas de contraste, en los dos portales y en los correos.** El texto del botón llega a 4,5:1 como mínimo y el aro de foco a 3:1, en claro y en oscuro. Naranjo Prisma, Verde, Rosa y Gris azulado se oscurecen un poco para aguantar texto blanco; Ámbar, Azul claro, Cian y Verde turquesa llevan texto oscuro (`#10131f`). Lo que se guarda es el color elegido: el ajuste se aplica al pintar.
