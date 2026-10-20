@@ -148,3 +148,12 @@ textarea.ll-in { min-height: 4.6rem; resize: vertical; }
   .ll-cifras { grid-template-columns: 1fr 1fr 1fr; } .ll-edit form { left: 0; width: min(17rem, 78vw); }
   .ll-emb .r { grid-template-columns: 6rem minmax(0, 1fr) 2.2rem; } .ll-emb .pc { padding-left: 6.6rem; }
 }
+
+/* Selector Acumulado | Por día del gráfico de volumen */
+.ll-vol-cab { display: flex; align-items: flex-end; justify-content: space-between; gap: .75rem; flex-wrap: wrap; margin-top: 1rem; }
+.ll-vol-cab .ll-tit-g { margin: 0 0 .3rem; }
+.ll-g [hidden] { display: none !important; }
+.ll-seg button { padding: .35rem .75rem; font: inherit; font-size: .8rem; font-weight: 700; border: 0; border-right: 1px solid var(--ll-line); background: transparent; color: var(--ll-ink); cursor: pointer; }
+.ll-seg button:last-child { border: 0; }
+.ll-seg button[aria-pressed="true"] { background: var(--ll-ink); color: var(--ll-surface); }
+.ll-seg button:focus-visible { outline: 2px solid var(--ll-ink); outline-offset: -2px; }

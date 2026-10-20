@@ -22,7 +22,7 @@
   function colores() {
     var o = oscuro();
     return {
-      llegaron: o ? '#a6aed0' : '#7380a6', contactados: o ? '#93b4ff' : '#1f4fd8',
+      llegaron: o ? '#a6aed0' : '#7380a6', barra: o ? 'rgba(166,174,208,.32)' : '#d6dbea', contactados: o ? '#93b4ff' : '#1f4fd8',
       calificado: o ? '#f6c06e' : '#c26a00', ganado: o ? '#5ee0ae' : '#0a8a5a', perdido: o ? '#ff8fab' : '#d1203f',
       muted: css('--muted', '#5b6586'), grid: o ? 'rgba(255,255,255,.10)' : 'rgba(20,32,77,.10)', gridX: o ? 'rgba(255,255,255,.06)' : 'rgba(20,32,77,.06)',
       tip: o ? '#e9ecf4' : '#14204d', tipTxt: o ? '#14204d' : '#ffffff', fondo: o ? '#181a28' : '#ffffff', marca: o ? '#10131f' : '#ffffff'
@@ -59,6 +59,7 @@
     if (!n || !cv || !ch) { return; }
     [cv, ch].forEach(function (el) { var v = Chart.getChart(el); if (v) { v.destroy(); } });
 
+    var vista = caja.getAttribute('data-vista') === 'dia' ? 'dia' : 'acum';
     var c = colores(), movil = caja.clientWidth < 560, fam = getComputedStyle(document.body).fontFamily;
     Chart.defaults.font.family = fam;
     var paso = Math.max(1, Math.ceil(n / (movil ? 4 : 8)));
@@ -79,19 +80,26 @@
     };
 
     // ---- Volumen: dos líneas con un punto por día ----
-    var conPuntos = !movil && n <= 46;
-    var series = datos.volumen.map(function (s) {
+    var conPuntos = !movil && n <= 46, porDia = vista === 'dia';
+    var series = (porDia ? datos.volumen_dia : datos.volumen).map(function (s) {
+      if (porDia && s.id === 'llegaron') {
+        // Barras llenas, sin borde, en gris suave: solo para las barras.
+        return {
+          type: 'bar', label: s.nombre, data: s.datos.map(function (y, i) { return { x: i, y: y }; }),
+          backgroundColor: c.barra, borderWidth: 0, borderRadius: 3, barThickness: movil ? 6 : (n > 30 ? 6 : 10), grouped: false, order: 2
+        };
+      }
       var col = c[s.id];
       var g = null;
-      if (s.id === 'contactados') {
+      if (s.id === 'contactados' && !porDia) {
         g = cv.getContext('2d').createLinearGradient(0, 0, 0, cv.parentNode.clientHeight || 200);
         g.addColorStop(0, col + '33'); g.addColorStop(1, col + '00');
       }
       return {
         label: s.nombre, data: s.datos.map(function (y, i) { return { x: i, y: y }; }),
-        borderColor: col, borderWidth: 2.5, tension: 0.35, fill: !!g, backgroundColor: g || 'transparent',
+        borderColor: col, borderWidth: 2.5, tension: porDia ? 0 : 0.35, fill: !!g, backgroundColor: g || 'transparent',
         pointRadius: conPuntos ? 3 : 0, pointHoverRadius: 6, pointHitRadius: 14,
-        pointBackgroundColor: c.fondo, pointBorderColor: col, pointBorderWidth: 2
+        pointBackgroundColor: c.fondo, pointBorderColor: col, pointBorderWidth: 2, order: 1
       };
     });
     var max = 0;
@@ -110,7 +118,7 @@
             displayColors: false, titleFont: { weight: '700' }, bodyFont: { weight: '600' }, footerFont: { weight: '700' },
             callbacks: {
               title: function (it) { return datos.etiquetas[it[0].dataIndex] + (datos.paso === 'semana' ? ' (semana)' : ''); },
-              label: function (it) { return it.dataset.label + ': ' + it.parsed.y; },
+              label: function (it) { return it.dataset.label + (porDia ? (datos.paso === 'semana' ? ' esa semana' : ' ese día') : '') + ': ' + it.parsed.y; },
               footer: function (it) {
                 var i = it[0].dataIndex, l = [];
                 datos.hitos.forEach(function (h) { if (h.datos[i] > 0) { l.push(plural(h.datos[i], h.uno, h.varios) + ' ese ' + (datos.paso === 'semana' ? 'tramo' : 'día')); } });
@@ -131,6 +139,7 @@
       plugins: [{
         id: 'finales', afterDatasetsDraw: function (g) {
           var cx = g.ctx;
+          if (porDia) { return; }
           g.data.datasets.forEach(function (d, i) {
             var m = g.getDatasetMeta(i).data[n - 1];
             if (!m) { return; }
@@ -205,7 +214,30 @@
     });
   }
 
-  function iniciar() { document.querySelectorAll('[data-grafico]').forEach(dibujar); }
+  function leerVista() { try { return localStorage.getItem('portal-vista-grafico') === 'dia' ? 'dia' : 'acum'; } catch (e) { return 'acum'; } }
+  function marcarVista(caja) {
+    var v = caja.getAttribute('data-vista') || 'acum';
+    caja.querySelectorAll('[data-vista]').forEach(function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-vista') === v ? 'true' : 'false'); });
+    caja.querySelectorAll('[data-t]').forEach(function (t) { t.hidden = t.getAttribute('data-t') !== v; });
+    var cv = caja.querySelector('canvas[data-g="vol"]');
+    if (cv) { cv.setAttribute('aria-label', v === 'dia' ? 'Contactos que llegaron y fueron contactados en cada día' : 'Contactos que llegaron y contactos contactados, acumulados día a día'); }
+  }
+  function iniciar() {
+    document.querySelectorAll('[data-grafico]').forEach(function (caja) {
+      if (!caja.hasAttribute('data-vista')) {
+        caja.setAttribute('data-vista', caja.querySelector('button[data-vista]') ? leerVista() : 'acum');
+        caja.querySelectorAll('button[data-vista]').forEach(function (b) {
+          b.addEventListener('click', function () {
+            var v = b.getAttribute('data-vista');
+            try { localStorage.setItem('portal-vista-grafico', v); } catch (e) { /* sin almacenamiento: queda solo en esta página */ }
+            document.querySelectorAll('[data-grafico]').forEach(function (o) { o.setAttribute('data-vista', v); marcarVista(o); dibujar(o); });
+          });
+        });
+      }
+      marcarVista(caja);
+      dibujar(caja);
+    });
+  }
   if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', iniciar); } else { iniciar(); }
 
   // Al cambiar entre claro y oscuro, o el ancho de la pantalla, se dibuja de nuevo.

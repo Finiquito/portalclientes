@@ -146,6 +146,19 @@ class LeadAdminController
             ];
         }
 
+        // Tipos de público que cubre lo que se está mirando (todo el cliente o el proyecto elegido): el filtro solo tiene sentido si son dos.
+        $tiposAlcance = [];
+        foreach ($proyectosCli as $p) {
+            if ($pid !== '' && (string) $p['id'] !== $pid) {
+                continue;
+            }
+            foreach (explode(',', (string) $p['publico']) as $k) {
+                if (isset(LeadService::PUBLICOS[$k])) {
+                    $tiposAlcance[$k] = LeadService::PUBLICOS[$k];
+                }
+            }
+        }
+
         $alcance = self::dePublico($pid === '' ? $delCliente : ($porProyecto[$pid] ?? []), $pub);
         $q = $f->get('q');
         $base = $q === '' ? $alcance : self::dePublico($this->ui->filtrar($svc->lista(['cliente_id' => $clienteId, 'proyecto_id' => $pid, 'q' => $q]), 'proyecto_id'), $pub);
@@ -181,6 +194,7 @@ class LeadAdminController
             'clienteId'   => $clienteId,
             'proyectos'   => $proyectosCli,
             'publicos'    => LeadService::PUBLICOS,
+            'tiposAlcance' => array_values($tiposAlcance),
             'estados'     => LeadService::ESTADOS,
             'chips'       => LeadService::CHIPS_ADMIN,
             'origenes'    => LeadService::ORIGENES,

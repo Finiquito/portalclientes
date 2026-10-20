@@ -35,7 +35,7 @@ final class LeadStats
     public static function evolucion(array $leads, array $eventos, ?string $desde = null, ?\DateTimeImmutable $hoy = null): array
     {
         $hoy ??= new \DateTimeImmutable('today');
-        $vacio = ['etiquetas' => [], 'llegaron' => [], 'contactados' => [], 'hitos' => ['calificado' => [], 'ganado' => [], 'perdido' => []],
+        $vacio = ['etiquetas' => [], 'llegaron' => [], 'contactados' => [], 'llegaron_dia' => [], 'contactados_dia' => [], 'hitos' => ['calificado' => [], 'ganado' => [], 'perdido' => []],
             'totales' => ['llegaron' => 0, 'contactados' => 0, 'calificado' => 0, 'ganado' => 0, 'perdido' => 0], 'paso' => 'dia', 'total' => 0, 'dias' => 0];
         if ($leads === []) {
             return $vacio;
@@ -91,9 +91,15 @@ final class LeadStats
         $out['paso'] = $paso;
         $out['total'] = count($leads);
         $out['dias'] = $dias;
+        $contactadas = array_values($primera['contactado']);
+        $anterior = $ini->modify('-1 day')->format('Y-m-d');
         foreach ($puntos as $f) {
             $out['llegaron'][] = $cuenta($llegadas, $f);
-            $out['contactados'][] = $cuenta(array_values($primera['contactado']), $f);
+            $out['contactados'][] = $cuenta($contactadas, $f);
+            // Por día (o por semana): los que cayeron solo en este tramo, sin arrastrar lo anterior.
+            $out['llegaron_dia'][] = $cuenta($llegadas, $f) - $cuenta($llegadas, $anterior);
+            $out['contactados_dia'][] = $cuenta($contactadas, $f) - $cuenta($contactadas, $anterior);
+            $anterior = $f;
         }
         $out['totales']['llegaron'] = end($out['llegaron']) ?: 0;
         $out['totales']['contactados'] = end($out['contactados']) ?: 0;
@@ -218,6 +224,10 @@ final class LeadStats
             'volumen' => [
                 ['id' => 'llegaron', 'nombre' => 'Llegaron', 'datos' => $ev['llegaron']],
                 ['id' => 'contactados', 'nombre' => 'Contactados', 'datos' => $ev['contactados']],
+            ],
+            'volumen_dia' => [
+                ['id' => 'llegaron', 'nombre' => 'Llegaron', 'datos' => $ev['llegaron_dia']],
+                ['id' => 'contactados', 'nombre' => 'Contactados', 'datos' => $ev['contactados_dia']],
             ],
             'hitos' => [
                 ['id' => 'calificado', 'nombre' => 'Calificados', 'uno' => 'calificado', 'varios' => 'calificados', 'datos' => $ev['hitos']['calificado']],

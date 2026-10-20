@@ -74,6 +74,10 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### v0.43.3: gráfico «Por día» y público sin repetir
+- El gráfico de volumen tiene un selector **Acumulado | Por día** (**Por semana** en rangos largos): barras suaves de los que llegaron cada día y línea azul de los contactados. Recuerda tu última elección. Está en Contactos ganados del equipo y del cliente; el gráfico del Inicio queda como estaba.
+- El filtro **Todos / B2C / B2B** solo aparece si lo que miras mezcla los dos públicos. Si es de un solo tipo, se muestra únicamente esa etiqueta.
+
 ### v0.43.2: el gráfico separa el volumen de los hitos
 - **Volumen** (arriba): dos líneas acumuladas, **Llegaron** y **Contactados** (cuenta a todos los que llegaron a esa etapa o más lejos), con **un punto por día** (por semana si el rango es largo). Al pasar el cursor, o tocar, el globo muestra los dos valores y los hitos de ese día.
 - **Hitos** (abajo, alineados por fecha): **calificados** (rombo ámbar), **ganados** (círculo verde con check) y **perdidos** (círculo rojo con ×), cada uno en su **carril**, marcados en el día en que ocurrieron. No son una línea: son hechos puntuales. Si hay varios el mismo día (o la misma semana), la marca crece y lleva el número. La fecha es la del movimiento de la línea de tiempo, así que si se corrige con el lápiz, la marca se mueve.

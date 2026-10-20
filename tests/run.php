@@ -2109,6 +2109,8 @@ $acD = P\LeadStats::evolucion($lsT, $evT, '2026-10-10', $hoyT);
 check($acD['llegaron'][0] === 2 && count($acD['etiquetas']) === 11 && array_sum($acD['hitos']['calificado']) === 0 && $acD['hitos']['ganado'][0] === 1, 'con un período, el volumen parte de lo que ya había llegado y los hitos son sólo los de ese período');
 $gr = P\LeadStats::datosGrafico($acT);
 check(count($gr['volumen']) === 2 && count($gr['hitos']) === 3 && $gr['hitos'][1]['id'] === 'ganado' && $gr['etiquetas'] === $acT['etiquetas'] && $gr['totales']['ganado'] === 1, 'el gráfico recibe dos líneas de volumen y tres carriles de hitos');
+check(array_sum($acT['llegaron_dia']) === 4 && array_sum($acT['contactados_dia']) === 2 && $acT['contactados_dia'][2] === 1 && $acT['contactados_dia'][3] === 0 && min($acT['llegaron_dia']) >= 0, 'la vista «Por día» cuenta solo lo de cada día, sin arrastrar lo anterior');
+check(array_sum($acS['llegaron_dia']) === 4 && count($gr['volumen_dia']) === 2 && $gr['volumen_dia'][1]['datos'] === $acT['contactados_dia'], 'el gráfico recibe también las series por día');
 $emb = P\LeadStats::embudo($lsT, $evT);
 check($emb['llegaron'] === 4 && $emb['contactados'] === 2 && $emb['calificados'] === 1 && $emb['ganados'] === 1 && $emb['perdidos'] === 1 && $emb['pasos'] === [50, 50, 100], 'el embudo cuenta cuántos llegaron a cada etapa y el % entre una y otra');
 $tiT = P\LeadStats::tiempos($lsT, $evT);

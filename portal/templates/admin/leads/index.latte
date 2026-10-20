@@ -4,9 +4,7 @@
 
 {block content}
 <link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=17">
-<link rel="stylesheet" href="/plugins/portal/assets/leads.css?v=6">
-{var $hayPublico = false}
-{foreach $proyectos as $p}{if $p['publico'] !== ''}{var $hayPublico = true}{/if}{/foreach}
+<link rel="stylesheet" href="/plugins/portal/assets/leads.css?v=7">
 <div class="ll">
 {if $variosClientes}<p class="ll-mig"><a href="{$admin_url('leads')}">Contactos ganados</a> / <b>{$cliente['nombre']}</b></p>{/if}
 </div>
@@ -43,11 +41,13 @@
         <div class="ll-graf-cab">
             <div><h2 id="h-evo">Cómo van los contactos</h2><p class="ll-sub">Cuántos van llegando y siendo contactados; abajo, cuándo avanzó o se cayó alguien{if $filtros->get('proyecto')} · solo el proyecto elegido{/if}</p></div>
             <div style="display:flex;gap:.6rem;flex-wrap:wrap">
-                {if $hayPublico}
+                {if count($tiposAlcance) > 1 || $filtros->get('publico') !== ''}
                 <div class="ll-seg" role="navigation" aria-label="Público">
                     <a href="{$filtros->url(['publico' => ''])}" {if $filtros->es('publico', '')}aria-current="true"{/if}>Todos</a>
                     {foreach $publicos as $k => $txt}<a href="{$filtros->url(['publico' => $k])}" {if $filtros->es('publico', $k)}aria-current="true"{/if}>{$txt}</a>{/foreach}
                 </div>
+                {elseif count($tiposAlcance) === 1}
+                <span class="ll-pub" data-p="{$tiposAlcance[0]}" title="A quién le habla esta campaña">{$tiposAlcance[0]}</span>
                 {/if}
                 <div class="ll-seg" role="navigation" aria-label="Período">
                     <a href="{$filtros->url(['periodo' => '30'])}" {if $filtros->es('periodo', '30')}aria-current="true"{/if}>30 días</a>
