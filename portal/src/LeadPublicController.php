@@ -96,7 +96,7 @@ class LeadPublicController extends PortalPublicController
             'etiquetas' => LeadService::publicoEtiquetas((string) $p['publico']), 'total' => $porProy[(string) $p['id']] ?? 0,
         ], $proyectos);
         $eventos = (new LeadLinea($this->pdo()))->deEstado($clienteId, $f['proyecto_id'] !== '' ? [$f['proyecto_id']] : []);
-        $acum = LeadStats::acumulado($base, $eventos);
+        $acum = LeadStats::evolucion($base, $eventos);
         $this->ctx->view('templates/public/leads.latte', $this->contexto($c, 'leads') + [
             'misCampanas' => $campanasCli,
             'grafico'   => LeadStats::datosGrafico($acum),

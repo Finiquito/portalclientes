@@ -157,7 +157,7 @@ class LeadAdminController
         $setIds = array_flip(array_map(fn(array $l): string => (string) $l['id'], $alcance));
         $eventos = array_values(array_filter($eventos, fn(array $e): bool => isset($setIds[(string) $e['lead_id']])));
         $desde = $f->get('periodo') !== '' ? (new \DateTimeImmutable('today'))->modify('-' . (int) $f->get('periodo') . ' days')->format('Y-m-d') : null;
-        $acum = LeadStats::acumulado($alcance, $eventos, $desde);
+        $acum = LeadStats::evolucion($alcance, $eventos, $desde);
 
         $pag = Paginacion::delEquipo($this->pdo(), $this->ui->autorId(), $this->ui->url('leads'), count($leads));
         $leads = $pag->cortar($pag->sentido($leads));

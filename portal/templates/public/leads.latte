@@ -3,7 +3,7 @@
 {block title}Contactos ganados{/block}
 
 {block content}
-<link rel="stylesheet" href="/plugins/portal/assets/leads.css?v=3">
+<link rel="stylesheet" href="/plugins/portal/assets/leads.css?v=6">
 <header class="reveal flex flex-wrap items-end justify-between gap-4 pb-5 pt-1">
     <div>
         <h1 class="text-3xl font-extrabold tracking-tight sm:text-4xl">Contactos ganados</h1>
@@ -35,7 +35,7 @@
 {if $total > 0 && !empty($grafico['etiquetas'])}
 <section class="ll ll-graf reveal" style="--i:1;margin-bottom:1.25rem" aria-labelledby="h-evo">
     <div class="ll-graf-cab">
-        <div><h2 id="h-evo">Contactos acumulados</h2><p class="ll-sub">Cuántas personas han llegado en total, a lo largo del tiempo{if $nuevosSemana > 0} · <b style="color:var(--brand-ink)">+{$nuevosSemana} esta semana</b>{/if}</p></div>
+        <div><h2 id="h-evo">Cómo van los contactos</h2><p class="ll-sub">Cuántos van llegando y siendo contactados; abajo, cuándo avanzó o se cayó alguien{if $nuevosSemana > 0} · <b style="color:var(--brand-ink)">+{$nuevosSemana} esta semana</b>{/if}</p></div>
     </div>
     {include '../_lead_grafico.latte', grafico: $grafico, corto: false, botones: true}
     {include '../_lead_embudo.latte', embudo: $embudo, tiempos: $tiempos}

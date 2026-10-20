@@ -3,9 +3,9 @@
    portal con un valor de respaldo, para verse bien también donde no existen (admin de TypeDock). */
 .ll { --ll-ink: var(--ink, #14204d); --ll-muted: var(--muted, #5b6586); --ll-line: var(--line, #dcdfeb); --ll-surface: var(--surface, #fff); --ll-surface2: var(--surface-2, #eef0f6);
   --ll-brand: var(--brand, #2454c5); --ll-brand-ink: var(--brand-ink, #1d3f9c);
-  --e-nuevo: #8a93b8; --e-contactado: #1f4fd8; --e-calificado: #c26a00; --e-ganado: #0a8a5a; --e-perdido: #d1203f;
+  --e-nuevo: #8a93b8; --e-llegaron: #7380a6; --e-contactado: #1f4fd8; --e-calificado: #c26a00; --e-ganado: #0a8a5a; --e-perdido: #d1203f;
   color: var(--ll-ink); }
-.dark .ll { --e-nuevo: #a6aed0; --e-contactado: #93b4ff; --e-calificado: #f6c06e; --e-ganado: #5ee0ae; --e-perdido: #ff8fab; }
+.dark .ll { --e-nuevo: #a6aed0; --e-llegaron: #a6aed0; --e-contactado: #93b4ff; --e-calificado: #f6c06e; --e-ganado: #5ee0ae; --e-perdido: #ff8fab; }
 .ll *, .ll *::before, .ll *::after { box-sizing: border-box; }
 
 /* Los enlaces de estos bloques conservan sus colores aunque el panel pinte los enlaces con el acento. */
@@ -63,7 +63,25 @@ a.ll-camp:hover { background: var(--ll-surface2); } .ll-camp[aria-current="true"
 .ll-chips button i { width: .6rem; height: .6rem; border-radius: 50%; border: 2px solid currentColor; background: var(--ll-surface); }
 .ll-chips button.on { color: var(--c, var(--ll-brand-ink)); border-color: currentColor; } .ll-chips button.on i { background: currentColor; }
 .ll-chips button[data-serie="ganados"] { --c: var(--e-ganado); } .ll-chips button[data-serie="perdidos"] { --c: var(--e-perdido); }
-.ll-chart { position: relative; height: 16rem; margin-top: .8rem; } .ll-chart.corto { height: 12.5rem; }
+/* Gráfico de evolución: resumen, volumen y carriles de hitos */
+.ll-resumen { display: flex; gap: .45rem 1.1rem; flex-wrap: wrap; align-items: center; margin-top: .9rem; font-size: .85rem; font-weight: 600; color: var(--ll-muted); }
+.ll-resumen span { display: inline-flex; align-items: center; gap: .4rem; } .ll-resumen b { color: var(--ll-ink); font-size: 1.05rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.ll-resumen i { width: .7rem; height: .7rem; border-radius: 50%; display: inline-block; } .ll-resumen i.rombo { border-radius: 2px; transform: rotate(45deg) scale(.85); }
+.ll-resumen .sep { width: 1px; height: 1.1rem; background: var(--ll-line); }
+.ll-tit-g { margin: 1rem 0 .1rem; }
+.ll-chart { position: relative; height: 13rem; } .ll-g.corto .ll-chart { height: 10rem; }
+.ll-hitos { position: relative; height: 9.2rem; } .ll-g.corto .ll-hitos { height: 7.6rem; }
+.ll-hitos-ley { display: none; gap: .9rem; flex-wrap: wrap; font-size: .78rem; font-weight: 700; margin: .2rem 0 .1rem; }
+.ll-hitos-ley span { display: inline-flex; align-items: center; gap: .35rem; } .ll-hitos-ley i { width: .7rem; height: .7rem; border-radius: 50%; display: inline-block; } .ll-hitos-ley i.rombo { border-radius: 2px; transform: rotate(45deg) scale(.85); }
+.ll-hitos-ley .c { color: var(--e-calificado); } .ll-hitos-ley .c i { background: var(--e-calificado); }
+.ll-hitos-ley .g { color: var(--e-ganado); } .ll-hitos-ley .g i { background: var(--e-ganado); }
+.ll-hitos-ley .p { color: var(--e-perdido); } .ll-hitos-ley .p i { background: var(--e-perdido); }
+.ll-solo-movil { display: none; }
+@media (max-width: 640px) {
+  .ll-solo-pc, .ll-res-h { display: none !important; } .ll-solo-movil { display: inline; } .ll-hitos-ley b { color: var(--ll-ink); font-variant-numeric: tabular-nums; }
+  .ll-chart { height: 10.5rem; } .ll-hitos { height: 6.4rem; } .ll-g.corto .ll-chart { height: 9rem; } .ll-g.corto .ll-hitos { height: 6rem; }
+  .ll-hitos-ley { display: flex; } .ll-resumen { gap: .3rem .8rem; font-size: .8rem; } .ll-resumen .sep { display: none; }
+}
 .ll-dos { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 1.6rem; margin-top: 1.3rem; padding-top: 1.1rem; border-top: 1px solid var(--ll-line); }
 .ll-tit { font-size: .72rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--ll-muted); margin: 0 0 .7rem; }
 .ll-emb { display: grid; gap: .5rem; } .ll-emb .r { display: grid; grid-template-columns: 6rem minmax(0, 1fr) 2.6rem; gap: .6rem; align-items: center; font-size: .85rem; }
@@ -128,5 +146,5 @@ textarea.ll-in { min-height: 4.6rem; resize: vertical; }
 @media (max-width: 640px) {
   .ll-ev { grid-template-columns: 4.2rem 1rem minmax(0, 1fr); gap: .55rem; } .ll-ev:not(:last-child)::before { left: calc(4.2rem + .55rem + .5rem - 1px); }
   .ll-cifras { grid-template-columns: 1fr 1fr 1fr; } .ll-edit form { left: 0; width: min(17rem, 78vw); }
-  .ll-emb .r { grid-template-columns: 5rem minmax(0, 1fr) 2.4rem; } .ll-emb .pc { padding-left: 5.6rem; }
+  .ll-emb .r { grid-template-columns: 6rem minmax(0, 1fr) 2.2rem; } .ll-emb .pc { padding-left: 6.6rem; }
 }

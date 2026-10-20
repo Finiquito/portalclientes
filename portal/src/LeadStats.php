@@ -20,18 +20,23 @@ final class LeadStats
     }
 
     /**
-     * Contactos acumulados semana a semana (o día a día si el rango es corto), con los ganados y perdidos
-     * acumulados por cuándo ocurrió el cambio de estado.
+     * Lo que dibuja el gráfico: el volumen (cuántos han llegado y cuántos fueron contactados, acumulados) y,
+     * aparte, los hitos (calificados, ganados y perdidos) contados en el día —o la semana, si el rango es largo—
+     * en que ocurrió cada uno. Los hitos son pocos: se marcan, no se acumulan en una línea.
+     *
+     * Contactado cuenta a todos los que llegaron a esa etapa o más lejos (si no, la línea bajaría al avanzar).
+     * Un hito es la primera vez que un contacto llegó a ese estado, con la fecha corregida a mano si la hay.
      *
      * @param array<int, array<string, mixed>> $leads filas con id, created_at
      * @param array<int, array<string, mixed>> $eventos de LeadLinea::deEstado()
      * @param string|null $desde Y-m-d; vacío = desde el primer contacto
-     * @return array{etiquetas: array<int, string>, contactos: array<int, int>, ganados: array<int, int>, perdidos: array<int, int>, paso: string, total: int, dias: int}
+     * @return array{etiquetas: array<int, string>, llegaron: array<int, int>, contactados: array<int, int>, hitos: array<string, array<int, int>>, totales: array<string, int>, paso: string, total: int, dias: int}
      */
-    public static function acumulado(array $leads, array $eventos, ?string $desde = null, ?\DateTimeImmutable $hoy = null): array
+    public static function evolucion(array $leads, array $eventos, ?string $desde = null, ?\DateTimeImmutable $hoy = null): array
     {
         $hoy ??= new \DateTimeImmutable('today');
-        $vacio = ['etiquetas' => [], 'contactos' => [], 'ganados' => [], 'perdidos' => [], 'paso' => 'dia', 'total' => 0, 'dias' => 0];
+        $vacio = ['etiquetas' => [], 'llegaron' => [], 'contactados' => [], 'hitos' => ['calificado' => [], 'ganado' => [], 'perdido' => []],
+            'totales' => ['llegaron' => 0, 'contactados' => 0, 'calificado' => 0, 'ganado' => 0, 'perdido' => 0], 'paso' => 'dia', 'total' => 0, 'dias' => 0];
         if ($leads === []) {
             return $vacio;
         }
@@ -46,38 +51,68 @@ final class LeadStats
         if ($ini > $hoy) {
             $ini = $hoy;
         }
-        $rango = (int) $ini->diff($hoy)->format('%a');
-        $paso = $rango <= 45 ? 'dia' : 'semana';
+        $paso = (int) $ini->diff($hoy)->format('%a') <= 45 ? 'dia' : 'semana';
         $salto = $paso === 'dia' ? 1 : 7;
+        $puntos = [];
+        for ($p = $ini; $p < $hoy; $p = $p->modify('+' . $salto . ' days')) {
+            $puntos[] = $p->format('Y-m-d');
+        }
+        $puntos[] = $hoy->format('Y-m-d');
+        $etiquetas = [];
+        foreach ($puntos as $f) {
+            $etiquetas[] = self::etiqueta(new \DateTimeImmutable($f));
+        }
 
-        // Primera vez que cada contacto llegó a ganado o a perdido.
-        $primera = ['ganado' => [], 'perdido' => []];
+        // Primera vez que cada contacto llegó a cada estado.
+        $primera = ['contactado' => [], 'calificado' => [], 'ganado' => [], 'perdido' => []];
         foreach ($eventos as $e) {
             $a = (string) ($e['a_estado'] ?? '');
-            if ((string) $e['tipo'] === 'estado' && isset($primera[$a])) {
-                $d = substr((string) $e['ocurrio_en'], 0, 10);
-                $l = (string) $e['lead_id'];
-                if (!isset($primera[$a][$l]) || $d < $primera[$a][$l]) {
-                    $primera[$a][$l] = $d;
+            if ((string) $e['tipo'] !== 'estado') {
+                continue;
+            }
+            $d = substr((string) $e['ocurrio_en'], 0, 10);
+            $l = (string) $e['lead_id'];
+            $claves = [];
+            if (isset($primera[$a])) {
+                $claves[] = $a;
+            }
+            if ((LeadLinea::ORDEN[$a] ?? 0) >= 1) {
+                $claves[] = 'contactado';   // calificado y ganado también pasaron por contactado
+            }
+            foreach (array_unique($claves) as $k) {
+                if (!isset($primera[$k][$l]) || $d < $primera[$k][$l]) {
+                    $primera[$k][$l] = $d;
                 }
             }
         }
         $cuenta = static fn(array $fechas, string $hasta): int => count(array_filter($fechas, static fn(string $d): bool => $d <= $hasta));
-
-        $out = ['etiquetas' => [], 'contactos' => [], 'ganados' => [], 'perdidos' => [], 'paso' => $paso, 'total' => count($leads), 'dias' => $dias];
-        $p = $ini;
-        $puntos = [];
-        while ($p < $hoy) {
-            $puntos[] = $p;
-            $p = $p->modify('+' . $salto . ' days');
+        $out = $vacio;
+        $out['etiquetas'] = $etiquetas;
+        $out['paso'] = $paso;
+        $out['total'] = count($leads);
+        $out['dias'] = $dias;
+        foreach ($puntos as $f) {
+            $out['llegaron'][] = $cuenta($llegadas, $f);
+            $out['contactados'][] = $cuenta(array_values($primera['contactado']), $f);
         }
-        $puntos[] = $hoy;
-        foreach ($puntos as $d) {
-            $f = $d->format('Y-m-d');
-            $out['etiquetas'][] = self::etiqueta($d);
-            $out['contactos'][] = $cuenta($llegadas, $f);
-            $out['ganados'][] = $cuenta(array_values($primera['ganado']), $f);
-            $out['perdidos'][] = $cuenta(array_values($primera['perdido']), $f);
+        $out['totales']['llegaron'] = end($out['llegaron']) ?: 0;
+        $out['totales']['contactados'] = end($out['contactados']) ?: 0;
+        // Hitos: cada uno cae en el punto cuyo tramo lo contiene (el primero junta lo anterior que entra en el rango).
+        foreach (['calificado', 'ganado', 'perdido'] as $k) {
+            $cont = array_fill(0, count($puntos), 0);
+            foreach ($primera[$k] as $d) {
+                if ($d < $ini->format('Y-m-d') || $d > $puntos[count($puntos) - 1]) {
+                    continue;
+                }
+                foreach ($puntos as $i => $f) {
+                    if ($d <= $f) {
+                        $cont[$i]++;
+                        break;
+                    }
+                }
+            }
+            $out['hitos'][$k] = $cont;
+            $out['totales'][$k] = array_sum($cont);
         }
         return $out;
     }
@@ -168,20 +203,26 @@ final class LeadStats
     }
 
     /**
-     * Lo que lee el gráfico del navegador (assets/graficos.js): etiquetas y series. Los ganados y perdidos
-     * vienen apagados; se encienden con los botones de arriba del gráfico.
+     * Lo que lee el gráfico del navegador (assets/graficos.js): etiquetas, las dos líneas de volumen y los hitos
+     * (cantidad por punto, en carriles aparte).
      *
-     * @param array<string, mixed> $acum de acumulado()
+     * @param array<string, mixed> $ev de evolucion()
      * @return array<string, mixed>
      */
-    public static function datosGrafico(array $acum): array
+    public static function datosGrafico(array $ev): array
     {
         return [
-            'etiquetas' => $acum['etiquetas'],
-            'series' => [
-                ['id' => 'contactos', 'nombre' => 'Contactos', 'datos' => $acum['contactos']],
-                ['id' => 'ganados', 'nombre' => 'Ganados', 'datos' => $acum['ganados'], 'oculta' => true],
-                ['id' => 'perdidos', 'nombre' => 'Perdidos', 'datos' => $acum['perdidos'], 'oculta' => true],
+            'etiquetas' => $ev['etiquetas'],
+            'paso' => $ev['paso'],
+            'totales' => $ev['totales'],
+            'volumen' => [
+                ['id' => 'llegaron', 'nombre' => 'Llegaron', 'datos' => $ev['llegaron']],
+                ['id' => 'contactados', 'nombre' => 'Contactados', 'datos' => $ev['contactados']],
+            ],
+            'hitos' => [
+                ['id' => 'calificado', 'nombre' => 'Calificados', 'uno' => 'calificado', 'varios' => 'calificados', 'datos' => $ev['hitos']['calificado']],
+                ['id' => 'ganado', 'nombre' => 'Ganados', 'uno' => 'ganado', 'varios' => 'ganados', 'datos' => $ev['hitos']['ganado']],
+                ['id' => 'perdido', 'nombre' => 'Perdidos', 'uno' => 'perdido', 'varios' => 'perdidos', 'datos' => $ev['hitos']['perdido']],
             ],
         ];
     }

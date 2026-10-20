@@ -74,6 +74,15 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### v0.43.2: el gráfico separa el volumen de los hitos
+- **Volumen** (arriba): dos líneas acumuladas, **Llegaron** y **Contactados** (cuenta a todos los que llegaron a esa etapa o más lejos), con **un punto por día** (por semana si el rango es largo). Al pasar el cursor, o tocar, el globo muestra los dos valores y los hitos de ese día.
+- **Hitos** (abajo, alineados por fecha): **calificados** (rombo ámbar), **ganados** (círculo verde con check) y **perdidos** (círculo rojo con ×), cada uno en su **carril**, marcados en el día en que ocurrieron. No son una línea: son hechos puntuales. Si hay varios el mismo día (o la misma semana), la marca crece y lleva el número. La fecha es la del movimiento de la línea de tiempo, así que si se corrige con el lápiz, la marca se mueve.
+- Un resumen arriba con los totales y los mismos símbolos (llegaron, contactados, calificados, ganados, perdidos).
+- **Versión simple en el celular:** sin puntos en las líneas (salvo al tocar), 4 fechas, los nombres de los carriles pasan a una leyenda con sus totales y los textos largos se acortan.
+- Fechas rotuladas sólo cada tantos días y una línea vertical suave en esas fechas (antes había una por día).
+- Se quitaron los botones Ganados/Perdidos del gráfico: ya no son líneas que encender.
+- `leads.css` sube a `?v=6`, `graficos.js` a `?v=3` y `portal.css` a `?v=40`.
+
 ### v0.43.1: contactos ganados, ajustes de la lista del cliente
 - **«Origen» en vez de «Campaña»** en la lista del cliente (y en el filtro): la campaña es el proyecto; lo que trae cada contacto (WhatsApp, Instagram, formulario…) es su origen. Si no trae uno, se muestra cómo llegó (Formulario, Ingreso manual…). La columna «Llegó» ya no repite el origen.
 - **B2C / B2B fuera de cada fila.** Ahora se ve sólo en los datos de la campaña: arriba de la lista del cliente (una tarjeta por campaña, con su etiqueta y su total, que además filtra), en la ficha junto a «Campaña», en las tarjetas de proyecto y al elegir cliente en el equipo.

@@ -1998,7 +1998,7 @@ check($r === null && str_contains($html, 'Elige un cliente') && str_contains($ht
 $_GET = ['cliente' => $cLd];
 [$html, $r] = $g->hacer('GET', $LA, 'index');
 check($r === null && str_contains($html, 'Campaña otoño') && str_contains($html, 'Referidos') && str_contains($html, 'Marta Pérez') && !str_contains($html, 'Cliente Ajeno') && !str_contains($html, 'Otra Tienda'), 'dentro de un cliente sólo se ven sus proyectos y contactos');
-check(str_contains($html, 'data-grafico=') && str_contains($html, 'Contactos acumulados'), 'el cliente muestra su gráfico de evolución');
+check(str_contains($html, 'data-grafico=') && str_contains($html, 'Hitos'), 'el cliente muestra su gráfico de evolución, con los hitos aparte');
 $_GET = ['proyecto' => $pOt];
 [$html, $r] = $g->hacer('GET', $LA, 'index');
 check($r === null && str_contains($html, 'Cliente Ajeno') && !str_contains($html, 'Marta Pérez'), 'un enlace con ?proyecto= entra al cliente de ese proyecto');
@@ -2094,13 +2094,21 @@ $evT = [
     ['lead_id' => 'b', 'tipo' => 'estado', 'a_estado' => 'contactado', 'ocurrio_en' => '2026-10-06 10:00:00'],
     ['lead_id' => 'c', 'tipo' => 'estado', 'a_estado' => 'perdido', 'ocurrio_en' => '2026-10-19 10:00:00'],
 ];
-$acT = P\LeadStats::acumulado($lsT, $evT, null, $hoyT);
-check($acT['paso'] === 'dia' && end($acT['contactos']) === 4 && $acT['contactos'][0] === 1 && end($acT['ganados']) === 1 && end($acT['perdidos']) === 1 && count($acT['etiquetas']) === 20, 'el acumulado suma contactos, ganados y perdidos día a día');
+$acT = P\LeadStats::evolucion($lsT, $evT, null, $hoyT);
+check($acT['paso'] === 'dia' && count($acT['etiquetas']) === 20 && $acT['llegaron'][0] === 1 && end($acT['llegaron']) === 4 && end($acT['contactados']) === 2, 'el volumen acumula, día a día, cuántos llegaron y cuántos fueron contactados');
+check($acT['contactados'][1] === 0 && $acT['contactados'][2] === 1 && $acT['contactados'][5] === 2, 'contactados cuenta desde el día en que cada uno llegó a esa etapa (y no baja cuando avanzan)');
 check($acT['etiquetas'][0] === '1 oct' && end($acT['etiquetas']) === '20 oct', 'las etiquetas del gráfico van en español');
-$acS = P\LeadStats::acumulado($lsT, $evT, null, new DateTimeImmutable('2027-01-20'));
-check($acS['paso'] === 'semana' && end($acS['contactos']) === 4, 'un rango largo se agrupa por semana');
-$acD = P\LeadStats::acumulado($lsT, $evT, '2026-10-10', $hoyT);
-check($acD['contactos'][0] === 2 && count($acD['etiquetas']) === 11, 'con un período, el acumulado parte de lo que ya había llegado');
+check($acT['hitos']['calificado'][7] === 1 && $acT['hitos']['ganado'][9] === 1 && $acT['hitos']['perdido'][18] === 1 && array_sum($acT['hitos']['ganado']) === 1, 'los hitos caen en el día en que ocurrieron, uno por marca');
+check($acT['totales'] === ['llegaron' => 4, 'contactados' => 2, 'calificado' => 1, 'ganado' => 1, 'perdido' => 1], 'el resumen suma lo que muestran las marcas');
+$evVarios = array_merge($evT, [['lead_id' => 'b', 'tipo' => 'estado', 'a_estado' => 'ganado', 'ocurrio_en' => '2026-10-10 15:00:00']]);
+$acV = P\LeadStats::evolucion($lsT, $evVarios, null, $hoyT);
+check($acV['hitos']['ganado'][9] === 2, 'dos ganados el mismo día se agrupan en una marca con su número');
+$acS = P\LeadStats::evolucion($lsT, $evT, null, new DateTimeImmutable('2027-01-20'));
+check($acS['paso'] === 'semana' && end($acS['llegaron']) === 4 && array_sum($acS['hitos']['ganado']) === 1 && array_sum($acS['hitos']['perdido']) === 1, 'un rango largo se agrupa por semana, sin perder hitos');
+$acD = P\LeadStats::evolucion($lsT, $evT, '2026-10-10', $hoyT);
+check($acD['llegaron'][0] === 2 && count($acD['etiquetas']) === 11 && array_sum($acD['hitos']['calificado']) === 0 && $acD['hitos']['ganado'][0] === 1, 'con un período, el volumen parte de lo que ya había llegado y los hitos son sólo los de ese período');
+$gr = P\LeadStats::datosGrafico($acT);
+check(count($gr['volumen']) === 2 && count($gr['hitos']) === 3 && $gr['hitos'][1]['id'] === 'ganado' && $gr['etiquetas'] === $acT['etiquetas'] && $gr['totales']['ganado'] === 1, 'el gráfico recibe dos líneas de volumen y tres carriles de hitos');
 $emb = P\LeadStats::embudo($lsT, $evT);
 check($emb['llegaron'] === 4 && $emb['contactados'] === 2 && $emb['calificados'] === 1 && $emb['ganados'] === 1 && $emb['perdidos'] === 1 && $emb['pasos'] === [50, 50, 100], 'el embudo cuenta cuántos llegaron a cada etapa y el % entre una y otra');
 $tiT = P\LeadStats::tiempos($lsT, $evT);

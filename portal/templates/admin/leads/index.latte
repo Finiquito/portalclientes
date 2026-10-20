@@ -4,7 +4,7 @@
 
 {block content}
 <link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=17">
-<link rel="stylesheet" href="/plugins/portal/assets/leads.css?v=3">
+<link rel="stylesheet" href="/plugins/portal/assets/leads.css?v=6">
 {var $hayPublico = false}
 {foreach $proyectos as $p}{if $p['publico'] !== ''}{var $hayPublico = true}{/if}{/foreach}
 <div class="ll">
@@ -41,7 +41,7 @@
     {* Evolución *}
     <section class="ll-graf" style="margin-top:1.25rem" aria-labelledby="h-evo">
         <div class="ll-graf-cab">
-            <div><h2 id="h-evo">Contactos acumulados</h2><p class="ll-sub">Cuántas personas han llegado en total, a lo largo del tiempo{if $filtros->get('proyecto')} · solo el proyecto elegido{/if}</p></div>
+            <div><h2 id="h-evo">Cómo van los contactos</h2><p class="ll-sub">Cuántos van llegando y siendo contactados; abajo, cuándo avanzó o se cayó alguien{if $filtros->get('proyecto')} · solo el proyecto elegido{/if}</p></div>
             <div style="display:flex;gap:.6rem;flex-wrap:wrap">
                 {if $hayPublico}
                 <div class="ll-seg" role="navigation" aria-label="Público">

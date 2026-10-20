@@ -613,7 +613,7 @@ class PortalPublicController
                 continue;
             }
             $ev = $linea->deEstado($clienteId, [(string) $p['id']]);
-            $acum = LeadStats::acumulado($ls, $ev);
+            $acum = LeadStats::evolucion($ls, $ev);
             $emb = LeadStats::embudo($ls, $ev);
             $out[] = [
                 'id' => (string) $p['id'], 'nombre' => (string) $p['nombre'], 'etiquetas' => LeadService::publicoEtiquetas((string) $p['publico']),
