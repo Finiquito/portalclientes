@@ -92,6 +92,22 @@
             <p class="mt-1 max-w-xs text-sm text-muted">{if $total === 0}Cuando alguien deje sus datos en tu campaña, aparece aquí y te avisamos por correo.{else}Prueba con otra búsqueda o estado.{/if}</p>
         </div>
     {else}
+        {* Orden: a la vista arriba, también en el celular; «Invertir» da vuelta la columna elegida *}
+        {var $ordenBase = [['llego', 'llego_desc', 'Cuándo llegó'], ['nombre', 'nombre_asc', 'Nombre'], ['estado', 'estado_asc', 'Estado'], ['paso', 'paso_asc', 'Próximo paso']]}
+        <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-line px-4 py-3 text-sm">
+            <p class="text-muted"><span class="font-semibold text-ink">{$total === 1 ? '1 contacto' : $total . ' contactos'}</span></p>
+            <form method="get" class="flex w-full items-center gap-2 sm:w-auto" data-paginacion>
+                {foreach $pag->ocultos() as $k => $v}<input type="hidden" name="{$k}" value="{$v}">{/foreach}
+                {if $pag->porPagina}<input type="hidden" name="por" value="{$pag->porPagina}">{/if}
+                <label class="flex min-w-0 flex-1 items-center gap-2 text-muted sm:flex-none"><span class="sr-only whitespace-nowrap sm:not-sr-only">Ordenar por</span>
+                    <select name="orden" class="field w-full! min-w-0 py-1.5! pr-8! text-sm sm:w-auto!" onchange="this.form.submit()">
+                        {foreach $ordenBase as [$b, $k, $et]}<option value="{$k}" {if str_starts_with($pag->orden, $b . '_')}selected{/if}>{$et}</option>{/foreach}
+                    </select>
+                </label>
+                <a href="{$pag->urlInvertirColumna()}" class="btn btn-ghost btn-sm shrink-0" title="Dar vuelta el orden"><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4v16M7 20l-3-3M7 20l3-3M17 20V4M17 4l-3 3M17 4l3 3"/></svg> <span class="hidden sm:inline">Invertir orden</span><span class="sm:hidden">Invertir</span></a>
+                <noscript><button type="submit" class="btn btn-ghost btn-sm">Aplicar</button></noscript>
+            </form>
+        </div>
         {* Escritorio: tabla, como la del panel del equipo *}
         <div class="hidden overflow-x-auto p-2 lg:block">
             <table class="w-full border-collapse text-sm">
@@ -163,7 +179,7 @@
                 </li>
             {/foreach}
         </ul>
-        <div class="border-t border-line px-4">{include '../_paginacion.latte', pag: $pag}</div>
+        <div class="border-t border-line px-4">{include '../_paginacion.latte', pag: $pag, ordenSelector: false}</div>
     {/if}
 </section>
 {include '../_lead_scripts.latte'}

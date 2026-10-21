@@ -2793,6 +2793,13 @@ check($pg->urlColumna('nombre') === '/portal/contactos-ganados?estado=nuevo&q=an
 $_GET = ['orden' => 'nombre_asc'];
 $pg = P\Paginacion::desdeGet('/x', 10, null, ['llego_desc' => 'a', 'nombre_asc' => 'b', 'nombre_desc' => 'c']);
 check($pg->urlColumna('nombre') === '/x?orden=nombre_desc' && $pg->sentidoColumna('nombre') === 'asc', 'otro clic en la misma columna la da vuelta');
+check($pg->urlInvertirColumna() === '/x?orden=nombre_desc', '«Invertir orden» da vuelta la columna elegida (A→Z pasa a Z→A)');
+$_GET = ['orden' => 'nombre_desc'];
+$pg = P\Paginacion::desdeGet('/x', 10, null, ['llego_desc' => 'a', 'nombre_asc' => 'b', 'nombre_desc' => 'c']);
+check($pg->urlInvertirColumna() === '/x?orden=nombre_asc', 'y vuelve a su sentido con otro clic');
+$_GET = [];
+$pg = P\Paginacion::desdeGet('/x', 10, null, ['llego_desc' => 'a', 'llego_asc' => 'b']);
+check($pg->urlInvertirColumna() === '/x?orden=llego_asc', 'sin orden elegido, invierte el de por defecto (más nuevos → más antiguos)');
 $_GET = ['por' => '999', 'p' => '50'];
 $pg = P\Paginacion::desdeGet('/x', 45, 30);
 check($pg->porPagina === 30 && $pg->pagina === 2, 'un tamaño inválido usa el que la persona eligió antes; una página que no existe va a la última');

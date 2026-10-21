@@ -76,7 +76,8 @@ class LeadPublicController extends PortalPublicController
         ]);
         $orden = array_flip(array_keys(LeadService::ESTADOS));
         $nombre = fn(array $l): string => mb_strtolower((string) $l['nombre']);
-        $paso = fn(array $l): string => (string) ($l['proximo_paso_fecha'] ?: '9999-12-31');
+        // Sólo cuenta el próximo paso de lo que sigue abierto (como se muestra); lo demás va al final.
+        $paso = fn(array $l): string => in_array($l['estado'], ['ganado', 'perdido'], true) ? '9999-12-31' : (string) ($l['proximo_paso_fecha'] ?: '9999-12-31');
         $leads = $pag->ordenar($leads, [
             'llego_asc'   => fn($a, $b) => strcmp((string) $a['created_at'], (string) $b['created_at']),
             'nombre_asc'  => fn($a, $b) => strcmp($nombre($a), $nombre($b)),

@@ -74,6 +74,10 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### v0.44.5: Contactos ganados del cliente: orden a la vista y «Invertir orden»
+- Arriba de la lista (escritorio y celular) hay un selector **Ordenar por**: cuándo llegó, nombre, estado o próximo paso, más un botón **Invertir orden** que da vuelta la columna elegida. Los encabezados de la tabla siguen ordenando con un clic.
+- «Próximo paso» pone arriba lo más urgente (lo vencido primero, en rojo); lo que no tiene fecha, y lo ya ganado o perdido, va al final.
+
 ### v0.44.4: la tarjeta destacada se lee al pasar el cursor
 - Al pasar el mouse por la tarjeta destacada del Inicio (equipo y cliente), el fondo se ponía gris claro y el texto blanco no se veía. Ahora conserva su color y solo se oscurece un poco.
 

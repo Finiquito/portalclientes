@@ -154,6 +154,14 @@ final class Paginacion
         return $this->url(['p' => $n]);
     }
 
+    /** Enlace para dar vuelta el orden de la columna elegida (asc ↔ desc), sin cambiar de columna. */
+    public function urlInvertirColumna(): string
+    {
+        $o = $this->orden;
+        $nuevo = str_ends_with($o, '_asc') ? substr($o, 0, -4) . '_desc' : (str_ends_with($o, '_desc') ? substr($o, 0, -5) . '_asc' : $o);
+        return $this->url(['orden' => $nuevo]);
+    }
+
     /** Orden de una columna: si ya está en «asc», el clic la pasa a «desc» y viceversa. */
     public function urlColumna(string $col): string
     {

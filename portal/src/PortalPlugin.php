@@ -301,7 +301,7 @@ class PortalPlugin implements PluginInterface
 
     public function getVersion(): string
     {
-        return '0.44.4';
+        return '0.44.5';
     }
 
     public function provides(): array
