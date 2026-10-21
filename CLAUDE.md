@@ -11,6 +11,7 @@
 - **Portal del cliente:** está bien como está; cambia lo del lado de la agencia y toca el del cliente solo si es necesario.
 
 ## Qué hay en el repo
+- **`docs/TYPEDOCK.md`: cómo funciona TypeDock (estructura, plugins, temas, instalación) y el entorno de Hostinger (SSH, cron, bases, errores conocidos). Léelo antes de tocar algo del núcleo o del servidor.**
 - `portal/`: plugin **Portal de Clientes** para TypeDock (PHP 8.2+, Latte 3.1, Flight). Se instala en `proyectos.richgt.com`. Tiene el portal del cliente (`/portal`), el panel del equipo (`/equipo`) y el admin (`/admin/portal/...`). Detalles y lista de cambios en `README.md`.
 - `theme/prisma/`: tema del landing **Prisma** (usaprisma.com), con Google Analytics G-TLZCJ1N0XE, el evento `Formulario_Lleno` y datos estructurados. `theme/raiz-usaprisma/` tiene robots.txt, sitemap.xml y llms.txt, que van en `public_html/`.
 - `invitaciones/`: plugin de lista de espera (POST `/invitacion` → Mailchimp).

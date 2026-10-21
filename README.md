@@ -7,6 +7,8 @@ Plugin drop-in de TypeDock que se instala en `proyectos.richgt.com`. Tiene dos c
 
 La configuración de fondo (IA, SMTP, correos, usuarios de agencia) queda en el admin de TypeDock, en los menús **Portal · …**.
 
+Guía de TypeDock y del hosting (estructura, instalación, plugins, temas, SSH y cron): [`docs/TYPEDOCK.md`](docs/TYPEDOCK.md).
+
 ## Landing Prisma (usaprisma.com)
 
 - `theme/prisma/`: tema del home. Es una página, con ilustraciones isométricas con grano y capturas reales del producto. Detalles en `theme/prisma/README.md`.
