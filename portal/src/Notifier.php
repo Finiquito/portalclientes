@@ -131,7 +131,7 @@ class Notifier
     /**
      * Aviso al equipo por algo que pasó en un cliente o proyecto.
      *
-     *  - El correo de copia de Ajustes (opcional) recibe todo, al tiro, con enlace al admin.
+     *  - El correo de copia de Ajustes (opcional) recibe todo, también agrupado, con enlace al admin.
      *  - Cada persona del equipo recibe lo que le toca según sus preferencias (Avisos::leToca), siempre
      *    agrupado (Avisos::BUZON): a horas fijas o cuando se juntan 10. Una urgencia adelanta el envío
      *    a la próxima pasada del cron, junto con lo demás que esté pendiente.
@@ -153,18 +153,18 @@ class Notifier
         [$cid, $pid, $contexto] = $this->contextoAviso($op);
         $pie = ['Aviso interno: el cliente no ve este correo.'];
 
-        // Copia de todos los avisos (Ajustes): enlace al admin de TypeDock.
+        // Copia de todos los avisos (Ajustes): también agrupada, con enlace al admin de TypeDock.
         $to = trim($this->ajustes()->get('global', 'portal', 'email_avisos'));
+        $avisos = new Avisos($this->ctx, $this->pdo, $this);
         if (filter_var($to, FILTER_VALIDATE_EMAIL)) {
-            $url = $rutaAdmin !== null ? $this->absoluta($this->ctx->adminUrl($rutaAdmin)) : '';
-            [$html, $texto] = $this->componer($asunto, $cuerpo, $op + ['boton' => 'Abrir en el admin'], null, $url, $cid, $pie, $contexto);
-            $this->enviarCorreo($to, $asunto, $html, $texto);
+            $avisos->guardar(Avisos::DESTINO_COPIA, $cid, $pid, (string) ($op['clave'] ?? $rutaAdmin ?? $asunto), $asunto,
+                (string) ($op['detalle'] ?? mb_substr(trim(preg_replace('/\s+/u', ' ', $cuerpo) ?? ''), 0, 160)), $rutaAdmin,
+                isset($op['vigencia']) ? (string) $op['vigencia'] : null, !empty($op['urgente']), 'copia');
         } else {
             $to = '';
         }
 
         // Personas del equipo: a cada una lo suyo, al buzón (sale agrupado).
-        $avisos = new Avisos($this->ctx, $this->pdo, $this);
         $enviados = [strtolower($to)];
         foreach ($avisos->destinatarios($pid, $cid, $op) as $u) {
             $mail = strtolower((string) $u['email']);

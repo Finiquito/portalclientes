@@ -74,6 +74,9 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### v0.44.3: la copia de todos los avisos también sale agrupada
+- El correo de «Copia de todos los avisos» (Ajustes) mandaba un correo por cada aviso, al tiro. Ahora se junta y sale igual que el resto: a las 10:00, 13:00 y 16:00 (o antes si se juntan 10), un solo correo con enlaces al admin.
+
 ### v0.44.2: resumen de la mañana sin horas falsas ni repetidos
 - En «Y esto llegó mientras no estabas», los avisos programados (vence mañana, se atrasó, recordatorio de reunión) ya no muestran una hora: «00:00» era la hora en que el cron los generó, no la de la tarea. Los demás avisos conservan la hora en que ocurrieron.
 - Si una tarea ya aparece en «Atrasadas» o «Vencen hoy», no se repite como novedad.

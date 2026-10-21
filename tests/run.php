@@ -483,7 +483,10 @@ $vaciarAvisos = function () use ($ctx, $pdo): void {
     P\Notifier::$ahora = $antes;
 };
 $n->alEquipo('María comentó', '', 'tareas/' . $tMia, ['proyecto_id' => $p1a]);
+check(!in_array('jefe@agencia.cl', array_column($ctx->correos, 'to'), true), 'la copia de todos los avisos tampoco sale suelta');
 $vaciarAvisos();
+$aJefe = array_values(array_filter($ctx->correos, fn($c) => $c['to'] === 'jefe@agencia.cl'));
+check(count($aJefe) === 1 && str_contains($aJefe[0]['subject'] . $aJefe[0]['body'], 'María comentó'), 'la copia llega agrupada a su hora, con lo que pasó');
 $para = array_column($ctx->correos, 'to');
 check(in_array('jefe@agencia.cl', $para, true) && in_array('ana@agencia.cl', $para, true), 'aviso al correo de Ajustes y a la persona asignada');
 $aAna = array_values(array_filter($ctx->correos, fn($c) => $c['to'] === 'ana@agencia.cl'))[0] ?? ['body' => ''];
@@ -755,7 +758,8 @@ $_SESSION[P\PortalSession::CONTACTO] = $contacto;
 check(str_contains($html, '$450.000 + IVA') && str_contains($html, 'Aprobar presupuesto'), 'el cliente ve la cotización y puede aprobarla');
 $ctx->correos = [];
 $sp->correr('decidir', [$spre], ['_csrf' => $ctk, 'decision' => 'aprobar', 'cuerpo' => 'Dale']);
-check($ss->find($spre)['estado'] === 'aprobada' && count(array_filter($ctx->correos, fn($c) => str_contains($c['subject'], 'aprobó el presupuesto'))) >= 1, 'aprobar avisa al equipo');
+$vaciarAvisos();
+check($ss->find($spre)['estado'] === 'aprobada' && count(array_filter($ctx->correos, fn($c) => str_contains($c['subject'] . $c['body'], 'aprobó el presupuesto'))) >= 1, 'aprobar avisa al equipo (agrupado)');
 $g->hacer('POST', $S, 'aceptar', [$spre], 'solicitud', false, ['_csrf_token' => $tok, 'titulo' => 'Rediseño web']);
 check($ss->find($spre)['estado'] === 'en_curso', 'presupuesto aprobado: se convierte en tarea');
 
@@ -1006,7 +1010,8 @@ $r = $rp->correr('decidir', [$piezas[0]], ['_csrf' => P\PortalSession::csrf(), '
 check($es2->find($eRev)['estado'] === 'publicada' && $r === '/portal/contenidos/' . $piezas[1] && $ctx->correos === [], 'con piezas pendientes no se envía: sigue a la siguiente');
 $r = $rp->correr('decidir', [$piezas[1]], ['_csrf' => P\PortalSession::csrf(), 'accion' => 'aprobar']);
 check($es2->find($eRev)['estado'] === 'aprobada' && $r === '/portal/entregas/' . $eRev, 'al decidir la última, la revisión se envía sola');
-check(count(array_filter($ctx->correos, fn($c) => str_contains($c['subject'], 'respondió la revisión'))) >= 1, 'y le llega un solo aviso al equipo');
+$vaciarAvisos();
+check(count(array_filter($ctx->correos, fn($c) => str_contains($c['subject'] . $c['body'], 'respondió la revisión'))) >= 1, 'y le llega un solo aviso al equipo (agrupado)');
 $eUna = $es2->create(['proyecto_id' => $p1a, 'titulo' => 'Una pieza']);
 $cs2->crear($es2->find($eUna), ['tipo' => 'grafica', 'titulo' => 'Única']);
 $es2->publicar($eUna);

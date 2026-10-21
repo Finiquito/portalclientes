@@ -32,6 +32,8 @@ use TypeDock\Core\PluginContext;
 final class Avisos
 {
     public const BUZON  = 'portal_avisos_buzon';
+    /** «Persona» del buzón que representa el correo de copia de todos los avisos (Ajustes). */
+    public const DESTINO_COPIA = 'copia';
     public const MARCAS = 'portal_avisos_marcas';
     public const JUNTOS = 10;
     public const JUNTOS_CLIENTE = 6;
@@ -180,7 +182,7 @@ final class Avisos
             'INSERT INTO ' . self::BUZON . ' (id, usuario_id, cliente_id, proyecto_id, clave, asunto, detalle, ruta, vigencia, urgente, para, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         )->execute([typedock_uuid7(), $usuarioId, $clienteId, $proyectoId, mb_substr($clave, 0, 120), mb_substr($asunto, 0, 500),
             $detalle !== '' ? mb_substr($detalle, 0, 1000) : null, $ruta !== null ? mb_substr($ruta, 0, 255) : null, $vigencia, $urgente ? 1 : 0,
-            $para === 'cliente' ? 'cliente' : 'equipo', $this->ahora()->format('Y-m-d H:i:s')]);
+            in_array($para, ['cliente', 'copia'], true) ? $para : 'equipo', $this->ahora()->format('Y-m-d H:i:s')]);
     }
 
     /** Saca del buzón lo que ya no hace falta avisar (la tarea se completó, la reunión se borró…). */
@@ -227,10 +229,12 @@ final class Avisos
      * @param string  $base '/equipo' (las rutas son del panel) o '' (ya vienen completas, como las del portal del cliente)
      * @param ?int    $max  tarjetas a mostrar como mucho; el resto se resume en una línea («y N más»)
      * @param ?string $zona zona horaria para la hora de cada tarjeta; null = sin hora (correo al cliente)
+     * @param ?bool $conCliente el título de cada sección lleva «cliente · proyecto» (por defecto sí, salvo en el correo al cliente)
      * @return array<int, array<string, mixed>>
      */
-    public function bloquesBuzon(array $items, string $base = '/equipo', ?int $max = null, ?string $zona = '')
+    public function bloquesBuzon(array $items, string $base = '/equipo', ?int $max = null, ?string $zona = '', ?bool $conCliente = null)
     {
+        $conCliente ??= $base !== '';
         $colores = Fmt::coloresTodos($this->pdo);
         $zona = $zona === '' ? Zona::agencia() : $zona;
         $grupos = [];
@@ -246,8 +250,8 @@ final class Avisos
                 }
                 $vistas[$g . '|' . $k] = true;
             }
-            $quien = $base === '' ? (string) ($i['proyecto_nombre'] ?? '') : trim(($i['cliente_nombre'] ?? '') . (($i['proyecto_nombre'] ?? '') !== '' ? ' · ' . $i['proyecto_nombre'] : ''));
-            $grupos[$g]['titulo'] = $quien !== '' ? $quien : ($base === '' ? '' : 'General');
+            $quien = !$conCliente ? (string) ($i['proyecto_nombre'] ?? '') : trim(($i['cliente_nombre'] ?? '') . (($i['proyecto_nombre'] ?? '') !== '' ? ' · ' . $i['proyecto_nombre'] : ''));
+            $grupos[$g]['titulo'] = $quien !== '' ? $quien : ($conCliente ? 'General' : '');
             $grupos[$g]['color'] = $colores[(string) $i['proyecto_id']] ?? '';
             $previo = $grupos[$g]['items'][$k] ?? null;
             $grupos[$g]['items'][$k] = $i + ['n' => ($previo['n'] ?? 0) + 1];
@@ -306,6 +310,30 @@ final class Avisos
             'Puedes cambiar qué te llega en «Mis ajustes» del panel.',
         ]);
         return $this->n->enviarCorreo((string) $u['email'], $asunto, $html, $texto);
+    }
+
+    /** Correo agrupado para el correo de copia de todos los avisos (Ajustes), con enlaces al admin. */
+    public function enviarAgrupadoCopia(string $to): bool
+    {
+        $items = $this->pendientes(self::DESTINO_COPIA);
+        if ($items === []) {
+            return false;
+        }
+        $this->marcarEnviados($items);
+        $n = count($items);
+        foreach ($items as &$i) {
+            $i['ruta'] = $this->n->absoluta($this->ctx->adminUrl((string) ($i['ruta'] ?? '')));   // enlace completo al admin
+        }
+        unset($i);
+        $asunto = $n === 1 ? (string) $items[0]['asunto'] : $n . ' novedades del portal';
+        [$html, $texto] = $this->n->componer($asunto, '', [
+            'etiqueta' => 'Copia de avisos', 'titulo' => 'Novedades del portal', 'resaltado' => 'novedades', 'boton' => 'Abrir en el admin',
+            'bloques' => $this->bloquesBuzon($items, '', self::JUNTOS, '', true), 'compacto' => true,
+            'preheader' => implode(' · ', array_slice(array_map(fn($i) => (string) $i['asunto'], $items), 0, 3)),
+        ], null, $this->n->absoluta($this->ctx->adminUrl('')), null, [
+            'Aviso interno: el cliente no ve este correo. Es la copia de todos los avisos (Ajustes) y sale agrupada: a las ' . self::horasTexto() . ', o antes si se juntan ' . self::JUNTOS . '.',
+        ]);
+        return $this->n->enviarCorreo($to, $asunto, $html, $texto);
     }
 
     /** Correo agrupado con lo pendiente de un contacto del cliente. @param array<string, mixed> $c contacto: id, nombre, email, cliente_id */
@@ -412,6 +440,14 @@ final class Avisos
         $corte = $this->ultimaHoraDeEnvio(Zona::agencia());
         $eq = new EquipoService($this->pdo);
         $enviados = 0;
+        $copia = trim((string) (new AjustesService($this->pdo))->get('global', 'portal', 'email_avisos'));
+        foreach ($this->conPendientes('copia') as $f) {
+            if (!filter_var($copia, FILTER_VALIDATE_EMAIL)) {
+                $this->marcarEnviados($this->pendientes(self::DESTINO_COPIA));   // ya no hay copia configurada: se descarta
+            } elseif ($this->tocaEnviar(self::DESTINO_COPIA, (int) $f['n'], (int) $f['urg'], self::JUNTOS, $corte)) {
+                $enviados += $this->enviarAgrupadoCopia($copia) ? 1 : 0;
+            }
+        }
         foreach ($this->conPendientes('equipo') as $f) {
             $u = $eq->find((string) $f['usuario_id']);
             if ($u === null || (int) $u['activo'] !== 1) {
