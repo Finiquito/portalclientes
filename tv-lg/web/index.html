@@ -38,6 +38,14 @@ h1{margin:0;font-size:clamp(21px,3.6vw,30px);line-height:1.15;letter-spacing:-.0
 .pulso.off{background:#a8a396}.pulso.off::after{display:none}
 @keyframes p{0%{transform:scale(.6);opacity:.7}100%{transform:scale(1.5);opacity:0}}
 .vivo b{font-weight:650}
+.tabs{display:flex;gap:8px;margin:0 0 18px;flex-wrap:wrap}
+.tab{display:flex;align-items:center;gap:9px;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:9px 18px 9px 14px;cursor:pointer;font-weight:650;box-shadow:var(--shadow);transition:background .15s,transform .12s}
+.tab:hover{transform:translateY(-1px)}
+.tab svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.tab small{font-weight:500;opacity:.75;font-size:12.5px}
+.tab[aria-selected=true]{background:var(--acc);color:#fff;border-color:var(--acc)}
+@media(prefers-color-scheme:dark){.tab[aria-selected=true]{color:#10201a}}
+.tab:focus-visible{outline:3px solid var(--warm);outline-offset:2px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:20px;box-shadow:var(--shadow)}
 h2{margin:0 0 14px;font-size:12px;font-weight:700;color:var(--mute);text-transform:uppercase;letter-spacing:.08em}
 .hero{display:grid;grid-template-columns:1.25fr 1fr;gap:18px;margin-bottom:16px;padding:0;overflow:hidden}
@@ -121,23 +129,25 @@ footer{margin-top:22px;text-align:center;color:var(--mute);font-size:12px}
       <div class="tv" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="12.5" rx="2.5"/><path d="M8 21h8M12 17.5V21"/></svg></div>
       <div>
         <h1 id="titulo">Tiempo de TV</h1>
-        <div class="sub">LG webOS · los minutos de cada app, día a día</div>
+        <div class="sub" id="subtitulo">Los minutos de cada app, día a día</div>
       </div>
     </div>
     <div class="vivo"><span class="pulso off" id="pulso"></span><span id="vivo">Conectando…</span></div>
   </header>
 
+  <nav class="tabs" id="tabs" role="tablist" aria-label="Aparato"></nav>
+
   <section class="card hero" aria-live="polite">
     <div class="hero-l">
       <div class="saludo" id="saludo"></div>
-      <div class="grande"><b id="hTot">0 min</b><span>de TV</span></div>
+      <div class="grande"><b id="hTot">0 min</b><span id="hDe">de TV</span></div>
       <div class="cmp" id="hCmp"></div>
     </div>
     <div class="hero-r">
       <div class="mini"><small>Promedio diario</small><b id="mProm"></b><em>últimos 7 días</em></div>
       <div class="mini"><small>App favorita del mes</small><b id="mFav"></b><em id="mFavM"></em></div>
-      <div class="mini"><small>Día de más TV</small><b id="mMax"></b><em id="mMaxM"></em></div>
-      <div class="mini"><small>Días sin TV</small><b id="mCero"></b><em>este mes</em></div>
+      <div class="mini"><small>Día de más uso</small><b id="mMax"></b><em id="mMaxM"></em></div>
+      <div class="mini"><small>Días sin uso</small><b id="mCero"></b><em>este mes</em></div>
     </div>
   </section>
 
@@ -187,12 +197,14 @@ const nivel=m=>m==0?0:m<60?1:m<120?2:m<200?3:4;
 const tot=o=>Object.values(o||{}).reduce((a,b)=>a+b,0);
 const hora=ts=>{const d=new Date(ts*1000);return pad(d.getHours())+":"+pad(d.getMinutes())};
 
-let D=null,HOY,vis,sel;
+let G=null,D=null,DISP=null,cur=null,HOY,vis,sel;
+const guardado=()=>{try{return localStorage.getItem('tv-pestana')}catch(e){return null}};
 
-const MARCAS=[["youtube","#e0463f"],["netflix","#b1262d"],["amazon","#2f86c6"],["prime","#2f86c6"],["disney","#3b53b5"],["apple","#5d5d5a"],["dazn","#3a3a38"],["canal","#2b2b2b"],["livetv","#d99a2b"],["hdmi","#76904a"],["home","#8a8a80"],["lgchannels","#e0463f"],["spotify","#1db954"],["hbo","#5b2ea6"],["max","#5b2ea6"]];
+const MARCAS=[["youtube","#e0463f"],["netflix","#b1262d"],["avod","#2f86c6"],["prime","#2f86c6"],["firelauncher","#8a8a80"],["kindle","#e8a33d"],["cloud9","#4a6fa5"],["roblox","#7a4fb3"],["minecraft","#4f8f3a"],["disney","#3b53b5"],["apple","#5d5d5a"],["dazn","#3a3a38"],["canal","#2b2b2b"],["livetv","#d99a2b"],["hdmi","#76904a"],["home","#8a8a80"],["lgchannels","#e0463f"],["spotify","#1db954"],["hbo","#5b2ea6"],["max","#5b2ea6"]];
 const PALETA=["#c0583b","#3d7ea6","#8a6bb1","#4f8f6b","#c79a2b","#a8556e","#4a6fa5","#7f8f3a"];
 function color(id){
   const k=id.toLowerCase();
+  if(k==="amazon")return "#2f86c6";
   for(const [f,c] of MARCAS)if(k.includes(f))return c;
   let h=0;for(const ch of id)h=(h*31+ch.charCodeAt(0))>>>0;
   return PALETA[h%PALETA.length];
@@ -213,22 +225,50 @@ function datos(d){
 }
 
 function estadoTV(){
-  const tv=D.tv,p=$("pulso"),v=$("vivo");
+  const tv=D.estado,p=$("pulso"),v=$("vivo"),fire=DISP.tipo==="fire",n=DISP.nombre;
   if(tv.conectada){
     p.className="pulso";
-    v.innerHTML=tv.app?"Ahora: <b>"+esc(tv.app)+"</b> · desde las "+hora(tv.desde):"TV encendida";
+    v.innerHTML=tv.app?"Ahora: <b>"+esc(tv.app)+"</b> · desde las "+hora(tv.desde):(fire?n+" con la pantalla apagada":n+" encendida");
   }else{
     p.className="pulso off";
-    if(!tv.ultimo){v.textContent="Esperando la primera conexión con la TV…";return}
+    if(!tv.ultimo){v.textContent="Esperando la primera conexión: "+n+"…";return}
     const u=new Date(tv.ultimo*1000),hoyMismo=key(u)==key(HOY);
-    v.innerHTML="TV apagada · última vez "+(hoyMismo?"hoy":u.getDate()+" de "+MES[u.getMonth()])+" a las "+hora(tv.ultimo);
+    v.innerHTML=n+(fire?" sin conexión":" apagada")+" · última vez "+(hoyMismo?"hoy":u.getDate()+" de "+MES[u.getMonth()])+" a las "+hora(tv.ultimo);
   }
+}
+
+const ICONOS_TAB={lg:'<svg viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="12.5" rx="2.5"/><path d="M8 21h8M12 17.5V21"/></svg>',
+  fire:'<svg viewBox="0 0 24 24"><rect x="5" y="2.5" width="14" height="19" rx="2.5"/><path d="M11 18.5h2"/></svg>'};
+function totalHoy(dev){
+  const x=G.datos[dev.id].dias[key(HOY)];
+  return x?tot(x.apps)/60:0;
+}
+function pestanas(){
+  const t=$("tabs");t.innerHTML="";
+  if(G.dispositivos.length<2){t.style.display="none";return}
+  G.dispositivos.forEach(d=>{
+    const b=document.createElement("button");b.className="tab";b.setAttribute("role","tab");
+    b.setAttribute("aria-selected",d.id===cur?"true":"false");
+    b.innerHTML=(ICONOS_TAB[d.tipo]||ICONOS_TAB.lg)+esc(d.nombre)+"<small>hoy "+hm(totalHoy(d))+"</small>";
+    b.onclick=()=>elegir(d.id);
+    t.appendChild(b);
+  });
+}
+function elegir(id){
+  cur=id;
+  try{localStorage.setItem('tv-pestana',id)}catch(e){}
+  history.replaceState(null,"","#"+id);
+  DISP=G.dispositivos.find(d=>d.id===id);D=G.datos[id];
+  sel=new Date(HOY);vis=new Date(HOY.getFullYear(),HOY.getMonth(),1);
+  $("subtitulo").textContent=DISP.subtitulo+" · los minutos de cada app, día a día";
+  dibujar(true);
 }
 
 function portada(){
   const t=tot(datos(HOY)),ay=tot(datos(addDias(HOY,-1)));
   $("saludo").textContent="Hoy, "+DIA[HOY.getDay()]+" "+HOY.getDate()+" de "+MES[HOY.getMonth()]+", llevan";
   $("hTot").textContent=hm(t);
+  $("hDe").textContent="en la "+(/^[A-Z]+$/.test(DISP.nombre)?DISP.nombre:DISP.nombre.toLowerCase());
   const hayAntes=D.primer_dia&&D.primer_dia<key(HOY);
   const c=$("hCmp");
   if(!hayAntes){c.className="cmp";c.textContent=D.primer_dia?"Primer día de registro":""}
@@ -317,19 +357,28 @@ function semana(){
   $("ley").innerHTML=[...usadas].map(k=>'<span><i style="background:'+color(k)+'"></i>'+esc(nombre(k))+'</span>').join("");
 }
 
-function dibujar(animar){estadoTV();portada();calendario();detalle(animar)}
+function dibujar(animar){pestanas();estadoTV();portada();calendario();detalle(animar)}
 
 async function cargar(primera){
   try{
     const r=await fetch("/api/datos",{cache:"no-store"});
-    D=await r.json();
+    G=await r.json();
   }catch(e){
     $("pulso").className="pulso off";$("vivo").textContent="Sin conexión con el servidor";
     return;
   }
-  document.title=D.titulo;$("titulo").textContent=D.titulo;
+  document.title=G.titulo;$("titulo").textContent=G.titulo;
   const n=new Date();HOY=new Date(n.getFullYear(),n.getMonth(),n.getDate());
-  if(primera){sel=new Date(HOY);vis=new Date(HOY.getFullYear(),HOY.getMonth(),1)}
+  const ids=G.dispositivos.map(d=>d.id);
+  if(primera){
+    const h=location.hash.replace("#","");
+    cur=ids.includes(h)?h:ids.includes(guardado())?guardado():ids[0];
+    DISP=G.dispositivos.find(d=>d.id===cur);D=G.datos[cur];
+    sel=new Date(HOY);vis=new Date(HOY.getFullYear(),HOY.getMonth(),1);
+    $("subtitulo").textContent=DISP.subtitulo+" · los minutos de cada app, día a día";
+  }else{
+    DISP=G.dispositivos.find(d=>d.id===cur);D=G.datos[cur];
+  }
   dibujar(primera);
 }
 

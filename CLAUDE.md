@@ -15,7 +15,7 @@
 - `theme/prisma/`: tema del landing **Prisma** (usaprisma.com), con Google Analytics G-TLZCJ1N0XE, el evento `Formulario_Lleno` y datos estructurados. `theme/raiz-usaprisma/` tiene robots.txt, sitemap.xml y llms.txt, que van en `public_html/`.
 - `invitaciones/`: plugin de lista de espera (POST `/invitacion` → Mailchimp).
 - `dev/`: núcleo de TypeDock simulado para desarrollar. `dev/videos/`: videos de recorrido (ver abajo).
-- `tv-lg/`: «Tiempo de TV»: script en Python (websockets) que anota qué app tiene abierta la LG webOS de la casa, con una web local de minutos por día y por app. Detalles en `tv-lg/README.md`; zip con `bash scripts/zip-tv.sh`; pruebas con `python3 tv-lg/tests/test_tv.py` y `tv-lg/tests/probar_simulado.py`.
+- `tv-lg/`: «Tiempo de TV»: script en Python que anota qué app tiene abierta cada aparato de la casa (TV LG webOS por websockets, tablet Fire por ADB), con una web local de minutos por día y por app y una pestaña por aparato. Detalles en `tv-lg/README.md`; zip con `bash scripts/zip-tv.sh`; pruebas con `python3 tv-lg/tests/test_tv.py`, `tv-lg/tests/probar_simulado.py` y `tv-lg/tests/probar_tablet.py`.
 - `entregas/` (en .gitignore): zips, videos y láminas que se le entregan.
 
 ## Flujo de trabajo

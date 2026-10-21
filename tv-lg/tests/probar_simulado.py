@@ -104,28 +104,29 @@ def main():
         time.sleep(5)
         _, _, cuerpo = pedir("/api/datos")
         d = json.loads(cuerpo)
-        ok(d["tv"]["conectada"] and d["tv"]["app"] in ("YouTube", "Netflix"), "a media sesión la TV figura encendida con una app")
+        ok(d["datos"]["tv"]["estado"]["conectada"] and d["datos"]["tv"]["estado"]["app"] in ("YouTube", "Netflix"), "a media sesión la TV figura encendida con una app")
         time.sleep(11)
         _, _, cuerpo = pedir("/api/datos")
         d = json.loads(cuerpo)
-        hoy = next(iter(d["dias"]))
-        apps = d["dias"][hoy]["apps"]
+        tv = d["datos"]["tv"]
+        hoy = next(iter(tv["dias"]))
+        apps = tv["dias"][hoy]["apps"]
         print("segundos por app:", apps)
         ok("youtube.leanback.v4" in apps and "netflix" in apps, "quedaron registradas YouTube y Netflix")
         if not SIN_SUSCRIPCION:
             ok(abs(apps["youtube.leanback.v4"] - 3) <= 1 and abs(apps["netflix"] - 3) <= 1, "con suscripción, los segundos calzan con el guion (3 y 3)")
         ok("com.webos.app.screensaver" not in apps, "el protector de pantalla no cuenta")
         ok("com.webos.app.home" in apps, "el inicio sí aparece")
-        ok(d["apps"]["youtube.leanback.v4"]["nombre"] == "YouTube", "el nombre viene de la TV")
-        ok(d["apps"]["youtube.leanback.v4"]["icono"], "se bajó el ícono")
-        ok(not d["tv"]["conectada"], "al cerrar la TV la conexión queda apagada")
-        ultimo = d["tv"]["ultimo"]
+        ok(tv["apps"]["youtube.leanback.v4"]["nombre"] == "YouTube", "el nombre viene de la TV")
+        ok(tv["apps"]["youtube.leanback.v4"]["icono"], "se bajó el ícono")
+        ok(not tv["estado"]["conectada"], "al cerrar la TV la conexión queda apagada")
+        ultimo = tv["estado"]["ultimo"]
         time.sleep(5)  # con la TV apagada el script reintenta varias veces; la hora de "última vez" no debe moverse
         d2 = json.loads(pedir("/api/datos")[2])
-        ok(d2["tv"]["ultimo"] == ultimo, "mientras la TV está apagada, 'última vez' no avanza")
+        ok(d2["datos"]["tv"]["estado"]["ultimo"] == ultimo, "mientras la TV está apagada, 'última vez' no avanza")
         estado, tipo, cuerpo = pedir("/")
         ok(estado == 200 and b"<title>" in cuerpo, "la página principal responde")
-        estado, tipo, cuerpo = pedir("/iconos/" + d["apps"]["youtube.leanback.v4"]["icono"])
+        estado, tipo, cuerpo = pedir("/iconos/" + tv["apps"]["youtube.leanback.v4"]["icono"])
         ok(estado == 200 and tipo == "image/png", "el ícono se sirve")
         try:
             pedir("/iconos/..%2Ftv.sqlite")

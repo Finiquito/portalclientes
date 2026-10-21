@@ -1,6 +1,25 @@
 {
   "titulo": "Tiempo de TV de los González Arias",
-  "ip": "192.168.1.16",
   "puerto_web": 8090,
-  "excluir_apps": ["com.webos.app.screensaver"]
+  "dispositivos": [
+    {
+      "id": "tv",
+      "tipo": "lg",
+      "nombre": "TV",
+      "subtitulo": "LG webOS",
+      "ip": "192.168.1.16",
+      "excluir_apps": ["com.webos.app.screensaver"]
+    },
+    {
+      "id": "tablet",
+      "tipo": "fire",
+      "nombre": "Tablet",
+      "subtitulo": "Fire HD 8",
+      "ip": "192.168.1.14",
+      "adb": "~/platform-tools/adb",
+      "intervalo": 10,
+      "excluir_apps": [],
+      "activo": true
+    }
+  ]
 }
