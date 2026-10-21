@@ -5,6 +5,13 @@ set -euo pipefail
 cd "$(dirname "$0")"
 AQUI="$(pwd)"
 PY="$(command -v python3)"
+case "$AQUI" in
+  "$HOME/Downloads"/*|"$HOME/Documents"/*|"$HOME/Desktop"/*)
+    echo "macOS no deja que los programas en segundo plano lean Descargas, Documentos ni Escritorio." >&2
+    echo "Mueve esta carpeta a tu carpeta personal y vuelve a correr el instalador:" >&2
+    echo "  mv \"$AQUI\" \"$HOME/tv-lg\" && cd \"$HOME/tv-lg\" && bash instalar_arranque.sh" >&2
+    exit 1;;
+esac
 ETIQUETA="cl.gonzalezarias.tiempotv"
 PLIST="$HOME/Library/LaunchAgents/$ETIQUETA.plist"
 

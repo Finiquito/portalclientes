@@ -27,6 +27,7 @@ Para detenerlo: `Ctrl + C` en el Terminal.
 cd tv-lg
 bash instalar_arranque.sh
 ```
+La carpeta **no** puede estar en Descargas, Documentos ni Escritorio (macOS bloquea los programas en segundo plano ahí): déjala, por ejemplo, en `~/tv-lg`.
 Parte solo al iniciar sesión y se levanta solo si se cae. El registro de lo que pasa queda en `datos/tiempo_tv.log`.
 Para quitarlo: `bash desinstalar_arranque.sh`.
 
