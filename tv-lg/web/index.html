@@ -95,7 +95,7 @@ h2{margin:0 0 14px;font-size:12px;font-weight:700;color:var(--mute);text-transfo
 .ico img{width:100%;height:100%;object-fit:contain;display:block}
 .barra{height:12px;background:var(--c0);border-radius:7px;overflow:hidden}
 .barra div{height:100%;border-radius:7px;width:0;transition:width .7s cubic-bezier(.2,.8,.2,1)}
-.m{text-align:right;font-variant-numeric:tabular-nums;font-weight:650}
+.m{text-align:right;font-variant-numeric:tabular-nums;font-weight:650;white-space:nowrap}
 .pct{display:block;font-size:11px;color:var(--mute);font-weight:500}
 .vacio-msg{padding:34px 10px;text-align:center;color:var(--mute)}
 .vacio-msg span{font-size:34px;display:block;margin-bottom:6px}
@@ -110,7 +110,7 @@ h2{margin:0 0 14px;font-size:12px;font-weight:700;color:var(--mute);text-transfo
 .leyapps i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px}
 footer{margin-top:22px;text-align:center;color:var(--mute);font-size:12px}
 @media(max-width:900px){.grid{grid-template-columns:1fr}.hero{grid-template-columns:1fr}}
-@media(max-width:560px){.col u{display:none}.fila{grid-template-columns:1fr 70px;row-gap:4px}.fila .barra{grid-column:1/-1;order:3}.hero-l{padding:20px}.sem{gap:4px}}
+@media(max-width:560px){.col u{display:none}.fila{grid-template-columns:1fr auto;row-gap:4px}.fila .barra{grid-column:1/-1;order:3}.hero-l{padding:20px}.sem{gap:4px}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
