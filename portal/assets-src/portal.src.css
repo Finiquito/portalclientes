@@ -435,7 +435,7 @@ span.flex:has(> svg)[class*="size-"] { background: transparent !important; borde
 
 /* Bloque de urgencia: lleno con el color del cliente, con el ícono integrado (.kpi-alerta) */
 .kpi-alerta { --foco: var(--brand-fg); --ink: var(--brand-fg); --muted: color-mix(in oklab, var(--brand-fg) 82%, var(--brand)); background: var(--brand) !important; border-color: var(--brand) !important; color: var(--brand-fg); }
-.kpi-alerta:hover { background: color-mix(in oklab, var(--brand) 88%, black) !important; }
+a.card.kpi-alerta:hover { background: color-mix(in oklab, var(--brand) 88%, black) !important; }
 .kpi-alerta span.flex:has(> svg) { border: 0; color: var(--brand-fg) !important; padding: 0; width: auto; height: auto; justify-content: flex-start; }
 .kpi-alerta svg { width: 1.75rem; height: 1.75rem; }
 section[aria-label="Resumen"] a span.flex:has(> svg) { border: 0; width: auto; height: auto; justify-content: flex-start; }

@@ -74,6 +74,9 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### v0.44.4: la tarjeta destacada se lee al pasar el cursor
+- Al pasar el mouse por la tarjeta destacada del Inicio (equipo y cliente), el fondo se ponía gris claro y el texto blanco no se veía. Ahora conserva su color y solo se oscurece un poco.
+
 ### v0.44.3: la copia de todos los avisos también sale agrupada
 - El correo de «Copia de todos los avisos» (Ajustes) mandaba un correo por cada aviso, al tiro. Ahora se junta y sale igual que el resto: a las 10:00, 13:00 y 16:00 (o antes si se juntan 10), un solo correo con enlaces al admin.
 
