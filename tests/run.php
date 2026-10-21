@@ -1437,12 +1437,14 @@ $rs5 = $rs->create(['proyecto_id' => $p5, 'titulo' => 'Revisión con Luz', 'fech
 $tVence = $ts->create(['proyecto_id' => $p5, 'titulo' => 'Entregar logo', 'asignado' => 'equipo', 'responsable_usuario_id' => $ana, 'fecha_vencimiento' => '2027-01-14']);
 P\Notifier::$ahora = $enAgencia('2027-01-14 07:30');
 check($av->barrer() === 0 && count($av->pendientes($ana)) === 1, 'antes de las 8:30 lo de la noche espera al resumen');
+$av->guardar($ana, $c5, $p5, 'venc/tareas/' . $tVence, 'Se atrasó: «Entregar logo»', 'Fecha: jueves 14 ene', 'tareas/' . $tVence);
 P\Notifier::$ahora = $enAgencia('2027-01-14 08:40');
 $ctx->correos = [];
 $av->resumenes();
 $res = $para('ana@agencia.cl')[0] ?? ['subject' => '', 'body' => ''];
 check(str_starts_with($res['subject'], 'Tu día: 1 reunión, 1 tarea por cerrar'), 'resumen de la mañana con lo del día');
 check(str_contains($res['body'], 'Revisión con Luz') && str_contains($res['body'], 'Entregar logo') && str_contains($res['body'], 'De noche'), 'trae reuniones, lo que vence y lo que llegó en la noche');
+check(!str_contains($res['body'], 'Se atrasó: «Entregar logo»'), 'el resumen no repite como novedad una tarea que ya está en su lista');
 check(count($av->pendientes($ana)) === 0, 'lo de la noche queda enviado con el resumen');
 $ctx->correos = [];
 $av->resumenes();

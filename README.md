@@ -74,6 +74,10 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### v0.44.2: resumen de la mañana sin horas falsas ni repetidos
+- En «Y esto llegó mientras no estabas», los avisos programados (vence mañana, se atrasó, recordatorio de reunión) ya no muestran una hora: «00:00» era la hora en que el cron los generó, no la de la tarea. Los demás avisos conservan la hora en que ocurrieron.
+- Si una tarea ya aparece en «Atrasadas» o «Vencen hoy», no se repite como novedad.
+
 ### v0.44.1: el comando del cron en Ajustes va sin el horario
 - Ajustes mostraba la línea completa (`*/15 * * * * curl …`) y al pegarla entera en Hostinger fallaba («failed to run command '*/15'»). Ahora muestra solo el comando y, aparte, cómo llenar los selectores de horario.
 

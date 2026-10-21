@@ -344,7 +344,7 @@ final class Convocados
             if ($pref['que'] === 'nada') {
                 return 0;
             }
-            (new Avisos($this->ctx, $this->pdo, $this->n))->guardar((string) $u['id'], $cid, (string) $r['proyecto_id'], 'reuniones/' . $r['id'],
+            (new Avisos($this->ctx, $this->pdo, $this->n))->guardar((string) $u['id'], $cid, (string) $r['proyecto_id'], 'rec/reuniones/' . $r['id'],
                 $asunto, $cuando, 'reuniones/' . $r['id'], Vigencia::reunion((string) $r['id']));
             return 1;
         }

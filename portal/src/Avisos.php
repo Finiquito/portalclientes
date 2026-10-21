@@ -264,7 +264,8 @@ final class Avisos
                 $tarjetas[] = [
                     'titulo'  => (string) $i['asunto'],
                     'detalle' => trim((string) ($i['detalle'] ?? '')) . $mas,
-                    'chip'    => $zona === null ? '' : $this->local(new \DateTimeImmutable((string) $i['created_at'], new \DateTimeZone('UTC')), $zona)->format('H:i'),
+                    // Los avisos programados (vencen mañana, se atrasó, recordatorio) los genera el cron, no ocurrieron a esa hora: sin hora.
+                    'chip'    => $zona === null || str_starts_with((string) $i['clave'], 'venc/') || str_starts_with((string) $i['clave'], 'rec/') ? '' : $this->local(new \DateTimeImmutable((string) $i['created_at'], new \DateTimeZone('UTC')), $zona)->format('H:i'),
                     'url'     => $this->n->absoluta($base === '' ? ($ruta !== '' ? $ruta : '/portal') : $base . ($ruta !== '' ? '/' . ltrim($ruta, '/') : '')),
                 ];
             }
@@ -555,8 +556,13 @@ final class Avisos
         $atrasadas = $tareas("{$abiertas} AND SUBSTR(t.fecha_vencimiento, 1, 10) < ?", [$hoy]);
         $esperan = $tareas("t.estado IN ('entregada', 'cambios')", []);
         $noche = $this->pendientes($uid);
+        // «Se atrasó» de una tarea que ya está en «Atrasadas» (o «Vencen hoy») sería decir lo mismo dos veces.
+        $yaListadas = array_flip(array_map(fn(array $t): string => 'venc/tareas/' . $t['id'], array_merge($vencenHoy, $atrasadas)));
+        $nocheTodas = $noche;
+        $noche = array_values(array_filter($noche, fn(array $i): bool => !isset($yaListadas[(string) $i['clave']])));
 
         if ($reuniones === [] && $vencenHoy === [] && $atrasadas === [] && $esperan === [] && $noche === []) {
+            $this->marcarEnviados($nocheTodas);
             return false;
         }
 
@@ -588,8 +594,8 @@ final class Avisos
         if ($noche !== []) {
             $bloques[] = ['p' => 'Y esto llegó mientras no estabas:'];
             $bloques = array_merge($bloques, $this->bloquesBuzon($noche));
-            $this->marcarEnviados($noche);
         }
+        $this->marcarEnviados($nocheTodas);
 
         $partes = [];
         if ($reuniones !== []) {
@@ -730,7 +736,7 @@ final class Avisos
                 'proyecto_id' => (string) $t['proyecto_id'], 'responsable' => $resp !== '' ? $resp : null, 'solo_responsable' => $resp !== '',
                 'etiqueta' => 'Tarea', 'titulo' => $titulo, 'resaltado' => $f === $manana ? 'mañana' : 'atrasó',
                 'bloques' => [['tarjetas' => [['titulo' => (string) $t['titulo'], 'detalle' => 'Fecha: ' . (new Fmt())->fechaLarga($f)]]]],
-                'detalle' => 'Fecha: ' . (new Fmt())->fechaLarga($f), 'clave' => 'tareas/' . $t['id'], 'vigencia' => Vigencia::tarea((string) $t['id']),
+                'detalle' => 'Fecha: ' . (new Fmt())->fechaLarga($f), 'clave' => 'venc/tareas/' . $t['id'], 'vigencia' => Vigencia::tarea((string) $t['id']),
             ]);
             $n++;
         }
