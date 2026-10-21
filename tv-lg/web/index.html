@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tiempo de TV</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%232f6f5e'/%3E%3Crect x='12' y='18' width='40' height='26' rx='5' fill='none' stroke='white' stroke-width='4'/%3E%3Cpath d='M24 52h16' stroke='white' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E">
+<style>
+:root{
+  --bg:#f4f1ea;--bg2:#ece7dc;--card:#fffdf9;--ink:#25221d;--mute:#7b756a;--line:#e7e1d4;
+  --acc:#2f6f5e;--acc-soft:#dcebe4;--warm:#e2733f;
+  --c0:#f0ebe0;--c1:#d3e6dc;--c2:#a4cdbb;--c3:#62a98f;--c4:#2f6f5e;
+  --shadow:0 1px 2px rgba(60,45,20,.05),0 8px 24px rgba(60,45,20,.06);
+  --r:18px;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#12120f;--bg2:#191813;--card:#1c1b17;--ink:#f3f0e8;--mute:#a09b8f;--line:#2c2a24;
+  --acc:#79cdae;--acc-soft:#23382f;--warm:#f08a57;
+  --c0:#25231e;--c1:#2a463b;--c2:#3a6a58;--c3:#53a084;--c4:#86d8b8;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+}}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;color:var(--ink);font:15px/1.5 ui-rounded,"SF Pro Rounded","Segoe UI",system-ui,-apple-system,sans-serif;
+  background:radial-gradient(1200px 500px at 10% -10%,var(--bg2),transparent 60%),var(--bg);min-height:100vh}
+.wrap{max-width:1120px;margin:0 auto;padding:28px 18px 56px}
+button{font:inherit;color:inherit}
+header{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:22px}
+.marca{display:flex;align-items:center;gap:14px}
+.tv{width:52px;height:52px;border-radius:15px;background:var(--acc);display:grid;place-items:center;box-shadow:var(--shadow)}
+.tv svg{width:30px;height:30px;stroke:#fff;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+@media(prefers-color-scheme:dark){.tv svg{stroke:#10201a}}
+h1{margin:0;font-size:clamp(21px,3.6vw,30px);line-height:1.15;letter-spacing:-.02em;font-weight:750}
+.sub{color:var(--mute);font-size:13px;margin-top:3px}
+.vivo{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:8px 16px 8px 12px;box-shadow:var(--shadow);font-size:13.5px}
+.pulso{position:relative;width:10px;height:10px;border-radius:50%;background:#34a86a;flex:none}
+.pulso::after{content:"";position:absolute;inset:-5px;border-radius:50%;border:2px solid #34a86a;opacity:.5;animation:p 2s infinite}
+.pulso.off{background:#a8a396}.pulso.off::after{display:none}
+@keyframes p{0%{transform:scale(.6);opacity:.7}100%{transform:scale(1.5);opacity:0}}
+.vivo b{font-weight:650}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:20px;box-shadow:var(--shadow)}
+h2{margin:0 0 14px;font-size:12px;font-weight:700;color:var(--mute);text-transform:uppercase;letter-spacing:.08em}
+.hero{display:grid;grid-template-columns:1.25fr 1fr;gap:18px;margin-bottom:16px;padding:0;overflow:hidden}
+.hero-l{padding:26px 26px 22px}
+.saludo{font-size:14px;color:var(--mute);margin-bottom:6px}
+.grande{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.grande b{font-size:clamp(46px,8vw,68px);font-weight:800;letter-spacing:-.035em;line-height:1}
+.grande span{font-size:20px;color:var(--mute);font-weight:600}
+.cmp{display:inline-flex;align-items:center;gap:6px;margin-top:14px;padding:6px 12px;border-radius:999px;font-size:13px;font-weight:600;background:var(--acc-soft);color:var(--acc)}
+.cmp.mas{background:#fbe7dc;color:#b4501f}
+.cmp:empty{display:none}
+@media(prefers-color-scheme:dark){.cmp.mas{background:#3d271b;color:#f4a47c}}
+.hero-r{background:linear-gradient(160deg,var(--acc-soft),transparent);display:grid;grid-template-columns:1fr 1fr;align-content:center;gap:1px;padding:8px}
+.mini{padding:16px 18px;min-width:0}
+.mini small{display:block;color:var(--mute);font-size:12px;margin-bottom:2px}
+.mini b{font-size:21px;font-weight:720;letter-spacing:-.01em;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mini em{display:block;font-style:normal;color:var(--mute);font-size:12px;margin-top:1px}
+.grid{display:grid;grid-template-columns:360px 1fr;gap:16px;align-items:start}
+.cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.cal-head b{font-size:17px;text-transform:capitalize}
+.nav{display:flex;gap:6px}
+.nav button{border:1px solid var(--line);background:var(--card);border-radius:10px;height:32px;min-width:32px;padding:0 10px;cursor:pointer;font-size:13px}
+.nav button:hover{background:var(--acc-soft)}
+.dow,.days{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.dow span{font-size:11px;color:var(--mute);text-align:center;padding-bottom:3px;font-weight:600}
+.d{aspect-ratio:1;border-radius:11px;border:2px solid transparent;background:var(--c0);color:var(--ink);cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0;font-size:13px;font-weight:600;
+  transition:transform .12s,border-color .12s}
+.d:hover:not(.vacio):not(:disabled){transform:translateY(-2px)}
+.d small{font-size:9.5px;font-weight:500;opacity:.8;line-height:1.1}
+.d.l1{background:var(--c1)}.d.l2{background:var(--c2)}.d.l3{background:var(--c3);color:#fff}.d.l4{background:var(--c4);color:#fff}
+@media(prefers-color-scheme:dark){.d.l3,.d.l4{color:#0e1e17}}
+.d.vacio{background:transparent;cursor:default}
+.d:disabled{opacity:.35;cursor:default}
+.d.hoy{box-shadow:0 0 0 2px var(--card),0 0 0 4px var(--warm)}
+.d.sel{border-color:var(--ink)}
+.d:focus-visible,.nav button:focus-visible,.col:focus-visible{outline:3px solid var(--warm);outline-offset:2px}
+.leyenda{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--mute);margin-top:14px}
+.leyenda i{width:14px;height:14px;border-radius:5px;display:inline-block}
+.mes-res{margin-top:16px;padding-top:14px;border-top:1px dashed var(--line);display:flex;justify-content:space-between;font-size:13px;color:var(--mute)}
+.mes-res b{color:var(--ink)}
+.dia-t{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:8px;margin-bottom:6px}
+.dia-t h3{margin:0;font-size:22px;letter-spacing:-.02em}.dia-t h3::first-letter{text-transform:uppercase}
+.dia-t .tot{font-size:15px;color:var(--mute)}
+.dia-t .tot b{color:var(--ink);font-size:20px}
+.franja{margin:16px 0 22px}
+.franja .eje{position:relative;height:30px;background:var(--c0);border-radius:10px;overflow:hidden}
+.franja .seg{position:absolute;top:0;bottom:0;border-radius:4px;opacity:.95}
+.franja .horas{display:flex;justify-content:space-between;font-size:10.5px;color:var(--mute);margin-top:5px}
+.fila{display:grid;grid-template-columns:200px 1fr 82px;align-items:center;gap:12px;padding:8px 8px;margin:0 -8px;border-radius:12px;transition:background .15s}
+.fila:hover{background:var(--bg)}
+.app{display:flex;align-items:center;gap:11px;font-weight:600;white-space:nowrap;min-width:0}
+.app span.nom{overflow:hidden;text-overflow:ellipsis}
+.ico{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;color:#fff;font-weight:800;font-size:14px;flex:none;box-shadow:0 1px 3px rgba(0,0,0,.2);overflow:hidden}
+.ico img{width:100%;height:100%;object-fit:contain;display:block}
+.barra{height:12px;background:var(--c0);border-radius:7px;overflow:hidden}
+.barra div{height:100%;border-radius:7px;width:0;transition:width .7s cubic-bezier(.2,.8,.2,1)}
+.m{text-align:right;font-variant-numeric:tabular-nums;font-weight:650}
+.pct{display:block;font-size:11px;color:var(--mute);font-weight:500}
+.vacio-msg{padding:34px 10px;text-align:center;color:var(--mute)}
+.vacio-msg span{font-size:34px;display:block;margin-bottom:6px}
+.sec2{margin-top:16px}
+.sem{display:grid;grid-template-columns:repeat(14,1fr);gap:8px;align-items:end;height:150px}
+.col{display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%;gap:6px;cursor:pointer;border:0;background:none;padding:0}
+.pila{width:100%;max-width:38px;border-radius:7px;overflow:hidden;display:flex;flex-direction:column-reverse;background:var(--c0)}
+.col:hover .pila{filter:brightness(1.07)}
+.col span{font-size:10.5px;color:var(--mute);white-space:nowrap}.col u{text-decoration:none}
+.col.sel span{color:var(--ink);font-weight:700}
+.leyapps{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:14px;font-size:12px;color:var(--mute)}
+.leyapps i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px}
+footer{margin-top:22px;text-align:center;color:var(--mute);font-size:12px}
+@media(max-width:900px){.grid{grid-template-columns:1fr}.hero{grid-template-columns:1fr}}
+@media(max-width:560px){.col u{display:none}.fila{grid-template-columns:1fr 70px;row-gap:4px}.fila .barra{grid-column:1/-1;order:3}.hero-l{padding:20px}.sem{gap:4px}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="marca">
+      <div class="tv" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="12.5" rx="2.5"/><path d="M8 21h8M12 17.5V21"/></svg></div>
+      <div>
+        <h1 id="titulo">Tiempo de TV</h1>
+        <div class="sub">LG webOS · los minutos de cada app, día a día</div>
+      </div>
+    </div>
+    <div class="vivo"><span class="pulso off" id="pulso"></span><span id="vivo">Conectando…</span></div>
+  </header>
+
+  <section class="card hero" aria-live="polite">
+    <div class="hero-l">
+      <div class="saludo" id="saludo"></div>
+      <div class="grande"><b id="hTot">0 min</b><span>de TV</span></div>
+      <div class="cmp" id="hCmp"></div>
+    </div>
+    <div class="hero-r">
+      <div class="mini"><small>Promedio diario</small><b id="mProm"></b><em>últimos 7 días</em></div>
+      <div class="mini"><small>App favorita del mes</small><b id="mFav"></b><em id="mFavM"></em></div>
+      <div class="mini"><small>Día de más TV</small><b id="mMax"></b><em id="mMaxM"></em></div>
+      <div class="mini"><small>Días sin TV</small><b id="mCero"></b><em>este mes</em></div>
+    </div>
+  </section>
+
+  <div class="grid">
+    <section class="card">
+      <h2>Calendario</h2>
+      <div class="cal-head"><b id="mes"></b><div class="nav"><button id="ant" aria-label="Mes anterior">‹</button><button id="hoyb">Hoy</button><button id="sig" aria-label="Mes siguiente">›</button></div></div>
+      <div class="dow"><span>L</span><span>M</span><span>M</span><span>J</span><span>V</span><span>S</span><span>D</span></div>
+      <div class="days" id="dias"></div>
+      <div class="leyenda">Menos <i style="background:var(--c0)"></i><i style="background:var(--c1)"></i><i style="background:var(--c2)"></i><i style="background:var(--c3)"></i><i style="background:var(--c4)"></i> Más</div>
+      <div class="mes-res"><span>Total del mes</span><b id="mesTot"></b></div>
+    </section>
+
+    <div>
+      <section class="card">
+        <div class="dia-t"><h3 id="fecha"></h3><div class="tot"><b id="tot"></b> en total</div></div>
+        <div class="franja">
+          <h2 style="margin-bottom:8px">A qué hora estuvo prendida</h2>
+          <div class="eje" id="eje"></div>
+          <div class="horas"><span>0 h</span><span>6 h</span><span>12 h</span><span>18 h</span><span>24 h</span></div>
+        </div>
+        <h2>Por app</h2>
+        <div id="apps"></div>
+      </section>
+
+      <section class="card sec2">
+        <h2>Últimos 14 días</h2>
+        <div class="sem" id="sem"></div>
+        <div class="leyapps" id="ley"></div>
+      </section>
+    </div>
+  </div>
+  <footer>Cada día se guarda por separado en el computador de la casa</footer>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const pad=n=>String(n).padStart(2,"0");
+const key=d=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const MES=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+const DIA=["domingo","lunes","martes","miércoles","jueves","viernes","sábado"];
+const addDias=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x};
+const mins=m=>m>0&&m<1?1:Math.round(m);
+const hm=m=>{m=mins(m);return m>=60?Math.floor(m/60)+" h "+pad(m%60)+" min":m+" min"};
+const nivel=m=>m==0?0:m<60?1:m<120?2:m<200?3:4;
+const tot=o=>Object.values(o||{}).reduce((a,b)=>a+b,0);
+const hora=ts=>{const d=new Date(ts*1000);return pad(d.getHours())+":"+pad(d.getMinutes())};
+
+let D=null,HOY,vis,sel;
+
+const MARCAS=[["youtube","#e0463f"],["netflix","#b1262d"],["amazon","#2f86c6"],["prime","#2f86c6"],["disney","#3b53b5"],["apple","#5d5d5a"],["dazn","#3a3a38"],["canal","#2b2b2b"],["livetv","#d99a2b"],["hdmi","#76904a"],["home","#8a8a80"],["lgchannels","#e0463f"],["spotify","#1db954"],["hbo","#5b2ea6"],["max","#5b2ea6"]];
+const PALETA=["#c0583b","#3d7ea6","#8a6bb1","#4f8f6b","#c79a2b","#a8556e","#4a6fa5","#7f8f3a"];
+function color(id){
+  const k=id.toLowerCase();
+  for(const [f,c] of MARCAS)if(k.includes(f))return c;
+  let h=0;for(const ch of id)h=(h*31+ch.charCodeAt(0))>>>0;
+  return PALETA[h%PALETA.length];
+}
+const nombre=id=>(D.apps[id]&&D.apps[id].nombre)||id;
+function iniciales(n){const p=n.replace(/[^\p{L}\p{N} ]/gu,"").split(" ").filter(Boolean);return ((p[0]||"?")[0]+(p[1]?p[1][0]:"")).toUpperCase()}
+function icono(id){
+  const a=D.apps[id]||{},t=iniciales(nombre(id));
+  const img=a.icono?'<img src="/iconos/'+encodeURIComponent(a.icono)+'" alt="" onerror="this.remove()">':"";
+  return '<span class="ico" style="background:'+color(id)+'">'+img+(a.icono?"":esc(t))+'</span>';
+}
+
+function datos(d){
+  if(d>HOY)return null;
+  const x=D.dias[key(d)],o={};
+  if(x)for(const k in x.apps)o[k]=x.apps[k]/60;
+  return o;
+}
+
+function estadoTV(){
+  const tv=D.tv,p=$("pulso"),v=$("vivo");
+  if(tv.conectada){
+    p.className="pulso";
+    v.innerHTML=tv.app?"Ahora: <b>"+esc(tv.app)+"</b> · desde las "+hora(tv.desde):"TV encendida";
+  }else{
+    p.className="pulso off";
+    if(!tv.ultimo){v.textContent="Esperando la primera conexión con la TV…";return}
+    const u=new Date(tv.ultimo*1000),hoyMismo=key(u)==key(HOY);
+    v.innerHTML="TV apagada · última vez "+(hoyMismo?"hoy":u.getDate()+" de "+MES[u.getMonth()])+" a las "+hora(tv.ultimo);
+  }
+}
+
+function portada(){
+  const t=tot(datos(HOY)),ay=tot(datos(addDias(HOY,-1)));
+  $("saludo").textContent="Hoy, "+DIA[HOY.getDay()]+" "+HOY.getDate()+" de "+MES[HOY.getMonth()]+", llevan";
+  $("hTot").textContent=hm(t);
+  const hayAntes=D.primer_dia&&D.primer_dia<key(HOY);
+  const c=$("hCmp");
+  if(!hayAntes){c.className="cmp";c.textContent=D.primer_dia?"Primer día de registro":""}
+  else{
+    const dif=t-ay;
+    c.className="cmp"+(mins(dif)>0?" mas":"");
+    c.textContent=mins(dif)===0?"Igual que ayer":(dif>0?"▲ "+hm(dif)+" más que ayer":"▼ "+hm(-dif)+" menos que ayer");
+  }
+  let s=0;for(let i=0;i<7;i++)s+=tot(datos(addDias(HOY,-i)));
+  $("mProm").textContent=hm(s/7);
+  const por={},dias=[],n=new Date(vis.getFullYear(),vis.getMonth()+1,0).getDate();
+  for(let i=1;i<=n;i++){
+    const d=new Date(vis.getFullYear(),vis.getMonth(),i),o=datos(d);
+    if(!o||(D.primer_dia&&key(d)<D.primer_dia))continue;
+    dias.push([d,tot(o)]);for(const k in o)por[k]=(por[k]||0)+o[k];
+  }
+  const fav=Object.entries(por).sort((a,b)=>b[1]-a[1])[0];
+  $("mFav").textContent=fav?nombre(fav[0]):"—";$("mFavM").textContent=fav?hm(fav[1])+" en el mes":"sin datos";
+  const mx=dias.slice().sort((a,b)=>b[1]-a[1])[0];
+  $("mMax").textContent=mx&&mx[1]>0?DIA[mx[0].getDay()]+" "+mx[0].getDate():"—";$("mMaxM").textContent=mx&&mx[1]>0?hm(mx[1]):"sin datos";
+  $("mCero").textContent=dias.length?dias.filter(x=>x[1]===0&&key(x[0])!=key(HOY)).length:"—";
+}
+
+function calendario(){
+  $("mes").textContent=MES[vis.getMonth()]+" "+vis.getFullYear();
+  const c=$("dias");c.innerHTML="";
+  const off=(new Date(vis.getFullYear(),vis.getMonth(),1).getDay()+6)%7;
+  for(let i=0;i<off;i++)c.insertAdjacentHTML("beforeend",'<div class="d vacio"></div>');
+  const n=new Date(vis.getFullYear(),vis.getMonth()+1,0).getDate();let suma=0;
+  for(let i=1;i<=n;i++){
+    const d=new Date(vis.getFullYear(),vis.getMonth(),i),o=datos(d),t=tot(o);suma+=t;
+    const b=document.createElement("button");
+    b.className="d l"+nivel(t)+(key(d)==key(sel)?" sel":"")+(key(d)==key(HOY)?" hoy":"");
+    b.disabled=!o;
+    b.setAttribute("aria-label",i+" de "+MES[vis.getMonth()]+": "+(t?hm(t):"sin TV"));
+    b.innerHTML=i+(t?"<small>"+(t>=60?(t/60).toFixed(1).replace(".0","")+" h":mins(t)+" m")+"</small>":"");
+    b.onclick=()=>{sel=d;calendario();detalle(true)};
+    c.appendChild(b);
+  }
+  $("mesTot").textContent=hm(suma);
+}
+
+function franja(){
+  const eje=$("eje");eje.innerHTML="";
+  const x=D.dias[key(sel)];
+  if(!x)return;
+  x.segmentos.forEach(([id,a,b])=>{
+    eje.insertAdjacentHTML("beforeend",'<div class="seg" title="'+esc(nombre(id))+'" style="left:'+(a/1440*100)+'%;width:'+Math.max((b-a)/1440*100,.4)+'%;background:'+color(id)+'"></div>');
+  });
+}
+
+function detalle(animar){
+  const o=datos(sel)||{},t=tot(o);
+  $("fecha").textContent=DIA[sel.getDay()]+" "+sel.getDate()+" de "+MES[sel.getMonth()];
+  $("tot").textContent=hm(t);
+  franja();
+  const a=$("apps");a.innerHTML="";
+  const lista=Object.keys(o).sort((x,y)=>o[y]-o[x]);
+  if(!lista.length){
+    a.innerHTML=Object.keys(D.dias).length
+      ?'<div class="vacio-msg"><span>🌿</span>Este día la tele descansó.</div>'
+      :'<div class="vacio-msg"><span>⏳</span>Todavía no hay registros. Deja el script corriendo y vuelve en un rato.</div>';
+  }
+  const max=Math.max(1,...Object.values(o));
+  lista.forEach(k=>{
+    const w=o[k]/max*100;
+    a.insertAdjacentHTML("beforeend",'<div class="fila"><div class="app">'+icono(k)+'<span class="nom">'+esc(nombre(k))+'</span></div><div class="barra"><div data-w="'+w+'" style="background:'+color(k)+(animar?"":";width:"+w+"%")+'"></div></div><div class="m">'+hm(o[k])+'<span class="pct">'+Math.round(o[k]/t*100)+'%</span></div></div>');
+  });
+  if(animar)requestAnimationFrame(()=>requestAnimationFrame(()=>a.querySelectorAll("[data-w]").forEach(e=>e.style.width=e.dataset.w+"%")));
+  semana();
+}
+
+function semana(){
+  const s=$("sem");s.innerHTML="";let mx=1;const v=[],usadas=new Set();
+  for(let i=13;i>=0;i--){const d=addDias(HOY,-i),o=datos(d);v.push([d,o]);mx=Math.max(mx,tot(o));for(const k in o)usadas.add(k)}
+  v.forEach(([d,o])=>{
+    const b=document.createElement("button");b.className="col"+(key(d)==key(sel)?" sel":"");
+    b.setAttribute("aria-label",d.getDate()+" de "+MES[d.getMonth()]+": "+hm(tot(o)));
+    const t=tot(o);
+    let h='<div class="pila" title="'+hm(t)+'" style="height:'+Math.max(4,t/mx*112)+'px">';
+    Object.keys(o).forEach(k=>h+='<div style="background:'+color(k)+';height:'+(o[k]/t*100)+'%"></div>');
+    b.innerHTML=h+'</div><span><u>'+["D","L","M","M","J","V","S"][d.getDay()]+' </u>'+d.getDate()+'</span>';
+    b.onclick=()=>{sel=d;vis=new Date(d.getFullYear(),d.getMonth(),1);dibujar(true)};
+    s.appendChild(b);
+  });
+  $("ley").innerHTML=[...usadas].map(k=>'<span><i style="background:'+color(k)+'"></i>'+esc(nombre(k))+'</span>').join("");
+}
+
+function dibujar(animar){estadoTV();portada();calendario();detalle(animar)}
+
+async function cargar(primera){
+  try{
+    const r=await fetch("/api/datos",{cache:"no-store"});
+    D=await r.json();
+  }catch(e){
+    $("pulso").className="pulso off";$("vivo").textContent="Sin conexión con el servidor";
+    return;
+  }
+  document.title=D.titulo;$("titulo").textContent=D.titulo;
+  const n=new Date();HOY=new Date(n.getFullYear(),n.getMonth(),n.getDate());
+  if(primera){sel=new Date(HOY);vis=new Date(HOY.getFullYear(),HOY.getMonth(),1)}
+  dibujar(primera);
+}
+
+$("ant").onclick=()=>{vis=new Date(vis.getFullYear(),vis.getMonth()-1,1);calendario();portada()};
+$("sig").onclick=()=>{vis=new Date(vis.getFullYear(),vis.getMonth()+1,1);calendario();portada()};
+$("hoyb").onclick=()=>{sel=new Date(HOY);vis=new Date(HOY.getFullYear(),HOY.getMonth(),1);dibujar(true)};
+cargar(true);
+setInterval(()=>cargar(false),30000);
+</script>
+</body>
+</html>
