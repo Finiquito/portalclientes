@@ -2165,7 +2165,14 @@ $ctkL = P\PortalSession::csrf();
 [, $r] = $lp->correr('lineaFecha', [$idAjeno, (string) $nota1['id']], ['_csrf' => $ctkL, 'ocurrio_en' => '2021-01-01T00:00']);
 check($r === '/portal/contactos-ganados' && $nota1['ocurrio_en'] !== '2021-01-01 00:00:00', 'el cliente no puede tocar la línea de un contacto de otra empresa');
 [, $r] = $lp->correr('lineaFecha', [(string) $r1['id'], (string) $nota1['id']], ['_csrf' => $ctkL, 'ocurrio_en' => '2026-10-01T10:00']);
-check(array_values(array_filter($linea->eventos((string) $r1['id']), fn($e) => $e['id'] === $nota1['id']))[0]['ocurrio_en'] === '2026-10-01 10:00:00', 'el cliente corrige la fecha de un movimiento de su contacto');
+check(array_values(array_filter($linea->eventos((string) $r1['id']), fn($e) => $e['id'] === $nota1['id']))[0]['ocurrio_en'] === P\Zona::vistaARegistro('2026-10-01 10:00:00', P\HorarioHabil::zonaDe('CL')), 'el cliente corrige la fecha de un movimiento de su contacto (la escribe en su hora y se guarda con el reloj del servidor)');
+// Servidor y agencia en Francia, cliente en Chile: ve su hora, no la de París.
+$tzAntes = date_default_timezone_get();
+date_default_timezone_set('Europe/Paris');
+check(P\Zona::registroAVista('2026-10-20 09:22:00', 'America/Santiago') === '2026-10-20 04:22:00', 'una hora registrada por el servidor (París) se le muestra al cliente de Chile en hora de Chile');
+check(P\Zona::vistaARegistro('2026-10-20T04:22', 'America/Santiago') === '2026-10-20T09:22', 'y la que escribe en su hora se guarda con el reloj del servidor');
+check(P\Zona::registroAVista('2026-10-20 09:22:00', 'Europe/Paris') === '2026-10-20 09:22:00' && P\Zona::registroAVista('2026-10-20', 'America/Santiago') === '2026-10-20', 'misma zona, o sin hora: queda igual');
+date_default_timezone_set($tzAntes);
 [, $r] = $lp->correr('linea', [(string) $r1['id']], ['ocurrio_en' => '2026-10-01T10:00', 'texto' => 'Sin token']);
 check(count(array_filter($linea->eventos((string) $r1['id']), fn($e) => $e['texto'] === 'Sin token')) === 0, 'sin token de sesión no se agrega nada a la línea');
 [, $r] = $lp->correr('linea', [(string) $r1['id']], ['_csrf' => $ctkL, 'texto' => '', 'estado' => '']);

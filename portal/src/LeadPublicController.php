@@ -224,6 +224,7 @@ class LeadPublicController extends PortalPublicController
             $mcError = $svc->revisarMailchimp($l);
             $l = $svc->delCliente($id, (string) $c['cliente_id']) ?? $l;
         }
+        $zona = $this->zonaDe($c);
         $this->ctx->view('templates/public/lead.latte', $this->contexto($c, 'leads') + [
             'l'        => $l,
             'mc'       => LeadService::mc($l),
@@ -233,8 +234,16 @@ class LeadPublicController extends PortalPublicController
             'estados'  => LeadService::ESTADOS,
             'chips'    => LeadService::CHIPS,
             'origenes' => LeadService::ORIGENES,
-            'eventos'  => (new LeadLinea($this->pdo()))->eventos($id),
-            'ahora'    => (new \DateTimeImmutable())->format('Y-m-d\TH:i'),
+            // La línea de tiempo se muestra en la hora de quien la mira (no en la del servidor).
+            'eventos'  => array_map(function (array $e) use ($zona): array {
+                foreach (['ocurrio_en', 'registrado_en'] as $k) {
+                    if (isset($e[$k])) {
+                        $e[$k] = Zona::registroAVista((string) $e[$k], $zona);
+                    }
+                }
+                return $e;
+            }, (new LeadLinea($this->pdo()))->eventos($id)),
+            'ahora'    => (new \DateTimeImmutable('now', new \DateTimeZone($zona)))->format('Y-m-d\TH:i'),
         ]);
     }
 
@@ -252,11 +261,21 @@ class LeadPublicController extends PortalPublicController
     }
 
     /** Agrega a la línea de tiempo una nota, un cambio de estado, o las dos cosas, con la fecha en que ocurrió. */
+    /** Zona horaria (IANA) de esta persona: la suya si vive en otro país que su empresa, si no la de su empresa. */
+    private function zonaDe(array $c): string
+    {
+        return HorarioHabil::zonaDe(Zona::paisPersona($this->pdo(), (string) $c['cliente_id'], (string) $c['id']));
+    }
+
     public function linea(string $id): void
     {
         $c = $this->requerirAcceso();
         if (($l = $this->leadPropio($c, $id)) === null) {
             return;
+        }
+        // La hora que escribió está en su zona: se guarda con el reloj del servidor, como todo lo demás.
+        if (trim((string) ($_POST['ocurrio_en'] ?? '')) !== '') {
+            $_POST['ocurrio_en'] = Zona::vistaARegistro((string) $_POST['ocurrio_en'], $this->zonaDe($c));
         }
         $error = (new LeadLinea($this->pdo()))->agregar($l, $_POST, (string) $c['nombre'], 'cliente');
         PortalSession::flash($error === null ? 'ok' : 'error', $error ?? 'Guardado en la línea de tiempo.');
@@ -270,7 +289,7 @@ class LeadPublicController extends PortalPublicController
         if (($l = $this->leadPropio($c, $id)) === null) {
             return;
         }
-        $error = (new LeadLinea($this->pdo()))->cambiarFecha($l, $eid, (string) ($_POST['ocurrio_en'] ?? ''));
+        $error = (new LeadLinea($this->pdo()))->cambiarFecha($l, $eid, Zona::vistaARegistro((string) ($_POST['ocurrio_en'] ?? ''), $this->zonaDe($c)));
         PortalSession::flash($error === null ? 'ok' : 'error', $error ?? 'Fecha corregida.');
         $this->redirectTo('portal/contactos-ganados/' . $id);
     }

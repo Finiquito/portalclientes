@@ -74,6 +74,10 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### v0.44.8: el cliente ve su hora en la línea de tiempo de Contactos ganados
+- Si la agencia y el servidor están en otro país (por ejemplo Francia) y el cliente en Chile, la línea de tiempo de cada contacto mostraba las horas de la agencia. Ahora el cliente las ve en su hora (la de su empresa o, si vive en otro país, la suya), y la hora que escribe al agregar una nota o corregir una fecha se entiende en su hora. El equipo sigue viendo la hora de la agencia.
+- Las reuniones ya se mostraban en la hora del cliente; las demás fechas relativas («hace 3 h») no dependen de la zona.
+
 ### v0.44.7: corrige el error al abrir Ajustes
 - Ajustes daba error porque la hora del servidor se pasaba con el nombre `relojes`, que el panel del equipo ya usa para «Hora de tus clientes» y que le ganaba. Ahora se llama distinto, y hay una prueba que dibuja Ajustes con los avisos de plantilla convertidos en error, como el TypeDock real.
 
