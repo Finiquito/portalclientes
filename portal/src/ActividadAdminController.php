@@ -112,6 +112,12 @@ class ActividadAdminController
             })(),
             'correo'        => $this->datosCorreo(),
             'paises'        => HorarioHabil::PAISES,
+            'relojes'       => [
+                'agencia' => (new \DateTimeImmutable('now', new \DateTimeZone(Zona::agencia())))->format('H:i'),
+                'zona'    => Zona::agencia(),
+                'servidor' => (new \DateTimeImmutable('now'))->format('H:i'),
+                'zonaServidor' => date_default_timezone_get(),
+            ],
             'iniMax'        => (int) round(min(
                 ArchivoService::iniBytes((string) ini_get('upload_max_filesize')) ?: PHP_INT_MAX,
                 ArchivoService::iniBytes((string) ini_get('post_max_size')) ?: PHP_INT_MAX

@@ -74,6 +74,10 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### v0.44.6: ver qué hora ve cada persona
+- **Contactos**: nueva columna **Hora que ve**, con el país efectivo de cada persona y si es el de su empresa o uno propio (que pesa más). Sirve para encontrar a quien ve otra hora que su empresa.
+- **Ajustes → País de la agencia**: muestra la hora actual de la agencia y la del servidor de PHP, con su zona; avisa si son zonas distintas (lo que se registra solo —llegada de contactos, comentarios— queda en la hora del servidor).
+
 ### v0.44.5: Contactos ganados del cliente: orden a la vista y «Invertir orden»
 - Arriba de la lista (escritorio y celular) hay un selector **Ordenar por**: cuándo llegó, nombre, estado o próximo paso, más un botón **Invertir orden** que da vuelta la columna elegida. Los encabezados de la tabla siguen ordenando con un clic.
 - «Próximo paso» pone arriba lo más urgente (lo vencido primero, en rojo); lo que no tiene fecha, y lo ya ganado o perdido, va al final.
