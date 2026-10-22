@@ -74,6 +74,9 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### v0.44.7: corrige el error al abrir Ajustes
+- Ajustes daba error porque la hora del servidor se pasaba con el nombre `relojes`, que el panel del equipo ya usa para «Hora de tus clientes» y que le ganaba. Ahora se llama distinto, y hay una prueba que dibuja Ajustes con los avisos de plantilla convertidos en error, como el TypeDock real.
+
 ### v0.44.6: ver qué hora ve cada persona
 - **Contactos**: nueva columna **Hora que ve**, con el país efectivo de cada persona y si es el de su empresa o uno propio (que pesa más). Sirve para encontrar a quien ve otra hora que su empresa.
 - **Ajustes → País de la agencia**: muestra la hora actual de la agencia y la del servidor de PHP, con su zona; avisa si son zonas distintas (lo que se registra solo —llegada de contactos, comentarios— queda en la hora del servidor).

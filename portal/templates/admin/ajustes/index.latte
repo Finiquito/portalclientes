@@ -60,7 +60,7 @@
                 <select id="f-pais" name="pais_agencia" class="form-input" style="max-width:22rem">
                     {foreach $paises as $cod => $p}<option value="{$cod}" {if $cfg['pais_agencia'] === $cod}selected{/if}>{\TypeDock\Plugin\Portal\Fmt::bandera($cod)} {$p[0]}</option>{/foreach}
                 </select>
-                <p class="pa-fila-ayuda" style="margin-top:.5rem">Ahora son <strong>{$relojes['agencia']}</strong> en la hora de la agencia ({$relojes['zona']}). El servidor de PHP está en <strong>{$relojes['zonaServidor']}</strong> y marca <strong>{$relojes['servidor']}</strong>.{if $relojes['zona'] !== $relojes['zonaServidor']} Son zonas distintas: lo que se registra solo (llegada de contactos, comentarios) queda en la hora del servidor.{/if}</p>
+                <p class="pa-fila-ayuda" style="margin-top:.5rem">Ahora son <strong>{$horaServidorInfo['agencia']}</strong> en la hora de la agencia ({$horaServidorInfo['zona']}). El servidor de PHP está en <strong>{$horaServidorInfo['zonaServidor']}</strong> y marca <strong>{$horaServidorInfo['servidor']}</strong>.{if $horaServidorInfo['zona'] !== $horaServidorInfo['zonaServidor']} Son zonas distintas: lo que se registra solo (llegada de contactos, comentarios) queda en la hora del servidor.{/if}</p>
             </div>
         </div>
 

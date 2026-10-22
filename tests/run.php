@@ -1348,6 +1348,18 @@ $_SESSION[P\EquipoController::SESION] = $coord;
 (new P\AjustesService($pdo))->set('global', 'portal', 'color_agencia', '#2448b0');
 [$html, $r] = $g->hacer('GET', $Ac, 'ajustesForm', [], null, true);
 check($r === null && str_contains($html, 'action="/equipo/agencia"') && str_contains($html, 'value="#2448b0"'), 'Coordinación abre los ajustes con el color guardado');
+// El TypeDock real convierte los avisos de Latte (variable o índice que no existe) en error: aquí también.
+set_error_handler(static function (int $n, string $m, string $f, int $l): bool { throw new ErrorException($m, 0, $n, $f, $l); });
+try {
+    [$html2] = $g->hacer('GET', $Ac, 'ajustesForm', [], null, true);
+    $sinAvisos = true;
+} catch (ErrorException $e) {
+    $sinAvisos = false;
+    echo "\n  (" . $e->getMessage() . ")\n";
+} finally {
+    restore_error_handler();
+}
+check($sinAvisos && str_contains($html2, 'Ahora son'), 'los ajustes se dibujan sin avisos de plantilla (dentro del panel, donde «relojes» ya existe) y muestran la hora del servidor');
 
 // Carga del equipo en Inicio.
 [$html] = $panel($g, 'inicio');

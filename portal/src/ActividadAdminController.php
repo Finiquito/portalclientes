@@ -112,7 +112,7 @@ class ActividadAdminController
             })(),
             'correo'        => $this->datosCorreo(),
             'paises'        => HorarioHabil::PAISES,
-            'relojes'       => [
+            'horaServidorInfo' => [
                 'agencia' => (new \DateTimeImmutable('now', new \DateTimeZone(Zona::agencia())))->format('H:i'),
                 'zona'    => Zona::agencia(),
                 'servidor' => (new \DateTimeImmutable('now'))->format('H:i'),
