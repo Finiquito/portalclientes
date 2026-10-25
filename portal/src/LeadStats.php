@@ -76,8 +76,8 @@ final class LeadStats
             if (isset($primera[$a])) {
                 $claves[] = $a;
             }
-            if ((LeadLinea::ORDEN[$a] ?? 0) >= 1) {
-                $claves[] = 'contactado';   // calificado y ganado también pasaron por contactado
+            if ((LeadLinea::ORDEN[$a] ?? 0) >= 1 || $a === 'perdido') {
+                $claves[] = 'contactado';   // calificado y ganado también pasaron por contactado; a quien se marca perdido ya se le habló
             }
             foreach (array_unique($claves) as $k) {
                 if (!isset($primera[$k][$l]) || $d < $primera[$k][$l]) {
@@ -133,10 +133,11 @@ final class LeadStats
     {
         $max = [];
         foreach ($leads as $l) {
-            $max[(string) $l['id']] = LeadLinea::ORDEN[(string) $l['estado']] ?? 0;
+            // «Perdido» no está en la escala, pero no se pierde a alguien con quien nunca se habló: cuenta como contactado.
+            $max[(string) $l['id']] = LeadLinea::ORDEN[(string) $l['estado']] ?? ((string) $l['estado'] === 'perdido' ? 1 : 0);
         }
         foreach ($eventos as $e) {
-            $r = LeadLinea::ORDEN[(string) ($e['a_estado'] ?? '')] ?? null;
+            $r = LeadLinea::ORDEN[(string) ($e['a_estado'] ?? '')] ?? ((string) ($e['a_estado'] ?? '') === 'perdido' ? 1 : null);
             $id = (string) $e['lead_id'];
             if ($r !== null && isset($max[$id]) && $r > $max[$id]) {
                 $max[$id] = $r;

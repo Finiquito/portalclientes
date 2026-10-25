@@ -74,6 +74,10 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### v0.44.9: «Perdido» cuenta como contactado en el gráfico y el embudo
+- Un contacto marcado «Perdido» sin haber pasado por «Contactado» no se contaba como contactado: el gráfico mostraba 39 de 41 aunque el cliente los había contactado a todos. Ahora cuenta como contactado desde el día en que se marcó perdido (no se pierde a alguien con quien nunca se habló). Los «Nuevo» siguen sin contar.
+- Los tiempos promedio entre etapas siguen usando solo los movimientos reales de «Contactado».
+
 ### v0.44.8: el cliente ve su hora en la línea de tiempo de Contactos ganados
 - Si la agencia y el servidor están en otro país (por ejemplo Francia) y el cliente en Chile, la línea de tiempo de cada contacto mostraba las horas de la agencia. Ahora el cliente las ve en su hora (la de su empresa o, si vive en otro país, la suya), y la hora que escribe al agregar una nota o corregir una fecha se entiende en su hora. El equipo sigue viendo la hora de la agencia.
 - Las reuniones ya se mostraban en la hora del cliente; las demás fechas relativas («hace 3 h») no dependen de la zona.

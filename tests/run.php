@@ -2203,11 +2203,11 @@ $evT = [
     ['lead_id' => 'c', 'tipo' => 'estado', 'a_estado' => 'perdido', 'ocurrio_en' => '2026-10-19 10:00:00'],
 ];
 $acT = P\LeadStats::evolucion($lsT, $evT, null, $hoyT);
-check($acT['paso'] === 'dia' && count($acT['etiquetas']) === 20 && $acT['llegaron'][0] === 1 && end($acT['llegaron']) === 4 && end($acT['contactados']) === 2, 'el volumen acumula, día a día, cuántos llegaron y cuántos fueron contactados');
+check($acT['paso'] === 'dia' && count($acT['etiquetas']) === 20 && $acT['llegaron'][0] === 1 && end($acT['llegaron']) === 4 && end($acT['contactados']) === 3, 'el volumen acumula, día a día, cuántos llegaron y cuántos fueron contactados (a quien se marca perdido también se le habló)');
 check($acT['contactados'][1] === 0 && $acT['contactados'][2] === 1 && $acT['contactados'][5] === 2, 'contactados cuenta desde el día en que cada uno llegó a esa etapa (y no baja cuando avanzan)');
 check($acT['etiquetas'][0] === '1 oct' && end($acT['etiquetas']) === '20 oct', 'las etiquetas del gráfico van en español');
 check($acT['hitos']['calificado'][7] === 1 && $acT['hitos']['ganado'][9] === 1 && $acT['hitos']['perdido'][18] === 1 && array_sum($acT['hitos']['ganado']) === 1, 'los hitos caen en el día en que ocurrieron, uno por marca');
-check($acT['totales'] === ['llegaron' => 4, 'contactados' => 2, 'calificado' => 1, 'ganado' => 1, 'perdido' => 1], 'el resumen suma lo que muestran las marcas');
+check($acT['totales'] === ['llegaron' => 4, 'contactados' => 3, 'calificado' => 1, 'ganado' => 1, 'perdido' => 1], 'el resumen suma lo que muestran las marcas');
 $evVarios = array_merge($evT, [['lead_id' => 'b', 'tipo' => 'estado', 'a_estado' => 'ganado', 'ocurrio_en' => '2026-10-10 15:00:00']]);
 $acV = P\LeadStats::evolucion($lsT, $evVarios, null, $hoyT);
 check($acV['hitos']['ganado'][9] === 2, 'dos ganados el mismo día se agrupan en una marca con su número');
@@ -2217,12 +2217,13 @@ $acD = P\LeadStats::evolucion($lsT, $evT, '2026-10-10', $hoyT);
 check($acD['llegaron'][0] === 2 && count($acD['etiquetas']) === 11 && array_sum($acD['hitos']['calificado']) === 0 && $acD['hitos']['ganado'][0] === 1, 'con un período, el volumen parte de lo que ya había llegado y los hitos son sólo los de ese período');
 $gr = P\LeadStats::datosGrafico($acT);
 check(count($gr['volumen']) === 2 && count($gr['hitos']) === 3 && $gr['hitos'][1]['id'] === 'ganado' && $gr['etiquetas'] === $acT['etiquetas'] && $gr['totales']['ganado'] === 1, 'el gráfico recibe dos líneas de volumen y tres carriles de hitos');
-check(array_sum($acT['llegaron_dia']) === 4 && array_sum($acT['contactados_dia']) === 2 && $acT['contactados_dia'][2] === 1 && $acT['contactados_dia'][3] === 0 && min($acT['llegaron_dia']) >= 0, 'la vista «Por día» cuenta solo lo de cada día, sin arrastrar lo anterior');
+check(array_sum($acT['llegaron_dia']) === 4 && array_sum($acT['contactados_dia']) === 3 && $acT['contactados_dia'][2] === 1 && $acT['contactados_dia'][3] === 0 && min($acT['llegaron_dia']) >= 0, 'la vista «Por día» cuenta solo lo de cada día, sin arrastrar lo anterior');
 check(array_sum($acS['llegaron_dia']) === 4 && count($gr['volumen_dia']) === 2 && $gr['volumen_dia'][1]['datos'] === $acT['contactados_dia'], 'el gráfico recibe también las series por día');
 $emb = P\LeadStats::embudo($lsT, $evT);
-check($emb['llegaron'] === 4 && $emb['contactados'] === 2 && $emb['calificados'] === 1 && $emb['ganados'] === 1 && $emb['perdidos'] === 1 && $emb['pasos'] === [50, 50, 100], 'el embudo cuenta cuántos llegaron a cada etapa y el % entre una y otra');
+check($emb['llegaron'] === 4 && $emb['contactados'] === 3 && $emb['calificados'] === 1 && $emb['ganados'] === 1 && $emb['perdidos'] === 1 && $emb['pasos'] === [75, 33, 100], 'el embudo cuenta cuántos llegaron a cada etapa y el % entre una y otra');
 $tiT = P\LeadStats::tiempos($lsT, $evT);
 check($tiT['tramos'][0]['dias'] === 1.5 && $tiT['tramos'][1]['dias'] === 5.0 && $tiT['tramos'][2]['dias'] === 2.0 && $tiT['a_ganado_pct'] === 25.0, 'los tiempos promedio entre etapas usan las fechas de cada movimiento');
+check($acT['contactados'][18] === 3 && $acT['contactados'][17] === 2, 'un contacto marcado perdido sin pasar por «Contactado» cuenta como contactado desde ese día');
 check(P\LeadStats::conGrafico($lsT, $hoyT) === true && P\LeadStats::conGrafico([['created_at' => '2026-10-10 10:00:00']], $hoyT) === false && P\LeadStats::conGrafico([], $hoyT) === false, 'el gráfico del Inicio pide al menos 14 días con contactos');
 check(P\LeadStats::nuevosSemana($lsT, $hoyT) === 2, 'cuenta los contactos de los últimos 7 días');
 
