@@ -1,0 +1,32 @@
+{* Resumen semanal de contactos ganados: barras de «llegaron por semana» y tabla «esta semana / semana pasada / toda la campaña».
+   Parámetros: $cg (LeadStats::semanal), $mx (máximo de llegadas por semana, para las alturas), $fmt. *}
+{var $nSem = count($cg['semanas'])}
+<div class="pp-contactos">
+    <div>
+        <p class="pp-eti" style="margin:0 0 .4rem">Llegaron por semana</p>
+        <div class="pp-semanas" role="img" aria-label="Contactos que llegaron en cada una de las últimas {$nSem} semanas">
+            {foreach $cg['semanas'] as $i => $w}
+                <div class="{$i === $nSem - 1 ? 'ahora' : ''}"><span>{$w['llegaron']}</span><b><i style="height:{round($w['llegaron'] * 100 / $mx)}%"></i></b></div>
+            {/foreach}
+        </div>
+        <div class="pp-semanas-et" aria-hidden="true">
+            {var $mesPrevio = ''}
+            {foreach $cg['semanas'] as $i => $w}
+                {var $mes = $fmt->mesCorto($w['desde'])}
+                <span style="{$i === $nSem - 1 ? 'font-weight:800;color:var(--ink)' : ''}">{if $i === $nSem - 1}esta{else}{$fmt->dia($w['desde'])}{if $mes !== $mesPrevio} {$mes}{/if}{/if}</span>
+                {var $mesPrevio = $mes}
+            {/foreach}
+        </div>
+    </div>
+    <div>
+        <p class="pp-eti" style="margin:0 0 .3rem">Semana a semana</p>
+        <table class="pp-tabla">
+            <thead><tr><th></th><th>Llegaron</th><th class="c">◆ Calif.</th><th class="g">● Ganados</th><th class="p">● Perdidos</th></tr></thead>
+            <tbody>
+                <tr><td>Esta semana</td><td>{$cg['esta']['llegaron']}</td><td>{$cg['esta']['calificado']}</td><td>{$cg['esta']['ganado']}</td><td>{$cg['esta']['perdido']}</td></tr>
+                <tr><td style="color:var(--muted)">Semana pasada</td><td>{$cg['pasada']['llegaron']}</td><td>{$cg['pasada']['calificado']}</td><td>{$cg['pasada']['ganado']}</td><td>{$cg['pasada']['perdido']}</td></tr>
+                <tr class="total"><td>Toda la campaña</td><td>{$cg['total']['llegaron']}</td><td>{$cg['total']['calificado']}</td><td>{$cg['total']['ganado']}</td><td>{$cg['total']['perdido']}</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>

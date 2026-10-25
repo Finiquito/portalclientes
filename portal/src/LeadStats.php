@@ -63,28 +63,7 @@ final class LeadStats
             $etiquetas[] = self::etiqueta(new \DateTimeImmutable($f));
         }
 
-        // Primera vez que cada contacto llegó a cada estado.
-        $primera = ['contactado' => [], 'calificado' => [], 'ganado' => [], 'perdido' => []];
-        foreach ($eventos as $e) {
-            $a = (string) ($e['a_estado'] ?? '');
-            if ((string) $e['tipo'] !== 'estado') {
-                continue;
-            }
-            $d = substr((string) $e['ocurrio_en'], 0, 10);
-            $l = (string) $e['lead_id'];
-            $claves = [];
-            if (isset($primera[$a])) {
-                $claves[] = $a;
-            }
-            if ((LeadLinea::ORDEN[$a] ?? 0) >= 1 || $a === 'perdido') {
-                $claves[] = 'contactado';   // calificado y ganado también pasaron por contactado; a quien se marca perdido ya se le habló
-            }
-            foreach (array_unique($claves) as $k) {
-                if (!isset($primera[$k][$l]) || $d < $primera[$k][$l]) {
-                    $primera[$k][$l] = $d;
-                }
-            }
-        }
+        $primera = self::primeras($eventos);
         $cuenta = static fn(array $fechas, string $hasta): int => count(array_filter($fechas, static fn(string $d): bool => $d <= $hasta));
         $out = $vacio;
         $out['etiquetas'] = $etiquetas;
@@ -121,6 +100,83 @@ final class LeadStats
             $out['totales'][$k] = array_sum($cont);
         }
         return $out;
+    }
+
+    /**
+     * Primera vez (fecha Y-m-d) que cada contacto llegó a cada etapa: lead_id => fecha, por etapa.
+     * Calificado y ganado también pasaron por contactado; a quien se marca perdido ya se le habló.
+     *
+     * @param array<int, array<string, mixed>> $eventos de LeadLinea::deEstado()
+     * @return array{contactado: array<string, string>, calificado: array<string, string>, ganado: array<string, string>, perdido: array<string, string>}
+     */
+    public static function primeras(array $eventos): array
+    {
+        $primera = ['contactado' => [], 'calificado' => [], 'ganado' => [], 'perdido' => []];
+        foreach ($eventos as $e) {
+            $a = (string) ($e['a_estado'] ?? '');
+            if ((string) $e['tipo'] !== 'estado') {
+                continue;
+            }
+            $d = substr((string) $e['ocurrio_en'], 0, 10);
+            $l = (string) $e['lead_id'];
+            $claves = [];
+            if (isset($primera[$a])) {
+                $claves[] = $a;
+            }
+            if ((LeadLinea::ORDEN[$a] ?? 0) >= 1 || $a === 'perdido') {
+                $claves[] = 'contactado';
+            }
+            foreach (array_unique($claves) as $k) {
+                if (!isset($primera[$k][$l]) || $d < $primera[$k][$l]) {
+                    $primera[$k][$l] = $d;
+                }
+            }
+        }
+        return $primera;
+    }
+
+    /**
+     * Resumen por semana (de lunes a domingo) para el panel del proyecto: cuántos llegaron y cuántos se calificaron,
+     * ganaron o perdieron cada semana, más el total de toda la campaña.
+     *
+     * @param array<int, array<string, mixed>> $leads
+     * @param array<int, array<string, mixed>> $eventos de LeadLinea::deEstado()
+     * @return array{semanas: array<int, array{desde: string, llegaron: int, calificado: int, ganado: int, perdido: int}>, esta: array<string, int|string>, pasada: array<string, int|string>, total: array{llegaron: int, contactados: int, calificado: int, ganado: int, perdido: int}}
+     */
+    public static function semanal(array $leads, array $eventos, ?\DateTimeImmutable $hoy = null, int $semanas = 8): array
+    {
+        $hoy ??= new \DateTimeImmutable('today');
+        $lunes = $hoy->modify('monday this week');
+        $primera = self::primeras($eventos);
+        $ids = array_flip(array_map(fn(array $l): string => (string) $l['id'], $leads));
+        $cuentaSemana = static function (array $fechas, string $desde, string $hasta): int {
+            return count(array_filter($fechas, static fn(string $d): bool => $d >= $desde && $d <= $hasta));
+        };
+        $llegadas = array_map(fn(array $l): string => substr((string) $l['created_at'], 0, 10), $leads);
+        $out = [];
+        for ($i = $semanas - 1; $i >= 0; $i--) {
+            $ini = $lunes->modify('-' . ($i * 7) . ' days');
+            $d = $ini->format('Y-m-d');
+            $h = $ini->modify('+6 days')->format('Y-m-d');
+            $fila = ['desde' => $d, 'llegaron' => $cuentaSemana($llegadas, $d, $h)];
+            foreach (['calificado', 'ganado', 'perdido'] as $k) {
+                $fila[$k] = $cuentaSemana(array_values(array_intersect_key($primera[$k], $ids)), $d, $h);
+            }
+            $out[] = $fila;
+        }
+        $n = count($out);
+        return [
+            'semanas' => $out,
+            'esta'    => $out[$n - 1],
+            'pasada'  => $n > 1 ? $out[$n - 2] : ['desde' => '', 'llegaron' => 0, 'calificado' => 0, 'ganado' => 0, 'perdido' => 0],
+            'total'   => [
+                'llegaron'    => count($leads),
+                'contactados' => count(array_intersect_key($primera['contactado'], $ids)),
+                'calificado'  => count(array_intersect_key($primera['calificado'], $ids)),
+                'ganado'      => count(array_intersect_key($primera['ganado'], $ids)),
+                'perdido'     => count(array_intersect_key($primera['perdido'], $ids)),
+            ],
+        ];
     }
 
     /**

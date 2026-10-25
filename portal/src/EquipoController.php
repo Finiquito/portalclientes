@@ -1020,7 +1020,9 @@ class EquipoController
         $entregas = array_values(array_filter($entregas, fn($e) => $e['proyecto_id'] === $id));
         $reuniones = $this->fetchAll('SELECT * FROM portal_reuniones WHERE proyecto_id = ? ORDER BY fecha DESC LIMIT 8', [$id]);
 
+        $sinArchivadas = array_values(array_filter($tareas, fn(array $t): bool => (int) ($t['archivada'] ?? 0) === 0));
         $this->view('proyecto.latte', $this->contexto($u, 'proyectos', [
+            'panel'     => (new ProyectoPanel($this->pdo()))->paraEquipo($pr, $sinArchivadas),
             'proyecto'  => $pr,
             'quien'     => $acc->gestionaCliente((string) $pr['cliente_id']) ? $this->quien((string) $pr['cliente_id'], $id) : null,
             'marcaCli'  => $this->marcasClientes([(string) $pr['cliente_id']])[(string) $pr['cliente_id']],

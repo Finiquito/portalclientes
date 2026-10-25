@@ -554,6 +554,12 @@ class PortalPublicController
         }
 
         $meTocan    = array_values(array_filter($tareas, fn($t) => $this->turno($t) === 'cliente'));
+        // «Tus proyectos»: el avance de cada uno, con lo que le toca a esta persona.
+        $panel = new ProyectoPanel($this->pdo());
+        $marcadas = array_map(fn(array $t): array => $t + ['le_toca' => $this->turno($t) === 'cliente'], $tareas);
+        $tusProyectos = $panel->paraCliente($proyectos, $fases, $marcadas, $clienteId, (string) $c['id']);
+        $conLeads = array_values(array_filter($proyectos, fn(array $p): bool => (int) ($p['con_leads'] ?? 0) === 1));
+        $contactos = $conLeads !== [] && $this->veLeads($c) ? $panel->contactos($clienteId, array_column($conLeads, 'id')) : null;
         $enRevision = array_values(array_filter($tareas, fn($t) => $t['responsable_tipo'] === 'cliente' && $this->turno($t) === 'equipo'));
 
         $hoy = (new \DateTimeImmutable())->format('Y-m-d');
@@ -580,6 +586,8 @@ class PortalPublicController
             'proyectos'   => $proyectos,
             'seleccion'   => $sel,
             'progreso'    => $progreso,
+            'tusProyectos' => $tusProyectos,
+            'contactosSemanal' => $contactos === null ? null : ['datos' => $contactos, 'nombre' => count($conLeads) === 1 ? (string) $conLeads[0]['nombre'] : ''],
             'meTocan'     => $meTocan,
             'enRevision'  => $enRevision,
             'nArchivos'   => $nArchivos,

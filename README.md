@@ -74,6 +74,12 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### v0.45.0: panel de control del proyecto y «Tus proyectos»
+- **Panel del equipo (página de un proyecto):** cabecera con semáforo (En plazo / En riesgo / Atrasado / Completo) y fechas; cuatro números (avance, esperando al cliente, tareas vencidas, próxima reunión); fases como barras con la marca de «hoy»; **Contenidos** del proyecto con una barra por estado (borrador, esperan al cliente, cambios pedidos, aprobadas) y lo que se publica esta semana; **Requiere atención** (tareas vencidas, revisiones sin respuesta desde hace 3 días o más, solicitudes por atender); turno del equipo y del cliente; **Reuniones** con la próxima, la última y cuántas tareas salieron de ella para el equipo y para el cliente; ritmo del equipo (tareas cerradas por semana y proyección); solicitudes y archivos recientes; actividad.
+- **Contactos ganados en el panel:** si el proyecto los tiene activos, un resumen con las llegadas por semana y una tabla «esta semana / semana pasada / toda la campaña» (llegaron, calificados, ganados, perdidos).
+- **Portal del cliente (Inicio):** «Avance del proyecto» con pestañas se reemplaza por **«Tus proyectos»**: una tarjeta por proyecto con su avance, la etapa en curso, lo que le toca a la persona (tareas y piezas para revisar), la entrega estimada y la próxima reunión. Donde más le toca actuar va primero, en el bloque destacado. Si ve contactos ganados, una tarjeta con el mismo resumen semanal. El cliente no ve el semáforo ni el ritmo del equipo.
+- Estilos nuevos en `assets/panel.css`; los bloques oscuros usan `.bloque-azul` (en modo oscuro se invierten).
+
 ### v0.44.9: «Perdido» cuenta como contactado en el gráfico y el embudo
 - Un contacto marcado «Perdido» sin haber pasado por «Contactado» no se contaba como contactado: el gráfico mostraba 39 de 41 aunque el cliente los había contactado a todos. Ahora cuenta como contactado desde el día en que se marcó perdido (no se pierde a alguien con quien nunca se habló). Los «Nuevo» siguen sin contar.
 - Los tiempos promedio entre etapas siguen usando solo los movimientos reales de «Contactado».

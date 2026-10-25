@@ -2224,6 +2224,9 @@ check($emb['llegaron'] === 4 && $emb['contactados'] === 3 && $emb['calificados']
 $tiT = P\LeadStats::tiempos($lsT, $evT);
 check($tiT['tramos'][0]['dias'] === 1.5 && $tiT['tramos'][1]['dias'] === 5.0 && $tiT['tramos'][2]['dias'] === 2.0 && $tiT['a_ganado_pct'] === 25.0, 'los tiempos promedio entre etapas usan las fechas de cada movimiento');
 check($acT['contactados'][18] === 3 && $acT['contactados'][17] === 2, 'un contacto marcado perdido sin pasar por «Contactado» cuenta como contactado desde ese día');
+$sem = P\LeadStats::semanal($lsT, $evT, $hoyT);
+check(count($sem['semanas']) === 8 && $sem['semanas'][7]['desde'] === '2026-10-19' && $sem['esta']['perdido'] === 1 && $sem['total'] === ['llegaron' => 4, 'contactados' => 3, 'calificado' => 1, 'ganado' => 1, 'perdido' => 1], 'el resumen semanal parte en lunes y trae el total de toda la campaña (con las mismas reglas del gráfico)');
+check(array_sum(array_column($sem['semanas'], 'ganado')) === 1 && array_sum(array_column($sem['semanas'], 'llegaron')) === 4 && $sem['pasada']['desde'] === '2026-10-12', 'cada contacto y cada hito cae en una sola semana');
 check(P\LeadStats::conGrafico($lsT, $hoyT) === true && P\LeadStats::conGrafico([['created_at' => '2026-10-10 10:00:00']], $hoyT) === false && P\LeadStats::conGrafico([], $hoyT) === false, 'el gráfico del Inicio pide al menos 14 días con contactos');
 check(P\LeadStats::nuevosSemana($lsT, $hoyT) === 2, 'cuenta los contactos de los últimos 7 días');
 
@@ -3108,6 +3111,29 @@ check(str_contains($html, 'Hola, equipo') && str_contains($html, 'ing-logo') && 
 $_SESSION[P\EquipoController::SESION] = $sesEq;
 
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+seccion('Panel de control del proyecto');
+
+$pp = new P\ProyectoPanel($pdo, new DateTimeImmutable('2026-10-20'));
+$progX = ['pct' => 40, 'hechas' => 2, 'total' => 5, 'completo' => false, 'fases' => [
+    ['id' => 'a', 'nombre' => 'Brief', 'estado' => 'hecha', 'tareas' => 2, 'hechas' => 2, 'inicio' => '2026-10-01', 'fin' => '2026-10-09'],
+    ['id' => 'b', 'nombre' => 'Producción', 'estado' => 'actual', 'tareas' => 3, 'hechas' => 1, 'inicio' => '2026-10-10', 'fin' => '2026-10-30'],
+    ['id' => 'c', 'nombre' => 'Entrega', 'estado' => 'pendiente', 'tareas' => 0, 'hechas' => 0, 'inicio' => '2026-11-01', 'fin' => '2026-11-15'],
+]];
+check($pp->salud($progX, 0, 0)['nivel'] === 'plazo' && $pp->salud($progX, 2, 0)['nivel'] === 'riesgo' && $pp->salud($progX, 0, 1)['nivel'] === 'riesgo', 'semáforo: en plazo, y en riesgo con tareas vencidas o revisiones sin respuesta');
+$progAtr = $progX;
+$progAtr['fases'][1]['fin'] = '2026-10-15';
+check($pp->salud($progAtr, 0, 0)['nivel'] === 'atrasado' && str_contains($pp->salud($progAtr, 0, 0)['motivo'], 'Producción'), 'semáforo: atrasado cuando una fase ya debía haber terminado');
+check($pp->salud(['completo' => true, 'fases' => []], 3, 3)['nivel'] === 'completo', 'semáforo: un proyecto completo no está en riesgo');
+check($pp->fechas($progX) === ['inicio' => '2026-10-01', 'fin' => '2026-11-15', 'quedan' => 26], 'fechas del proyecto: inicio, entrega estimada y días que faltan');
+$bar = $pp->barras($progX);
+check($bar[0]['pct'] === 100 && $bar[1]['pct'] === 33 && $bar[2]['pct'] === 0 && $bar[1]['marca'] === 50 && $bar[0]['marca'] === null, 'barras por fase: avance de cada una y la marca de hoy dentro de la fase en curso');
+$vacio = $pp->contenidos('no-existe');
+check($vacio['total'] === 0 && $vacio['semana'] === [] && $vacio['sin_respuesta'] === [], 'un proyecto sin contenidos no rompe el panel');
+$ri = $pp->ritmo('no-existe');
+check(count($ri['semanas']) === 6 && $ri['promedio'] === 0.0 && $ri['proyeccion'] === null, 'ritmo sin tareas: ceros y sin proyección');
+check($pp->reuniones('no-existe')['proxima'] === null && $pp->reuniones('no-existe')['tareas'] === null, 'reuniones sin datos: sin próxima ni última');
+
 echo "\n\n" . $GLOBALS['ok'] . ' comprobaciones OK, ' . count($GLOBALS['fallas']) . " fallas ({$motor}).\n";
 foreach ($GLOBALS['fallas'] as $f) {
     echo "  ✗ {$f}\n";

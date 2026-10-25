@@ -148,34 +148,55 @@
         {/if}
     </section>
 
-    {* Avance del proyecto *}
-    {if $seleccion && $progreso}
+    {* Avance de cada proyecto *}
+    {if $tusProyectos}
+    <link rel="stylesheet" href="/plugins/portal/assets/panel.css?v=2">
     <section class="card card-pad reveal mt-5" style="--i:5" aria-labelledby="h-avance">
-        <div class="flex flex-wrap items-start justify-between gap-3">
-            <div class="min-w-0">
-                <h2 id="h-avance" class="text-lg font-extrabold tracking-tight">Avance del proyecto</h2>
-                <p class="mt-0.5 truncate text-sm text-muted">{$seleccion['nombre']}</p>
-            </div>
-            <span class="text-3xl font-extrabold tracking-tight text-brand-ink">{$progreso['pct']}<span class="text-lg">%</span></span>
+        <h2 id="h-avance" class="text-lg font-extrabold tracking-tight">{count($tusProyectos) === 1 ? 'Tu proyecto' : 'Tus proyectos'}</h2>
+        <p class="mt-0.5 text-sm text-muted">Cómo {count($tusProyectos) === 1 ? 'va' : 'va cada uno'}, de un vistazo</p>
+        <div class="pc-g">
+            {foreach $tusProyectos as $i => $tp}
+                {var $destaca = $i === 0 && ($tp['me_tocan'] + $tp['revisar']) > 0}
+                <article class="pc{if $destaca} bloque-azul{/if}">
+                    <div class="flex items-start justify-between gap-3">
+                        <h3><i style="background: {($colorProy[$tp['id']] ?? '#94a3b8')|noescape}" aria-hidden="true"></i><span class="min-w-0">{$tp['nombre']}</span></h3>
+                        <span class="pc-pct">{$tp['pct']}<small>%</small></span>
+                    </div>
+                    {if $tp['fases']}
+                        <div class="pc-seg" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{$tp['pct']}" aria-label="Avance">
+                            {foreach $tp['fases'] as $f}<i class="{$f['estado'] === 'hecha' ? 'h' : ($f['estado'] === 'actual' ? 'a' : '')}" title="{$f['nombre']}"></i>{/foreach}
+                        </div>
+                    {else}
+                        <div class="progress mt-3" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{$tp['pct']}" aria-label="Avance"><span style="width: {$tp['pct']}%"></span></div>
+                    {/if}
+                    <p class="pc-fase mt-2">
+                        {if $tp['completo']}<b>Proyecto completo</b>
+                        {elseif $tp['actual']}Etapa <b>{$tp['actual']['n']} de {count($tp['fases'])} · {$tp['actual']['nombre']}</b>{if $tp['sigue']} · sigue {$tp['sigue']['nombre']}{if $tp['sigue']['inicio']} el {$fmt->fechaCorta($tp['sigue']['inicio'])}{/if}{/if}
+                        {else}{$tp['pct'] === 0 ? 'Todavía no empieza' : 'En marcha'}{/if}
+                    </p>
+                    <div class="pc-tips">
+                        {if $tp['me_tocan'] > 0}<span class="pc-tip t1" style="{$destaca ? '' : 'color: var(--warn)'}">{$tp['me_tocan'] === 1 ? '1 cosa te toca a ti' : $tp['me_tocan'] . ' cosas te tocan a ti'}</span>{/if}
+                        {if $tp['revisar'] > 0}<span class="pc-tip" style="{$destaca ? '' : 'color: var(--brand-ink)'}">{$tp['revisar'] === 1 ? '1 pieza para revisar' : $tp['revisar'] . ' piezas para revisar'}</span>{/if}
+                        {if $tp['me_tocan'] === 0 && $tp['revisar'] === 0}<span class="pc-tip" style="color: var(--muted)">Nada te toca por ahora</span>{/if}
+                    </div>
+                    <div class="pc-pie">
+                        <span>{if $tp['fechas']['fin']}Entrega estimada <b>{$fmt->fechaCorta($tp['fechas']['fin'])}</b>{/if}{if $tp['reunion']}{if $tp['fechas']['fin']} · {/if}próxima reunión <b>{$fmt->fechaCorta($tp['reunion']['fecha'])}</b>{/if}</span>
+                        <a href="/portal/calendario?proyecto={$tp['id']}">Ver proyecto →</a>
+                    </div>
+                </article>
+            {/foreach}
+
+            {if $contactosSemanal}
+                {var $cg = $contactosSemanal['datos']}
+                {var $mx = max(1, ...array_column($cg['semanas'], 'llegaron'))}
+                <article class="pc" style="grid-column: 1 / -1; background: var(--surface-2)">
+                    <h3>Contactos ganados{if $contactosSemanal['nombre'] !== ''} · <span class="min-w-0 font-semibold text-muted">{$contactosSemanal['nombre']}</span>{/if}</h3>
+                    <p class="pc-fase" style="margin:.35rem 0 1rem"><b>{$cg['total']['llegaron']}</b> {$cg['total']['llegaron'] === 1 ? 'contacto' : 'contactos'} · <b>{$cg['total']['contactados']}</b> {$cg['total']['contactados'] === 1 ? 'contactado' : 'contactados'} · <b>{$cg['total']['ganado']}</b> {$cg['total']['ganado'] === 1 ? 'ganado' : 'ganados'}</p>
+                    {include '../_lead_semanal.latte', cg: $cg, mx: $mx, fmt: $fmt}
+                    <div class="pc-pie"><span></span><a href="/portal/contactos-ganados">Ver contactos →</a></div>
+                </article>
+            {/if}
         </div>
-
-        {if $multiples}
-            <div class="scroll-x -mx-1 mt-4 flex gap-2 px-1" role="tablist" aria-label="Proyectos">
-                {foreach $proyectos as $p}
-                    <a href="/portal?p={$p['id']}" class="btn btn-sm {$p['id'] === $seleccion['id'] ? 'btn-primary' : 'btn-ghost'}" {if $p['id'] === $seleccion['id']}aria-current="true"{/if}>{$p['nombre']}</a>
-                {/foreach}
-            </div>
-        {/if}
-
-        <div class="progress mt-5" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{$progreso['pct']}" aria-label="Avance">
-            <span style="width: {$progreso['pct']}%"></span>
-        </div>
-        <p class="mt-2 text-xs text-muted">{$progreso['hechas']} de {$progreso['total']} {$progreso['total'] === 1 ? 'tarea lista' : 'tareas listas'}</p>
-
-        {if $progreso['fases']}
-            <div class="mt-6">{include '_etapas.latte', etapas: $progreso['fases'], conFechas: false}</div>
-            <a href="/portal/calendario?proyecto={$seleccion['id']}" class="mt-4 inline-flex items-center gap-1 text-xs font-bold text-brand-ink hover:underline">Ver etapas y fechas del proyecto <svg class="size-3.5"><use href="#i-chevron"/></svg></a>
-        {/if}
     </section>
     {/if}
 
