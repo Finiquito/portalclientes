@@ -74,6 +74,10 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### v0.45.2: Resumen del cliente sin manchas vacías y con contactos ganados
+- En el Resumen, el bloque de avance se estiraba hasta igualar la altura de «Lo que te toca» y quedaba una mancha vacía. Ahora el Resumen va en dos columnas independientes (cada tarjeta mide lo que necesita) y, en el celular, en una sola, con «Lo que te toca» justo después del avance. En el panel del equipo, «Requiere atención» tampoco se estira.
+- Si el proyecto tiene **contactos ganados** activos, el Resumen del cliente los muestra: totales, llegadas por semana y la tabla «esta semana / semana pasada / toda la campaña».
+
 ### v0.45.1: la página «Proyecto» del cliente con tres vistas
 - La página **Proyecto** (portal del cliente) tiene pestañas: **Resumen** (la inicial), **Calendario** y **Línea de tiempo** (la de siempre). Las tarjetas de «Tus proyectos» del Inicio abren el Resumen.
 - **Resumen:** avance y etapa en curso, **lo que te toca** (tareas y piezas por revisar), etapas como barras, contenidos por estado y reuniones (la próxima y los acuerdos de la última, si el resumen está publicado).

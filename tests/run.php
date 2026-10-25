@@ -1841,6 +1841,7 @@ $verProyecto = function (array $get) use ($pub): string {
 };
 $hRes = $verProyecto(['proyecto' => $pT]);
 check(str_contains($hRes, 'Avance del proyecto') && str_contains($hRes, 'Lo que te toca') && str_contains($hRes, 'aria-current="page">Resumen') && !str_contains($hRes, 'pa-gantt'), 'el proyecto abre en «Resumen»: avance, lo que le toca, etapas, contenidos y reuniones');
+check(str_contains($hRes, 'pp-cols') && !str_contains($hRes, 'Llegaron por semana'), 'el resumen va en dos columnas independientes y, sin contactos ganados en el proyecto, no muestra ese bloque');
 $hMes = $verProyecto(['proyecto' => $pT, 'vista' => 'calendario', 'mes' => '2027-03']);
 check(str_contains($hMes, 'Marzo 2027') && str_contains($hMes, 'class="cal"') && str_contains($hMes, 'cal-sem') && str_contains($hMes, 'aria-current="page">Calendario'), 'la vista Calendario muestra el mes en grilla y la semana como agenda para el celular');
 check(str_contains($verProyecto(['proyecto' => $pT, 'vista' => 'calendario', 'mes' => 'basura']), 'class="cal"') && str_contains($verProyecto(['proyecto' => $pT, 'vista' => 'rara']), 'Avance del proyecto'), 'un mes o una vista inválidos no rompen la página');

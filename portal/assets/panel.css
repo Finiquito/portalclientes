@@ -132,3 +132,14 @@
   .cal-mes { display: none; }
   .cal-sem { display: block; }
 }
+
+/* Resumen del cliente: dos columnas independientes, para que ninguna tarjeta se estire a la altura de la vecina */
+.pp-cols { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 1rem; align-items: start; }
+.pp-col { display: grid; gap: 1rem; min-width: 0; align-content: start; }
+@media (max-width: 760px) {
+  .pp-cols { grid-template-columns: minmax(0, 1fr); }
+  .pp-col { display: contents; }
+  .o1 { order: 1; } .o2 { order: 2; } .o3 { order: 3; } .o4 { order: 4; } .o5 { order: 5; } .o6 { order: 6; }
+}
+/* En el panel del equipo, el bloque oscuro de «Requiere atención» mide lo que necesita su contenido */
+.pp-c2 { align-items: start; }

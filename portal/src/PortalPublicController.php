@@ -1109,7 +1109,9 @@ class PortalPublicController
         if ($reun['ultima'] !== null && (int) $reun['ultima']['resumen_publicado'] === 1) {
             $acuerdos = array_slice(array_values(array_filter(array_map('trim', preg_split('/\R/', (string) $reun['ultima']['acuerdos']) ?: []))), 0, 5);
         }
-        return ['proyecto' => $tp, 'meTocan' => array_slice($meTocan, 0, 5), 'nMeTocan' => count($meTocan), 'contenidos' => $cont, 'reuniones' => $reun, 'acuerdos' => $acuerdos];
+        // Contactos ganados: si este proyecto los tiene activos y la persona los ve.
+        $contactos = (int) ($proyecto['con_leads'] ?? 0) === 1 && $this->veLeads($c) ? $panel->contactos($cid, [$pid]) : null;
+        return ['proyecto' => $tp, 'meTocan' => array_slice($meTocan, 0, 5), 'nMeTocan' => count($meTocan), 'contenidos' => $cont, 'reuniones' => $reun, 'acuerdos' => $acuerdos, 'contactos' => $contactos];
     }
 
     /**
