@@ -47,7 +47,7 @@ final class ProyectoPanel
     /**
      * Dónde está cada pieza del proyecto: borrador, esperando al cliente, con cambios pedidos o aprobada.
      *
-     * @return array{total: int, borrador: int, pendiente: int, cambios: int, aprobado: int, semana: array<int, array<string, mixed>>, sin_respuesta: array<int, array<string, mixed>>}
+     * @return array{total: int, borrador: int, pendiente: int, cambios: int, aprobado: int, semana: array<int, array<string, mixed>>, sin_respuesta: array<int, array<string, mixed>>, por_revisar: array<int, array<string, mixed>>}
      */
     public function contenidos(string $proyectoId): array
     {
@@ -57,7 +57,7 @@ final class ProyectoPanel
              FROM portal_contenidos c JOIN portal_entregas e ON e.id = c.entrega_id WHERE c.proyecto_id = ?',
             [$proyectoId]
         );
-        $o = ['total' => count($filas), 'borrador' => 0, 'pendiente' => 0, 'cambios' => 0, 'aprobado' => 0, 'semana' => [], 'sin_respuesta' => []];
+        $o = ['total' => count($filas), 'borrador' => 0, 'pendiente' => 0, 'cambios' => 0, 'aprobado' => 0, 'semana' => [], 'sin_respuesta' => [], 'por_revisar' => []];
         $hasta = $this->hoy->modify('+7 days')->format('Y-m-d');
         $hoy = $this->hoy->format('Y-m-d');
         foreach ($filas as $f) {
@@ -70,6 +70,7 @@ final class ProyectoPanel
             if ($bucket === 'pendiente') {
                 $desde = max((string) ($f['publicada_en'] ?? ''), (string) ($f['actualizado_en'] ?? ''));
                 $f['dias_espera'] = $desde !== '' ? $this->dias($desde) : 0;
+                $o['por_revisar'][] = $f;
                 if ($f['dias_espera'] >= self::DIAS_SIN_RESPUESTA) {
                     $o['sin_respuesta'][] = $f;
                 }
@@ -357,6 +358,119 @@ final class ProyectoPanel
         ];
     }
 
+    // ---- Calendario del mes (portal del cliente) --------------------------------------------
+
+    /**
+     * Lo que cae en cada fecha del calendario: tareas (del cliente y del equipo), reuniones, hitos y piezas para revisar.
+     *
+     * @param array<string, mixed> $d de Cronograma::datos($proyecto, true)
+     * @return array<string, array<int, array<string, string|null>>> fecha => eventos
+     */
+    private function eventosDelCalendario(array $d): array
+    {
+        $eventos = [];
+        $poner = function (string $fecha, string $tipo, string $titulo, ?string $url, string $hora = '') use (&$eventos): void {
+            if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha) === 1) {
+                $eventos[$fecha][] = ['tipo' => $tipo, 'titulo' => $titulo, 'url' => $url, 'hora' => $hora];
+            }
+        };
+        foreach ($d['hitos'] ?? [] as $h) {
+            $poner((string) $h['fecha'], 'hito', (string) $h['nombre'], null);
+        }
+        foreach ($d['reuniones'] ?? [] as $r) {
+            $poner((string) $r['fecha'], $r['es_hito'] ? 'hito' : 'reunion', (string) $r['titulo'], '/portal/reuniones/' . $r['id'], (string) $r['hora']);
+        }
+        foreach ($d['entregas'] ?? [] as $e) {
+            $poner((string) $e['fecha'], 'revisar', (string) $e['titulo'], '/portal/entregas/' . $e['id']);
+        }
+        foreach ($d['tareas'] ?? [] as $t) {
+            if ($t['estado'] !== 'hecha' && $t['fin'] !== null) {
+                $poner((string) $t['fin'], $t['quien'] === 'cliente' ? 'tarea' : 'equipo', (string) $t['titulo'], '/portal/tareas/' . $t['id']);
+            }
+        }
+        return $eventos;
+    }
+
+    /**
+     * Una semana (de lunes a domingo) como agenda: es la vista del celular, donde la grilla del mes no deja leer los títulos.
+     *
+     * @param array<string, mixed> $d de Cronograma::datos($proyecto, true)
+     * @param string $desde cualquier fecha 'Y-m-d' de la semana pedida (si no es válida, la de hoy)
+     * @return array<string, mixed>
+     */
+    public function semana(array $d, string $desde = ''): array
+    {
+        $hoy = $this->hoy->format('Y-m-d');
+        $ref = preg_match('/^\d{4}-\d{2}-\d{2}$/', $desde) === 1 ? $desde : $hoy;
+        try {
+            $lunes = (new \DateTimeImmutable($ref))->modify('monday this week');
+        } catch (\Throwable) {
+            $lunes = $this->hoy->modify('monday this week');
+        }
+        $eventos = $this->eventosDelCalendario($d);
+        $dias = [];
+        $nombres = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+        $meses = ['', 'ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+        for ($i = 0; $i < 7; $i++) {
+            $dia = $lunes->modify('+' . $i . ' days');
+            $f = $dia->format('Y-m-d');
+            $dias[] = ['fecha' => $f, 'nombre' => $nombres[$i], 'dia' => (int) $dia->format('j'), 'mes' => $meses[(int) $dia->format('n')], 'hoy' => $f === $hoy, 'eventos' => $eventos[$f] ?? []];
+        }
+        $fin = $lunes->modify('+6 days');
+        return [
+            'desde' => $lunes->format('Y-m-d'), 'hasta' => $fin->format('Y-m-d'),
+            'titulo' => (int) $lunes->format('j') . ' ' . $meses[(int) $lunes->format('n')] . ' – ' . (int) $fin->format('j') . ' ' . $meses[(int) $fin->format('n')],
+            'anterior' => $lunes->modify('-7 days')->format('Y-m-d'), 'siguiente' => $lunes->modify('+7 days')->format('Y-m-d'),
+            'es_actual' => $lunes->format('Y-m-d') === $this->hoy->modify('monday this week')->format('Y-m-d'), 'dias' => $dias,
+        ];
+    }
+
+    /**
+     * Un mes en forma de calendario (semanas de lunes a domingo) con lo que cae en cada día: tareas que le tocan al
+     * cliente y del equipo, reuniones, hitos y piezas para revisar (lo que se publica en redes no va aquí).
+     *
+     * @param array<string, mixed> $d de Cronograma::datos($proyecto, true)
+     * @param string $mes 'Y-m' (si no es válido, el de hoy)
+     * @return array<string, mixed>
+     */
+    public function mes(array $d, string $mes = ''): array
+    {
+        $hoy = $this->hoy->format('Y-m-d');
+        $mes = preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $mes) === 1 ? $mes : substr($hoy, 0, 7);
+        $primero = new \DateTimeImmutable($mes . '-01');
+
+        $eventos = $this->eventosDelCalendario($d);
+
+        $lunes = $primero->modify('monday this week');
+        $ultimo = $primero->modify('last day of this month');
+        $fin = $ultimo->modify('sunday this week');
+        $semanas = [];
+        $lista = [];
+        for ($ini = $lunes; $ini <= $fin; $ini = $ini->modify('+7 days')) {
+            $fila = [];
+            for ($i = 0; $i < 7; $i++) {
+                $dia = $ini->modify('+' . $i . ' days');
+                $f = $dia->format('Y-m-d');
+                $delMes = $dia->format('Y-m') === $mes;
+                $ev = $eventos[$f] ?? [];
+                $fila[] = ['fecha' => $f, 'dia' => (int) $dia->format('j'), 'del_mes' => $delMes, 'hoy' => $f === $hoy, 'eventos' => $ev];
+                if ($delMes) {
+                    foreach ($ev as $x) {
+                        $lista[] = ['fecha' => $f] + $x;
+                    }
+                }
+            }
+            $semanas[] = $fila;
+        }
+        $nombres = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+        return [
+            'mes' => $mes, 'titulo' => $nombres[(int) $primero->format('n')] . ' ' . $primero->format('Y'),
+            'anterior' => $primero->modify('-1 month')->format('Y-m'), 'siguiente' => $primero->modify('+1 month')->format('Y-m'),
+            'nombre_anterior' => $nombres[(int) $primero->modify('-1 month')->format('n')], 'nombre_siguiente' => $nombres[(int) $primero->modify('+1 month')->format('n')],
+            'es_actual' => $mes === substr($hoy, 0, 7), 'semanas' => $semanas, 'lista' => $lista,
+        ];
+    }
+
     // ---- Portal del cliente -----------------------------------------------------------------
 
     /**
@@ -391,7 +505,7 @@ final class ProyectoPanel
             $reun = $this->reuniones($pid, true);
             $out[] = [
                 'id' => $pid, 'nombre' => (string) $p['nombre'], 'estado' => (string) $p['estado'], 'pct' => $pct,
-                'fases' => $prog['fases'], 'actual' => $actual, 'sigue' => $sigue, 'completo' => $prog['completo'],
+                'barras' => $this->barras($prog), 'fases' => $prog['fases'], 'actual' => $actual, 'sigue' => $sigue, 'completo' => $prog['completo'],
                 'me_tocan' => $meTocan, 'revisar' => $revisar, 'fechas' => $this->fechas($prog),
                 'reunion' => $reun['proxima'], 'con_leads' => (int) ($p['con_leads'] ?? 0) === 1,
             ];

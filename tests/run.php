@@ -1823,13 +1823,38 @@ check($r === '/equipo', 'quien no tiene el proyecto asignado no ve su línea de 
 $ctT = (new P\ContactoService($pdo))->create(['cliente_id' => $c5, 'nombre' => 'Carla Cinco', 'email' => 'carla@cinco.cl', 'rol' => 'aprobador']);
 $_SESSION[P\PortalSession::CONTACTO] = $ctT;
 $pdo->prepare('UPDATE portal_tareas SET visible_cliente = 1 WHERE id IN (?, ?)')->execute([$tA, $tB]);
-$_GET = ['proyecto' => $pT];
+$_GET = ['proyecto' => $pT, 'vista' => 'linea'];
 ob_start();
 try { $pub->calendario(); } catch (RuntimeException) {}
 $html = (string) ob_get_clean();
 $_GET = [];
 check(str_contains($html, 'Sitio web Cinco') && str_contains($html, 'Etapas') && str_contains($html, 'Diseño aprobado') && str_contains($html, 'Lanzamiento') && !str_contains($html, 'Interno'), 'el cliente ve su calendario, sin los hitos internos');
 check(!str_contains($html, 'pa-gb-asa') && str_contains($html, 'pa-gantt') && str_contains($html, 'lectura'), 'para el cliente la línea de tiempo es de solo lectura');
+// Vistas del proyecto: Resumen (la inicial), Calendario y Línea de tiempo
+$verProyecto = function (array $get) use ($pub): string {
+    $_GET = $get;
+    ob_start();
+    try { $pub->calendario(); } catch (RuntimeException) {}
+    $h = (string) ob_get_clean();
+    $_GET = [];
+    return $h;
+};
+$hRes = $verProyecto(['proyecto' => $pT]);
+check(str_contains($hRes, 'Avance del proyecto') && str_contains($hRes, 'Lo que te toca') && str_contains($hRes, 'aria-current="page">Resumen') && !str_contains($hRes, 'pa-gantt'), 'el proyecto abre en «Resumen»: avance, lo que le toca, etapas, contenidos y reuniones');
+$hMes = $verProyecto(['proyecto' => $pT, 'vista' => 'calendario', 'mes' => '2027-03']);
+check(str_contains($hMes, 'Marzo 2027') && str_contains($hMes, 'class="cal"') && str_contains($hMes, 'cal-sem') && str_contains($hMes, 'aria-current="page">Calendario'), 'la vista Calendario muestra el mes en grilla y la semana como agenda para el celular');
+check(str_contains($verProyecto(['proyecto' => $pT, 'vista' => 'calendario', 'mes' => 'basura']), 'class="cal"') && str_contains($verProyecto(['proyecto' => $pT, 'vista' => 'rara']), 'Avance del proyecto'), 'un mes o una vista inválidos no rompen la página');
+$dC = $cr->datos($pT, true);
+$ppC = new P\ProyectoPanel($pdo, new DateTimeImmutable('2027-03-10'));
+$mC = $ppC->mes($dC, '2027-03');
+check(count($mC['semanas']) >= 5 && count($mC['semanas'][0]) === 7 && $mC['semanas'][0][0]['fecha'] === '2027-03-01' && $mC['anterior'] === '2027-02' && $mC['siguiente'] === '2027-04' && $mC['titulo'] === 'Marzo 2027', 'el mes va de lunes a domingo, con el mes anterior y el siguiente');
+$hoyCel = array_values(array_filter(array_merge(...$mC['semanas']), fn($x) => $x['hoy']));
+check(count($hoyCel) === 1 && $hoyCel[0]['fecha'] === '2027-03-10', 'hoy queda marcado en el calendario');
+$wC = $ppC->semana($dC);
+check($wC['desde'] === '2027-03-08' && $wC['hasta'] === '2027-03-14' && count($wC['dias']) === 7 && $wC['dias'][2]['hoy'] === true && $wC['anterior'] === '2027-03-01' && $wC['siguiente'] === '2027-03-15' && $wC['es_actual'], 'la semana de hoy es la vista inicial del celular, de lunes a domingo');
+check($ppC->semana($dC, '2027-03-23')['desde'] === '2027-03-22' && !$ppC->semana($dC, '2027-03-23')['es_actual'], 'se puede ir a otra semana');
+$evMes = array_merge(...array_map(fn($x) => $x['eventos'], array_merge(...$mC['semanas'])));
+check(!in_array('publica', array_column($evMes, 'tipo'), true), 'el calendario no muestra publicaciones de redes');
 $mom = P\PortalPublicController::momentos($cr->datos($pT, true));
 $plano = array_merge(...array_values($mom));
 check(count($plano) > 0 && $plano === array_values(array_filter($plano, fn($m) => true)) && array_column($plano, 'fecha') === (function ($f) { sort($f); return $f; })(array_column($plano, 'fecha')), 'en el celular, la lista va en orden de fecha');

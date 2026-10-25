@@ -1,0 +1,64 @@
+{* Calendario: el mes en grilla (escritorio) y la semana como agenda (celular). Parámetros: $m (ProyectoPanel::mes), $w (ProyectoPanel::semana), $proyectoId. *}
+{var $base = '?proyecto=' . $proyectoId . '&amp;vista=calendario'}
+<div class="reveal">
+  <div class="cal-mes">
+    <div class="cal-cab">
+        <h2>{$m['titulo']}</h2>
+        <div class="flex gap-2">
+            <a href="{$base|noescape}&amp;mes={$m['anterior']}" class="btn btn-ghost btn-sm">‹ {$m['nombre_anterior']}</a>
+            {if !$m['es_actual']}<a href="{$base|noescape}" class="btn btn-ghost btn-sm">Hoy</a>{/if}
+            <a href="{$base|noescape}&amp;mes={$m['siguiente']}" class="btn btn-ghost btn-sm">{$m['nombre_siguiente']} ›</a>
+        </div>
+    </div>
+    <div class="cal" role="grid" aria-label="{$m['titulo']}">
+        {foreach ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'] as $dn}<div class="h" role="columnheader">{$dn}</div>{/foreach}
+        {foreach $m['semanas'] as $sem}
+            {foreach $sem as $dia}
+                <div class="d{if !$dia['del_mes']} o{/if}{if $dia['hoy']} hoy{/if}" role="gridcell">
+                    <b>{$dia['dia']}</b>
+                    {foreach array_slice($dia['eventos'], 0, 3) as $e}
+                        {if $e['url']}<a href="{$e['url']}" class="ev {$e['tipo']}" title="{$e['titulo']}">{if $e['hora']}{$e['hora']} {/if}{$e['titulo']}</a>{else}<span class="ev {$e['tipo']}" title="{$e['titulo']}">{$e['titulo']}</span>{/if}
+                    {/foreach}
+                    {if count($dia['eventos']) > 3}<span class="ev mas">+{count($dia['eventos']) - 3} más</span>{/if}
+                </div>
+            {/foreach}
+        {/foreach}
+    </div>
+    <p class="ley2">
+        <span><i class="tarea"></i>Te toca a ti</span><span><i class="equipo"></i>Equipo</span><span><i class="reunion"></i>Reunión</span><span><i class="hito"></i>Hito</span><span><i class="revisar"></i>Para revisar</span>
+    </p>
+
+  </div>
+
+    {* Celular: la semana como agenda; la grilla del mes no deja leer los títulos *}
+    <div class="cal-sem">
+        <div class="cal-cab">
+            <h2>{$w['titulo']}</h2>
+            <div class="flex gap-2">
+                <a href="{$base|noescape}&amp;semana={$w['anterior']}" class="btn btn-ghost btn-sm" aria-label="Semana anterior">‹ Anterior</a>
+                {if !$w['es_actual']}<a href="{$base|noescape}" class="btn btn-ghost btn-sm">Hoy</a>{/if}
+                <a href="{$base|noescape}&amp;semana={$w['siguiente']}" class="btn btn-ghost btn-sm" aria-label="Semana siguiente">Siguiente ›</a>
+            </div>
+        </div>
+        <ul class="cal-agenda">
+            {foreach $w['dias'] as $dia}
+                <li class="{$dia['hoy'] ? 'hoy' : ''}">
+                    <div class="pp-dia"><b>{$dia['dia']}</b><span>{$dia['mes']}</span></div>
+                    <div class="min-w-0 flex-1">
+                        <p class="cal-dn">{$dia['nombre']}{if $dia['hoy']} · hoy{/if}</p>
+                        {if empty($dia['eventos'])}
+                            <p class="cal-vacio">Nada con fecha</p>
+                        {else}
+                            {foreach $dia['eventos'] as $e}
+                                {if $e['url']}<a href="{$e['url']}" class="ev {$e['tipo']}">{if $e['hora']}{$e['hora']} · {/if}{$e['titulo']}</a>{else}<span class="ev {$e['tipo']}">{$e['titulo']}</span>{/if}
+                            {/foreach}
+                        {/if}
+                    </div>
+                </li>
+            {/foreach}
+        </ul>
+        <p class="ley2">
+            <span><i class="tarea"></i>Te toca a ti</span><span><i class="equipo"></i>Equipo</span><span><i class="reunion"></i>Reunión</span><span><i class="hito"></i>Hito</span><span><i class="revisar"></i>Para revisar</span>
+        </p>
+    </div>
+</div>

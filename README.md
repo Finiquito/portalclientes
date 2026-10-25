@@ -74,6 +74,11 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### v0.45.1: la página «Proyecto» del cliente con tres vistas
+- La página **Proyecto** (portal del cliente) tiene pestañas: **Resumen** (la inicial), **Calendario** y **Línea de tiempo** (la de siempre). Las tarjetas de «Tus proyectos» del Inicio abren el Resumen.
+- **Resumen:** avance y etapa en curso, **lo que te toca** (tareas y piezas por revisar), etapas como barras, contenidos por estado y reuniones (la próxima y los acuerdos de la última, si el resumen está publicado).
+- **Calendario:** en escritorio, el mes en grilla (de lunes a domingo, con mes anterior, siguiente y «Hoy»); en el **celular, la semana como agenda** (de lunes a domingo, con los títulos completos). Muestra tareas del cliente y del equipo, reuniones, hitos y piezas para revisar. No muestra publicaciones de redes.
+
 ### v0.45.0: panel de control del proyecto y «Tus proyectos»
 - **Panel del equipo (página de un proyecto):** cabecera con semáforo (En plazo / En riesgo / Atrasado / Completo) y fechas; cuatro números (avance, esperando al cliente, tareas vencidas, próxima reunión); fases como barras con la marca de «hoy»; **Contenidos** del proyecto con una barra por estado (borrador, esperan al cliente, cambios pedidos, aprobadas) y lo que se publica esta semana; **Requiere atención** (tareas vencidas, revisiones sin respuesta desde hace 3 días o más, solicitudes por atender); turno del equipo y del cliente; **Reuniones** con la próxima, la última y cuántas tareas salieron de ella para el equipo y para el cliente; ritmo del equipo (tareas cerradas por semana y proyección); solicitudes y archivos recientes; actividad.
 - **Contactos ganados en el panel:** si el proyecto los tiene activos, un resumen con las llegadas por semana y una tabla «esta semana / semana pasada / toda la campaña» (llegaron, calificados, ganados, perdidos).

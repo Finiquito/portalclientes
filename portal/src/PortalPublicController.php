@@ -1049,9 +1049,26 @@ class PortalPublicController
             $pid = (string) (($activos[0] ?? $proyectos[0] ?? ['id' => ''])['id']);
         }
         $d = $pid !== '' ? (new Cronograma($this->pdo()))->datos($pid, true) : null;
+
+        // Tres vistas: Resumen (la inicial), Calendario del mes y Línea de tiempo.
+        $vista = in_array($_GET['vista'] ?? '', ['resumen', 'calendario', 'linea'], true) ? (string) $_GET['vista'] : 'resumen';
+        $panel = new ProyectoPanel($this->pdo());
+        $resumen = null;
+        $mes = null;
+        $semana = null;
+        if ($d !== null && $vista === 'resumen') {
+            $resumen = $this->resumenProyecto($c, $pid, $panel);
+        } elseif ($d !== null && $vista === 'calendario') {
+            $mes = $panel->mes($d, (string) ($_GET['mes'] ?? ''));
+            $semana = $panel->semana($d, (string) ($_GET['semana'] ?? ''));
+        }
         $this->ctx->view('templates/public/calendario.latte', $this->contexto($c, 'calendario') + [
             'proyectos' => $proyectos,
             'proyectoId' => $pid,
+            'vista' => $vista,
+            'resumen' => $resumen,
+            'calMes' => $mes,
+            'calSemana' => $semana,
             'd' => $d,
             'eje' => $d !== null ? Cronograma::eje($d['desde'], $d['dias']) : null,
             'x' => $d !== null ? Cronograma::columna($d['desde']) : null,
@@ -1063,6 +1080,36 @@ class PortalPublicController
             },
             'momentos' => $d !== null ? self::momentos($d) : [],
         ]);
+    }
+
+    /**
+     * La vista «Resumen» de un proyecto para el cliente: avance, etapas, lo que le toca, contenidos y reuniones.
+     *
+     * @param array<string, mixed> $c contacto
+     * @return array<string, mixed>
+     */
+    private function resumenProyecto(array $c, string $pid, ProyectoPanel $panel): array
+    {
+        $cid = (string) $c['cliente_id'];
+        $proyecto = $this->fetchOne('SELECT * FROM portal_proyectos WHERE id = ? AND cliente_id = ?', [$pid, $cid]) ?? ['id' => $pid, 'nombre' => '', 'estado' => 'activo'];
+        $fases = $this->fetchAll('SELECT * FROM portal_fases WHERE proyecto_id = ? ORDER BY orden, nombre', [$pid]);
+        $tareas = array_values(array_filter($this->tareasDelCliente($cid), fn(array $t): bool => $t['proyecto_id'] === $pid));
+        $marcadas = array_map(fn(array $t): array => $t + ['le_toca' => $this->turno($t) === 'cliente'], $tareas);
+        $tp = $panel->paraCliente([$proyecto], $fases, $marcadas, $cid, (string) $c['id'])[0];
+        $meTocan = array_values(array_filter($marcadas, fn(array $t): bool => $t['le_toca']));
+        usort($meTocan, fn(array $a, array $b): int => strcmp((string) ($a['fecha_vencimiento'] ?? '9999'), (string) ($b['fecha_vencimiento'] ?? '9999')));
+        $cont = $panel->contenidos($pid);
+        $reun = $panel->reuniones($pid, true);
+        foreach (['proxima', 'ultima'] as $k) {
+            if ($reun[$k] !== null) {
+                $reun[$k] = $this->enHoraDelCliente([$reun[$k]], $cid)[0];
+            }
+        }
+        $acuerdos = [];
+        if ($reun['ultima'] !== null && (int) $reun['ultima']['resumen_publicado'] === 1) {
+            $acuerdos = array_slice(array_values(array_filter(array_map('trim', preg_split('/\R/', (string) $reun['ultima']['acuerdos']) ?: []))), 0, 5);
+        }
+        return ['proyecto' => $tp, 'meTocan' => array_slice($meTocan, 0, 5), 'nMeTocan' => count($meTocan), 'contenidos' => $cont, 'reuniones' => $reun, 'acuerdos' => $acuerdos];
     }
 
     /**
