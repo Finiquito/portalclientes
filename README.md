@@ -74,6 +74,9 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### v0.46.3: Mensajes sin animación al cargar
+- Se quitó la animación de entrada en Mensajes: al recargar o responder, el bloque ya no «sube» ni parpadea; se ve la pantalla estable.
+
 ### v0.46.2: Mensajes, la conversación abierta no se pierde de la lista
 - La conversación que tienes abierta queda siempre fija en la lista de la izquierda, aunque ya no calce con la pestaña o los filtros (por ejemplo, al responder desde Archivadas); en ese caso aparece con la marca «Abierta · en Activas/Archivadas/Destacados».
 - Una conversación terminada ya no se desvanece de Activas mientras la tienes abierta.

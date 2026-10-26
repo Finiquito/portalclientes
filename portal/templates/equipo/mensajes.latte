@@ -3,7 +3,7 @@
 {block title}Mensajes{/block}
 
 {block content}
-<section class="reveal pb-6 pt-1 {$sel ? 'hidden lg:block' : ''}">
+<section class="pb-6 pt-1 {$sel ? 'hidden lg:block' : ''}">
     <h1 class="text-[2rem] font-extrabold leading-tight tracking-tight sm:text-4xl">Mensajes</h1>
     <p class="mt-2 text-muted">{$usuario['rol'] === 'coordinador' ? 'Lo que conversan los clientes y el equipo en tareas, contenidos y solicitudes.' : 'Las conversaciones de tus clientes en tareas, contenidos y solicitudes.'}</p>
 </section>

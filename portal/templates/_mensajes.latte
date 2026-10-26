@@ -7,7 +7,7 @@
 {var $q = fn(array $x) => $base . '?' . http_build_query(array_filter($x + ['t' => $pestana === 'activas' ? '' : $pestana, $filtros['campo'] => $filtros['valor'], 'tipo' => $filtros['tipo']]))}
 {var $qTab = fn(string $t) => $base . '?' . http_build_query(array_filter(['t' => $t === 'activas' ? '' : $t, $filtros['campo'] => $filtros['valor'], 'tipo' => $filtros['tipo']]))}
 
-<div class="card reveal overflow-hidden lg:grid lg:grid-cols-[minmax(0,27rem)_minmax(0,1fr)]" style="--i:1">
+<div class="card overflow-hidden lg:grid lg:grid-cols-[minmax(0,27rem)_minmax(0,1fr)]">
     {* Lista de conversaciones *}
     <section class="{$sel ? 'hidden lg:block' : ''} min-w-0 lg:border-r lg:border-line" aria-label="Conversaciones">
         <nav class="flex flex-nowrap gap-1.5 p-3 pb-2" aria-label="Activas, archivadas o destacadas">
