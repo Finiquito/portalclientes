@@ -144,17 +144,19 @@
 /* En el panel del equipo, el bloque oscuro de «Requiere atención» mide lo que necesita su contenido */
 .pp-c2 { align-items: start; }
 
-/* Mensajes: reacciones y selector de reacciones */
-.rx-fila { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem; margin-top: .3rem; }
-.rx { display: inline-flex; align-items: center; gap: .25rem; border: 2px solid var(--line); background: var(--surface); padding: 0 .4rem; min-height: 1.5rem; font-size: .78rem; font-weight: 800; color: var(--ink); cursor: pointer; line-height: 1; border-radius: .4rem; }
+/* Mensajes: reacciones y selector de reacciones (contornos finos y claros; la reacción propia va sobre blanco) */
+.rx-fila { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem; margin-top: .35rem; }
+.rx { display: inline-flex; align-items: center; gap: .3rem; border: 1px solid var(--line); background: var(--surface); padding: 0 .5rem; min-height: 1.85rem; color: var(--ink); cursor: pointer; line-height: 1; border-radius: .5rem; }
 .rx:hover { background: var(--surface-2); }
-.rx-mia { border-color: var(--brand); background: var(--brand-soft); }
-.rx-mas { color: var(--muted); list-style: none; }
+.rx-e { font-size: 1.15rem; line-height: 1; }
+.rx-n { font-size: .78rem; font-weight: 800; }
+.rx-mia { border-color: color-mix(in oklab, var(--brand) 55%, var(--line)); background: var(--surface); }
+.rx-mas { color: var(--muted); list-style: none; font-size: 1rem; font-weight: 700; }
 .rx-mas::-webkit-details-marker { display: none; }
 .rx-pick { position: relative; }
 .rx-pick[open] > .rx-mas { background: var(--surface-2); }
-.rx-pop { position: absolute; z-index: 20; left: 0; top: calc(100% + .25rem); display: grid; grid-template-columns: repeat(6, 2.1rem); gap: .15rem; padding: .35rem; background: var(--surface); border: 2px solid var(--ink); border-radius: .6rem; }
+.rx-pop { position: absolute; z-index: 20; left: 0; top: calc(100% + .25rem); display: grid; grid-template-columns: repeat(6, 2.4rem); gap: .1rem; padding: .35rem; background: var(--surface); border: 1px solid var(--line); border-radius: .6rem; }
 .rx-fila.justify-end .rx-pop { left: auto; right: 0; }
-.rx-pop button { font-size: 1.15rem; line-height: 1; padding: .3rem 0; background: transparent; border: 0; cursor: pointer; border-radius: .4rem; }
+.rx-pop button { font-size: 1.4rem; line-height: 1; padding: .35rem 0; background: transparent; border: 0; cursor: pointer; border-radius: .45rem; }
 .rx-pop button:hover, .rx-pop button:focus-visible { background: var(--surface-2); }
-@media (max-width: 420px) { .rx-pop { grid-template-columns: repeat(4, 2.3rem); } }
+@media (max-width: 420px) { .rx-pop { grid-template-columns: repeat(4, 2.6rem); } }

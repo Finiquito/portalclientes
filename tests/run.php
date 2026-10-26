@@ -2857,7 +2857,7 @@ $rx2 = $ms->reacciones([$cm1], 'contacto', $contacto)[$cm1] ?? [];
 check(count($rx2) === 2 && array_column($rx2, 'mia', 'clave') === ['triste' => true, 'pulgar' => false], 'las reacciones de las dos partes se ven, y cada una sabe cuál es la suya');
 $_GET = ['c' => 'tarea:' . $tM];
 [$html] = $mp->correr('lista');
-check(str_contains($html, '😢 1') && str_contains($html, '👍 1') && str_contains($html, 'name="clave" value="pulgar_abajo"'), 'el hilo muestra las reacciones y el selector con todo el pack');
+check(str_contains($html, '<span class="rx-e">😢</span><span class="rx-n">1</span>') && str_contains($html, '<span class="rx-e">👍</span><span class="rx-n">1</span>') && str_contains($html, 'name="clave" value="pulgar_abajo"'), 'el hilo muestra las reacciones y el selector con todo el pack');
 $_GET = [];
 $mp->correr('reaccionar', [], ['_csrf' => $tokC, 'c' => 'tarea:' . $tM, 'comentario' => $cm1, 'clave' => 'triste']);
 check(!isset(array_column($ms->reacciones([$cm1], 'contacto', $contacto)[$cm1] ?? [], null, 'clave')['triste']), 'tocar la propia reacción la quita');

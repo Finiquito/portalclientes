@@ -74,6 +74,10 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### v0.46.1: Mensajes, ajustes de estilo
+- Las reacciones y su selector usan contornos finos y claros; la reacción propia va sobre fondo blanco (antes el color de fondo no dejaba ver bien el ícono) y los íconos son más grandes.
+- Activas, Archivadas y Destacados caben en una sola línea (la columna de la lista es un poco más ancha).
+
 ### v0.46.0: Mensajes con filtros, conversaciones destacadas y reacciones
 - **Dos desplegables que se complementan** arriba de la lista: **Proyecto** (en el panel del equipo, **Cliente**) y **Tipo** (tareas, contenidos, solicitudes). Cada uno solo ofrece lo que existe con el otro elegido y trae cuántas conversaciones tiene. Cada conversación muestra el proyecto con su color y un ícono del tipo; se quitaron las demás etiquetas.
 - **Destacar una conversación (★):** botón en la cabecera de cada conversación. Una destacada **no pasa a Archivadas** aunque la tarea termine y se ve en la nueva pestaña **Destacados**. La estrella es de cada persona (el equipo no ve la del cliente).
