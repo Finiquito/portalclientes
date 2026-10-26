@@ -74,6 +74,10 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### v0.46.2: Mensajes, la conversación abierta no se pierde de la lista
+- La conversación que tienes abierta queda siempre fija en la lista de la izquierda, aunque ya no calce con la pestaña o los filtros (por ejemplo, al responder desde Archivadas); en ese caso aparece con la marca «Abierta · en Activas/Archivadas/Destacados».
+- Una conversación terminada ya no se desvanece de Activas mientras la tienes abierta.
+
 ### v0.46.1: Mensajes, ajustes de estilo
 - Las reacciones y su selector usan contornos finos y claros; la reacción propia va sobre fondo blanco (antes el color de fondo no dejaba ver bien el ícono) y los íconos son más grandes.
 - Activas, Archivadas y Destacados caben en una sola línea (la columna de la lista es un poco más ancha).

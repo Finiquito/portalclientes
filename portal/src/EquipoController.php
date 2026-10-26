@@ -851,6 +851,11 @@ class EquipoController
         }
         $urls = ['tarea' => '/equipo/tareas/', 'contenido' => '/equipo/contenidos/', 'solicitud' => '/equipo/solicitudes/'];
         $hilo = $sel !== null ? $svc->hilo($sel['tipo'], $sel['id']) : [];
+        // La conversación abierta nunca sale de la lista: si por la pestaña o los filtros no le tocaría estar, va fijada arriba.
+        $lista = $svc->conUltimo($pag->cortar($grupo));
+        if ($sel !== null && !in_array($sel['clave'], array_column($lista, 'clave'), true)) {
+            array_unshift($lista, ['fuera' => true] + $svc->conUltimo([$sel])[0]);
+        }
         $this->ctx->view('templates/equipo/mensajes.latte', $this->contexto($u, 'mensajes', [
             'base'        => '/equipo/mensajes',
             'pestana'     => $pestana,
@@ -862,7 +867,7 @@ class EquipoController
             'reacciones'  => $svc->reacciones(array_column($hilo, 'id'), 'equipo', (string) $u['id']),
             'puedeReaccionar' => true,
             'accionesBase' => '/equipo/mensajes',
-            'conv'        => $svc->conUltimo($pag->cortar($grupo)),
+            'conv'        => $lista,
             'pag'         => $pag,
             'sel'         => $sel,
             'hilo'        => $hilo,

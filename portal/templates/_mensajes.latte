@@ -47,7 +47,7 @@
                     {var $m = $c['ultimo_msg']}
                     {var $activa = $sel && $sel['clave'] === $c['clave']}
                     {var $mc = ($marcasCli ?? [])[$c['cliente_id']] ?? null}
-                    <li {if $equipo && $mc}style="box-shadow: inset 3px 0 0 {$mc['color']|noescape}"{/if} {if !empty($c['archivando'])}data-archivando{/if}>
+                    <li {if $equipo && $mc}style="box-shadow: inset 3px 0 0 {$mc['color']|noescape}"{/if} {if !empty($c['archivando']) && !$activa}data-archivando{/if}>
                         <a href="{$q(['c' => $c['clave'], 'p' => $pag->pagina > 1 ? $pag->pagina : ''])}" class="flex gap-3 px-4 py-3.5 transition hover:bg-surface2 {$activa ? 'bg-surface2' : ''}" {if $activa}aria-current="true"{/if}>
                             <span class="mt-[0.45rem] size-2 flex-none rounded-full {$c['sin_leer'] > 0 ? 'bg-brand' : 'bg-transparent'}" aria-hidden="true"></span>
                             <span class="min-w-0 flex-1">
@@ -60,7 +60,8 @@
                                     {if !$equipo && $c['proyecto_nombre']}<span class="inline-flex items-center gap-1.5 font-semibold text-ink"><span class="inline-block size-2 flex-none rounded-full" style="background: {(($colorProy ?? [])[$c['proyecto_id']] ?? '#94a3b8')|noescape}" aria-hidden="true"></span>{$c['proyecto_nombre']}</span>{/if}
                                     {if $equipo}<span class="inline-flex items-center gap-1.5 font-semibold text-ink">{if $mc}<span class="inline-flex size-4 flex-none items-center justify-center overflow-hidden rounded-[0.3rem] text-[0.5rem] font-extrabold" style="background: {$mc['logo'] ? '#ffffff' : $mc['color']|noescape}; color: {$mc['texto']|noescape}" aria-hidden="true">{if $mc['logo']}<img src="{$mc['logo']}" alt="" class="size-full object-contain">{else}{$fmt->iniciales($c['cliente_nombre'])}{/if}</span>{/if}{$c['cliente_nombre']}</span>{/if}
                                     <span class="chip chip-{$c['estado'][1]}">{$c['estado'][0]}</span>
-                                    {if !empty($c['archivando'])}<span class="chip chip-muted">Pasa a Archivadas</span>{/if}
+                                    {if !empty($c['archivando']) && !$activa}<span class="chip chip-muted">Pasa a Archivadas</span>{/if}
+                                    {if !empty($c['fuera'])}<span class="chip chip-muted" title="Está abierta, pero no entra en la pestaña o los filtros que tienes puestos">Abierta · {$c['destacada'] ? 'en Destacados' : ($c['archivada'] ? 'en Archivadas' : 'en Activas')}</span>{/if}
                                 </span>
                                 {if $m}
                                     <span class="mt-1.5 flex items-center gap-2 text-sm">

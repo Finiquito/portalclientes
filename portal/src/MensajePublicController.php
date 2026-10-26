@@ -55,6 +55,11 @@ class MensajePublicController extends PortalPublicController
         }
 
         $hilo = $sel !== null ? $svc->hilo($sel['tipo'], $sel['id']) : [];
+        // La conversación abierta nunca sale de la lista: si por la pestaña o los filtros no le tocaría estar, va fijada arriba.
+        $lista = $svc->conUltimo($pag->cortar($grupo));
+        if ($sel !== null && !in_array($sel['clave'], array_column($lista, 'clave'), true)) {
+            array_unshift($lista, ['fuera' => true] + $svc->conUltimo([$sel])[0]);
+        }
         $this->ctx->view('templates/public/mensajes.latte', $this->contexto($c, 'mensajes') + [
             'base'        => '/portal/mensajes',
             'pestana'     => $pestana,
@@ -66,7 +71,7 @@ class MensajePublicController extends PortalPublicController
             'reacciones'  => $svc->reacciones(array_column($hilo, 'id'), 'contacto', (string) $c['id']),
             'puedeReaccionar' => !PortalSession::vistaPrevia(),
             'accionesBase' => '/portal/mensajes',
-            'conv'        => $svc->conUltimo($pag->cortar($grupo)),
+            'conv'        => $lista,
             'pag'         => $pag,
             'sel'         => $sel,
             'hilo'        => $hilo,
