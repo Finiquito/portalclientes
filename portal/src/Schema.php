@@ -108,6 +108,7 @@ final class Schema
         }
 
         self::tablaLeadLinea($pdo);
+        self::tablasMensajes($pdo);
         self::tablaPropuestas($pdo);
         self::tablaCola($pdo);
         self::tablasEquipo($pdo);
@@ -301,6 +302,23 @@ final class Schema
      * existía: la llegada de cada contacto, su estado actual (con quién y cuándo, si se sabe) y su nota única.
      * Las etapas por las que pasó antes no se guardaron nunca, así que no se pueden reconstruir.
      */
+    /** Destacadas y reacciones de Mensajes (migración 0015). */
+    private static function tablasMensajes(\PDO $pdo): void
+    {
+        if (self::existe($pdo, 'portal_mensaje_destacadas', 'persona_tipo, persona_id, entidad_tipo, entidad_id') && self::existe($pdo, 'portal_mensaje_reacciones', 'comentario_id, persona_tipo, persona_id, clave')) {
+            return;
+        }
+        $sql = (string) @file_get_contents(dirname(__DIR__) . '/migrations/0015_mensajes_extras.sql');
+        $sql = preg_replace('/^\s*--.*$/m', '', $sql) ?? '';
+        foreach (array_filter(array_map('trim', explode(';', $sql))) as $stmt) {
+            try {
+                $pdo->exec($stmt);
+            } catch (\Throwable) {
+                // ya existe
+            }
+        }
+    }
+
     private static function tablaLeadLinea(\PDO $pdo): void
     {
         if (!self::existe($pdo, 'portal_lead_eventos', 'id, lead_id, tipo, a_estado, ocurrio_en, registrado_en, autor_tipo, ajustada, legado')) {

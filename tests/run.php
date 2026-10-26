@@ -2831,6 +2831,58 @@ $_GET = [];
 $_SESSION[P\EquipoController::SESION] = $coord;
 check(isset(array_column($ms->conversaciones('equipo', $coord, null), null, 'clave')['tarea:' . $tAjena]), 'Coordinación ve las conversaciones de todos los clientes');
 
+// Destacar conversaciones, reaccionar a mensajes y los dos desplegables
+$_SESSION[P\PortalSession::CONTACTO] = $contacto;
+$cm1 = (string) $ms->hilo('tarea', $tM)[0]['id'];
+$tokC = P\PortalSession::csrf();
+[, $r] = $mp->correr('destacar', [], ['_csrf' => $tokC, 'c' => 'tarea:' . $tM, 'volver' => '/portal/mensajes?c=tarea%3A' . $tM . '&t=destacadas&proyecto=' . $p1a]);
+$xD = array_column($ms->conversaciones('contacto', $contacto, $c1), null, 'clave')['tarea:' . $tM];
+check($xD['destacada'] && !$xD['archivada'] && str_contains((string) $r, '/portal/mensajes?') && str_contains((string) $r, 't=destacadas') && str_contains((string) $r, 'proyecto=' . $p1a), 'destacar una conversación la marca con la ★ y vuelve a la bandeja con los mismos filtros');
+check(!isset($ms->destacadas('equipo', $ana)['tarea:' . $tM]), 'la estrella es de cada persona: el equipo no ve la del cliente');
+$_GET = ['t' => 'destacadas'];
+[$html] = $mp->correr('lista');
+check(str_contains($html, 'Fotos para la web') && str_contains($html, 'aria-current="true"'), 'la pestaña Destacados muestra la conversación destacada, aunque esté terminada');
+$_GET = [];
+$mp->correr('destacar', [], ['_csrf' => $tokC, 'c' => 'tarea:' . $tM]);
+check(!array_column($ms->conversaciones('contacto', $contacto, $c1), null, 'clave')['tarea:' . $tM]['destacada'], 'otro clic le quita la estrella');
+$mp->correr('destacar', [], ['_csrf' => 'falso', 'c' => 'tarea:' . $tM]);
+$mp->correr('destacar', [], ['_csrf' => $tokC, 'c' => 'tarea:' . $tAjena]);
+check($ms->destacadas('contacto', $contacto) === [], 'sin token válido, o con una conversación de otro cliente, no se destaca nada');
+
+$mp->correr('reaccionar', [], ['_csrf' => $tokC, 'c' => 'tarea:' . $tM, 'comentario' => $cm1, 'clave' => 'triste']);
+$rx = $ms->reacciones([$cm1], 'contacto', $contacto)[$cm1] ?? [];
+check(count($rx) === 1 && $rx[0]['clave'] === 'triste' && $rx[0]['emoji'] === '😢' && $rx[0]['n'] === 1 && $rx[0]['mia'] === true, 'reaccionar a un mensaje (también con las menos positivas)');
+$ms->alternarReaccion($cm1, 'pulgar', 'equipo', $ana);
+$rx2 = $ms->reacciones([$cm1], 'contacto', $contacto)[$cm1] ?? [];
+check(count($rx2) === 2 && array_column($rx2, 'mia', 'clave') === ['triste' => true, 'pulgar' => false], 'las reacciones de las dos partes se ven, y cada una sabe cuál es la suya');
+$_GET = ['c' => 'tarea:' . $tM];
+[$html] = $mp->correr('lista');
+check(str_contains($html, '😢 1') && str_contains($html, '👍 1') && str_contains($html, 'name="clave" value="pulgar_abajo"'), 'el hilo muestra las reacciones y el selector con todo el pack');
+$_GET = [];
+$mp->correr('reaccionar', [], ['_csrf' => $tokC, 'c' => 'tarea:' . $tM, 'comentario' => $cm1, 'clave' => 'triste']);
+check(!isset(array_column($ms->reacciones([$cm1], 'contacto', $contacto)[$cm1] ?? [], null, 'clave')['triste']), 'tocar la propia reacción la quita');
+$mp->correr('reaccionar', [], ['_csrf' => $tokC, 'c' => 'tarea:' . $tM, 'comentario' => $cm1, 'clave' => 'inventada']);
+$mp->correr('reaccionar', [], ['_csrf' => $tokC, 'c' => 'tarea:' . $tM, 'comentario' => (string) $ms->hilo('tarea', $tAjena)[0]['id'], 'clave' => 'pulgar']);
+check(count($ms->reacciones([$cm1], 'contacto', $contacto)[$cm1] ?? []) === 1 && ($ms->reacciones([(string) $ms->hilo('tarea', $tAjena)[0]['id']], 'equipo', $ana)) === [], 'una reacción inventada, o a un mensaje de otra conversación, se ignora');
+check(array_key_last(P\MensajeService::REACCIONES) === 'pulgar_abajo' && count(P\MensajeService::REACCIONES) === 12 && isset(P\MensajeService::REACCIONES['triste'], P\MensajeService::REACCIONES['duda']), 'el pack tiene 12 reacciones, incluidas las tristes y las dudas');
+
+$todasC = $ms->conversaciones('equipo', $coord, null);
+$fc = P\MensajeService::filtrar($todasC, 'activas', 'cliente_id', $c1, '');
+check($fc !== [] && count(array_unique(array_column($fc, 'cliente_id'))) === 1 && $fc[0]['cliente_id'] === $c1, 'el desplegable de cliente deja sólo las conversaciones de ese cliente');
+check(array_unique(array_column(P\MensajeService::filtrar($todasC, 'activas', 'cliente_id', '', 'tarea'), 'tipo')) === ['tarea'], 'el desplegable de tipo deja sólo ese tipo');
+$op = P\MensajeService::opciones($todasC, 'cliente_id', $c1, '');
+check(isset($op['tipos']['tarea']) && !isset($op['grupos'][$c3]) === false, 'los dos desplegables se complementan: los tipos salen del cliente elegido y los clientes, del tipo elegido');
+$opT = P\MensajeService::opciones($todasC, 'cliente_id', '', 'contenido');
+check(!isset($opT['grupos'][$c1]) || $opT['grupos'][$c1]['n'] === count(array_filter($todasC, fn($x) => $x['cliente_id'] === $c1 && $x['tipo'] === 'contenido')), 'cada opción trae cuántas conversaciones tiene con el otro filtro puesto');
+$_SESSION[P\EquipoController::SESION] = $ana;
+$_POST = ['_csrf' => P\PortalSession::csrf(), 'c' => 'tarea:' . $tM];
+$ctlM->correr(fn() => $ctlM->destacarMensaje());
+check(isset($ms->destacadas('equipo', $ana)['tarea:' . $tM]) && !isset($ms->destacadas('contacto', $contacto)['tarea:' . $tM]), 'el panel también destaca conversaciones, y la estrella es de quien la puso');
+$_GET = ['t' => 'destacadas', 'cliente' => $c1, 'tipo' => 'tarea'];
+[$html] = $ctlM->correr(fn() => $ctlM->mensajes());
+check(str_contains($html, 'Fotos para la web') && str_contains($html, 'Todos los clientes') && str_contains($html, 'Todos los tipos'), 'el panel muestra Destacados con los desplegables de cliente y tipo');
+$_GET = []; $_POST = [];
+
 seccion('Paginación: 20, 30 o 50 por página, orden y filtros que se mantienen');
 $_GET = ['p' => '2', 'estado' => 'nuevo', 'q' => 'ana'];
 $pg = P\Paginacion::desdeGet('/portal/contactos-ganados', 134, null, ['llego_desc' => 'Más nuevos', 'llego_asc' => 'Más antiguos', 'nombre_asc' => 'A-Z']);

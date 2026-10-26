@@ -1,23 +1,45 @@
 {* Bandeja de mensajes compartida (portal del cliente y panel del equipo).
-   Parámetros: base, pestana, nActivas, nArchivadas, conv, pag, sel, hilo, lado, yoId, accion, urlCosa, csrfCampo, csrf, equipo, fmt *}
+   Parámetros: base, pestana, nActivas, nArchivadas, nDestacadas, filtros, opciones, reacciones, puedeReaccionar, accionesBase,
+   conv, pag, sel, hilo, lado, yoId, accion, urlCosa, csrfCampo, csrf, equipo, fmt *}
+<link rel="stylesheet" href="/plugins/portal/assets/panel.css?v=6">
 {var $tipos = \TypeDock\Plugin\Portal\MensajeService::TIPOS}
-{var $q = fn(array $x) => $base . '?' . http_build_query(array_filter($x + ['t' => $pestana === 'archivadas' ? 'archivadas' : '']))}
+{var $tonos = ['tarea' => 'TAR', 'contenido' => 'CON', 'solicitud' => 'SOL']}
+{var $q = fn(array $x) => $base . '?' . http_build_query(array_filter($x + ['t' => $pestana === 'activas' ? '' : $pestana, $filtros['campo'] => $filtros['valor'], 'tipo' => $filtros['tipo']]))}
+{var $qTab = fn(string $t) => $base . '?' . http_build_query(array_filter(['t' => $t === 'activas' ? '' : $t, $filtros['campo'] => $filtros['valor'], 'tipo' => $filtros['tipo']]))}
 
 <div class="card reveal overflow-hidden lg:grid lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)]" style="--i:1">
     {* Lista de conversaciones *}
     <section class="{$sel ? 'hidden lg:block' : ''} min-w-0 lg:border-r lg:border-line" aria-label="Conversaciones">
-        <nav class="flex gap-2 border-b border-line p-3" aria-label="Activas o archivadas">
-            <a href="{$base}" class="btn btn-sm {$pestana === 'activas' ? 'btn-primary' : 'btn-ghost'}" {if $pestana === 'activas'}aria-current="true"{/if}>
-                Activas <span class="rounded-full px-1.5 text-xs {$pestana === 'activas' ? 'bg-white/25' : 'bg-surface2 text-muted'}" data-n-activas>{$nActivas}</span>
-            </a>
-            <a href="{$base}?t=archivadas" class="btn btn-sm {$pestana === 'archivadas' ? 'btn-primary' : 'btn-ghost'}" {if $pestana === 'archivadas'}aria-current="true"{/if}>
-                Archivadas <span class="rounded-full px-1.5 text-xs {$pestana === 'archivadas' ? 'bg-white/25' : 'bg-surface2 text-muted'}" data-n-archivadas>{$nArchivadas}</span>
-            </a>
+        <nav class="flex flex-wrap gap-2 p-3 pb-2" aria-label="Activas, archivadas o destacadas">
+            {foreach [['activas', 'Activas', $nActivas, 'data-n-activas'], ['archivadas', 'Archivadas', $nArchivadas, 'data-n-archivadas'], ['destacadas', '★ Destacados', $nDestacadas, '']] as [$k, $et, $n, $attr]}
+                <a href="{$qTab($k)}" class="btn btn-sm {$pestana === $k ? 'btn-primary' : 'btn-ghost'}" {if $pestana === $k}aria-current="true"{/if}>
+                    {$et} <span class="rounded-full px-1.5 text-xs {$pestana === $k ? 'bg-white/25' : 'bg-surface2 text-muted'}" {$attr|noescape}>{$n}</span>
+                </a>
+            {/foreach}
         </nav>
+        {* Dos desplegables que se complementan: cada uno sólo ofrece lo que existe con el otro elegido *}
+        <form method="get" action="{$base}" class="grid grid-cols-2 gap-2 border-b border-line px-3 pb-3" aria-label="Filtrar conversaciones">
+            {if $pestana !== 'activas'}<input type="hidden" name="t" value="{$pestana}">{/if}
+            <label class="min-w-0 text-[0.6875rem] font-bold uppercase tracking-wide text-muted">{$filtros['etiqueta']}
+                <select name="{$filtros['campo']}" class="field mt-1 px-2.5! py-1.5! text-[0.8125rem]! font-semibold normal-case tracking-normal text-ink" onchange="this.form.submit()">
+                    <option value="">{$filtros['todos']}</option>
+                    {foreach $opciones['grupos'] as $gid => $g}<option value="{$gid}" {if $filtros['valor'] === (string) $gid}selected{/if}>{$g['nombre']} ({$g['n']})</option>{/foreach}
+                </select>
+            </label>
+            <label class="min-w-0 text-[0.6875rem] font-bold uppercase tracking-wide text-muted">Tipo
+                <select name="tipo" class="field mt-1 px-2.5! py-1.5! text-[0.8125rem]! font-semibold normal-case tracking-normal text-ink" onchange="this.form.submit()">
+                    <option value="">Todos los tipos</option>
+                    {foreach $tipos as $tk => $tn}{if isset($opciones['tipos'][$tk])}<option value="{$tk}" {if $filtros['tipo'] === $tk}selected{/if}>{['tarea' => 'Tareas', 'contenido' => 'Contenidos', 'solicitud' => 'Solicitudes'][$tk]} ({$opciones['tipos'][$tk]})</option>{/if}{/foreach}
+                </select>
+            </label>
+            <noscript><button type="submit" class="btn btn-ghost btn-sm col-span-2">Aplicar</button></noscript>
+        </form>
         {if empty($conv)}
             <p class="px-5 py-10 text-center text-sm text-muted">
-                {if $pestana === 'activas'}No hay conversaciones abiertas. Cuando {$equipo ? 'un cliente' : 'el equipo'} comente una tarea, un contenido o una solicitud, aparece aquí.
-                {else}Aquí quedan las conversaciones de lo que ya terminó: tareas listas, contenidos aprobados y solicitudes cerradas.{/if}
+                {if $filtros['valor'] !== '' || $filtros['tipo'] !== ''}No hay conversaciones con ese filtro. Prueba con «{$filtros['todos']}» o «Todos los tipos».
+                {elseif $pestana === 'activas'}No hay conversaciones abiertas. Cuando {$equipo ? 'un cliente' : 'el equipo'} comente una tarea, un contenido o una solicitud, aparece aquí.
+                {elseif $pestana === 'archivadas'}Aquí quedan las conversaciones de lo que ya terminó: tareas listas, contenidos aprobados y solicitudes cerradas.
+                {else}Marca una conversación con la ★ para tenerla siempre a mano: aunque la tarea termine, no pasa a Archivadas.{/if}
             </p>
         {else}
             <ul class="divide-y divide-line/70">
@@ -30,11 +52,12 @@
                             <span class="mt-[0.45rem] size-2 flex-none rounded-full {$c['sin_leer'] > 0 ? 'bg-brand' : 'bg-transparent'}" aria-hidden="true"></span>
                             <span class="min-w-0 flex-1">
                                 <span class="flex items-baseline justify-between gap-2">
-                                    <span class="truncate text-sm {$c['sin_leer'] > 0 ? 'font-extrabold' : 'font-semibold'}">{$c['titulo'] ?: 'Sin título'}</span>
+                                    <span class="truncate text-sm {$c['sin_leer'] > 0 ? 'font-extrabold' : 'font-semibold'}">{if $c['destacada']}<span class="mr-1 text-[#d99a06]" title="Destacada" aria-label="Destacada">★</span>{/if}{$c['titulo'] ?: 'Sin título'}</span>
                                     <span class="flex-none text-xs text-muted">{$fmt->rel($c['ultimo'])}</span>
                                 </span>
                                 <span class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
-                                    <span>{$tipos[$c['tipo']]}</span>
+                                    <span class="rounded-[0.3rem] border border-line px-1 text-[0.6rem] font-extrabold uppercase" title="{$tipos[$c['tipo']]}">{$tonos[$c['tipo']]}</span>
+                                    {if !$equipo && $c['proyecto_nombre']}<span class="inline-flex items-center gap-1.5 font-semibold text-ink"><span class="inline-block size-2 flex-none rounded-full" style="background: {(($colorProy ?? [])[$c['proyecto_id']] ?? '#94a3b8')|noescape}" aria-hidden="true"></span>{$c['proyecto_nombre']}</span>{/if}
                                     {if $equipo}<span class="inline-flex items-center gap-1.5 font-semibold text-ink">{if $mc}<span class="inline-flex size-4 flex-none items-center justify-center overflow-hidden rounded-[0.3rem] text-[0.5rem] font-extrabold" style="background: {$mc['logo'] ? '#ffffff' : $mc['color']|noescape}; color: {$mc['texto']|noescape}" aria-hidden="true">{if $mc['logo']}<img src="{$mc['logo']}" alt="" class="size-full object-contain">{else}{$fmt->iniciales($c['cliente_nombre'])}{/if}</span>{/if}{$c['cliente_nombre']}</span>{/if}
                                     <span class="chip chip-{$c['estado'][1]}">{$c['estado'][0]}</span>
                                     {if !empty($c['archivando'])}<span class="chip chip-muted">Pasa a Archivadas</span>{/if}
@@ -86,7 +109,15 @@
                     <h2 class="mt-0.5 font-extrabold leading-snug">{$sel['titulo'] ?: 'Sin título'}</h2>
                     <p class="mt-1.5 flex flex-wrap items-center gap-2"><span class="chip chip-{$sel['estado'][1]}">{$sel['estado'][0]}</span>{if $sel['terminada']}<span class="text-xs text-muted">Terminada: la conversación queda en Archivadas.</span>{/if}</p>
                 </div>
-                <a href="{$urlCosa}" class="btn btn-ghost btn-sm flex-none">Abrir {mb_strtolower($tipos[$sel['tipo']])}</a>
+                <div class="flex flex-none items-center gap-2">
+                    {if $puedeReaccionar}
+                    <form method="post" action="{$accionesBase}/destacar">
+                        <input type="hidden" name="_csrf" value="{$csrf}"><input type="hidden" name="c" value="{$sel['clave']}"><input type="hidden" name="volver" value="{$q(['c' => $sel['clave']])}">
+                        <button type="submit" class="btn btn-ghost btn-sm {$sel['destacada'] ? 'text-[#d99a06]!' : ''}" title="{$sel['destacada'] ? 'Quitar de destacados' : 'Destacar esta conversación: no pasa a Archivadas'}" aria-pressed="{$sel['destacada'] ? 'true' : 'false'}"><span aria-hidden="true">{$sel['destacada'] ? '★' : '☆'}</span> {$sel['destacada'] ? 'Destacada' : 'Destacar'}</button>
+                    </form>
+                    {/if}
+                    <a href="{$urlCosa}" class="btn btn-ghost btn-sm">Abrir {mb_strtolower($tipos[$sel['tipo']])}</a>
+                </div>
             </header>
             <ol class="flex-1 space-y-4 overflow-y-auto p-4 sm:p-5 lg:max-h-[60vh]" data-hilo>
                 {foreach $hilo as $h}
@@ -97,6 +128,26 @@
                         <div class="max-w-[85%] min-w-0 {$deMiLado ? 'text-right' : ''}">
                             <p class="mb-1 text-xs text-muted"><span class="font-semibold text-ink">{$mio ? 'Tú' : $h['autor_nombre']}</span>{if $h['autor_tipo'] === 'equipo'} · Equipo{/if} · {$fmt->rel($h['created_at'])}{if !empty($h['ubicacion'])} · {\TypeDock\Plugin\Portal\Ubicacion::etiqueta((string) $h['ubicacion'])}{/if}</p>
                             <div class="bubble inline-block text-left {$deMiLado ? 'rounded-tr-md bg-brand-soft text-ink' : 'rounded-tl-md bg-surface2'}">{$h['cuerpo']|breakLines}</div>
+                            {var $rx = $reacciones[$h['id']] ?? []}
+                            <div class="rx-fila {$deMiLado ? 'justify-end' : ''}">
+                                {foreach $rx as $r}
+                                    {if $puedeReaccionar}
+                                    <form method="post" action="{$accionesBase}/reaccion" class="inline">
+                                        <input type="hidden" name="_csrf" value="{$csrf}"><input type="hidden" name="c" value="{$sel['clave']}"><input type="hidden" name="comentario" value="{$h['id']}"><input type="hidden" name="clave" value="{$r['clave']}"><input type="hidden" name="volver" value="{$q(['c' => $sel['clave']])}">
+                                        <button type="submit" class="rx {$r['mia'] ? 'rx-mia' : ''}" title="{implode(', ', $r['nombres'])} · {$r['titulo']}">{$r['emoji']} {$r['n']}</button>
+                                    </form>
+                                    {else}<span class="rx" title="{implode(', ', $r['nombres'])}">{$r['emoji']} {$r['n']}</span>{/if}
+                                {/foreach}
+                                {if $puedeReaccionar}
+                                <details class="rx-pick">
+                                    <summary class="rx rx-mas" aria-label="Reaccionar a este mensaje" title="Reaccionar">☺+</summary>
+                                    <form method="post" action="{$accionesBase}/reaccion" class="rx-pop">
+                                        <input type="hidden" name="_csrf" value="{$csrf}"><input type="hidden" name="c" value="{$sel['clave']}"><input type="hidden" name="comentario" value="{$h['id']}"><input type="hidden" name="volver" value="{$q(['c' => $sel['clave']])}">
+                                        {foreach \TypeDock\Plugin\Portal\MensajeService::REACCIONES as $rk => $re}<button type="submit" name="clave" value="{$rk}" title="{$re[1]}" aria-label="{$re[1]}">{$re[0]}</button>{/foreach}
+                                    </form>
+                                </details>
+                                {/if}
+                            </div>
                         </div>
                     </li>
                 {/foreach}

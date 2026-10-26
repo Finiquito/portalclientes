@@ -227,6 +227,8 @@ class PortalPlugin implements PluginInterface
         \Flight::route('GET /portal/reuniones/@id/invitacion.ics', fn(string $id) => $publico->reunionIcsFirmado($id));
         $msj = new MensajePublicController($ctx);
         \Flight::route('GET /portal/mensajes',                    [$msj, 'lista']);
+        \Flight::route('POST /portal/mensajes/destacar',          [$msj, 'destacar']);
+        \Flight::route('POST /portal/mensajes/reaccion',          [$msj, 'reaccionar']);
         $sol = new SolicitudPublicController($ctx);
         \Flight::route('GET /portal/solicitudes',                 [$sol, 'lista']);
         \Flight::route('GET /portal/solicitudes/nueva',           [$sol, 'nueva']);
@@ -274,6 +276,8 @@ class PortalPlugin implements PluginInterface
         \Flight::route('POST /equipo/ver-como/@id',   fn(string $id) => $eq->verComo($id));
         \Flight::route('GET /equipo/proyectos',       [$eq, 'proyectos']);
         \Flight::route('GET /equipo/mensajes',        [$eq, 'mensajes']);
+        \Flight::route('POST /equipo/mensajes/destacar', [$eq, 'destacarMensaje']);
+        \Flight::route('POST /equipo/mensajes/reaccion', [$eq, 'reaccionarMensaje']);
         \Flight::route('POST /equipo/clientes/@id/equipo',  fn(string $id) => $eq->asignarCliente($id));
         \Flight::route('POST /equipo/clientes/@id/equipo/@pid/quitar',  fn(string $id, string $pid) => $eq->quitarCliente($id, $pid));
         \Flight::route('POST /equipo/proyectos/@id/equipo', fn(string $id) => $eq->asignarProyecto($id));
@@ -301,7 +305,7 @@ class PortalPlugin implements PluginInterface
 
     public function getVersion(): string
     {
-        return '0.45.2';
+        return '0.46.0';
     }
 
     public function provides(): array

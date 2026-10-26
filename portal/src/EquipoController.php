@@ -825,8 +825,14 @@ class EquipoController
         }
         $svc = new MensajeService($this->pdo());
         $todas = $this->conversaciones($u);
-        $pestana = ($_GET['t'] ?? '') === 'archivadas' ? 'archivadas' : 'activas';
-        $grupo = array_values(array_filter($todas, fn(array $x): bool => $x['archivada'] === ($pestana === 'archivadas')));
+        $pestana = in_array($_GET['t'] ?? '', ['archivadas', 'destacadas'], true) ? (string) $_GET['t'] : 'activas';
+        $tipoF = isset(MensajeService::TIPOS[$_GET['tipo'] ?? '']) ? (string) $_GET['tipo'] : '';
+        $cliF = (string) ($_GET['cliente'] ?? '');
+        if ($cliF !== '' && !in_array($cliF, array_column($todas, 'cliente_id'), true)) {
+            $cliF = '';
+        }
+        $grupo = MensajeService::filtrar($todas, $pestana, 'cliente_id', $cliF, $tipoF);
+        $cuenta = fn(string $t): int => count(MensajeService::filtrar($todas, $t, 'cliente_id', $cliF, $tipoF));
         $pref = $this->ajustes()->todos('equipo', (string) $u['id']);
         $pag = Paginacion::desdeGet('/equipo/mensajes', count($grupo), (int) ($pref['por_pagina'] ?? 0), ['recientes' => 'Más nuevos primero']);
         if (($por = Paginacion::elegido()) !== null) {
@@ -844,15 +850,22 @@ class EquipoController
             $sel['sin_leer'] = 0;
         }
         $urls = ['tarea' => '/equipo/tareas/', 'contenido' => '/equipo/contenidos/', 'solicitud' => '/equipo/solicitudes/'];
+        $hilo = $sel !== null ? $svc->hilo($sel['tipo'], $sel['id']) : [];
         $this->ctx->view('templates/equipo/mensajes.latte', $this->contexto($u, 'mensajes', [
             'base'        => '/equipo/mensajes',
             'pestana'     => $pestana,
-            'nActivas'    => count(array_filter($todas, fn(array $x): bool => !$x['archivada'])),
-            'nArchivadas' => count(array_filter($todas, fn(array $x): bool => $x['archivada'])),
+            'nActivas'    => $cuenta('activas'),
+            'nArchivadas' => $cuenta('archivadas'),
+            'nDestacadas' => $cuenta('destacadas'),
+            'filtros'     => ['campo' => 'cliente', 'valor' => $cliF, 'tipo' => $tipoF, 'etiqueta' => 'Cliente', 'todos' => 'Todos los clientes'],
+            'opciones'    => MensajeService::opciones($todas, 'cliente_id', $cliF, $tipoF),
+            'reacciones'  => $svc->reacciones(array_column($hilo, 'id'), 'equipo', (string) $u['id']),
+            'puedeReaccionar' => true,
+            'accionesBase' => '/equipo/mensajes',
             'conv'        => $svc->conUltimo($pag->cortar($grupo)),
             'pag'         => $pag,
             'sel'         => $sel,
-            'hilo'        => $sel !== null ? $svc->hilo($sel['tipo'], $sel['id']) : [],
+            'hilo'        => $hilo,
             'lado'        => 'equipo',
             'yoId'        => (string) $u['id'],
             'accion'      => $sel !== null ? $urls[$sel['tipo']] . $sel['id'] . '/comentarios' : null,
@@ -861,6 +874,38 @@ class EquipoController
             'equipo'      => true,
             'marcasCli'   => Fmt::marcasClientes($this->pdo()),
         ]));
+    }
+
+    /** Destaca (o quita la estrella de) una conversación: sale de Archivadas y queda en Destacados. */
+    public function destacarMensaje(): void
+    {
+        $u = $this->requerirUsuario();
+        if (PortalSession::csrfValido()) {
+            $svc = new MensajeService($this->pdo());
+            foreach ($this->conversaciones($u) as $x) {
+                if ($x['clave'] === (string) ($_POST['c'] ?? '')) {
+                    $svc->alternarDestacada('equipo', (string) $u['id'], $x['tipo'], $x['id']);
+                    break;
+                }
+            }
+        }
+        $this->redirectTo('/equipo/mensajes', MensajeService::consultaDeVuelta());
+    }
+
+    /** Reacciona a un mensaje (o quita la reacción): sin correo y sin marcarlo como no leído. */
+    public function reaccionarMensaje(): void
+    {
+        $u = $this->requerirUsuario();
+        if (PortalSession::csrfValido()) {
+            $svc = new MensajeService($this->pdo());
+            foreach ($this->conversaciones($u) as $x) {
+                if ($x['clave'] === (string) ($_POST['c'] ?? '') && $svc->esDe((string) ($_POST['comentario'] ?? ''), $x['tipo'], $x['id'])) {
+                    $svc->alternarReaccion((string) $_POST['comentario'], (string) ($_POST['clave'] ?? ''), 'equipo', (string) $u['id']);
+                    break;
+                }
+            }
+        }
+        $this->redirectTo('/equipo/mensajes', MensajeService::consultaDeVuelta());
     }
 
     public function proyectos(): void

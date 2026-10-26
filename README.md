@@ -74,6 +74,12 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### v0.46.0: Mensajes con filtros, conversaciones destacadas y reacciones
+- **Dos desplegables que se complementan** arriba de la lista: **Proyecto** (en el panel del equipo, **Cliente**) y **Tipo** (tareas, contenidos, solicitudes). Cada uno solo ofrece lo que existe con el otro elegido y trae cuántas conversaciones tiene. Cada conversación muestra el proyecto con su color y un ícono del tipo; se quitaron las demás etiquetas.
+- **Destacar una conversación (★):** botón en la cabecera de cada conversación. Una destacada **no pasa a Archivadas** aunque la tarea termine y se ve en la nueva pestaña **Destacados**. La estrella es de cada persona (el equipo no ve la del cliente).
+- **Reacciones a los mensajes:** pack de 12 (👍 👏 ❤️ 🎉 ✅ 🙏 😄 👀 😮 😕 😢 👎), incluidas las menos positivas. Aparecen bajo el mensaje con su contador; tocar la propia la quita. No envían correo ni marcan la conversación como sin leer.
+- Tablas nuevas `portal_mensaje_destacadas` y `portal_mensaje_reacciones` (migración 0015; también las crea Schema.php).
+
 ### v0.45.2: Resumen del cliente sin manchas vacías y con contactos ganados
 - En el Resumen, el bloque de avance se estiraba hasta igualar la altura de «Lo que te toca» y quedaba una mancha vacía. Ahora el Resumen va en dos columnas independientes (cada tarjeta mide lo que necesita) y, en el celular, en una sola, con «Lo que te toca» justo después del avance. En el panel del equipo, «Requiere atención» tampoco se estira.
 - Si el proyecto tiene **contactos ganados** activos, el Resumen del cliente los muestra: totales, llegadas por semana y la tabla «esta semana / semana pasada / toda la campaña».
