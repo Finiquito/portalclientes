@@ -60,7 +60,7 @@ class MensajePublicController extends PortalPublicController
         if ($sel !== null && !in_array($sel['clave'], array_column($lista, 'clave'), true)) {
             array_unshift($lista, ['fuera' => true] + $svc->conUltimo([$sel])[0]);
         }
-        $this->ctx->view('templates/public/mensajes.latte', $this->contexto($c, 'mensajes') + [
+        Vista::mostrar($this->pdo(), 'templates/public/mensajes.latte', $this->contexto($c, 'mensajes') + [
             'base'        => '/portal/mensajes',
             'pestana'     => $pestana,
             'nActivas'    => $cuenta('activas'),

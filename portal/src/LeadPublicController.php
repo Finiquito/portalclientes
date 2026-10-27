@@ -98,7 +98,7 @@ class LeadPublicController extends PortalPublicController
         ], $proyectos);
         $eventos = (new LeadLinea($this->pdo()))->deEstado($clienteId, $f['proyecto_id'] !== '' ? [$f['proyecto_id']] : []);
         $acum = LeadStats::evolucion($base, $eventos);
-        $this->ctx->view('templates/public/leads.latte', $this->contexto($c, 'leads') + [
+        Vista::mostrar($this->pdo(), 'templates/public/leads.latte', $this->contexto($c, 'leads') + [
             'misCampanas' => $campanasCli,
             'grafico'   => LeadStats::datosGrafico($acum),
             'embudo'    => LeadStats::embudo($base, $eventos),
@@ -177,7 +177,7 @@ class LeadPublicController extends PortalPublicController
         PortalSession::iniciar();
         $previo = $_SESSION['portal_lead_previo'] ?? [];
         unset($_SESSION['portal_lead_previo']);
-        $this->ctx->view('templates/public/lead_nuevo.latte', $this->contexto($c, 'leads') + [
+        Vista::mostrar($this->pdo(), 'templates/public/lead_nuevo.latte', $this->contexto($c, 'leads') + [
             'proyectos'   => $this->leads()->proyectosDe((string) $c['cliente_id']),
             'proyectoSel' => (string) ($_GET['proyecto'] ?? ($previo['proyecto_id'] ?? '')),
             'previo'      => is_array($previo) ? $previo : [],
@@ -225,7 +225,7 @@ class LeadPublicController extends PortalPublicController
             $l = $svc->delCliente($id, (string) $c['cliente_id']) ?? $l;
         }
         $zona = $this->zonaDe($c);
-        $this->ctx->view('templates/public/lead.latte', $this->contexto($c, 'leads') + [
+        Vista::mostrar($this->pdo(), 'templates/public/lead.latte', $this->contexto($c, 'leads') + [
             'l'        => $l,
             'mc'       => LeadService::mc($l),
             'conMc'    => $conMc,

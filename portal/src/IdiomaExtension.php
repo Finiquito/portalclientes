@@ -31,20 +31,29 @@ use Latte\Extension;
  * por Idioma::tx(). En español devuelve el mismo texto, así que las plantillas
  * se siguen leyendo y editando en español.
  *
- * Para frases con valores dentro (que cambian de orden según el idioma) se usa
- * la etiqueta {_'Hola, %s', $nombre} (la trae Latte; Idioma::t hace la traducción).
+ * Para frases con valores dentro (que cambian de orden según el idioma) se usa la función
+ * {t('Hola, %s', $nombre)} (no se usa {_…} porque el núcleo de TypeDock ya la ocupa).
  */
 final class IdiomaExtension extends Extension
 {
-    /** Deja el motor listo: textos fijos automáticos y {_'…'} para frases con valores. */
-    public static function instalar(\Latte\Engine $motor): void
+    /**
+     * Deja el motor listo: textos fijos automáticos y t('…') para frases con valores.
+     * Acepta el motor de Latte o la LatteFactory del núcleo de TypeDock (que lo guarda por dentro).
+     */
+    public static function instalar(object $motor): void
     {
+        if (!$motor instanceof \Latte\Engine && method_exists($motor, 'getEngine')) {
+            $motor = $motor->getEngine();
+        }
+        if (!$motor instanceof \Latte\Engine) {
+            return;
+        }
         foreach ($motor->getExtensions() as $e) {
             if ($e instanceof self) {
                 return;
             }
         }
-        $motor->addExtension(new \Latte\Essential\TranslatorExtension(Idioma::t(...)));
+        // Ojo: el núcleo ya trae su TranslatorExtension (tag {_} y filtro «translate»): no se toca.
         $motor->addExtension(new self());
     }
 
@@ -65,10 +74,20 @@ final class IdiomaExtension extends Extension
 
     public function getCacheKey(\Latte\Engine $engine): mixed
     {
-        return 'idioma7';
+        return 'idioma10';
     }
 
     public static function pase(TemplateNode $plantilla): void
+    {
+        try {
+            self::recorrer($plantilla);
+        } catch (\Throwable $e) {
+            // Una plantilla que no se deja tocar se muestra en español; nunca se rompe la página.
+            error_log('[portal] idioma: ' . $e->getMessage());
+        }
+    }
+
+    private static function recorrer(TemplateNode $plantilla): void
     {
         (new NodeTraverser())->traverse($plantilla, function (Node $n) {
             if ($n instanceof ElementNode) {
@@ -108,7 +127,7 @@ final class IdiomaExtension extends Extension
                 return null;
             }
             if ($n instanceof TextNode && self::traducible($n->content)) {
-                return new TextoTraducible($n->content, $n->position, $n->end);
+                return self::traducible_de($n);
             }
             return null;
         });
@@ -146,6 +165,16 @@ final class IdiomaExtension extends Extension
         $impresion->expression = $envolver($impresion->expression);
     }
 
+    /** Copia el texto como traducible; sirve en Latte 3.1.4 (sin «end») y en 3.1.6. */
+    private static function traducible_de(TextNode $n): TextoTraducible
+    {
+        $nuevo = new TextoTraducible($n->content, $n->position);
+        if (property_exists($n, 'end')) {
+            $nuevo->end = $n->end;
+        }
+        return $nuevo;
+    }
+
     private static function llamarT(StringNode $texto): StaticMethodCallNode
     {
         return new StaticMethodCallNode(
@@ -155,11 +184,20 @@ final class IdiomaExtension extends Extension
         );
     }
 
+    /**
+     * ¿Parece un texto para personas? Con dos letras o más, y con espacios, mayúscula inicial o acento.
+     * Si no está en las traducciones queda igual, así que ante la duda se deja pasar; sólo se descartan
+     * las listas de clases CSS, las rutas, los atributos y las expresiones.
+     */
     public static function pareceTexto(string $v): bool
     {
-        return (bool) preg_match('/\p{L}{3}/u', $v)
-            && !preg_match('/[-\/.#_:\d]/', $v)
-            && (bool) preg_match('/^[\p{Lu}¿¡]|\s|[áéíóúñÁÉÍÓÚÑ]/u', $v);
+        if (!preg_match('/\p{L}.*\p{L}/u', $v) || preg_match('/(:\/\/|^\/|[=#{}<>_\\@])/', $v)) {
+            return false;
+        }
+        if (str_contains($v, '-') && preg_match('/^[a-z0-9:\-\[\]\/.%()!]+(\s[a-z0-9:\-\[\]\/.%()!]+)*$/', $v)) {
+            return false;   // clases CSS: «bg-brand-soft text-brand-ink»
+        }
+        return (bool) preg_match('/^[\p{Lu}¿¡]|\s|[áéíóúñÁÉÍÓÚÑ]/u', $v);
     }
 
     private static function atributos(ElementNode $el): void
@@ -175,7 +213,7 @@ final class IdiomaExtension extends Extension
             }
             $nombre = strtolower($hijo->name->content);
             if ((in_array($nombre, self::ATRIBUTOS, true) || ($esBoton && $nombre === 'value')) && self::traducible($hijo->value->content)) {
-                $hijo->value = new TextoTraducible($hijo->value->content, $hijo->value->position, $hijo->value->end);
+                $hijo->value = self::traducible_de($hijo->value);
             }
         }
     }

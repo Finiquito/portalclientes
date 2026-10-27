@@ -20,6 +20,8 @@ class PortalPlugin implements PluginInterface
 {
     public function register(PluginContext $ctx): void
     {
+        require_once __DIR__ . '/funciones.php';   // t() para las plantillas que dibuja el admin de TypeDock
+
         $ctx->migrate(__DIR__ . '/../migrations');
 
         // Columnas nuevas de portal_tareas (tipo, visible_cliente, completada_en), idempotente.
@@ -29,8 +31,6 @@ class PortalPlugin implements PluginInterface
         } catch (\Throwable) {
             // Si la BD no está lista no bloqueamos el arranque del resto del sistema.
         }
-
-        self::instalarIdiomas($ctx);
 
         $clientes = new ClienteAdminController($ctx);
         $ctx->registerAdminRoute('GET',  '',                 [$clientes, 'index']);
@@ -313,18 +313,5 @@ class PortalPlugin implements PluginInterface
     public function provides(): array
     {
         return [];
-    }
-
-    /** Engancha la traducción de plantillas al motor Latte que usa TypeDock (idempotente). */
-    public static function instalarIdiomas(object $ctx): void
-    {
-        try {
-            $motor = method_exists($ctx, 'latte') ? $ctx->latte() : \Flight::latte();
-            if ($motor instanceof \Latte\Engine) {
-                IdiomaExtension::instalar($motor);
-            }
-        } catch (\Throwable) {
-            // sin motor todavía: las pantallas del portal lo reintentan al dibujarse
-        }
     }
 }

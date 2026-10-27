@@ -23,7 +23,7 @@
             <div class="flex items-start justify-between gap-3">
                 <div>
                     <h2 id="h-pasos" class="text-lg font-extrabold tracking-tight">Primeros pasos</h2>
-                    <p class="mt-0.5 text-sm text-muted">{_'%d de %d listos. Te toma unos minutos.', $hechos, count($pasos)}</p>
+                    <p class="mt-0.5 text-sm text-muted">{t('%d de %d listos. Te toma unos minutos.', $hechos, count($pasos))}</p>
                 </div>
                 <form method="post" action="/portal/primeros-pasos/ocultar">
                     <input type="hidden" name="_csrf" value="{$csrf}">
@@ -72,13 +72,13 @@
             <div class="ll-graf-cab">
                 <div>
                     <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap"><h2 id="h-camp-{$iterator->counter}">{$camp['nombre']}</h2>{foreach $camp['etiquetas'] as $t}<span class="ll-pub" data-p="{$t}">{$t}</span>{/foreach}</div>
-                    <p class="ll-sub">{_'Así van llegando tus contactos'} · {_'%d días de campaña', $camp['dias']}</p>
+                    <p class="ll-sub">{t('Así van llegando tus contactos')} · {t('%d días de campaña', $camp['dias'])}</p>
                 </div>
                 <a href="/portal/contactos-ganados?proyecto={$camp['id']}" class="text-sm font-semibold text-brand-ink hover:underline">Ver contactos →</a>
             </div>
             {include '../_lead_grafico.latte', grafico: $camp['grafico'], corto: true, botones: false}
             <div class="ll-cifras">
-                <div><b>{$camp['total']}</b><span>han llegado{if $camp['nuevosSemana'] > 0} · <em>{_'+%d esta semana', $camp['nuevosSemana']}</em>{/if}</span></div>
+                <div><b>{$camp['total']}</b><span>han llegado{if $camp['nuevosSemana'] > 0} · <em>{t('+%d esta semana', $camp['nuevosSemana'])}</em>{/if}</span></div>
                 <div><b>{$camp['contactados']}</b><span>ya fueron contactados</span></div>
                 <div><b>{$camp['ganados']}</b><span>terminaron en ganado</span></div>
             </div>
@@ -106,7 +106,7 @@
         <span class="flex size-11 flex-none items-center justify-center rounded-xl bg-brand-soft text-brand-ink"><svg class="size-5"><use href="#i-users"/></svg></span>
         <div class="min-w-0 flex-1">
             <h2 id="h-leads" class="font-extrabold leading-tight">Contactos ganados</h2>
-            <p class="mt-0.5 text-sm text-muted">{if $leadsNuevos > 0}{_'Tienes <strong class="text-ink">%d %s</strong> por atender.', $leadsNuevos, $leadsNuevos === 1 ? t('contacto nuevo') : t('contactos nuevos')|noescape}{else}Las personas que llegan por tus campañas, con su seguimiento.{/if}</p>
+            <p class="mt-0.5 text-sm text-muted">{if $leadsNuevos > 0}{t('Tienes <strong class="text-ink">%d %s</strong> por atender.', $leadsNuevos, $leadsNuevos === 1 ? t('contacto nuevo') : t('contactos nuevos'))|noescape}{else}Las personas que llegan por tus campañas, con su seguimiento.{/if}</p>
         </div>
         <a href="/portal/contactos-ganados" class="btn {$leadsNuevos > 0 ? 'btn-primary' : 'btn-ghost'} btn-sm w-full sm:w-auto">Ver contactos</a>
     </section>
@@ -171,7 +171,7 @@
                     {/if}
                     <p class="pc-fase mt-2">
                         {if $tp['completo']}<b>Proyecto completo</b>
-                        {elseif $tp['actual']}{_'Etapa'} <b>{_'%d de %d', $tp['actual']['n'], count($tp['fases'])} · {$tp['actual']['nombre']}</b>{if $tp['sigue']} · {if $tp['sigue']['inicio']}{_'sigue %s el %s', $tp['sigue']['nombre'], $fmt->fechaCorta($tp['sigue']['inicio'])}{else}{_'sigue %s', $tp['sigue']['nombre']}{/if}{/if}
+                        {elseif $tp['actual']}{t('Etapa')} <b>{t('%d de %d', $tp['actual']['n'], count($tp['fases']))} · {$tp['actual']['nombre']}</b>{if $tp['sigue']} · {if $tp['sigue']['inicio']}{t('sigue %s el %s', $tp['sigue']['nombre'], $fmt->fechaCorta($tp['sigue']['inicio']))}{else}{t('sigue %s', $tp['sigue']['nombre'])}{/if}{/if}
                         {else}{$tp['pct'] === 0 ? t('Todavía no empieza') : t('En marcha')}{/if}
                     </p>
                     <div class="pc-tips">

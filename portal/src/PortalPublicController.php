@@ -233,7 +233,6 @@ class PortalPublicController
         PortalSession::iniciar();
         $id = $_SESSION[PortalSession::CONTACTO] ?? null;
         $c = is_string($id) ? $this->contactos()->find($id) : null;
-        PortalPlugin::instalarIdiomas($this->ctx);
         Idioma::fijar($c !== null
             ? Idioma::de($this->ajustes(), 'contacto', (string) $c['id'], (string) $c['cliente_id'], true)
             : Idioma::visitante($this->ajustes()->get('global', 'portal', 'idioma')));
@@ -384,7 +383,6 @@ class PortalPublicController
     /** Lo común de las pantallas de ingreso: la pieza de la agencia y el favicon. */
     protected function datosIngreso(): array
     {
-        PortalPlugin::instalarIdiomas($this->ctx);
         Idioma::fijar(Idioma::visitante($this->ajustes()->get('global', 'portal', 'idioma')));
         $m = $this->marca();
         return [
@@ -408,7 +406,7 @@ class PortalPublicController
     public function loginForm(): void
     {
         $email = trim((string) ($_GET['email'] ?? ''));
-        $this->ctx->view('templates/public/login.latte', $this->datosIngreso() + [
+        Vista::mostrar($this->pdo(), 'templates/public/login.latte', $this->datosIngreso() + [
             'email' => filter_var($email, FILTER_VALIDATE_EMAIL) ? $email : '',
             'error' => $_GET['error'] ?? null,
             'csrf'  => PortalSession::csrf(),
@@ -455,7 +453,7 @@ class PortalPublicController
         $animar = !empty($_SESSION['portal_login_anima']);
         unset($_SESSION['portal_login_anima']);
         $contacto = $this->contactos()->findByEmail((string) $email);
-        $this->ctx->view('templates/public/verificar.latte', $this->datosIngreso() + [
+        Vista::mostrar($this->pdo(), 'templates/public/verificar.latte', $this->datosIngreso() + [
             'cliente' => $contacto !== null ? $this->piezaCliente($contacto) : null,
             'animar' => $animar,
             'expresion' => self::EXPRESIONES[array_rand(self::EXPRESIONES)],
@@ -591,7 +589,7 @@ class PortalPublicController
         $pref   = $this->ajustes()->todos('contacto', (string) $c['id']);
         $nombre = trim($pref['apodo'] ?? '') !== '' ? trim($pref['apodo']) : $fmt->primerNombre((string) $c['nombre']);
 
-        $this->ctx->view('templates/public/inicio.latte', $this->contexto($c, 'inicio', [
+        Vista::mostrar($this->pdo(), 'templates/public/inicio.latte', $this->contexto($c, 'inicio', [
             'campanas'    => $this->campanasConGrafico($c, $proyectos),
             'nombre'      => $nombre,
             'frase'       => $this->frase($pref, $clienteId, $nombre, $fmt),
@@ -734,7 +732,7 @@ class PortalPublicController
             'recientes' => fn($a, $b) => strcmp((string) $b['created_at'], (string) $a['created_at']),
             'antiguas'  => fn($a, $b) => strcmp((string) $a['created_at'], (string) $b['created_at']),
         ]);
-        $this->ctx->view('templates/public/tareas.latte', $ctx + [
+        Vista::mostrar($this->pdo(), 'templates/public/tareas.latte', $ctx + [
             'filtro'   => $filtro,
             'grupos'   => $grupos,
             'pag'      => $pag,
@@ -763,7 +761,7 @@ class PortalPublicController
         $abierta  = in_array($t['estado'], ['pendiente', 'en_progreso'], true);
         $suya     = $t['responsable_tipo'] === 'cliente';
 
-        $this->ctx->view('templates/public/tarea.latte', $this->contexto($c, 'tareas') + [
+        Vista::mostrar($this->pdo(), 'templates/public/tarea.latte', $this->contexto($c, 'tareas') + [
             't'           => $t,
             'turno'       => $this->turno($t),
             'comentarios' => $this->comentarios()->listar('tarea', $id),
@@ -1010,7 +1008,7 @@ class PortalPublicController
             [$c['cliente_id']]
         );
 
-        $this->ctx->view('templates/public/archivos.latte', $this->contexto($c, 'archivos') + [
+        Vista::mostrar($this->pdo(), 'templates/public/archivos.latte', $this->contexto($c, 'archivos') + [
             'delEquipo' => array_values(array_filter($filas, fn($a) => $a['subido_por_tipo'] === 'equipo')),
             'tuyos'     => array_values(array_filter($filas, fn($a) => $a['subido_por_tipo'] !== 'equipo')),
         ]);
@@ -1035,7 +1033,7 @@ class PortalPublicController
         $cid = (string) $c['cliente_id'];
         $pag = Paginacion::delContacto($this->pdo(), (string) $c['id'], '/portal/reuniones', count($grupos['pasada']));
         $pasadas = $pag->orden === 'antiguos' ? array_reverse($grupos['pasada']) : $grupos['pasada'];
-        $this->ctx->view('templates/public/reuniones.latte', $this->contexto($c, 'reuniones') + [
+        Vista::mostrar($this->pdo(), 'templates/public/reuniones.latte', $this->contexto($c, 'reuniones') + [
             'pag'        => $pag,
             'proximas'   => $this->enHoraDelCliente(array_reverse($grupos['proxima']), $cid),   // la más cercana primero
             'anteriores' => $this->enHoraDelCliente($pag->cortar($pasadas), $cid),              // la más reciente primero (o al revés)
@@ -1074,7 +1072,7 @@ class PortalPublicController
             $mes = $panel->mes($d, (string) ($_GET['mes'] ?? ''));
             $semana = $panel->semana($d, (string) ($_GET['semana'] ?? ''));
         }
-        $this->ctx->view('templates/public/calendario.latte', $this->contexto($c, 'calendario') + [
+        Vista::mostrar($this->pdo(), 'templates/public/calendario.latte', $this->contexto($c, 'calendario') + [
             'proyectos' => $proyectos,
             'proyectoId' => $pid,
             'vista' => $vista,
@@ -1182,7 +1180,7 @@ class PortalPublicController
         $proximaR = ReunionService::estado($r) === 'proxima';
         $r = $this->enHoraDelCliente([$r], (string) $c['cliente_id'])[0];
         $verResumen = (int) $r['resumen_publicado'] === 1;
-        $this->ctx->view('templates/public/reunion.latte', $this->contexto($c, 'reuniones') + [
+        Vista::mostrar($this->pdo(), 'templates/public/reunion.latte', $this->contexto($c, 'reuniones') + [
             'r'          => $r,
             'proxima'    => $proximaR,
             'verResumen' => $verResumen,
@@ -1297,7 +1295,7 @@ class PortalPublicController
     {
         $c = $this->requerirContacto();
         $this->marcarPaso($c, 'ayuda');
-        $this->ctx->view('templates/public/ayuda.latte', $this->contexto($c, 'ayuda') + [
+        Vista::mostrar($this->pdo(), 'templates/public/ayuda.latte', $this->contexto($c, 'ayuda') + [
             'estados'  => Idioma::lista(Fmt::ESTADOS),
             'agencia'  => (new MarcaService($this->pdo()))->nombreEquipo(),
             'maxUrgentes' => (new SolicitudService($this->pdo()))->maxUrgentes(),
@@ -1321,7 +1319,7 @@ class PortalPublicController
         $c = $this->requerirContacto();
         $pref = $this->ajustes()->todos('contacto', (string) $c['id']);
 
-        $this->ctx->view('templates/public/ajustes.latte', $this->contexto($c, 'ajustes') + [
+        Vista::mostrar($this->pdo(), 'templates/public/ajustes.latte', $this->contexto($c, 'ajustes') + [
             'pref' => [
                 'tema'         => in_array($pref['tema'] ?? '', ['claro', 'oscuro'], true) ? $pref['tema'] : 'auto',
                 'idioma'       => Idioma::actual(),

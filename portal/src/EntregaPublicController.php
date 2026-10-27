@@ -46,7 +46,7 @@ class EntregaPublicController extends PortalPublicController
         }
         $todas = $this->entregasSvc()->delCliente((string) $c['cliente_id']);
         $pag = Paginacion::delContacto($this->pdo(), (string) $c['id'], '/portal/entregas', count($todas));
-        $this->ctx->view('templates/public/entregas.latte', $this->contexto($c, 'revisiones') + [
+        Vista::mostrar($this->pdo(), 'templates/public/entregas.latte', $this->contexto($c, 'revisiones') + [
             'pag'      => $pag,
             'entregas' => $pag->cortar($pag->orden === 'antiguos' ? array_reverse($todas) : $todas),
             'estados'  => Idioma::lista(TiposContenido::ESTADOS_ENTREGA),
@@ -80,7 +80,7 @@ class EntregaPublicController extends PortalPublicController
         $total = (int) $e['n_total'];
         $decididos = (int) $e['n_aprobados'] + (int) $e['n_cambios'];
 
-        $this->ctx->view('templates/public/entrega.latte', $this->contexto($c, 'revisiones') + [
+        Vista::mostrar($this->pdo(), 'templates/public/entrega.latte', $this->contexto($c, 'revisiones') + [
             'e'          => $e,
             'contenidos' => $lista,
             'portadas'   => $portadas,
@@ -145,7 +145,7 @@ class EntregaPublicController extends PortalPublicController
         $pines = Ubicacion::pines($comentarios, $ver !== null ? (string) $ver['id'] : null, $posImagen);
         $pinesPdf = array_filter($pines, fn($p) => $p['tipo'] === 'pagina');
 
-        $this->ctx->view('templates/public/contenido.latte', $this->contexto($c, 'revisiones') + [
+        Vista::mostrar($this->pdo(), 'templates/public/contenido.latte', $this->contexto($c, 'revisiones') + [
             'x'          => $x,
             'ver'        => $ver,
             'versiones'  => $versiones,

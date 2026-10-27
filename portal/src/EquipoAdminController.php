@@ -102,9 +102,9 @@ class EquipoAdminController
         Idioma::guardarDePost(new AjustesService($this->pdo()), 'equipo', $id);   // antes de la invitación: sale en su idioma
         [$c, $p] = $this->asignacionesPost();
         $this->service()->guardarAsignaciones($id, $c, $p);
-        $msg = 'Listo: ' . trim((string) ($datos['nombre'] ?? '')) . ' ya es parte del equipo.';
+        $msg = Idioma::t('Listo: %s ya es parte del equipo.', trim((string) ($datos['nombre'] ?? '')));
         if (!empty($_POST['invitar'])) {
-            $msg .= $this->invitar($id) ? ' Le enviamos la invitación por correo.' : ' No se pudo enviar la invitación (revisa el correo en Ajustes).';
+            $msg .= ' ' . ($this->invitar($id) ? Idioma::t('Le enviamos la invitación por correo.') : Idioma::t('No se pudo enviar la invitación (revisa el correo en Ajustes).'));
         }
         $this->ui->redirect($this->ui->url('equipo/' . $id), $msg);
     }

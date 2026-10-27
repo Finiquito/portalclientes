@@ -61,7 +61,7 @@ class LeadEntradaController
         } else {
             http_response_code($ok ? 200 : $codigo);
             header('Cache-Control: no-store');
-            $this->ctx->view('templates/public/lead_gracias.latte', ['ok' => $ok, 'mensaje' => $mensaje]);
+            Vista::mostrar($this->pdo(), 'templates/public/lead_gracias.latte', ['ok' => $ok, 'mensaje' => $mensaje]);
         }
         $this->terminate();
     }

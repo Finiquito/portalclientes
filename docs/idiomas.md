@@ -15,7 +15,7 @@ Los correos y avisos usan el idioma **de quien los recibe** (`Idioma::de()` sin 
 ## Cómo se traduce
 
 - **El texto en español es la clave.** Si falta la traducción se ve el español, nunca una pantalla vacía.
-- **Plantillas (Latte)**: no se editan. `IdiomaExtension` traduce al compilar los textos fijos, los atributos `placeholder`, `title`, `aria-label` y `alt`, los textos que van dentro de `?:`/`??`/listas y las etiquetas de las listas escritas en la plantilla. Para frases con valores dentro: `{_'Hola, %s', $nombre}` o `t('Texto %d', $n)` en una expresión.
+- **Plantillas (Latte)**: no se editan. `IdiomaExtension` traduce al compilar los textos fijos, los atributos `placeholder`, `title`, `aria-label` y `alt`, los textos que van dentro de `?:`/`??`/listas y las etiquetas de las listas escritas en la plantilla. Para frases con valores dentro: `{t('Hola, %s', $nombre)}` (no se usa `{_…}`: el núcleo de TypeDock ya la ocupa).
 - **PHP**: `Idioma::t('Texto %s', $valor)` (usa sprintf, así el orden de las palabras puede cambiar). Los avisos que alguien arma para que otra persona los lea llevan `Idioma::f(...)` (se traducen al guardarse para cada destinatario) o `Idioma::perezoso(fn() => …)`.
 - **Tablas de etiquetas** (estados, tipos…): se pasan por `Idioma::lista(...)`.
 - **JS**: `T('texto')` en `portal.js` y `pdfviewer.js`; el servidor antepone `window.PORTAL_T` con las traducciones.

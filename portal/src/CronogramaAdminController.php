@@ -69,7 +69,7 @@ class CronogramaAdminController
             'enlace' => fn(string $tipo, string $obj): string => $this->ui->url($tipo . '/' . $obj),
             'editable' => true,
             'mover' => $this->ui->url('proyectos/' . $id . '/linea/mover'),
-            'estados' => self::ESTADOS,
+            'estados' => Idioma::lista(self::ESTADOS),
             'plantillas' => (new PlantillaService($this->pdo()))->lista(),
             'fasesProyecto' => (new FaseService($this->pdo()))->listByProyecto($id),
             'color' => self::hex(Fmt::coloresTodos($this->pdo())[$id] ?? ''),

@@ -105,7 +105,7 @@ class EntregaAdminController
             'entregas'   => $lista,
             'filtros'    => $f,
             'conteos'    => $conteos,
-            'grupos'     => self::FILTRO_ESTADOS,
+            'grupos'     => Idioma::lista(self::FILTRO_ESTADOS),
             'proyectosF' => $proyectos,
             'colorProy'  => Fmt::coloresTodos($this->pdo()),
             'marcasCli'  => Fmt::marcasClientes($this->pdo()),
@@ -145,7 +145,7 @@ class EntregaAdminController
         }
         if ($planilla !== [] && ($e = $this->entregas()->find($id)) !== null) {
             $r = $this->expandir($e, array_slice($planilla, 0, 30), (string) ($_POST['tipo'] ?? ''), trim((string) ($_POST['cuenta'] ?? '')));
-            $this->ui->redirect($this->url('entregas/' . $id), 'Entrega creada. ' . $r['mensaje']);
+            $this->ui->redirect($this->url('entregas/' . $id), Idioma::t('Entrega creada. ') . $r['mensaje']);
             return;
         }
         $this->ui->redirect($this->url('entregas/' . $id), 'Entrega creada. Agrega los contenidos y luego publícala.');
@@ -298,7 +298,7 @@ class EntregaAdminController
             $this->portadaDesdeTapas($r['ok']);
         }
         $this->reabrirSiCorresponde($e);
-        $this->ui->redirect($volver, $errores === [] ? 'Contenido agregado.' : 'Contenido agregado, pero: ' . implode(' · ', $errores), $errores === [] ? 'success' : 'error');
+        $this->ui->redirect($volver, $errores === [] ? Idioma::t('Contenido agregado.') : Idioma::t('Contenido agregado, pero: ') . implode(' · ', array_map(Idioma::t(...), $errores)), $errores === [] ? 'success' : 'error');
     }
 
     /**
@@ -374,8 +374,8 @@ class EntregaAdminController
             $this->reabrirSiCorresponde($e);
         }
         $msg = $creados > 0
-            ? $creados . ' contenido(s) creados' . ($planillas > 0 ? ' desde la planilla. Ahora súbeles las imágenes a cada uno.' : '.')
-            : 'No se creó ningún contenido.';
+            ? ($planillas > 0 ? Idioma::t('%d contenido(s) creados desde la planilla. Ahora súbeles las imágenes a cada uno.', $creados) : Idioma::t('%d contenido(s) creados.', $creados))
+            : Idioma::t('No se creó ningún contenido.');
         if ($avisos !== []) {
             $msg .= ' Avisos: ' . implode(' · ', array_slice($avisos, 0, 6));
         }
@@ -413,7 +413,7 @@ class EntregaAdminController
         }
         $volver = $this->url('entregas/' . $id) . '#contenidos';
         if (ArchivoService::postExcedido()) {
-            $this->ui->redirect($volver, 'Los archivos superan lo que acepta el servidor de una vez (' . ini_get('post_max_size') . '). Súbelos en grupos más chicos.', 'error');
+            $this->ui->redirect($volver, Idioma::t('Los archivos superan lo que acepta el servidor de una vez (%s). Súbelos en grupos más chicos.', (string) ini_get('post_max_size')), 'error');
             return;
         }
         $lista = array_slice(ArchivoService::normalizar($_FILES['archivos'] ?? null), 0, 80);
@@ -506,7 +506,7 @@ class EntregaAdminController
             $r = $this->expandir($e, array_merge($planillas, $nuevos), '', $cuenta);
             $creados += $r['creados'];
             if ($r['creados'] > 0) {
-                $partes[] = ($r['creados'] === 1 ? '1 contenido nuevo' : $r['creados'] . ' contenidos nuevos');
+                $partes[] = ($r['creados'] === 1 ? Idioma::t('1 contenido nuevo') : Idioma::t('%d contenidos nuevos', $r['creados']));
             } elseif (str_contains($r['mensaje'], 'Avisos:')) {
                 $errores[] = trim(substr($r['mensaje'], (int) strpos($r['mensaje'], 'Avisos:') + 7));
             }
@@ -517,12 +517,12 @@ class EntregaAdminController
         $recientes = $this->archivosRecientes((string) $e['cliente_id'], $inicio);
         $this->aplicarTapas($recientes);
         $this->portadaDesdeTapas($recientes);
-        $msg = $partes !== [] ? 'Listo: ' . implode(' · ', $partes) . '.' : 'No se subió nada.';
+        $msg = $partes !== [] ? Idioma::t('Listo: %s.', implode(' · ', $partes)) : Idioma::t('No se subió nada.');
         if ($omitidos > 0) {
-            $msg .= ' ' . ($omitidos === 1 ? '1 archivo quedó fuera' : $omitidos . ' archivos quedaron fuera') . ', como elegiste.';
+            $msg .= ' ' . ($omitidos === 1 ? Idioma::t('1 archivo quedó fuera, como elegiste.') : Idioma::t('%d archivos quedaron fuera, como elegiste.', $omitidos));
         }
         if ($errores !== []) {
-            $msg .= ' Revisa: ' . implode(' · ', array_slice($errores, 0, 6));
+            $msg .= ' ' . Idioma::t('Revisa: %s', implode(' · ', array_slice($errores, 0, 6)));
         }
         $this->ui->redirect($volver, $msg, $partes !== [] && $errores === [] ? 'success' : 'error');
     }
@@ -1079,7 +1079,7 @@ class EntregaAdminController
         if ($n > 0) {
             $this->entregas()->reabrir((string) $c['entrega_id']);
         }
-        $this->ui->redirect($volver, $r['errores'] === [] ? ($n === 1 ? 'Archivo subido a «' . $c['titulo'] . '».' : "{$n} archivos subidos a «{$c['titulo']}».") : ($n > 0 ? "Se subieron {$n}, pero: " : 'No se pudo subir: ') . implode(' · ', $r['errores']), $r['errores'] === [] ? 'success' : 'error');
+        $this->ui->redirect($volver, $r['errores'] === [] ? ($n === 1 ? Idioma::t('Archivo subido a «%s».', (string) $c['titulo']) : Idioma::t('%d archivos subidos a «%s».', $n, (string) $c['titulo'])) : ($n > 0 ? Idioma::t('Se subieron %d, pero: ', $n) : Idioma::t('No se pudo subir: ')) . implode(' · ', array_map(Idioma::t(...), $r['errores'])), $r['errores'] === [] ? 'success' : 'error');
     }
 
     // ---- Conversación -----------------------------------------------------

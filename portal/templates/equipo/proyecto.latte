@@ -242,7 +242,7 @@
             {foreach $ri['semanas'] as $n}<i style="height:{round($n * 100 / $mr)}%" title="{$n}"></i>{/foreach}
         </div>
         <p class="pp-sub" style="margin-top:.5rem">
-            {if $ri['promedio'] > 0}{_'Promedio %s por semana', str_replace('.', ',', (string) $ri['promedio'])}{if $ri['proyeccion'] !== null}{var $sem = $ri['proyeccion'] === 1 ? t('semana') : t('semanas')} · {$ri['abiertas'] === 1 ? t('con ese ritmo, la abierta se cierra en ~%d %s', $ri['proyeccion'], $sem) : t('con ese ritmo, las %d abiertas se cierran en ~%d %s', $ri['abiertas'], $ri['proyeccion'], $sem)}{/if}
+            {if $ri['promedio'] > 0}{t('Promedio %s por semana', str_replace('.', ',', (string) $ri['promedio']))}{if $ri['proyeccion'] !== null}{var $sem = $ri['proyeccion'] === 1 ? t('semana') : t('semanas')} · {$ri['abiertas'] === 1 ? t('con ese ritmo, la abierta se cierra en ~%d %s', $ri['proyeccion'], $sem) : t('con ese ritmo, las %d abiertas se cierran en ~%d %s', $ri['abiertas'], $ri['proyeccion'], $sem)}{/if}
             {else}Todavía no se cerraron tareas en estas semanas{/if}
         </p>
     </section>

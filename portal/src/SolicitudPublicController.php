@@ -40,7 +40,7 @@ class SolicitudPublicController extends PortalPublicController
 
         $pag = Paginacion::delContacto($this->pdo(), (string) $c['id'], '/portal/solicitudes', count($cerradas));
         $cerradas = $pag->cortar($pag->orden === 'antiguos' ? array_reverse($cerradas) : $cerradas);
-        $this->ctx->view('templates/public/solicitudes.latte', $this->contexto($c, 'solicitudes') + [
+        Vista::mostrar($this->pdo(), 'templates/public/solicitudes.latte', $this->contexto($c, 'solicitudes') + [
             'pag'      => $pag,
             'marcas'   => (new NovedadesService($this->pdo()))->solicitudes((string) $c['cliente_id'], (string) $c['id']),
             'abiertas' => $abiertas,
@@ -104,7 +104,7 @@ class SolicitudPublicController extends PortalPublicController
         unset($_SESSION['portal_solicitud_previa']);
         $tipo = (string) ($_GET['tipo'] ?? ($previo['tipo'] ?? ''));
 
-        $this->ctx->view('templates/public/solicitud_nueva.latte', $this->contexto($c, 'solicitudes') + [
+        Vista::mostrar($this->pdo(), 'templates/public/solicitud_nueva.latte', $this->contexto($c, 'solicitudes') + [
             'tipos'       => Idioma::lista(SolicitudService::TIPOS),
             'tipo'        => isset(SolicitudService::TIPOS[$tipo]) ? $tipo : '',
             'urgencias'   => Idioma::lista(SolicitudService::URGENCIAS),
@@ -187,7 +187,7 @@ class SolicitudPublicController extends PortalPublicController
         if ($s['tarea_id']) {
             $this->marcarVisto($c, 'tarea', (string) $s['tarea_id']);
         }
-        $this->ctx->view('templates/public/solicitud.latte', $this->contexto($c, 'solicitudes') + [
+        Vista::mostrar($this->pdo(), 'templates/public/solicitud.latte', $this->contexto($c, 'solicitudes') + [
             's'           => $s,
             'tipos'       => Idioma::lista(SolicitudService::TIPOS),
             'estadosS'    => Idioma::lista(SolicitudService::ESTADOS_CLIENTE),

@@ -626,7 +626,7 @@ seccion('Idiomas: el texto en español es la clave y se traduce al compilar');
 P\Idioma::fijar('es');
 $ajI = new P\AjustesService($pdo);
 $motorI = new Latte\Engine();
-$motorI->setLoader(new Latte\Loaders\StringLoader(['t' => '<p title="Hola mundo">Hola <b>mundo</b>, {$n}!</p><input type="submit" value="Enviar"><script>var a="Hola";</script><textarea>Hola</textarea>{_"Hola, %s", $n}<i>&middot;</i>']));
+$motorI->setLoader(new Latte\Loaders\StringLoader(['t' => '<p title="Hola mundo">Hola <b>mundo</b>, {$n}!</p><input type="submit" value="Enviar"><script>var a="Hola";</script><textarea>Hola</textarea>{t("Hola, %s", $n)}<i>&middot;</i>']));
 P\IdiomaExtension::instalar($motorI);
 P\IdiomaExtension::instalar($motorI);   // idempotente
 P\Idioma::registrar('en', ['Hola mundo' => 'Hello world', 'Hola' => 'Hi', 'mundo' => 'world', 'Enviar' => 'Send', 'Hola, %s' => 'Hello, %s']);
@@ -634,7 +634,7 @@ $esI = $motorI->renderToString('t', ['n' => 'Ana']);
 check(str_contains($esI, '<p title="Hola mundo">Hola <b>mundo</b>, Ana!</p>') && str_contains($esI, 'value="Enviar"') && str_contains($esI, 'Hola, Ana'), 'en español la plantilla sale tal cual está escrita');
 P\Idioma::fijar('en');
 $enI = $motorI->renderToString('t', ['n' => 'Ana']);   // misma plantilla compilada: el idioma se elige al dibujar
-check(str_contains($enI, '<p title="Hello world">Hi <b>world</b>, Ana!</p>') && str_contains($enI, 'value="Send"') && str_contains($enI, 'Hello, Ana'), 'en inglés se traducen textos, title, botón y {_…} con valores');
+check(str_contains($enI, '<p title="Hello world">Hi <b>world</b>, Ana!</p>') && str_contains($enI, 'value="Send"') && str_contains($enI, 'Hello, Ana'), 'en inglés se traducen textos, title, botón y t(…) con valores');
 check(str_contains($enI, '<script>var a="Hola";</script>') && str_contains($enI, '<textarea>Hola</textarea>'), 'script y textarea no se tocan');
 check(P\Idioma::t('Frase que no existe') === 'Frase que no existe' && P\Idioma::t('Hola, %s', 'Luis') === 'Hello, Luis', 'lo que falta cae al español y los valores entran con %s');
 P\Idioma::fijar('xx');
@@ -3359,6 +3359,15 @@ $ajC->borrar('equipo', $ana, 'idioma');
 $ajC->borrar('contacto', $contacto, 'idioma');
 $ajC->borrar('cliente', $c1, 'idioma');
 P\Idioma::reiniciar();
+
+// ---------------------------------------------------------------------------
+seccion('Idiomas: las plantillas compilan con el Latte del TypeDock real');
+exec(PHP_BINARY . ' ' . escapeshellarg(dirname(__DIR__) . '/dev/compilar-con-nucleo.php') . ' 2>&1', $salidaN, $codN);
+if ($codN === 2) {
+    echo ' (omitida: no hay un clon de typedock/core; TYPEDOCK_CORE_DIR)';
+} else {
+    check($codN === 0, 'las plantillas compilan con el Latte del núcleo' . ($codN === 0 ? '' : ': ' . implode(' | ', $salidaN)));
+}
 
 // ---------------------------------------------------------------------------
 seccion('Panel de control del proyecto');

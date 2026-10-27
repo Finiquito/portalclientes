@@ -14,8 +14,8 @@
         <h1 class="relative mt-1 text-[2rem] font-extrabold leading-[1.08] tracking-tight sm:text-5xl">{$fmt->saludo()}, {$nombre}</h1>
         <p class="relative mt-3 max-w-2xl text-base text-muted sm:text-lg">
             {if $nTurno === 0}Nada esperando al equipo por ahora. Buen momento para adelantar.
-            {elseif $nCliente > 0}{_'Hay %d %s de clientes para revisar y %d %s en tu turno.', $nCliente, $nCliente === 1 ? t('respuesta') : t('respuestas'), $nTurno, $nTurno === 1 ? t('tarea') : t('tareas')}
-            {else}{_'Tienes %d %s en el turno del equipo.', $nTurno, $nTurno === 1 ? t('tarea') : t('tareas')}{/if}
+            {elseif $nCliente > 0}{t('Hay %d %s de clientes para revisar y %d %s en tu turno.', $nCliente, $nCliente === 1 ? t('respuesta') : t('respuestas'), $nTurno, $nTurno === 1 ? t('tarea') : t('tareas'))}
+            {else}{t('Tienes %d %s en el turno del equipo.', $nTurno, $nTurno === 1 ? t('tarea') : t('tareas'))}{/if}
         </p>
     </section>
 
@@ -98,7 +98,7 @@
             <ul class="px-2 pb-2 sm:px-3 sm:pb-3">
                 {foreach $resto as $t}{include '_tarea.latte', t: $t, fmt: $fmt}{/foreach}
             </ul>
-            {if $nResto > count($resto)}<p class="px-6 pb-5 text-sm text-muted">{_'Y %d más en tus proyectos.', $nResto - count($resto)}</p>{/if}
+            {if $nResto > count($resto)}<p class="px-6 pb-5 text-sm text-muted">{t('Y %d más en tus proyectos.', $nResto - count($resto))}</p>{/if}
         {/if}
     </section>
 </div>

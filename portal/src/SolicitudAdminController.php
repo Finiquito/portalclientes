@@ -92,7 +92,7 @@ class SolicitudAdminController
             'solicitudes' => $lista,
             'filtros'     => $f,
             'conteos'     => $conteos,
-            'grupos'      => self::FILTRO_ESTADOS,
+            'grupos'      => Idioma::lista(self::FILTRO_ESTADOS),
             'tipos'       => Idioma::lista(SolicitudService::TIPOS),
             'estadosS'    => Idioma::lista(SolicitudService::ESTADOS),
             'urgencias'   => Idioma::lista(SolicitudService::URGENCIAS),
@@ -217,7 +217,7 @@ class SolicitudAdminController
         }
         if ($nuevos !== [] && $nuevos[0]['tipo'] === 'contacto' && $conv->invitable($r) && $conv->sincronizar(null, $r, ['nuevos' => $nuevos, 'quitados' => []]) > 0) {
             $this->comentarDesdePost($s);
-            $this->ui->redirect($this->url('reuniones/' . $reunionId), 'Reunión agendada: le llegó la invitación de calendario a ' . $s['contacto_nombre'] . '.');
+            $this->ui->redirect($this->url('reuniones/' . $reunionId), Idioma::t('Reunión agendada: le llegó la invitación de calendario a %s.', (string) $s['contacto_nombre']));
             return;
         }
         $this->avisarCliente($s, Idioma::perezoso(fn(): string => Idioma::t('Reunión confirmada: %s %s', $fmt->fecha((string) $r['fecha']), $fmt->hora((string) $r['fecha']))), [

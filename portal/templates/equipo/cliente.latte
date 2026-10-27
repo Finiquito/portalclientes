@@ -35,7 +35,7 @@
 {if $sinInvitar}
     <section class="reveal mb-6 flex flex-wrap items-center gap-x-4 gap-y-3 rounded-2xl bg-surface2 px-4 py-3 text-sm" aria-label="Pendientes">
         <svg class="size-5 flex-none text-brand-ink"><use href="#i-mail"/></svg>
-        <p class="min-w-0 flex-1">{_'Falta invitar a <strong>%s</strong> a su portal. Hazlo cuando el proyecto tenga algo que mostrar.', htmlspecialchars(implode(t(' y '), array_map(fn($x) => $x['nombre'], $sinInvitar)))|noescape}</p>
+        <p class="min-w-0 flex-1">{t('Falta invitar a <strong>%s</strong> a su portal. Hazlo cuando el proyecto tenga algo que mostrar.', htmlspecialchars(implode(t(' y '), array_map(fn($x) => $x['nombre'], $sinInvitar))))|noescape}</p>
         {foreach $sinInvitar as $x}
             <form method="post" action="/equipo/contactos/{$x['id']}/invitar">
                 <input type="hidden" name="_csrf" value="{$csrf}">

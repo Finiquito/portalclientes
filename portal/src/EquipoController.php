@@ -87,7 +87,6 @@ class EquipoController
     protected function usuarioActual(): ?array
     {
         PortalSession::iniciar();
-        PortalPlugin::instalarIdiomas($this->ctx);
         $id = $_SESSION[self::SESION] ?? null;
         $u = is_string($id) ? $this->equipo()->find($id) : null;
         if ($u === null || (int) $u['activo'] !== 1) {
@@ -133,7 +132,6 @@ class EquipoController
     /** Variables de las páginas sin sesión (entrar, verificar). @return array<string, mixed> */
     protected function contextoPublico(array $extra = []): array
     {
-        PortalPlugin::instalarIdiomas($this->ctx);
         Idioma::fijar(Idioma::visitante($this->ajustes()->get('global', 'portal', 'idioma')));
         return [
             'marca'      => $this->marca(),
@@ -304,12 +302,12 @@ class EquipoController
         $gente = [];
         foreach ($svc->delCliente($clienteId) as $g) {
             if ($proyectoId === null) {
-                $nota = $g['completo'] ? 'Todo el cliente' : 'Solo ' . implode(', ', $g['proyectos']);
+                $nota = $g['completo'] ? Idioma::t('Todo el cliente') : Idioma::t('Solo %s', implode(', ', $g['proyectos']));
                 $gente[] = ['id' => $g['id'], 'nombre' => $g['nombre'], 'cargo' => $g['cargo'], 'nota' => $nota, 'quitable' => true];
             } elseif ($g['completo']) {
-                $gente[] = ['id' => $g['id'], 'nombre' => $g['nombre'], 'cargo' => $g['cargo'], 'nota' => 'Por todo el cliente', 'quitable' => false];
+                $gente[] = ['id' => $g['id'], 'nombre' => $g['nombre'], 'cargo' => $g['cargo'], 'nota' => Idioma::t('Por todo el cliente'), 'quitable' => false];
             } elseif (in_array($proyectoId, $g['proyecto_ids'], true)) {
-                $gente[] = ['id' => $g['id'], 'nombre' => $g['nombre'], 'cargo' => $g['cargo'], 'nota' => 'Este proyecto', 'quitable' => true];
+                $gente[] = ['id' => $g['id'], 'nombre' => $g['nombre'], 'cargo' => $g['cargo'], 'nota' => Idioma::t('Este proyecto'), 'quitable' => true];
             }
         }
         $ids = array_column($gente, 'id');
@@ -405,7 +403,7 @@ class EquipoController
 
     protected function view(string $plantilla, array $datos): void
     {
-        $this->ctx->view('templates/equipo/' . $plantilla, $datos);
+        Vista::mostrar($this->pdo(), 'templates/equipo/' . $plantilla, $datos);
     }
 
     // ---------------------------------------------------------------------
@@ -795,7 +793,7 @@ class EquipoController
         foreach ($lista as $c) {
             $resp = (string) ($c['responsable_id'] ?? '');
             $k = isset($personas[$resp]) ? $resp : '';
-            $grupos[$k] ??= ['id' => $k, 'nombre' => $k === '' ? 'Sin responsable de cuenta' : $personas[$k], 'mio' => $k === $yo, 'clientes' => []];
+            $grupos[$k] ??= ['id' => $k, 'nombre' => $k === '' ? Idioma::t('Sin responsable de cuenta') : $personas[$k], 'mio' => $k === $yo, 'clientes' => []];
             $grupos[$k]['clientes'][] = $c;
         }
         // Las mías primero, después por nombre; «sin responsable» al final.
@@ -867,7 +865,7 @@ class EquipoController
         if ($sel !== null && !in_array($sel['clave'], array_column($lista, 'clave'), true)) {
             array_unshift($lista, ['fuera' => true] + $svc->conUltimo([$sel])[0]);
         }
-        $this->ctx->view('templates/equipo/mensajes.latte', $this->contexto($u, 'mensajes', [
+        Vista::mostrar($this->pdo(), 'templates/equipo/mensajes.latte', $this->contexto($u, 'mensajes', [
             'base'        => '/equipo/mensajes',
             'pestana'     => $pestana,
             'nActivas'    => $cuenta('activas'),
@@ -966,7 +964,7 @@ class EquipoController
             if (($ver === 'mias' && $r !== $yo) || ($ver !== 'mias' && $ver !== 'todas' && $r !== $ver)) {
                 continue;
             }
-            $porCuenta[$r] ??= ['id' => $r, 'nombre' => $r === '' ? 'Sin responsable de cuenta' : $personas[$r], 'mio' => $r === $yo, 'proyectos' => []];
+            $porCuenta[$r] ??= ['id' => $r, 'nombre' => $r === '' ? Idioma::t('Sin responsable de cuenta') : $personas[$r], 'mio' => $r === $yo, 'proyectos' => []];
             $porCuenta[$r]['proyectos'][] = $pr;
         }
         uasort($porCuenta, fn($a, $b) => [!$a['mio'], $a['id'] === '', $a['nombre']] <=> [!$b['mio'], $b['id'] === '', $b['nombre']]);
@@ -1017,7 +1015,7 @@ class EquipoController
             if ($f['clientes'] === 0 && $f['atrasadas'] === 0 && $f['respuestas'] === 0) {
                 continue;
             }
-            $out[] = ['id' => $k, 'nombre' => $nombres[$k] ?? 'Sin responsable de cuenta'] + $f;
+            $out[] = ['id' => $k, 'nombre' => $nombres[$k] ?? Idioma::t('Sin responsable de cuenta')] + $f;
         }
         usort($out, fn($a, $b) => [$a['id'] === '', -$a['atrasadas'], -$a['respuestas'], $a['nombre']] <=> [$b['id'] === '', -$b['atrasadas'], -$b['respuestas'], $b['nombre']]);
         return $out;
