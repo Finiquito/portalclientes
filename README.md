@@ -74,10 +74,14 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### v0.47.1: Ajustes de la agencia en inglés
+- «Ajustes del portal» (en el panel del equipo: Agencia, Avisos, Clientes, IA, Correos y Tarea programada) ya sale completo en el idioma de la persona: textos, ayudas, nombres de colores, países y modelos de IA, y los textos de ejemplo de los campos. Antes quedaba mezclado con español.
+- Quedan sólo en español el admin de TypeDock y el módulo «Contactos ganados» (leads).
+
 ### v0.47.0: Idiomas (español e inglés)
 - **Cada persona elige su idioma**: los contactos del cliente en «Ajustes» del portal y las personas del equipo en «Mis ajustes». Si no eligen, vale el del cliente (se fija en su ficha), luego el de la agencia (Portal · Ajustes) y al final el español. En la pantalla de ingreso hay un selector «Español · English» que se recuerda.
 - **Todo lo que ve el cliente sale en su idioma**: pantallas, fechas y horas (`Oct 12`, `2:30 pm`), avisos, el JS (dictado, subida de archivos, visor de PDF) y los correos: código de acceso, invitación, avisos agrupados, resumen de la mañana, recordatorios y las invitaciones de reunión (con su `.ics`). Cada correo se escribe en el idioma de **quien lo recibe**, no de quien lo provocó.
-- **El panel del equipo y las pantallas de gestión también** (tareas, entregas, reuniones, solicitudes, clientes, contactos, proyectos…). Quedan sólo en español los ajustes técnicos (SMTP, IA, cron) y el módulo «Contactos ganados» del lado de la agencia.
+- **El panel del equipo y las pantallas de gestión también** (tareas, entregas, reuniones, solicitudes, clientes, contactos, proyectos…). Queda sólo en español el módulo «Contactos ganados» del lado de la agencia (los ajustes de la agencia se tradujeron en la 0.47.1).
 - En los formularios de contacto, cliente, persona del equipo y ajustes de la agencia hay un selector de idioma (la invitación sale en el idioma que se elija ahí).
 - Cómo funciona: el texto en español es la clave y las plantillas se traducen solas al compilarse (`IdiomaExtension`); en PHP se usa `Idioma::t()` y, para avisos que otra persona va a leer, `Idioma::f()`. Las traducciones están en `portal/lang/en/*.php`. Para sumar un idioma: copiar esa carpeta, traducir y agregar el código en `Idioma::DISPONIBLES`. Detalles y herramientas en `docs/idiomas.md`.
 - Pruebas: el portal del cliente y el panel completos en inglés sin frases sin traducir, y los correos en cada idioma.

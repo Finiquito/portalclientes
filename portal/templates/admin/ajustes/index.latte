@@ -58,7 +58,7 @@
             </div>
             <div class="pa-fila-campo">
                 <select id="f-pais" name="pais_agencia" class="form-input" style="max-width:22rem">
-                    {foreach $paises as $cod => $p}<option value="{$cod}" {if $cfg['pais_agencia'] === $cod}selected{/if}>{\TypeDock\Plugin\Portal\Fmt::bandera($cod)} {$p[0]}</option>{/foreach}
+                    {foreach $paises as $cod => $p}<option value="{$cod}" {if $cfg['pais_agencia'] === $cod}selected{/if}>{\TypeDock\Plugin\Portal\Fmt::bandera($cod)} {t($p[0])}</option>{/foreach}
                 </select>
                 <p class="pa-fila-ayuda" style="margin-top:.5rem">Ahora son <strong>{$horaServidorInfo['agencia']}</strong> en la hora de la agencia ({$horaServidorInfo['zona']}). El servidor de PHP está en <strong>{$horaServidorInfo['zonaServidor']}</strong> y marca <strong>{$horaServidorInfo['servidor']}</strong>.{if $horaServidorInfo['zona'] !== $horaServidorInfo['zonaServidor']} Son zonas distintas: lo que se registra solo (llegada de contactos, comentarios) queda en la hora del servidor.{/if}</p>
             </div>
@@ -162,7 +162,7 @@
                     {if $pv['origen'] === 'entorno'}
                         <p class="pa-muted" style="margin:0">Se usa la variable de entorno <code>{$pv['env']}</code> del servidor ({$pv['pista']}).</p>
                     {else}
-                        <input type="password" name="ia_clave{$pv['sufijo']}" class="form-input" autocomplete="off" aria-label="Clave de {$pv['nombre']}" placeholder="{if $pv['origen'] !== ''}Guardada ({$pv['pista']}) — escribe otra sólo para reemplazarla{else}Pega la clave aquí{/if}">
+                        <input type="password" name="ia_clave{$pv['sufijo']}" class="form-input" autocomplete="off" aria-label="{t('Clave de %s', $pv['nombre'])}" placeholder="{if $pv['origen'] !== ''}{t('Guardada (%s) — escribe otra sólo para reemplazarla', $pv['pista'])}{else}{t('Pega la clave aquí')}{/if}">
                         {if $pv['origen'] !== ''}<label class="pa-check" style="margin-top:.5rem"><input type="checkbox" name="ia_quitar{$pv['sufijo']}" value="1"> <span>Quitar la clave guardada</span></label>{/if}
                         <details class="pa-mas">
                             <summary>Privacidad</summary>
@@ -177,10 +177,10 @@
                     <p class="pa-fila-ayuda">El económico alcanza para la mayoría de las reuniones.</p>
                 </div>
                 <div class="pa-fila-campo">
-                    <select name="ia_modelo{$pv['sufijo']}" class="form-input" aria-label="Modelo de {$pv['nombre']}">
-                        {foreach $pv['modelos'] as $mk => $mn}<option value="{$mk}" {if $pv['modelo'] === $mk}selected{/if}>{$mn}</option>{/foreach}
+                    <select name="ia_modelo{$pv['sufijo']}" class="form-input" aria-label="{t('Modelo de %s', $pv['nombre'])}">
+                        {foreach $pv['modelos'] as $mk => $mn}<option value="{$mk}" {if $pv['modelo'] === $mk}selected{/if}>{t($mn)}</option>{/foreach}
                     </select>
-                    <input type="text" name="ia_modelo_otro{$pv['sufijo']}" class="form-input" autocomplete="off" aria-label="Otro modelo" placeholder="{if $pv['personalizado']}En uso: {$pv['modelo']} — escribe otro para cambiarlo{else}¿Otro modelo? Escribe su nombre exacto (opcional){/if}">
+                    <input type="text" name="ia_modelo_otro{$pv['sufijo']}" class="form-input" autocomplete="off" aria-label="Otro modelo" placeholder="{if $pv['personalizado']}{t('En uso: %s — escribe otro para cambiarlo', $pv['modelo'])}{else}{t('¿Otro modelo? Escribe su nombre exacto (opcional)')}{/if}">
                 </div>
             </div>
         </div>
@@ -275,7 +275,7 @@
                         </select>
                     </label>
                     <label>Usuario<input type="text" name="smtp_user" class="form-input" value="{$correo['smtp']['usuario']}" placeholder="portal@tudominio.cl" autocomplete="off"></label>
-                    <label>Contraseña<input type="password" name="smtp_clave" class="form-input" value="" placeholder="{if $correo['smtp']['tieneClave']}Guardada (vacía = mantener){else}Contraseña de la casilla{/if}" autocomplete="new-password"></label>
+                    <label>Contraseña<input type="password" name="smtp_clave" class="form-input" value="" placeholder="{if $correo['smtp']['tieneClave']}{t('Guardada (vacía = mantener)')}{else}{t('Contraseña de la casilla')}{/if}" autocomplete="new-password"></label>
                     <label>Enviar desde<input type="email" name="smtp_desde" class="form-input" value="{$correo['smtp']['desde']}" placeholder="(igual al usuario)"></label>
                 </div>
                 {if $correo['smtp']['tieneClave']}<label class="pa-check"><input type="checkbox" name="smtp_quitar_clave" value="1"> <span>Borrar la contraseña guardada</span></label>{/if}

@@ -47,6 +47,6 @@ php tests/run.php                        # recorre el portal y el panel en ingl�
 
 ## Fuera de alcance por ahora
 
-- Ajustes técnicos del admin (SMTP, IA, cron) y las pantallas de «Contactos ganados» de la agencia (el cliente sí las ve traducidas).
+- Las pantallas de «Contactos ganados» (leads) de la agencia (el cliente sí las ve traducidas).
 - Textos que escribe la gente (títulos, comentarios, descripciones) no se traducen.
 - El detalle de la actividad guardada en la base («2 archivo(s)») queda tal como se registró.
