@@ -73,7 +73,7 @@
         <h2 id="h-pedir" class="text-lg font-extrabold tracking-tight">Cómo pedirnos algo</h2>
         <p class="mt-2 text-[0.9375rem] leading-relaxed text-ink/85">En «Solicitudes» eliges qué necesitas, el proyecto y para cuándo. Puedes adjuntar archivos o dictarlo en vez de escribirlo. Te avisamos por correo cuando la tomemos.</p>
         <ul class="mt-3 space-y-2 text-[0.9375rem] leading-relaxed text-ink/85">
-            <li><strong>Urgente:</strong> para el próximo día hábil. Se pasa adelante de lo que estamos haciendo, así que puede mover otras entregas tuyas.{if $maxUrgentes > 0} Puedes tener {$maxUrgentes === 1 ? 'una urgencia abierta' : $maxUrgentes . ' urgencias abiertas'} a la vez.{/if}</li>
+            <li><strong>Urgente:</strong> para el próximo día hábil. Se pasa adelante de lo que estamos haciendo, así que puede mover otras entregas tuyas.{if $maxUrgentes > 0} {$maxUrgentes === 1 ? t('Puedes tener una urgencia abierta a la vez.') : t('Puedes tener %d urgencias abiertas a la vez.', $maxUrgentes)}{/if}</li>
             <li><strong>Prioritario:</strong> en máximo 5 días hábiles.</li>
             <li><strong>Sin apuro:</strong> cuando tengamos espacio.</li>
             <li><strong>Reportar un problema</strong> (algo dejó de funcionar) siempre llega como urgente.</li>

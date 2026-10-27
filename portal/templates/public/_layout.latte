@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es" class="{if $tema === 'oscuro'}dark{/if}" data-tema="{$tema}" style="--brand: {$marca['color']|noescape}; --brand-fg: {$marca['texto']|noescape}; --brand-ink-claro: {$marca['tinta']|noescape}">
+<html lang="{\TypeDock\Plugin\Portal\Idioma::actual()}" class="{if $tema === 'oscuro'}dark{/if}" data-tema="{$tema}" style="--brand: {$marca['color']|noescape}; --brand-fg: {$marca['texto']|noescape}; --brand-ink-claro: {$marca['tinta']|noescape}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -39,7 +39,7 @@
     <div class="sticky top-0 z-50 border-b border-warn/40 bg-warn/15 backdrop-blur-xl">
         <div class="mx-auto flex max-w-[1320px] flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2.5 text-sm sm:px-6 lg:max-w-[1680px] lg:px-8 lg:max-[1441px]:px-5">
             <svg class="size-5 flex-none text-warn"><use href="#i-eye"/></svg>
-            <p class="min-w-0 flex-1 leading-snug"><strong>Vista previa:</strong> así ve el portal {$contacto['nombre']} ({$puedeColaborar ? 'colaborador' : 'sólo lectura'}). Puedes recorrer todo, pero no enviar ni cambiar nada.</p>
+            <p class="min-w-0 flex-1 leading-snug"><strong>Vista previa:</strong> {_'así ve el portal %s (%s). Puedes recorrer todo, pero no enviar ni cambiar nada.', $contacto['nombre'], $puedeColaborar ? t('colaborador') : t('sólo lectura')}</p>
             <form method="post" action="/portal/vista-previa/salir">
                 <button type="submit" class="btn btn-primary btn-sm">Salir de la vista previa</button>
             </form>
@@ -61,7 +61,7 @@
             {/if}
         </a>
         <div class="flex items-center gap-1.5">
-            <a href="/portal/mensajes" class="btn btn-ghost relative min-h-10! w-10! px-0!" aria-label="Mensajes{if ($mensajesSinLeer ?? 0) > 0} ({$mensajesSinLeer} sin leer){/if}" {if $nav === 'mensajes'}aria-current="page"{/if}>
+            <a href="/portal/mensajes" class="btn btn-ghost relative min-h-10! w-10! px-0!" aria-label="{_'Mensajes'}{if ($mensajesSinLeer ?? 0) > 0} ({_'%d sin leer', $mensajesSinLeer}){/if}" {if $nav === 'mensajes'}aria-current="page"{/if}>
                 <svg class="size-5"><use href="#i-chat"/></svg>
                 {if ($mensajesSinLeer ?? 0) > 0}<span class="absolute -right-1 -top-1 flex min-w-4 items-center justify-center rounded-full bg-brand px-1 text-[0.625rem] font-bold leading-4 text-brand-fg">{$mensajesSinLeer}</span>{/if}
             </a>

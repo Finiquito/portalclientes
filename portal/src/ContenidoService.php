@@ -279,7 +279,7 @@ class ContenidoService
     {
         $del = $this->pdo->prepare('DELETE FROM portal_reacciones WHERE version_id = ? AND contacto_id = ?');
         $del->execute([$versionId, $contactoId]);
-        if (isset(TiposContenido::REACCIONES[$valor])) {
+        if (isset(Idioma::lista(TiposContenido::REACCIONES)[$valor])) {
             $this->pdo->prepare('INSERT INTO portal_reacciones (id, version_id, contacto_id, valor, created_at) VALUES (?, ?, ?, ?, ?)')
                 ->execute([typedock_uuid7(), $versionId, $contactoId, $valor, self::ahora()]);
         }
@@ -293,7 +293,7 @@ class ContenidoService
     {
         $stmt = $this->pdo->prepare('SELECT contacto_id, valor FROM portal_reacciones WHERE version_id = ?');
         $stmt->execute([$versionId]);
-        $conteo = array_fill_keys(array_keys(TiposContenido::REACCIONES), 0);
+        $conteo = array_fill_keys(array_keys(Idioma::lista(TiposContenido::REACCIONES)), 0);
         $mia = '';
         foreach ($stmt->fetchAll() as $r) {
             if (isset($conteo[$r['valor']])) {

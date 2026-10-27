@@ -65,7 +65,7 @@ class LeadAdminController
         $clientes = $this->clientes($proyectos);
         $f = FiltrosLista::desdeGet($this->ui->url('leads'), ['cliente' => '', 'estado' => '', 'proyecto' => '', 'q' => '', 'publico' => '', 'periodo' => ''], [
             'cliente'  => 'uuid',
-            'estado'   => array_keys(LeadService::ESTADOS),
+            'estado'   => array_keys(Idioma::lista(LeadService::ESTADOS)),
             'proyecto' => 'uuid',
             'q'        => 'texto',
             'publico'  => array_keys(LeadService::PUBLICOS),
@@ -114,7 +114,7 @@ class LeadAdminController
         }
         $this->ui->view('leads/clientes.latte', [
             'tarjetas'   => $tarjetas,
-            'estados'    => LeadService::ESTADOS,
+            'estados'    => Idioma::lista(LeadService::ESTADOS),
             'sinProyectos' => $proyectos === [],
             'marcasCli'  => Fmt::marcasClientes($this->pdo()),
             'fmt'        => new Fmt(),
@@ -195,9 +195,9 @@ class LeadAdminController
             'proyectos'   => $proyectosCli,
             'publicos'    => LeadService::PUBLICOS,
             'tiposAlcance' => array_values($tiposAlcance),
-            'estados'     => LeadService::ESTADOS,
+            'estados'     => Idioma::lista(LeadService::ESTADOS),
             'chips'       => LeadService::CHIPS_ADMIN,
-            'origenes'    => LeadService::ORIGENES,
+            'origenes'    => Idioma::lista(LeadService::ORIGENES),
             'colorProy'   => Fmt::coloresTodos($this->pdo()),
             'marcasCli'   => Fmt::marcasClientes($this->pdo()),
             'fmt'         => new Fmt(),
@@ -218,9 +218,9 @@ class LeadAdminController
             'l'         => null,
             'proyectos' => $proyectos,
             'pre'       => ['proyecto_id' => (string) ($_GET['proyecto'] ?? '')],
-            'estados'   => LeadService::ESTADOS,
+            'estados'   => Idioma::lista(LeadService::ESTADOS),
             'chips'     => LeadService::CHIPS_ADMIN,
-            'origenes'  => LeadService::ORIGENES,
+            'origenes'  => Idioma::lista(LeadService::ORIGENES),
             'fmt'       => new Fmt(),
         ]);
     }
@@ -276,9 +276,9 @@ class LeadAdminController
             'mcEventos' => MailchimpConsulta::EVENTOS,
             'proyectos' => [],
             'pre'       => [],
-            'estados'   => LeadService::ESTADOS,
+            'estados'   => Idioma::lista(LeadService::ESTADOS),
             'chips'     => LeadService::CHIPS_ADMIN,
-            'origenes'  => LeadService::ORIGENES,
+            'origenes'  => Idioma::lista(LeadService::ORIGENES),
             'eventos'   => (new LeadLinea($this->pdo()))->eventos($id),
             'ahora'     => (new \DateTimeImmutable())->format('Y-m-d\TH:i'),
             'fmt'       => new Fmt(),
@@ -440,7 +440,7 @@ class LeadAdminController
     public function exportar(): void
     {
         $f = FiltrosLista::desdeGet($this->ui->url('leads'), ['cliente' => '', 'estado' => '', 'proyecto' => '', 'q' => '', 'publico' => '', 'periodo' => ''], [
-            'cliente' => 'uuid', 'estado' => array_keys(LeadService::ESTADOS), 'proyecto' => 'uuid', 'q' => 'texto',
+            'cliente' => 'uuid', 'estado' => array_keys(Idioma::lista(LeadService::ESTADOS)), 'proyecto' => 'uuid', 'q' => 'texto',
             'publico' => array_keys(LeadService::PUBLICOS), 'periodo' => ['30', '90', '365'],
         ]);
         $leads = self::dePublico($this->ui->filtrar($this->service()->lista(['cliente_id' => $f->get('cliente'), 'proyecto_id' => $f->get('proyecto'), 'q' => $f->get('q'), 'estado' => $f->get('estado')]), 'proyecto_id'), $f->get('publico'));
@@ -499,7 +499,7 @@ class LeadAdminController
             'revision'  => $this->service()->revisar($proyectoId, $leido['filas']) + ['avisos' => $leido['errores'], 'total' => count($leido['filas'])],
             'origen'    => $leido['origen'],
             'archivo'   => mb_substr((string) ($a['name'] ?? ''), 0, 120),
-            'origenes'  => array_intersect_key(LeadService::ORIGENES, array_flip(['csv_meta', 'csv_google', 'csv_mailchimp', 'csv'])),
+            'origenes'  => array_intersect_key(Idioma::lista(LeadService::ORIGENES), array_flip(['csv_meta', 'csv_google', 'csv_mailchimp', 'csv'])),
         ]);
     }
 

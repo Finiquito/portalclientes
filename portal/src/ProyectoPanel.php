@@ -177,26 +177,26 @@ final class ProyectoPanel
     public function salud(array $progreso, int $vencidas, int $sinRespuesta): array
     {
         if (!empty($progreso['completo'])) {
-            return ['nivel' => 'completo', 'etiqueta' => 'Completo', 'motivo' => 'todas las fases están listas'];
+            return ['nivel' => 'completo', 'etiqueta' => Idioma::t('Completo'), 'motivo' => Idioma::t('todas las fases están listas')];
         }
         $hoy = $this->hoy->format('Y-m-d');
         foreach ($progreso['fases'] ?? [] as $f) {
             $fin = substr((string) ($f['fin'] ?? ''), 0, 10);
             if ($f['estado'] !== 'hecha' && $fin !== '' && $fin < $hoy) {
-                return ['nivel' => 'atrasado', 'etiqueta' => 'Atrasado', 'motivo' => 'la fase «' . $f['nombre'] . '» ya debía haber terminado'];
+                return ['nivel' => 'atrasado', 'etiqueta' => Idioma::t('Atrasado'), 'motivo' => Idioma::t('la fase «%s» ya debía haber terminado', $f['nombre'])];
             }
         }
         $motivos = [];
         if ($vencidas > 0) {
-            $motivos[] = $vencidas === 1 ? '1 tarea vencida' : $vencidas . ' tareas vencidas';
+            $motivos[] = $vencidas === 1 ? Idioma::t('1 tarea vencida') : Idioma::t('%d tareas vencidas', $vencidas);
         }
         if ($sinRespuesta > 0) {
-            $motivos[] = $sinRespuesta === 1 ? '1 revisión sin respuesta' : $sinRespuesta . ' revisiones sin respuesta';
+            $motivos[] = $sinRespuesta === 1 ? Idioma::t('1 revisión sin respuesta') : Idioma::t('%d revisiones sin respuesta', $sinRespuesta);
         }
         if ($motivos !== []) {
-            return ['nivel' => 'riesgo', 'etiqueta' => 'En riesgo', 'motivo' => implode(' · ', $motivos)];
+            return ['nivel' => 'riesgo', 'etiqueta' => Idioma::t('En riesgo'), 'motivo' => implode(' · ', $motivos)];
         }
-        return ['nivel' => 'plazo', 'etiqueta' => 'En plazo', 'motivo' => 'sin vencidas ni revisiones esperando'];
+        return ['nivel' => 'plazo', 'etiqueta' => Idioma::t('En plazo'), 'motivo' => Idioma::t('sin vencidas ni revisiones esperando')];
     }
 
     /**
@@ -409,8 +409,8 @@ final class ProyectoPanel
         }
         $eventos = $this->eventosDelCalendario($d);
         $dias = [];
-        $nombres = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
-        $meses = ['', 'ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+        $nombres = Idioma::lista(['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']);
+        $meses = Idioma::lista(['', 'ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']);
         for ($i = 0; $i < 7; $i++) {
             $dia = $lunes->modify('+' . $i . ' days');
             $f = $dia->format('Y-m-d');
@@ -462,7 +462,7 @@ final class ProyectoPanel
             }
             $semanas[] = $fila;
         }
-        $nombres = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+        $nombres = Idioma::lista(['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']);
         return [
             'mes' => $mes, 'titulo' => $nombres[(int) $primero->format('n')] . ' ' . $primero->format('Y'),
             'anterior' => $primero->modify('-1 month')->format('Y-m'), 'siguiente' => $primero->modify('+1 month')->format('Y-m'),

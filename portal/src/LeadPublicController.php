@@ -43,7 +43,7 @@ class LeadPublicController extends PortalPublicController
         if (!in_array($f['proyecto_id'], array_column($proyectos, 'id'), true)) {
             $f['proyecto_id'] = '';
         }
-        if (!isset(LeadService::ESTADOS[$f['estado']])) {
+        if (!isset(Idioma::lista(LeadService::ESTADOS)[$f['estado']])) {
             $f['estado'] = '';
         }
         return $f;
@@ -74,7 +74,7 @@ class LeadPublicController extends PortalPublicController
             'paso_asc'    => 'Próximo paso (el más cercano)',
             'paso_desc'   => 'Próximo paso (el más lejano)',
         ]);
-        $orden = array_flip(array_keys(LeadService::ESTADOS));
+        $orden = array_flip(array_keys(Idioma::lista(LeadService::ESTADOS)));
         $nombre = fn(array $l): string => mb_strtolower((string) $l['nombre']);
         // Sólo cuenta el próximo paso de lo que sigue abierto (como se muestra); lo demás va al final.
         $paso = fn(array $l): string => in_array($l['estado'], ['ganado', 'perdido'], true) ? '9999-12-31' : (string) ($l['proximo_paso_fecha'] ?: '9999-12-31');
@@ -111,9 +111,9 @@ class LeadPublicController extends PortalPublicController
             'total'     => count($base),
             'campanas'  => LeadService::campanas($base),
             'proyectos' => $proyectos,
-            'estados'   => LeadService::ESTADOS,
+            'estados'   => Idioma::lista(LeadService::ESTADOS),
             'chips'     => LeadService::CHIPS,
-            'origenes'  => LeadService::ORIGENES,
+            'origenes'  => Idioma::lista(LeadService::ORIGENES),
             'mcEstados' => MailchimpConsulta::ESTADOS,
             'hoy'       => (new \DateTimeImmutable('now', new \DateTimeZone(Zona::agencia())))->format('Y-m-d'),
             'exportar'  => '/portal/contactos-ganados/exportar' . (($q = http_build_query(array_filter(['proyecto' => $f['proyecto_id'], 'estado' => $f['estado'], 'campana' => $f['campana'], 'q' => $f['q']]))) !== '' ? '?' . $q : ''),
@@ -203,7 +203,7 @@ class LeadPublicController extends PortalPublicController
             return;
         }
         PortalSession::flash('ok', !empty($r['duplicado'])
-            ? 'Ese contacto ya estaba (mismo correo o teléfono en los últimos ' . LeadService::DIAS_DUPLICADO . ' días). Te llevamos a su ficha.'
+            ? Idioma::t('Ese contacto ya estaba (mismo correo o teléfono en los últimos %d días). Te llevamos a su ficha.', LeadService::DIAS_DUPLICADO)
             : 'Contacto agregado.');
         $this->redirectTo('portal/contactos-ganados/' . $r['id']);
     }
@@ -231,9 +231,9 @@ class LeadPublicController extends PortalPublicController
             'conMc'    => $conMc,
             'mcError'  => $mcError,
             'mcEventos' => MailchimpConsulta::EVENTOS,
-            'estados'  => LeadService::ESTADOS,
+            'estados'  => Idioma::lista(LeadService::ESTADOS),
             'chips'    => LeadService::CHIPS,
-            'origenes' => LeadService::ORIGENES,
+            'origenes' => Idioma::lista(LeadService::ORIGENES),
             // La línea de tiempo se muestra en la hora de quien la mira (no en la del servidor).
             'eventos'  => array_map(function (array $e) use ($zona): array {
                 foreach (['ocurrio_en', 'registrado_en'] as $k) {

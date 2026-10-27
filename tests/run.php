@@ -648,8 +648,7 @@ $cI->set('contacto', 'pers1', 'idioma', 'en');
 check(P\Idioma::de($cI, 'contacto', 'pers1', 'cli1') === 'en', 'el idioma de la persona gana a todos');
 $cI->borrar('global', 'portal', 'idioma');
 check(P\Idioma::con('en', fn() => P\Idioma::actual()) === 'en' && P\Idioma::actual() === 'es', 'Idioma::con() cambia y vuelve');
-P\Idioma::registrar('en', []);
-unset($GLOBALS['_cI']);
+P\Idioma::reiniciar();
 
 // ---------------------------------------------------------------------------
 seccion('Solicitudes del cliente');
@@ -3220,6 +3219,44 @@ check(str_contains($html, 'Hola, equipo') && str_contains($html, 'ing-logo') && 
 $_SESSION[P\EquipoController::SESION] = $sesEq;
 
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+seccion('Idiomas: el portal del cliente completo en inglés, sin frases sin traducir');
+$ajE = new P\AjustesService($pdo);
+$ajE->set('contacto', $contacto, 'idioma', 'en');
+$_SESSION[P\PortalSession::CONTACTO] = $contacto;
+P\Idioma::$registrarFaltas = true;
+P\Idioma::limpiarFaltas();
+$paginasE = [];
+$verE = function (string $nombre, callable $f) use (&$paginasE): string {
+    ob_start();
+    try { $f(); } catch (RuntimeException) {}
+    $h = (string) ob_get_clean();
+    $paginasE[$nombre] = $h;
+    return $h;
+};
+$verE('inicio', fn() => (new PublicoPrueba($ctx))->dashboard());
+$verE('tareas', fn() => (new PublicoPrueba($ctx))->tareas());
+$verE('reuniones', fn() => (new PublicoPrueba($ctx))->reuniones());
+$verE('calendario', fn() => (new PublicoPrueba($ctx))->calendario());
+$verE('ayuda', fn() => (new PublicoPrueba($ctx))->ayuda());
+$verE('ajustes', fn() => (new PublicoPrueba($ctx))->ajustesForm());
+$verE('archivos', fn() => (new PublicoPrueba($ctx))->archivosPagina());
+foreach (['lista'] as $m) {
+    $paginasE['solicitudes'] = (new SolicitudPrueba($ctx))->correr($m)[0];
+    $paginasE['contactos'] = (new LeadPrueba($ctx))->correr($m)[0];
+}
+check(str_contains($paginasE['inicio'], 'lang="en"') && str_contains($paginasE['ajustes'], 'Language'), 'la página sale con lang="en" y en inglés');
+check(str_contains($paginasE['tareas'], 'Tasks') && !str_contains($paginasE['tareas'], '>Tareas<'), 'las tareas dicen «Tasks»');
+$faltasE = P\Idioma::faltas();
+if (getenv('PORTAL_FALTAS')) {
+    file_put_contents(getenv('PORTAL_FALTAS'), implode("\n", $faltasE) . "\n");
+}
+check($faltasE === [], 'ninguna frase sin traducir al recorrer el portal en inglés' . ($faltasE ? ': ' . implode(' | ', array_slice($faltasE, 0, 12)) : ''));
+P\Idioma::$registrarFaltas = false;
+P\Idioma::limpiarFaltas();
+$ajE->set('contacto', $contacto, 'idioma', 'es');
+P\Idioma::fijar('es');
+
 // ---------------------------------------------------------------------------
 seccion('Panel de control del proyecto');
 

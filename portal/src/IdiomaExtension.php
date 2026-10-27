@@ -6,7 +6,20 @@ namespace TypeDock\Plugin\Portal;
 use Latte\Compiler\Node;
 use Latte\Compiler\NodeTraverser;
 use Latte\Compiler\Nodes\Html\AttributeNode;
+use Latte\Compiler\Nodes\Html\BogusTagNode;
+use Latte\Compiler\Nodes\Html\CommentNode;
 use Latte\Compiler\Nodes\Html\ElementNode;
+use Latte\Compiler\Nodes\Php\ArgumentNode;
+use Latte\Compiler\Nodes\Php\Expression\ArrayNode;
+use Latte\Compiler\Nodes\Php\Expression\BinaryOpNode;
+use Latte\Compiler\Nodes\Php\Expression\FunctionCallNode;
+use Latte\Compiler\Nodes\Php\Expression\StaticMethodCallNode;
+use Latte\Compiler\Nodes\Php\Expression\TernaryNode;
+use Latte\Compiler\Nodes\Php\ExpressionNode;
+use Latte\Compiler\Nodes\Php\IdentifierNode;
+use Latte\Compiler\Nodes\Php\NameNode;
+use Latte\Compiler\Nodes\Php\Scalar\StringNode;
+use Latte\Compiler\Nodes\PrintNode;
 use Latte\Compiler\Nodes\TemplateNode;
 use Latte\Compiler\Nodes\TextNode;
 use Latte\Compiler\PrintContext;
@@ -44,9 +57,15 @@ final class IdiomaExtension extends Extension
         return ['portalIdioma' => self::pase(...)];
     }
 
+    /** @return array<string, callable> t('Texto %s', $valor) dentro de expresiones de plantilla */
+    public function getFunctions(): array
+    {
+        return ['t' => fn(string $texto, string|int|float ...$args): string => Idioma::t($texto, ...$args)];
+    }
+
     public function getCacheKey(\Latte\Engine $engine): mixed
     {
-        return 'idioma1';
+        return 'idioma6';
     }
 
     public static function pase(TemplateNode $plantilla): void
@@ -61,8 +80,23 @@ final class IdiomaExtension extends Extension
                 self::atributos($n);
                 return null;
             }
+            if ($n instanceof BogusTagNode || $n instanceof CommentNode) {
+                return NodeTraverser::DontTraverseChildren;   // <!DOCTYPE …> y <!-- comentarios -->
+            }
             if ($n instanceof AttributeNode) {
                 return NodeTraverser::DontTraverseChildren;   // los atributos se tratan arriba, uno por uno
+            }
+            if ($n instanceof PrintNode) {
+                self::literales($n);
+                return null;
+            }
+            if ($n instanceof ArrayNode) {   // [['auto', 'Automático'], …]: las etiquetas de listas escritas en la plantilla
+                foreach ($n->items as $item) {
+                    if ($item->value instanceof StringNode && self::pareceTexto($item->value->value)) {
+                        $item->value = self::llamarT($item->value);
+                    }
+                }
+                return null;
             }
             if ($n instanceof TextoTraducible) {
                 return null;
@@ -72,6 +106,54 @@ final class IdiomaExtension extends Extension
             }
             return null;
         });
+    }
+
+    /**
+     * {$x ? 'Lista' : 'Próxima'}: los textos que se eligen dentro de una expresión que se imprime
+     * (ramas de ?: y ??, y piezas de una concatenación) pasan por Idioma::t(). Sólo los que parecen
+     * texto para personas: empiezan con mayúscula, llevan espacio o acento. Las palabras sueltas en
+     * minúscula ('pieza', 'aprobadas') se marcan a mano con t().
+     */
+    private static function literales(PrintNode $impresion): void
+    {
+        foreach ($impresion->modifier->filters as $filtro) {
+            if ($filtro->name->name === 'translate') {
+                return;   // {_'…'}: ya se traduce con su filtro
+            }
+        }
+        $envolver = fn(?ExpressionNode $e) => $e instanceof StringNode && self::pareceTexto($e->value) ? self::llamarT($e) : $e;
+        (new NodeTraverser())->traverse($impresion->expression, function (Node $h) use ($envolver) {
+            if ($h instanceof TernaryNode) {
+                $h->if = $envolver($h->if);
+                $h->else = $envolver($h->else);
+            } elseif ($h instanceof BinaryOpNode && in_array($h->operator, ['??', '.'], true)) {
+                $h->right = $envolver($h->right);
+                if ($h->operator === '.') {
+                    $h->left = $envolver($h->left);
+                }
+            } elseif ($h instanceof StaticMethodCallNode || $h instanceof FunctionCallNode) {
+                return NodeTraverser::DontTraverseChildren;
+            }
+            return null;
+        });
+        // la expresión completa: {'Texto'} o {$a ?: 'Texto'}
+        $impresion->expression = $envolver($impresion->expression);
+    }
+
+    private static function llamarT(StringNode $texto): StaticMethodCallNode
+    {
+        return new StaticMethodCallNode(
+            new NameNode('\\' . Idioma::class, NameNode::KindFullyQualified),
+            new IdentifierNode('t'),
+            [new ArgumentNode($texto)],
+        );
+    }
+
+    public static function pareceTexto(string $v): bool
+    {
+        return (bool) preg_match('/\p{L}{3}/u', $v)
+            && !preg_match('/[-\/.#_:\d]/', $v)
+            && (bool) preg_match('/^[\p{Lu}¿¡]|\s|[áéíóúñÁÉÍÓÚÑ]/u', $v);
     }
 
     private static function atributos(ElementNode $el): void

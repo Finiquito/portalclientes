@@ -145,6 +145,49 @@ final class Idioma
         return $m[1] . self::buscar(self::clave($m[2])) . $m[3];
     }
 
+    /**
+     * Traduce los textos de una tabla de etiquetas (clave => texto, o clave => [texto, …]).
+     * Lo que no está en la tabla de traducciones (íconos, tonos, claves) queda igual.
+     *
+     * @template T of array
+     * @param T $tabla
+     * @return T
+     */
+    public static function lista(array $tabla): array
+    {
+        if (self::$actual === self::DEFECTO && !self::$registrarFaltas) {
+            return $tabla;
+        }
+        foreach ($tabla as $k => $v) {
+            $tabla[$k] = is_array($v) ? self::lista($v) : (is_string($v) ? self::buscarSinRegistro($v) : $v);
+        }
+        return $tabla;
+    }
+
+    /**
+     * Antepone al JS las traducciones de los textos marcados con T('…'). En español no agrega nada.
+     */
+    public static function conTraducciones(string $js): string
+    {
+        if (self::$actual === self::DEFECTO || !preg_match_all("/\\bT\\('((?:[^'\\\\]|\\\\.)*)'\\)/u", $js, $m)) {
+            return $js;
+        }
+        $tabla = [];
+        foreach (array_unique($m[1]) as $lit) {
+            $k = stripcslashes($lit);
+            $v = self::tabla(self::$actual)[$k] ?? null;
+            if ($v !== null) {
+                $tabla[$k] = $v;
+            }
+        }
+        return 'window.PORTAL_T=' . json_encode($tabla, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG) . ";\n" . $js;
+    }
+
+    private static function buscarSinRegistro(string $texto): string
+    {
+        return self::$actual === self::DEFECTO ? $texto : (self::tabla(self::$actual)[$texto] ?? $texto);
+    }
+
     private static function buscar(string $texto): string
     {
         if (self::$actual === self::DEFECTO) {
@@ -164,9 +207,15 @@ final class Idioma
     public static function tabla(string $codigo): array
     {
         if (!isset(self::$tablas[$codigo])) {
-            $f = dirname(__DIR__) . '/lang/' . $codigo . '.php';
-            $t = is_file($f) ? include $f : [];
-            self::$tablas[$codigo] = is_array($t) ? $t : [];
+            // lang/en/*.php: un archivo por zona (cliente, equipo, admin, correos…), todos se suman
+            $t = [];
+            foreach (glob(dirname(__DIR__) . '/lang/' . $codigo . '/*.php') ?: [] as $f) {
+                $parte = include $f;
+                if (is_array($parte)) {
+                    $t = $parte + $t;
+                }
+            }
+            self::$tablas[$codigo] = $t;
         }
         return self::$tablas[$codigo];
     }
@@ -175,6 +224,15 @@ final class Idioma
     public static function registrar(string $codigo, array $tabla): void
     {
         self::$tablas[$codigo] = $tabla;
+    }
+
+    /** Para pruebas: vuelve a leer los archivos de lang/ y deja el idioma en español. */
+    public static function reiniciar(): void
+    {
+        self::$tablas = [];
+        self::$faltas = [];
+        self::$actual = self::DEFECTO;
+        self::$registrarFaltas = false;
     }
 
     /** @return list<string> */

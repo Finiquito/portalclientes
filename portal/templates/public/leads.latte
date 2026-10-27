@@ -23,7 +23,7 @@
         {foreach $misCampanas as $c}
         <a href="/portal/contactos-ganados?proyecto={$c['id']}" class="ll-camp" {if $f['proyecto_id'] === $c['id']}aria-current="true"{/if}>
             <span class="ll-camp-n"><span class="ll-camp-dot" style="background:{($colorProy[$c['id']] ?? '#94a3b8')|noescape}" aria-hidden="true"></span>{$c['nombre']}{foreach $c['etiquetas'] as $t} <span class="ll-pub" data-p="{$t}">{$t}</span>{/foreach}{if $c['estado'] !== 'activo'} <span class="ll-chip" data-e="nuevo">{$c['estado'] === 'pausado' ? 'Pausada' : 'Cerrada'}</span>{/if}</span>
-            <span class="ll-camp-t"><b>{$c['total']}</b> {$c['total'] === 1 ? 'contacto' : 'contactos'}</span>
+            <span class="ll-camp-t"><b>{$c['total']}</b> {$c['total'] === 1 ? t('contacto') : t('contactos')}</span>
         </a>
         {/foreach}
         {if $f['proyecto_id'] !== ''}<a href="/portal/contactos-ganados" class="ll-camp ll-camp-todas">Ver todas</a>{/if}
@@ -95,7 +95,7 @@
         {* Orden: a la vista arriba, también en el celular; «Invertir» da vuelta la columna elegida *}
         {var $ordenBase = [['llego', 'llego_desc', 'Cuándo llegó'], ['nombre', 'nombre_asc', 'Nombre'], ['estado', 'estado_asc', 'Estado'], ['paso', 'paso_asc', 'Próximo paso']]}
         <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-line px-4 py-3 text-sm">
-            <p class="text-muted"><span class="font-semibold text-ink">{$total === 1 ? '1 contacto' : $total . ' contactos'}</span></p>
+            <p class="text-muted"><span class="font-semibold text-ink">{$total === 1 ? t('1 contacto') : t('%d contactos', $total)}</span></p>
             <form method="get" class="flex w-full items-center gap-2 sm:w-auto" data-paginacion>
                 {foreach $pag->ocultos() as $k => $v}<input type="hidden" name="{$k}" value="{$v}">{/foreach}
                 {if $pag->porPagina}<input type="hidden" name="por" value="{$pag->porPagina}">{/if}

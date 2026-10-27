@@ -19,8 +19,8 @@
         <div class="pp-barra" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{$tp['pct']}" aria-label="Avance"><i style="width:{$tp['pct']}%"></i></div>
         {if $tp['fechas']['fin'] || $tp['sigue']}
             <div class="t" style="margin-top:.5rem">
-                {if $tp['fechas']['fin']}Entrega estimada <b>{$fmt->fechaCorta($tp['fechas']['fin'])}</b>{if $tp['fechas']['quedan'] !== null && $tp['fechas']['quedan'] >= 0 && !$tp['completo']} · {$tp['fechas']['quedan'] === 1 ? 'queda 1 día' : 'quedan ' . $tp['fechas']['quedan'] . ' días'}{/if}{/if}
-                {if $tp['sigue']}{if $tp['fechas']['fin']} · {/if}sigue {$tp['sigue']['nombre']}{if $tp['sigue']['inicio']} el {$fmt->fechaCorta($tp['sigue']['inicio'])}{/if}{/if}
+                {if $tp['fechas']['fin']}Entrega estimada <b>{$fmt->fechaCorta($tp['fechas']['fin'])}</b>{if $tp['fechas']['quedan'] !== null && $tp['fechas']['quedan'] >= 0 && !$tp['completo']} · {$tp['fechas']['quedan'] === 1 ? t('queda 1 día') : t('quedan %d días', $tp['fechas']['quedan'])}{/if}{/if}
+                {if $tp['sigue']}{if $tp['fechas']['fin']} · {/if}{if $tp['sigue']['inicio']}{_'sigue %s el %s', $tp['sigue']['nombre'], $fmt->fechaCorta($tp['sigue']['inicio'])}{else}{_'sigue %s', $tp['sigue']['nombre']}{/if}{/if}
             </div>
         {/if}
     </section>
@@ -39,7 +39,7 @@
     {/if}
 
     <section class="card card-pad o4">
-        <div class="pp-cab"><div><h2>Contenidos</h2><p class="pp-sub">{if $visibles > 0}{$visibles} {$visibles === 1 ? 'pieza' : 'piezas'} · {$cont['aprobado']} {$cont['aprobado'] === 1 ? 'aprobada' : 'aprobadas'}{else}Todavía no hay piezas para revisar{/if}</p></div><a href="/portal/entregas">Ver revisiones →</a></div>
+        <div class="pp-cab"><div><h2>Contenidos</h2><p class="pp-sub">{if $visibles > 0}{$visibles} {$visibles === 1 ? t('pieza') : t('piezas')} · {$cont['aprobado']} {$cont['aprobado'] === 1 ? t('aprobada') : t('aprobadas')}{else}Todavía no hay piezas para revisar{/if}</p></div><a href="/portal/entregas">Ver revisiones →</a></div>
         {if $visibles > 0}
             <div class="pp-seg" role="img" aria-label="Piezas por estado">
                 {if $cont['pendiente']}<i style="flex:{$cont['pendiente']};background:var(--warn)"></i>{/if}
@@ -47,9 +47,9 @@
                 {if $cont['aprobado']}<i style="flex:{$cont['aprobado']};background:var(--ok)"></i>{/if}
             </div>
             <div class="pp-ley">
-                <span><s style="background:var(--warn)"></s><b>{$cont['pendiente']}</b> {$cont['pendiente'] === 1 ? 'espera' : 'esperan'} tu revisión</span>
+                <span><s style="background:var(--warn)"></s><b>{$cont['pendiente']}</b> {$cont['pendiente'] === 1 ? t('espera tu revisión') : t('esperan tu revisión')}</span>
                 <span><s style="background:var(--danger)"></s><b>{$cont['cambios']}</b> con cambios pedidos</span>
-                <span><s style="background:var(--ok)"></s><b>{$cont['aprobado']}</b> {$cont['aprobado'] === 1 ? 'aprobada' : 'aprobadas'}</span>
+                <span><s style="background:var(--ok)"></s><b>{$cont['aprobado']}</b> {$cont['aprobado'] === 1 ? t('aprobada') : t('aprobadas')}</span>
             </div>
         {else}
             <p class="pp-vacio">Cuando el equipo te comparta contenido para revisar, aquí ves en qué va cada pieza.</p>
@@ -61,7 +61,7 @@
         {var $cg = $r['contactos']}
         {var $mx = max(1, ...array_column($cg['semanas'], 'llegaron'))}
         <section class="card card-pad o5" style="background: var(--surface-2)">
-            <div class="pp-cab"><div><h2>Contactos ganados</h2><p class="pp-sub"><b class="text-ink">{$cg['total']['llegaron']}</b> {$cg['total']['llegaron'] === 1 ? 'contacto' : 'contactos'} · <b class="text-ink">{$cg['total']['contactados']}</b> {$cg['total']['contactados'] === 1 ? 'contactado' : 'contactados'} · <b class="text-ink">{$cg['total']['ganado']}</b> {$cg['total']['ganado'] === 1 ? 'ganado' : 'ganados'}</p></div><a href="/portal/contactos-ganados?proyecto={$proyectoId}">Ver contactos →</a></div>
+            <div class="pp-cab"><div><h2>Contactos ganados</h2><p class="pp-sub"><b class="text-ink">{$cg['total']['llegaron']}</b> {$cg['total']['llegaron'] === 1 ? t('contacto') : t('contactos')} · <b class="text-ink">{$cg['total']['contactados']}</b> {$cg['total']['contactados'] === 1 ? t('contactado') : t('contactados')} · <b class="text-ink">{$cg['total']['ganado']}</b> {$cg['total']['ganado'] === 1 ? t('ganado') : t('ganados')}</p></div><a href="/portal/contactos-ganados?proyecto={$proyectoId}">Ver contactos →</a></div>
             {include '../_lead_semanal.latte', cg: $cg, mx: $mx, fmt: $fmt}
         </section>
     {/if}
@@ -71,21 +71,21 @@
     <section class="card card-pad o2">
         <div class="pp-cab"><div><h2>Lo que te toca</h2><p class="pp-sub">
             {if $r['nMeTocan'] + $cont['pendiente'] === 0}Nada por ahora: todo está en manos del equipo
-            {else}{$r['nMeTocan']} {$r['nMeTocan'] === 1 ? 'tarea' : 'tareas'} y {$cont['pendiente']} {$cont['pendiente'] === 1 ? 'pieza espera' : 'piezas esperan'} tu respuesta{/if}
+            {else}{_'%d %s y %d %s tu respuesta', $r['nMeTocan'], $r['nMeTocan'] === 1 ? t('tarea') : t('tareas'), $cont['pendiente'], $cont['pendiente'] === 1 ? t('pieza espera') : t('piezas esperan')}{/if}
         </p></div><a href="/portal/tareas?f=mias">Ver todo →</a></div>
         {if $r['meTocan'] || $cont['por_revisar']}
             <ul class="pp-lista">
                 {foreach $r['meTocan'] as $t}
                     {var $v = $fmt->vence($t['fecha_vencimiento'], $t['estado'])}
                     {var $vencida = $t['fecha_vencimiento'] && $v['tono'] === 'danger'}
-                    <li><a href="/portal/tareas/{$t['id']}" class="t"><span>{$t['titulo']}</span><small>Tarea{if $t['fecha_vencimiento']} · {$vencida ? 'venció el ' . $fmt->fechaCorta($t['fecha_vencimiento']) : 'para el ' . $fmt->fechaCorta($t['fecha_vencimiento'])}{/if}</small></a>
+                    <li><a href="/portal/tareas/{$t['id']}" class="t"><span>{$t['titulo']}</span><small>Tarea{if $t['fecha_vencimiento']} · {$vencida ? t('venció el %s', $fmt->fechaCorta($t['fecha_vencimiento'])) : t('para el %s', $fmt->fechaCorta($t['fecha_vencimiento']))}{/if}</small></a>
                         <span class="pp-pill" style="color: var(--{$vencida ? 'danger' : 'muted'})">{$vencida ? 'Vencida' : 'Pendiente'}</span></li>
                 {/foreach}
                 {foreach array_slice($cont['por_revisar'], 0, 3) as $x}
-                    <li><a href="/portal/contenidos/{$x['id']}" class="t"><span>Revisar «{$x['titulo']}»</span><small>Contenido{if $x['dias_espera'] > 0} · espera hace {$x['dias_espera']} {$x['dias_espera'] === 1 ? 'día' : 'días'}{/if}</small></a><span class="pp-pill" style="color: var(--warn)">Revisar</span></li>
+                    <li><a href="/portal/contenidos/{$x['id']}" class="t"><span>{_'Revisar «%s»', $x['titulo']}</span><small>Contenido{if $x['dias_espera'] > 0} · {$x['dias_espera'] === 1 ? t('espera hace 1 día') : t('espera hace %d días', $x['dias_espera'])}{/if}</small></a><span class="pp-pill" style="color: var(--warn)">Revisar</span></li>
                 {/foreach}
             </ul>
-            {if $cont['pendiente'] > 3}<p class="pp-sub" style="margin-top:.4rem">y {$cont['pendiente'] - 3} {$cont['pendiente'] - 3 === 1 ? 'pieza más' : 'piezas más'} por revisar · <a href="/portal/entregas" class="font-semibold text-brand-ink hover:underline">verlas todas</a></p>{/if}
+            {if $cont['pendiente'] > 3}<p class="pp-sub" style="margin-top:.4rem">{$cont['pendiente'] - 3 === 1 ? t('y 1 pieza más por revisar') : t('y %d piezas más por revisar', $cont['pendiente'] - 3)} · <a href="/portal/entregas" class="font-semibold text-brand-ink hover:underline">verlas todas</a></p>{/if}
         {else}
             <p class="pp-vacio">Cuando el equipo necesite algo de ti, aparece aquí.</p>
         {/if}

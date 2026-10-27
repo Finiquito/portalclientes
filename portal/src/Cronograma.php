@@ -285,7 +285,7 @@ final class Cronograma
      */
     public static function eje(string $desde, int $dias): array
     {
-        $nombres = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+        $nombres = Idioma::lista(['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']);
         $meses = [];
         $lista = [];
         $d = new \DateTimeImmutable($desde);

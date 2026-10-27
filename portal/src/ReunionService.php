@@ -404,7 +404,7 @@ class ReunionService
         if ($r === null || (string) $r['prox_reunion_id'] !== '' || (string) $r['prox_fecha'] === '') {
             return null;
         }
-        $titulo = trim((string) $r['prox_titulo']) !== '' ? (string) $r['prox_titulo'] : 'Próxima reunión · ' . $r['proyecto_nombre'];
+        $titulo = trim((string) $r['prox_titulo']) !== '' ? (string) $r['prox_titulo'] : Idioma::t('Próxima reunión · %s', $r['proyecto_nombre']);
         $id = $this->create([
             'proyecto_id' => $r['proyecto_id'],
             'titulo'      => $titulo,

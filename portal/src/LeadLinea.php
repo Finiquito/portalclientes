@@ -149,7 +149,7 @@ class LeadLinea
     /** Cambia el estado del contacto y lo deja en la línea. @return string|null error */
     public function cambiarEstado(array $lead, string $nuevo, ?string $ocurrio, string $autor, string $autorTipo): ?string
     {
-        if (!isset(LeadService::ESTADOS[$nuevo])) {
+        if (!isset(Idioma::lista(LeadService::ESTADOS)[$nuevo])) {
             return 'Ese estado no existe.';
         }
         if (!empty($lead['anonimizado_en'])) {

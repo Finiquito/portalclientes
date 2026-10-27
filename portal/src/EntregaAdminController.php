@@ -109,7 +109,7 @@ class EntregaAdminController
             'proyectosF' => $proyectos,
             'colorProy'  => Fmt::coloresTodos($this->pdo()),
             'marcasCli'  => Fmt::marcasClientes($this->pdo()),
-            'estados'  => TiposContenido::ESTADOS_ENTREGA,
+            'estados'  => Idioma::lista(TiposContenido::ESTADOS_ENTREGA),
             'fmt'      => new Fmt(),
         ] + $this->flashes());
     }
@@ -124,8 +124,8 @@ class EntregaAdminController
         $this->ui->view('entregas/edit.latte', [
             'entrega' => null, 'proyectos' => $proyectos, 'contenidos' => [], 'fmt' => new Fmt(),
             'fasesRango' => $this->ui->filtrar((new FaseService($this->pdo()))->conRangos(), 'proyecto_id'),
-            'estados' => TiposContenido::ESTADOS_ENTREGA, 'tipos' => TiposContenido::TIPOS,
-            'estadosContenido' => TiposContenido::ESTADOS_CONTENIDO, 'reacciones' => TiposContenido::REACCIONES,
+            'estados' => Idioma::lista(TiposContenido::ESTADOS_ENTREGA), 'tipos' => Idioma::lista(TiposContenido::TIPOS),
+            'estadosContenido' => Idioma::lista(TiposContenido::ESTADOS_CONTENIDO), 'reacciones' => Idioma::lista(TiposContenido::REACCIONES),
             'portadas' => [], 'resumenReacc' => [], 'maxMb' => $this->maxMb(),
         ] + $this->flashes());
     }
@@ -203,8 +203,8 @@ class EntregaAdminController
         $this->ui->view('entregas/edit.latte', [
             'entrega' => $e, 'proyectos' => [], 'contenidos' => $lista, 'fmt' => new Fmt(),
             'fasesRango' => $this->ui->filtrar((new FaseService($this->pdo()))->conRangos(), 'proyecto_id'),
-            'estados' => TiposContenido::ESTADOS_ENTREGA, 'tipos' => TiposContenido::TIPOS,
-            'estadosContenido' => TiposContenido::ESTADOS_CONTENIDO, 'reacciones' => TiposContenido::REACCIONES,
+            'estados' => Idioma::lista(TiposContenido::ESTADOS_ENTREGA), 'tipos' => Idioma::lista(TiposContenido::TIPOS),
+            'estadosContenido' => Idioma::lista(TiposContenido::ESTADOS_CONTENIDO), 'reacciones' => Idioma::lista(TiposContenido::REACCIONES),
             'portadas' => $portadas, 'resumenReacc' => $resumen, 'maxMb' => $this->maxMb(),
             'miniaturas' => $miniaturas, 'faltas' => $faltas, 'piezasJs' => $piezasJs,
             'sinTapa' => array_slice($sinTapa, 0, 30), 'linkTapa' => $linkTapa,
@@ -800,8 +800,8 @@ class EntregaAdminController
             $posImagen[(string) $a['id']] = $k + 1;
         }
         $this->ui->view('entregas/contenido.latte', [
-            'c' => $c, 'versiones' => $versiones, 'tipos' => TiposContenido::TIPOS,
-            'reacciones' => TiposContenido::REACCIONES, 'estadosContenido' => TiposContenido::ESTADOS_CONTENIDO,
+            'c' => $c, 'versiones' => $versiones, 'tipos' => Idioma::lista(TiposContenido::TIPOS),
+            'reacciones' => Idioma::lista(TiposContenido::REACCIONES), 'estadosContenido' => Idioma::lista(TiposContenido::ESTADOS_CONTENIDO),
             'comentarios' => $comentarios,
             'pines' => Ubicacion::pines($comentarios, $c['version_id'] !== null ? (string) $c['version_id'] : null, $posImagen),
             'imgVigente' => $imgVigente, 'posImagen' => $posImagen,

@@ -49,7 +49,7 @@ class EntregaPublicController extends PortalPublicController
         $this->ctx->view('templates/public/entregas.latte', $this->contexto($c, 'revisiones') + [
             'pag'      => $pag,
             'entregas' => $pag->cortar($pag->orden === 'antiguos' ? array_reverse($todas) : $todas),
-            'estados'  => TiposContenido::ESTADOS_ENTREGA,
+            'estados'  => Idioma::lista(TiposContenido::ESTADOS_ENTREGA),
         ]);
     }
 
@@ -86,10 +86,10 @@ class EntregaPublicController extends PortalPublicController
             'portadas'   => $portadas,
             'etiquetas'  => $etiquetas,
             'reacc'      => $reacc,
-            'tipos'      => TiposContenido::TIPOS,
-            'estadosC'   => TiposContenido::ESTADOS_CONTENIDO,
-            'estadosE'   => TiposContenido::ESTADOS_ENTREGA,
-            'reaccionesDef' => TiposContenido::REACCIONES,
+            'tipos'      => Idioma::lista(TiposContenido::TIPOS),
+            'estadosC'   => Idioma::lista(TiposContenido::ESTADOS_CONTENIDO),
+            'estadosE'   => Idioma::lista(TiposContenido::ESTADOS_ENTREGA),
+            'reaccionesDef' => Idioma::lista(TiposContenido::REACCIONES),
             'pct'        => $total > 0 ? (int) round($decididos * 100 / $total) : 0,
             'decididos'  => $decididos,
             'abierta'    => $e['estado'] === 'publicada',
@@ -170,8 +170,8 @@ class EntregaPublicController extends PortalPublicController
             )),
             'numeros'    => $numeros,
             'reacc'      => $ver !== null ? $this->contenidosSvc()->reacciones((string) $ver['id'], (string) $c['id']) : ['conteo' => [], 'mia' => '', 'total' => 0],
-            'reaccionesDef' => TiposContenido::REACCIONES,
-            'estadosC'   => TiposContenido::ESTADOS_CONTENIDO,
+            'reaccionesDef' => Idioma::lista(TiposContenido::REACCIONES),
+            'estadosC'   => Idioma::lista(TiposContenido::ESTADOS_CONTENIDO),
             'prev'       => $pos !== false && $pos > 0 ? $ids[$pos - 1] : null,
             'next'       => $pos !== false && $pos < count($ids) - 1 ? $ids[$pos + 1] : null,
             'posicion'   => $pos !== false ? $pos + 1 : 1,
@@ -288,7 +288,7 @@ class EntregaPublicController extends PortalPublicController
             return;
         }
         $valor = (string) ($_POST['valor'] ?? '');
-        if (isset(TiposContenido::REACCIONES[$valor])) {
+        if (isset(Idioma::lista(TiposContenido::REACCIONES)[$valor])) {
             $actual = $this->contenidosSvc()->reacciones((string) $x['version_id'], (string) $c['id'])['mia'];
             // Tocar la misma reacción otra vez la quita.
             $this->contenidosSvc()->reaccionar((string) $x['version_id'], (string) $c['id'], $actual === $valor ? '' : $valor);

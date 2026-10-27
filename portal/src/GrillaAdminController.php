@@ -197,7 +197,7 @@ class GrillaAdminController
             'piezas'    => $piezas,
             'pendientes' => array_values(array_diff(array_keys($t['tandas']), $t['hechas'])),
             'general'   => trim($t['general'] . ($anexos !== [] ? "\n\n" . implode("\n\n", $anexos) : '')),
-            'tipos'     => array_intersect_key(TiposContenido::TIPOS, array_flip(GrillaImport::TIPOS)),
+            'tipos'     => array_intersect_key(Idioma::lista(TiposContenido::TIPOS), array_flip(GrillaImport::TIPOS)),
             'flash_success' => $this->ui->flash('success'), 'flash_error' => $this->ui->flash('error'),
         ]);
     }

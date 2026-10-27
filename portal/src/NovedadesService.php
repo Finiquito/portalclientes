@@ -117,13 +117,13 @@ final class NovedadesService
     {
         if ($s['estado'] === 'en_curso') {
             return match ($s['tarea_estado'] ?? '') {
-                'entregada' => ['Te toca revisar', 'warn'],
-                'cambios'   => ['Aplicando tus cambios', 'info'],
-                'hecha'     => ['Lista', 'ok'],
-                default     => SolicitudService::ESTADOS_CLIENTE['en_curso'],
+                'entregada' => [Idioma::t('Te toca revisar'), 'warn'],
+                'cambios'   => [Idioma::t('Aplicando tus cambios'), 'info'],
+                'hecha'     => [Idioma::t('Lista'), 'ok'],
+                default     => Idioma::lista(SolicitudService::ESTADOS_CLIENTE)['en_curso'],
             };
         }
-        return SolicitudService::ESTADOS_CLIENTE[$s['estado']] ?? ['—', 'muted'];
+        return Idioma::lista(SolicitudService::ESTADOS_CLIENTE)[$s['estado']] ?? ['—', 'muted'];
     }
 
     // ---- Cuadro de Inicio ----------------------------------------------------------------
@@ -248,8 +248,8 @@ final class NovedadesService
         }
         $tablas = [
             'tarea'     => ['portal_tareas', Fmt::ESTADOS],
-            'entrega'   => ['portal_entregas', TiposContenido::ESTADOS_ENTREGA],
-            'contenido' => ['portal_contenidos', TiposContenido::ESTADOS_CONTENIDO],
+            'entrega'   => ['portal_entregas', Idioma::lista(TiposContenido::ESTADOS_ENTREGA)],
+            'contenido' => ['portal_contenidos', Idioma::lista(TiposContenido::ESTADOS_CONTENIDO)],
         ];
         foreach ($tablas as $tipo => [$tabla, $etiquetas]) {
             if (empty($ids[$tipo])) {
@@ -278,21 +278,21 @@ final class NovedadesService
         foreach ($eventos as $a) {
             $equipo = $a['actor_tipo'] === 'equipo';
             $texto = match ((string) $a['accion']) {
-                'estado'        => 'cambió de estado',   // el estado actual va en el chip
-                'atendio'       => 'te respondimos',
-                'cotizo'        => 'te enviamos la cotización',
-                'asigno'        => 'te pedimos algo',
-                'publico'       => 'te compartimos contenido',
-                'subio_version' => 'versión nueva',
-                'actualizo'     => 'actualizado',
-                'reunion'       => 'novedades de la reunión',
-                'entrego'       => $equipo ? 'entregado' : self::nombre($a) . ' entregó',
-                'completo'      => $equipo ? 'completada' : self::nombre($a) . ' la completó',
-                'aprobo'        => self::nombre($a) . ' aprobó',
-                'pidio_cambios' => self::nombre($a) . ' pidió cambios',
-                'respondio'     => self::nombre($a) . ' envió su revisión',
-                'decidio'       => self::nombre($a) . ' respondió la cotización',
-                'solicito'      => self::nombre($a) . ' la pidió',
+                'estado'        => Idioma::t('cambió de estado'),   // el estado actual va en el chip
+                'atendio'       => Idioma::t('te respondimos'),
+                'cotizo'        => Idioma::t('te enviamos la cotización'),
+                'asigno'        => Idioma::t('te pedimos algo'),
+                'publico'       => Idioma::t('te compartimos contenido'),
+                'subio_version' => Idioma::t('versión nueva'),
+                'actualizo'     => Idioma::t('actualizado'),
+                'reunion'       => Idioma::t('novedades de la reunión'),
+                'entrego'       => $equipo ? Idioma::t('entregado') : Idioma::t('%s entregó', self::nombre($a)),
+                'completo'      => $equipo ? Idioma::t('completada') : Idioma::t('%s la completó', self::nombre($a)),
+                'aprobo'        => Idioma::t('%s aprobó', self::nombre($a)),
+                'pidio_cambios' => Idioma::t('%s pidió cambios', self::nombre($a)),
+                'respondio'     => Idioma::t('%s envió su revisión', self::nombre($a)),
+                'decidio'       => Idioma::t('%s respondió la cotización', self::nombre($a)),
+                'solicito'      => Idioma::t('%s la pidió', self::nombre($a)),
                 default         => null,
             };
             if ($a['accion'] === 'subio_archivo') {
@@ -304,10 +304,10 @@ final class NovedadesService
             }
         }
         if ($cuenta['archivo'] > 0) {
-            $partes[] = $cuenta['archivo'] . ($cuenta['archivo'] === 1 ? ' archivo' : ' archivos');
+            $partes[] = $cuenta['archivo'] === 1 ? Idioma::t('1 archivo') : Idioma::t('%d archivos', $cuenta['archivo']);
         }
         if ($cuenta['comentario'] > 0) {
-            $partes[] = $cuenta['comentario'] . ($cuenta['comentario'] === 1 ? ' comentario' : ' comentarios');
+            $partes[] = $cuenta['comentario'] === 1 ? Idioma::t('1 comentario') : Idioma::t('%d comentarios', $cuenta['comentario']);
         }
         $s = implode(' · ', array_slice($partes, 0, 3));
         return $s === '' ? '' : mb_strtoupper(mb_substr($s, 0, 1)) . mb_substr($s, 1);
@@ -315,6 +315,6 @@ final class NovedadesService
 
     private static function nombre(array $a): string
     {
-        return strtok(trim((string) $a['actor_nombre']), ' ') ?: 'Alguien';
+        return strtok(trim((string) $a['actor_nombre']), ' ') ?: Idioma::t('Alguien');
     }
 }

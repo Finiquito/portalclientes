@@ -181,10 +181,10 @@ class ArchivoService
 
         if ($error !== UPLOAD_ERR_OK) {
             throw new \RuntimeException(match ($error) {
-                UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE => 'pesa más de ' . (int) round($limite / 1048576) . ' MB (el máximo permitido)',
-                UPLOAD_ERR_PARTIAL => 'la subida se cortó, inténtalo de nuevo',
-                UPLOAD_ERR_NO_TMP_DIR, UPLOAD_ERR_CANT_WRITE => 'el servidor no pudo guardarlo, avísanos',
-                default => 'no se pudo subir',
+                UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE => Idioma::t('pesa más de %d MB (el máximo permitido)', (int) round($limite / 1048576)),
+                UPLOAD_ERR_PARTIAL => Idioma::t('la subida se cortó, inténtalo de nuevo'),
+                UPLOAD_ERR_NO_TMP_DIR, UPLOAD_ERR_CANT_WRITE => Idioma::t('el servidor no pudo guardarlo, avísanos'),
+                default => Idioma::t('no se pudo subir'),
             });
         }
 
@@ -194,43 +194,43 @@ class ArchivoService
             throw new \RuntimeException('no se pudo leer el archivo');
         }
         if ($size <= 0) {
-            throw new \RuntimeException('el archivo está vacío');
+            throw new \RuntimeException(Idioma::t('el archivo está vacío'));
         }
         if ($size > $limite) {
-            throw new \RuntimeException('pesa más de ' . (int) round($limite / 1048576) . ' MB (el máximo permitido)');
+            throw new \RuntimeException(Idioma::t('pesa más de %d MB (el máximo permitido)', (int) round($limite / 1048576)));
         }
 
         $nombre = $this->nombreSeguro((string) ($f['name'] ?? 'archivo'));
         $ext    = strtolower(pathinfo($nombre, PATHINFO_EXTENSION));
         if (!array_key_exists($ext, self::PERMITIDOS)) {
-            throw new \RuntimeException('este tipo de archivo no está permitido (.' . ($ext !== '' ? $ext : '?') . ')');
+            throw new \RuntimeException(Idioma::t('este tipo de archivo no está permitido (.%s)', $ext !== '' ? $ext : '?'));
         }
 
         $mime = $this->detectarMime($tmp);
         if (in_array($mime, self::MIME_PROHIBIDOS, true)) {
-            throw new \RuntimeException('el contenido del archivo no está permitido');
+            throw new \RuntimeException(Idioma::t('el contenido del archivo no está permitido'));
         }
         $familia = self::PERMITIDOS[$ext];
         if ($familia === 'image' && (!str_starts_with($mime, 'image/') || @getimagesize($tmp) === false)) {
-            throw new \RuntimeException('no parece una imagen válida');
+            throw new \RuntimeException(Idioma::t('no parece una imagen válida'));
         }
         if ($familia === 'pdf' && $mime !== 'application/pdf') {
-            throw new \RuntimeException('no parece un PDF válido');
+            throw new \RuntimeException(Idioma::t('no parece un PDF válido'));
         }
         if ($familia === 'zip' && !in_array($mime, ['application/zip', 'application/x-zip-compressed', 'application/octet-stream'], true)) {
-            throw new \RuntimeException('no parece un ZIP válido');
+            throw new \RuntimeException(Idioma::t('no parece un ZIP válido'));
         }
 
         $dir = $this->directorioBase() . '/' . $this->segmento($clienteId);
         if (!is_dir($dir) && !@mkdir($dir, 0750, true) && !is_dir($dir)) {
-            throw new \RuntimeException('el servidor no pudo guardarlo, avísanos');
+            throw new \RuntimeException(Idioma::t('el servidor no pudo guardarlo, avísanos'));
         }
         $ruta = bin2hex(random_bytes(16));
         $destino = $dir . '/' . $ruta;
 
         $mover = self::$mover ?? 'move_uploaded_file';
         if (!$mover($tmp, $destino)) {
-            throw new \RuntimeException('el servidor no pudo guardarlo, avísanos');
+            throw new \RuntimeException(Idioma::t('el servidor no pudo guardarlo, avísanos'));
         }
         @chmod($destino, 0640);
 

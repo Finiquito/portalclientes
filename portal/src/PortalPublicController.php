@@ -371,7 +371,7 @@ class PortalPublicController
             $f = dirname(__DIR__) . '/assets/' . $nombre;
             self::$assets[$nombre] = is_file($f) ? (string) file_get_contents($f) : '';
         }
-        return self::$assets[$nombre];
+        return $nombre === 'portal.js' ? Idioma::conTraducciones(self::$assets[$nombre]) : self::$assets[$nombre];
     }
 
     // ---------------------------------------------------------------------
@@ -649,7 +649,7 @@ class PortalPublicController
         if ($propia !== '') {
             $f = $propia;
         } else {
-            $lista = $this->ajustes()->frasesDeCliente($clienteId) ?: self::FRASES_BASE;
+            $lista = $this->ajustes()->frasesDeCliente($clienteId) ?: array_map(Idioma::t(...), self::FRASES_BASE);
             $f = $lista[$fmt->diaDelAnio() % count($lista)];
         }
         return str_replace('{nombre}', $nombre, $f);
@@ -885,7 +885,7 @@ class PortalPublicController
         $vol = 'portal/tareas/' . $id;
 
         if (ArchivoService::postExcedido()) {
-            PortalSession::flash('error', 'Los archivos superan el máximo permitido (' . (int) round($this->archivos()->limiteBytes($this->maxMb()) / 1048576) . ' MB en total).');
+            PortalSession::flash('error', Idioma::t('Los archivos superan el máximo permitido (%d MB en total).', (int) round($this->archivos()->limiteBytes($this->maxMb()) / 1048576)));
             $this->redirectTo($vol);
             return;
         }
@@ -927,9 +927,9 @@ class PortalPublicController
         }
 
         if ($r['errores'] !== []) {
-            PortalSession::flash('error', ($n > 0 ? "Se subieron {$n}, pero: " : 'No se pudo subir: ') . implode(' · ', $r['errores']));
+            PortalSession::flash('error', ($n > 0 ? Idioma::t('Se subieron %d, pero: ', $n) : Idioma::t('No se pudo subir: ')) . implode(' · ', array_map(Idioma::t(...), $r['errores'])));
         } else {
-            PortalSession::flash('ok', $n === 1 ? 'Archivo subido.' : "{$n} archivos subidos.");
+            PortalSession::flash('ok', $n === 1 ? 'Archivo subido.' : Idioma::t('%d archivos subidos.', $n));
         }
         $this->redirectTo($vol . '#archivos');
     }
@@ -1144,8 +1144,8 @@ class PortalPublicController
         }
         foreach ($d['fases'] as $f) {
             if ($f['ini'] !== null) {
-                $m[] = ['fecha' => $f['ini'], 'tipo' => 'fase', 'titulo' => 'Empieza ' . $f['nombre'], 'url' => null, 'estimada' => false];
-                $m[] = ['fecha' => $f['fin'] ?? $f['ini'], 'tipo' => 'fase', 'titulo' => 'Termina ' . $f['nombre'], 'url' => null,
+                $m[] = ['fecha' => $f['ini'], 'tipo' => 'fase', 'titulo' => Idioma::t('Empieza %s', $f['nombre']), 'url' => null, 'estimada' => false];
+                $m[] = ['fecha' => $f['fin'] ?? $f['ini'], 'tipo' => 'fase', 'titulo' => Idioma::t('Termina %s', $f['nombre']), 'url' => null,
                     'estimada' => count(array_filter($f['tareas'], fn($t) => $t['estimada'])) > 0];
             }
         }
@@ -1274,11 +1274,11 @@ class PortalPublicController
         $tarea = $meTocan[0] ?? null;
         $pasos = [
             // Se marca con el primer acceso real (en «Ver como cliente» puede que la persona aún no haya entrado).
-            ['Entraste a tu portal', '/portal', !empty($c['primer_acceso'])],
-            [$tarea ? 'Revisa tu primera tarea: «' . $tarea['titulo'] . '»' : 'Mira en qué va tu proyecto', $tarea ? '/portal/tareas/' . $tarea['id'] : '/portal/tareas', !empty($pref['paso_tarea'])],
-            ['Lee cómo funciona el portal (dos minutos)', '/portal/ayuda', !empty($pref['paso_ayuda'])],
-            ['Conoce cómo pedirnos algo', '/portal/solicitudes', !empty($pref['paso_solicitudes'])],
-            ['Elige qué avisos quieres recibir', '/portal/ajustes', !empty($pref['paso_avisos'])],
+            [Idioma::t('Entraste a tu portal'), '/portal', !empty($c['primer_acceso'])],
+            [$tarea ? Idioma::t('Revisa tu primera tarea: «%s»', $tarea['titulo']) : Idioma::t('Mira en qué va tu proyecto'), $tarea ? '/portal/tareas/' . $tarea['id'] : '/portal/tareas', !empty($pref['paso_tarea'])],
+            [Idioma::t('Lee cómo funciona el portal (dos minutos)'), '/portal/ayuda', !empty($pref['paso_ayuda'])],
+            [Idioma::t('Conoce cómo pedirnos algo'), '/portal/solicitudes', !empty($pref['paso_solicitudes'])],
+            [Idioma::t('Elige qué avisos quieres recibir'), '/portal/ajustes', !empty($pref['paso_avisos'])],
         ];
         foreach ($pasos as $p) {
             if (!$p[2]) {

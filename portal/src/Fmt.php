@@ -14,6 +14,24 @@ final class Fmt
 
     private const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
     private const DIAS  = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+    private const MESES_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    private const DIAS_EN  = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+    /** ¿Las fechas van en inglés? (mes primero: «Oct 12»). Los demás idiomas usan el orden del español. */
+    private static function en(): bool
+    {
+        return Idioma::actual() === 'en';
+    }
+
+    private static function mes(\DateTimeImmutable $d): string
+    {
+        return (self::en() ? self::MESES_EN : self::MESES)[(int) $d->format('n') - 1];
+    }
+
+    private static function dia3(\DateTimeImmutable $d): string
+    {
+        return mb_substr((self::en() ? self::DIAS_EN : self::DIAS)[(int) $d->format('w')], 0, 3);
+    }
 
     /** estado => [etiqueta, tono]. Los tonos son clases .chip-* de portal.css */
     public const ESTADOS = [
@@ -63,22 +81,34 @@ final class Fmt
         if ($d === null) {
             return '—';
         }
-        $txt = $d->format('j') . ' ' . self::MESES[(int) $d->format('n') - 1];
-        return $d->format('Y') !== $this->ahora->format('Y') ? $txt . ' ' . $d->format('Y') : $txt;
+        $anio = $d->format('Y') !== $this->ahora->format('Y');
+        if (self::en()) {
+            return self::mes($d) . ' ' . $d->format('j') . ($anio ? ', ' . $d->format('Y') : '');
+        }
+        $txt = $d->format('j') . ' ' . self::mes($d);
+        return $anio ? $txt . ' ' . $d->format('Y') : $txt;
     }
 
     /** "martes 29 sep" */
     public function fechaLarga(?string $s = null): string
     {
         $d = $this->parse($s) ?? $this->ahora->setTimezone(new \DateTimeZone(Zona::agencia()));
-        return self::DIAS[(int) $d->format('w')] . ' ' . $d->format('j') . ' ' . self::MESES[(int) $d->format('n') - 1];
+        if (self::en()) {
+            return self::DIAS_EN[(int) $d->format('w')] . ', ' . self::mes($d) . ' ' . $d->format('j');
+        }
+        return self::DIAS[(int) $d->format('w')] . ' ' . $d->format('j') . ' ' . self::mes($d);
     }
 
     /** "vie 2 oct" */
     public function fechaCorta(?string $s): string
     {
         $d = $this->parse($s);
-        return $d === null ? '—' : mb_substr(self::DIAS[(int) $d->format('w')], 0, 3) . ' ' . $d->format('j') . ' ' . self::MESES[(int) $d->format('n') - 1];
+        if ($d === null) {
+            return '—';
+        }
+        return self::en()
+            ? self::dia3($d) . ', ' . self::mes($d) . ' ' . $d->format('j')
+            : self::dia3($d) . ' ' . $d->format('j') . ' ' . self::mes($d);
     }
 
     /** Rango "lun 5 al jue 8 oct" (o "vie 30 sep al mar 4 oct" si cambia el mes). */
@@ -92,11 +122,11 @@ final class Fmt
         if ($a->format('Y-m-d') === $b->format('Y-m-d')) {
             return $this->fechaCorta($desde);
         }
-        $ini = mb_substr(self::DIAS[(int) $a->format('w')], 0, 3) . ' ' . $a->format('j');
+        $ini = self::dia3($a) . ' ' . $a->format('j');
         if ($a->format('n') !== $b->format('n')) {
-            $ini .= ' ' . self::MESES[(int) $a->format('n') - 1];
+            $ini = self::en() ? self::dia3($a) . ', ' . self::mes($a) . ' ' . $a->format('j') : $ini . ' ' . self::mes($a);
         }
-        return $ini . ' al ' . $this->fechaCorta($hasta);
+        return $ini . (self::en() ? ' – ' : ' al ') . $this->fechaCorta($hasta);
     }
 
     /** Bandera (emoji) de un código de país de dos letras. */
@@ -118,13 +148,16 @@ final class Fmt
     public function mesCorto(?string $s): string
     {
         $d = $this->parse($s);
-        return $d === null ? '' : self::MESES[(int) $d->format('n') - 1];
+        return $d === null ? '' : self::mes($d);
     }
 
     public function hora(?string $s): string
     {
         $d = $this->parse($s);
-        return $d === null || !str_contains((string) $s, ':') ? '' : $d->format('H:i');
+        if ($d === null || !str_contains((string) $s, ':')) {
+            return '';
+        }
+        return self::en() ? strtolower($d->format('g:i a')) : $d->format('H:i');
     }
 
     /** "hace 5 min", "hace 3 h", "ayer", "12 oct". */
@@ -139,19 +172,19 @@ final class Fmt
             return $this->fecha($s);
         }
         if ($seg < 60) {
-            return 'ahora';
+            return Idioma::t('ahora');
         }
         if ($seg < 3600) {
-            return 'hace ' . intdiv($seg, 60) . ' min';
+            return Idioma::t('hace %d min', intdiv($seg, 60));
         }
         if ($seg < 86400) {
-            return 'hace ' . intdiv($seg, 3600) . ' h';
+            return Idioma::t('hace %d h', intdiv($seg, 3600));
         }
         if ($seg < 172800) {
-            return 'ayer';
+            return Idioma::t('ayer');
         }
         if ($seg < 7 * 86400) {
-            return 'hace ' . intdiv($seg, 86400) . ' días';
+            return Idioma::t('hace %d días', intdiv($seg, 86400));
         }
         return $this->fecha($s);
     }
@@ -164,7 +197,7 @@ final class Fmt
     {
         $d = $this->parse($s);
         if ($d === null) {
-            return ['texto' => 'Sin fecha', 'tono' => 'muted'];
+            return ['texto' => Idioma::t('Sin fecha'), 'tono' => 'muted'];
         }
         if ($estado === 'hecha') {
             return ['texto' => $this->fecha($s), 'tono' => 'muted'];
@@ -172,29 +205,30 @@ final class Fmt
         $hoy  = $this->ahora->setTime(0, 0);
         $dias = (int) $hoy->diff($d->setTime(0, 0))->format('%r%a');
         if ($dias < 0) {
-            return ['texto' => 'Vencida · ' . $this->fecha($s), 'tono' => 'danger'];
+            return ['texto' => Idioma::t('Vencida') . ' · ' . $this->fecha($s), 'tono' => 'danger'];
         }
         if ($dias === 0) {
-            return ['texto' => 'Vence hoy', 'tono' => 'warn'];
+            return ['texto' => Idioma::t('Vence hoy'), 'tono' => 'warn'];
         }
         if ($dias === 1) {
-            return ['texto' => 'Vence mañana', 'tono' => 'warn'];
+            return ['texto' => Idioma::t('Vence mañana'), 'tono' => 'warn'];
         }
         if ($dias <= 7) {
-            return ['texto' => 'Vence en ' . $dias . ' días', 'tono' => 'info'];
+            return ['texto' => Idioma::t('Vence en %d días', $dias), 'tono' => 'info'];
         }
-        return ['texto' => 'Vence ' . $this->fecha($s), 'tono' => 'muted'];
+        return ['texto' => Idioma::t('Vence el %s', $this->fecha($s)), 'tono' => 'muted'];
     }
 
     /** @return array{0: string, 1: string} */
     public function estado(string $estado): array
     {
-        return self::ESTADOS[$estado] ?? [ucfirst($estado), 'muted'];
+        $e = self::ESTADOS[$estado] ?? [ucfirst($estado), 'muted'];
+        return [Idioma::t($e[0]), $e[1]];
     }
 
     public function tipo(string $tipo): string
     {
-        return self::TIPOS[$tipo] ?? 'Tarea';
+        return Idioma::t(self::TIPOS[$tipo] ?? 'Tarea');
     }
 
     /** Paleta para distinguir proyectos (la del primero es la de marca por defecto). */
@@ -361,19 +395,20 @@ final class Fmt
         if ($b < 1024) {
             return (int) $b . ' B';
         }
+        $coma = self::en() ? '.' : ',';
         if ($b < 1048576) {
             return number_format($b / 1024, 0) . ' KB';
         }
         if ($b < 1073741824) {
-            return number_format($b / 1048576, 1, ',', '') . ' MB';
+            return number_format($b / 1048576, 1, $coma, '') . ' MB';
         }
-        return number_format($b / 1073741824, 2, ',', '') . ' GB';
+        return number_format($b / 1073741824, 2, $coma, '') . ' GB';
     }
 
     public function saludo(): string
     {
         $h = (int) $this->ahora->setTimezone(new \DateTimeZone(Zona::agencia()))->format('G');
-        return $h < 6 ? 'Buenas noches' : ($h < 13 ? 'Buenos días' : ($h < 20 ? 'Buenas tardes' : 'Buenas noches'));
+        return Idioma::t($h < 6 ? 'Buenas noches' : ($h < 13 ? 'Buenos días' : ($h < 20 ? 'Buenas tardes' : 'Buenas noches')));
     }
 
     /** Día del año en Chile: elige la frase de bienvenida del día. */
@@ -385,7 +420,7 @@ final class Fmt
     /** Frase de actividad: "Ana comentó en «Logo»". */
     public function actividad(array $a, bool $vistaAdmin = false): string
     {
-        $quien = $a['actor_tipo'] === 'equipo' ? ($vistaAdmin ? (string) $a['actor_nombre'] : 'El equipo') : $a['actor_nombre'];
+        $quien = $a['actor_tipo'] === 'equipo' ? ($vistaAdmin ? (string) $a['actor_nombre'] : Idioma::t('El equipo')) : $a['actor_nombre'];
         $que = match ($a['accion']) {
             'comento'       => 'comentó en',
             'subio_archivo' => 'subió un archivo en',
@@ -405,7 +440,7 @@ final class Fmt
             'estado'        => 'cambió el estado de',
             default         => 'actualizó',
         };
-        return $quien . ' ' . $que;
+        return $quien . ' ' . Idioma::t($que);
     }
 
     /** Ícono (id del sprite) según la acción. */

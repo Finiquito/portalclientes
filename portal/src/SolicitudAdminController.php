@@ -64,7 +64,7 @@ class SolicitudAdminController
         }
         $f = FiltrosLista::desdeGet($this->url('solicitudes'), ['estado' => 'por_atender', 'tipo' => '', 'proyecto' => ''], [
             'estado'   => array_keys(self::FILTRO_ESTADOS),
-            'tipo'     => array_keys(SolicitudService::TIPOS),
+            'tipo'     => array_keys(Idioma::lista(SolicitudService::TIPOS)),
             'proyecto' => 'uuid',
         ]);
         // Las de proyecto nuevo (presupuestos) no tienen proyecto: se ven si el cliente está asignado.
@@ -93,8 +93,8 @@ class SolicitudAdminController
             'filtros'     => $f,
             'conteos'     => $conteos,
             'grupos'      => self::FILTRO_ESTADOS,
-            'tipos'       => SolicitudService::TIPOS,
-            'estadosS'    => SolicitudService::ESTADOS,
+            'tipos'       => Idioma::lista(SolicitudService::TIPOS),
+            'estadosS'    => Idioma::lista(SolicitudService::ESTADOS),
             'urgencias'   => SolicitudService::URGENCIAS,
             'proyectosF'  => $proyectos,
             'colorProy'   => Fmt::coloresTodos($this->pdo()),
@@ -127,10 +127,10 @@ class SolicitudAdminController
 
         $this->ui->view('solicitudes/ver.latte', [
             's'           => $s,
-            'tipos'       => SolicitudService::TIPOS,
-            'estadosS'    => SolicitudService::ESTADOS,
+            'tipos'       => Idioma::lista(SolicitudService::TIPOS),
+            'estadosS'    => Idioma::lista(SolicitudService::ESTADOS),
             'urgencias'   => SolicitudService::URGENCIAS,
-            'modalidades' => SolicitudService::MODALIDADES,
+            'modalidades' => Idioma::lista(SolicitudService::MODALIDADES),
             'horarios'    => $horarios,
             'proyectosCliente' => array_values(array_filter(
                 $this->ui->filtrar((new ProyectoService($this->pdo()))->listAll(), 'id'), fn(array $p): bool => $p['cliente_id'] === $s['cliente_id'])),
@@ -266,7 +266,7 @@ class SolicitudAdminController
         $this->registrar($s, 'atendio', $estado === 'rechazada' ? 'No tomada' : 'Respondida');
         $this->avisarCliente($s, ($estado === 'rechazada' ? 'Sobre tu solicitud: ' : 'Respondimos tu solicitud: ') . $s['titulo'], [
             'etiqueta' => 'Solicitud', 'titulo' => $estado === 'rechazada' ? 'Sobre tu solicitud' : 'Respondimos tu solicitud',
-            'bloques' => [['tarjetas' => [['titulo' => (string) $s['titulo'], 'detalle' => SolicitudService::TIPOS[$s['tipo']][0]]]], ['cita' => mb_substr(trim($mensaje), 0, 800)]],
+            'bloques' => [['tarjetas' => [['titulo' => (string) $s['titulo'], 'detalle' => Idioma::lista(SolicitudService::TIPOS)[$s['tipo']][0]]]], ['cita' => mb_substr(trim($mensaje), 0, 800)]],
             'boton' => 'Ver en el portal',
         ]);
         $this->ui->redirect($this->url('solicitudes'), $estado === 'rechazada' ? 'Solicitud cerrada y avisada al cliente.' : 'Respuesta enviada al cliente.');

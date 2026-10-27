@@ -93,7 +93,7 @@ final class Paginacion
         if ($ordenes !== [] && !isset($ordenes[$orden])) {
             $orden = (string) array_key_first($ordenes);
         }
-        return new self($total, $por, (int) ($_GET['p'] ?? 1), $orden, $ordenes, $base);
+        return new self($total, $por, (int) ($_GET['p'] ?? 1), $orden, array_map(Idioma::t(...), $ordenes), $base);
     }
 
     /** Si la persona eligió otro tamaño en esta visita, lo devuelve para guardarlo. */

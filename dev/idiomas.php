@@ -18,6 +18,51 @@ spl_autoload_register(function (string $c): void {
 use TypeDock\Plugin\Portal\Idioma;
 use TypeDock\Plugin\Portal\IdiomaExtension;
 
+if (($argv[1] ?? '') === '--literales') {
+    // Textos en español escritos dentro de expresiones ({$x ? 'a' : 'b'}), que la pasada automática no ve.
+    $m2 = new Latte\Engine();
+    IdiomaExtension::instalar($m2);
+    $base = dirname(__DIR__) . '/portal/templates';
+    $zonas = array_slice($argv, 2) ?: ['public'];
+    foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($base)) as $f) {
+        $rel = substr($f->getPathname(), strlen($base) + 1);
+        if ($f->getExtension() !== 'latte' || !in_array(str_contains($rel, '/') ? explode('/', $rel)[0] : '.', $zonas, true)) {
+            continue;
+        }
+        $ast = $m2->parse(file_get_contents($f->getPathname()));
+        (new Latte\Compiler\NodeTraverser())->traverse($ast, function (Latte\Compiler\Node $n) use ($rel) {
+            if ($n instanceof Latte\Compiler\Nodes\PrintNode) {
+                foreach ($n->modifier->filters as $fl) {
+                    if ($fl->name->name === 'translate') {
+                        return Latte\Compiler\NodeTraverser::DontTraverseChildren;
+                    }
+                }
+                $claves = [];
+                (new Latte\Compiler\NodeTraverser())->traverse($n->expression, function (Latte\Compiler\Node $h) use (&$claves) {
+                    if ($h instanceof Latte\Compiler\Nodes\Php\Expression\ArrayAccessNode && $h->index) {
+                        $claves[spl_object_id($h->index)] = true;
+                    }
+                    if ($h instanceof Latte\Compiler\Nodes\Php\ArrayItemNode && $h->key) {
+                        $claves[spl_object_id($h->key)] = true;
+                    }
+                    return null;
+                });
+                (new Latte\Compiler\NodeTraverser())->traverse($n->expression, function (Latte\Compiler\Node $h) use ($rel, $n, $claves) {
+                    if ($h instanceof Latte\Compiler\Nodes\Php\Expression\FunctionCallNode && $h->name instanceof Latte\Compiler\Nodes\Php\NameNode && $h->name->name === 't') {
+                        return Latte\Compiler\NodeTraverser::DontTraverseChildren;
+                    }
+                    if ($h instanceof Latte\Compiler\Nodes\Php\Scalar\StringNode && !isset($claves[spl_object_id($h)]) && preg_match('/\p{L}{3}/u', $h->value) && !IdiomaExtension::pareceTexto($h->value) && !preg_match('/[-\/.#:\d_]/', $h->value)) {
+                        echo $rel, ':', $n->position?->line, "\t", $h->value, "\n";
+                    }
+                    return null;
+                });
+            }
+            return null;
+        });
+    }
+    exit;
+}
+
 $args = array_slice($argv, 1);
 $todas = in_array('--todas', $args, true);
 $args = array_values(array_filter($args, fn($a) => $a !== '--todas'));
@@ -38,7 +83,7 @@ foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($base)) as
         continue;
     }
     $php = $motor->compile($f->getPathname());
-    if (preg_match_all('/Idioma::tx\((\'(?:[^\'\\\\]|\\\\.)*\')\)/', $php, $m)) {
+    if (preg_match_all('/(?:Idioma::tx?\(|fn->t\)\(\$this, |translate\)\()(\'(?:[^\'\\\\]|\\\\.)*\')/', $php, $m)) {
         foreach ($m[1] as $lit) {
             $txt = eval('return ' . $lit . ';');
             $k = Idioma::clave($txt);

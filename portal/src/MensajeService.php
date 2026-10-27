@@ -350,7 +350,7 @@ final class MensajeService
             foreach ($st->fetchAll() as $r) {
                 $out['contenido:' . $r['id']] = [
                     'tipo' => 'contenido', 'id' => (string) $r['id'], 'titulo' => (string) $r['titulo'],
-                    'estado' => TiposContenido::ESTADOS_CONTENIDO[$r['estado']] ?? ['—', 'muted'], 'terminada' => $r['estado'] === 'aprobado',
+                    'estado' => Idioma::lista(TiposContenido::ESTADOS_CONTENIDO)[$r['estado']] ?? ['—', 'muted'], 'terminada' => $r['estado'] === 'aprobado',
                     'visible' => $r['entrega_estado'] !== 'borrador', 'proyecto_id' => (string) $r['proyecto_id'], 'cliente_id' => (string) $r['cliente_id'],
                     'proyecto_nombre' => (string) $r['proyecto_nombre'], 'cliente_nombre' => (string) $r['cliente_nombre'],
                 ];
@@ -367,7 +367,7 @@ final class MensajeService
                 $out['solicitud:' . $r['id']] = [
                     'tipo' => 'solicitud', 'id' => (string) $r['id'], 'titulo' => (string) $r['titulo'],
                     'estado' => $lado === 'contacto' ? NovedadesService::estadoSolicitud($r)
-                        : ($r['estado'] === 'en_curso' && isset(Fmt::ESTADOS[$r['tarea_estado'] ?? '']) ? Fmt::ESTADOS[$r['tarea_estado']] : (SolicitudService::ESTADOS[$r['estado']] ?? ['—', 'muted'])),
+                        : ($r['estado'] === 'en_curso' && isset(Fmt::ESTADOS[$r['tarea_estado'] ?? '']) ? Fmt::ESTADOS[$r['tarea_estado']] : (Idioma::lista(SolicitudService::ESTADOS)[$r['estado']] ?? ['—', 'muted'])),
                     'terminada' => $terminada,
                     'visible' => true, 'proyecto_id' => (string) $r['proyecto_id'], 'cliente_id' => (string) $r['cliente_id'],
                     'proyecto_nombre' => (string) ($r['proyecto_nombre'] ?? ''), 'cliente_nombre' => (string) $r['cliente_nombre'],
