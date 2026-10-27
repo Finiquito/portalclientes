@@ -38,7 +38,7 @@
                 {if $fe['inicio'] || $fe['fin']}
                     <p class="mt-1 text-xs text-muted">
                         {if $fe['inicio'] && $fe['fin']}<b class="text-ink">{$fmt->fechaCorta($fe['inicio'])} → {$fmt->fechaCorta($fe['fin'])}</b>{elseif $fe['fin']}Entrega <b class="text-ink">{$fmt->fechaCorta($fe['fin'])}</b>{else}Desde <b class="text-ink">{$fmt->fechaCorta($fe['inicio'])}</b>{/if}
-                        {if $fe['quedan'] !== null && $sal['nivel'] !== 'completo'} · {if $fe['quedan'] >= 0}quedan <b class="text-ink">{$fe['quedan']} {$fe['quedan'] === 1 ? 'día' : 'días'}</b>{else}pasó hace <b class="text-ink">{abs($fe['quedan'])} {abs($fe['quedan']) === 1 ? 'día' : 'días'}</b>{/if}{/if}
+                        {if $fe['quedan'] !== null && $sal['nivel'] !== 'completo'} · {if $fe['quedan'] >= 0}quedan <b class="text-ink">{$fe['quedan']} {$fe['quedan'] === 1 ? t('día') : t('días')}</b>{else}pasó hace <b class="text-ink">{abs($fe['quedan'])} {abs($fe['quedan']) === 1 ? t('día') : t('días')}</b>{/if}{/if}
                     </p>
                 {/if}
             </div>
@@ -71,17 +71,17 @@
         <span class="pp-eti" style="color: var(--muted)">Avance del proyecto</span>
         <div class="n">{$panel['pct']}<span style="font-size:1.2rem">%</span></div>
         <div class="pp-barra" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{$panel['pct']}" aria-label="Avance"><i style="width:{$panel['pct']}%"></i></div>
-        <div class="t">{$panel['tareas']['hechas']} de {$panel['tareas']['total']} {$panel['tareas']['total'] === 1 ? 'tarea' : 'tareas'}{if $cont['total'] > 0} · {$cont['aprobado']} de {$cont['total']} contenidos aprobados{/if}</div>
+        <div class="t">{$panel['tareas']['hechas']} de {$panel['tareas']['total']} {$panel['tareas']['total'] === 1 ? t('tarea') : t('tareas')}{if $cont['total'] > 0} · {$cont['aprobado']} de {$cont['total']} contenidos aprobados{/if}</div>
     </section>
     <section class="card pp-kpi reveal">
         <span class="pp-eti">Esperando al cliente</span>
         <div class="n">{$cont['pendiente']}</div>
-        <div class="t">{if count($cont['sin_respuesta']) > 0}{count($cont['sin_respuesta'])} {count($cont['sin_respuesta']) === 1 ? 'lleva' : 'llevan'} {\TypeDock\Plugin\Portal\ProyectoPanel::DIAS_SIN_RESPUESTA} días o más sin respuesta{else}piezas por revisar · sin atrasos{/if}</div>
+        <div class="t">{if count($cont['sin_respuesta']) > 0}{count($cont['sin_respuesta'])} {count($cont['sin_respuesta']) === 1 ? t('lleva') : t('llevan')} {\TypeDock\Plugin\Portal\ProyectoPanel::DIAS_SIN_RESPUESTA} días o más sin respuesta{else}piezas por revisar · sin atrasos{/if}</div>
     </section>
     <section class="card pp-kpi reveal">
         <span class="pp-eti">Tareas vencidas</span>
         <div class="n" style="{count($panel['vencidas']) > 0 ? 'color: var(--danger)' : ''}">{count($panel['vencidas'])}</div>
-        <div class="t">de {$panel['tareas']['abiertas']} {$panel['tareas']['abiertas'] === 1 ? 'abierta' : 'abiertas'}{if count($panel['vencidas']) > 0} · la más antigua, hace {$panel['dias_vencida']} {$panel['dias_vencida'] === 1 ? 'día' : 'días'}{/if}</div>
+        <div class="t">de {$panel['tareas']['abiertas']} {$panel['tareas']['abiertas'] === 1 ? t('abierta') : t('abiertas')}{if count($panel['vencidas']) > 0} · {$panel['dias_vencida'] === 1 ? t('la más antigua, hace 1 día') : t('la más antigua, hace %d días', $panel['dias_vencida'])}{/if}</div>
     </section>
     <section class="card pp-kpi reveal">
         <span class="pp-eti">Próxima reunión</span>
@@ -112,7 +112,7 @@
 {* Contenidos y lo que requiere atención *}
 <div class="pp-row pp-c2">
     <section class="card card-pad reveal" id="entregas">
-        <div class="pp-cab"><div><h2>Contenidos</h2><p class="pp-sub">{if $cont['total'] > 0}{$cont['total']} {$cont['total'] === 1 ? 'pieza' : 'piezas'} en {count($entregas)} {count($entregas) === 1 ? 'entrega' : 'entregas'} · dónde está cada una{else}Todavía no hay piezas en este proyecto{/if}</p></div><a href="/equipo/entregas?proyecto={$proyecto['id']}">Ver entregas →</a></div>
+        <div class="pp-cab"><div><h2>Contenidos</h2><p class="pp-sub">{if $cont['total'] > 0}{$cont['total']} {$cont['total'] === 1 ? t('pieza') : t('piezas')} en {count($entregas)} {count($entregas) === 1 ? t('entrega') : t('entregas')} · dónde está cada una{else}Todavía no hay piezas en este proyecto{/if}</p></div><a href="/equipo/entregas?proyecto={$proyecto['id']}">Ver entregas →</a></div>
         {if $cont['total'] === 0}
             <p class="pp-vacio">Cuando armes una entrega de contenido, aquí ves cuántas piezas esperan al cliente, cuáles tienen cambios y cuáles ya se aprobaron. <a href="/equipo/entregas/nuevo?proyecto_id={$proyecto['id']}" class="font-semibold text-brand-ink hover:underline">Nueva entrega</a></p>
         {else}
@@ -126,7 +126,7 @@
                 <span><s style="background:var(--muted)"></s><b>{$cont['borrador']}</b> en borrador</span>
                 <span><s style="background:var(--warn)"></s><b>{$cont['pendiente']}</b> esperan al cliente</span>
                 <span><s style="background:var(--danger)"></s><b>{$cont['cambios']}</b> con cambios pedidos</span>
-                <span><s style="background:var(--ok)"></s><b>{$cont['aprobado']}</b> {$cont['aprobado'] === 1 ? 'aprobada' : 'aprobadas'}</span>
+                <span><s style="background:var(--ok)"></s><b>{$cont['aprobado']}</b> {$cont['aprobado'] === 1 ? t('aprobada') : t('aprobadas')}</span>
             </div>
             {if $cont['semana']}
                 <p class="pp-eti" style="margin:1.1rem 0 .2rem">Se publican esta semana</p>
@@ -137,7 +137,7 @@
                             <div class="pp-dia"><b>{$fmt->dia($x['fecha_publicacion'])}</b><span>{$fmt->mesCorto($x['fecha_publicacion'])}</span></div>
                             <span class="pp-tipo">{\TypeDock\Plugin\Portal\TiposContenido::nombre((string) $x['tipo'])}</span>
                             <a href="/equipo/entregas/{$x['entrega_id']}" class="t"><span>{$x['titulo']}</span><small>{$x['entrega_titulo']}</small></a>
-                            <span class="chip chip-{$cb[1]}">{$cb[0]}{if $x['bucket'] === 'pendiente' && $x['dias_espera'] > 0} · {$x['dias_espera']} {$x['dias_espera'] === 1 ? 'día' : 'días'}{/if}</span>
+                            <span class="chip chip-{$cb[1]}">{$cb[0]}{if $x['bucket'] === 'pendiente' && $x['dias_espera'] > 0} · {$x['dias_espera']} {$x['dias_espera'] === 1 ? t('día') : t('días')}{/if}</span>
                         </li>
                     {/foreach}
                 </ul>
@@ -169,7 +169,7 @@
 <div class="pp-row pp-c3">
     {foreach $grupos as $g}
         <section class="card card-pad reveal">
-            <div class="pp-cab"><div><h2>{$g[0]}</h2><p class="pp-sub">{count($g[1])} {count($g[1]) === 1 ? 'tarea' : 'tareas'}</p></div><a href="/equipo/tareas?proyecto={$proyecto['id']}&amp;estado=todas">Ver →</a></div>
+            <div class="pp-cab"><div><h2>{$g[0]}</h2><p class="pp-sub">{count($g[1])} {count($g[1]) === 1 ? t('tarea') : t('tareas')}</p></div><a href="/equipo/tareas?proyecto={$proyecto['id']}&amp;estado=todas">Ver →</a></div>
             {if empty($g[1])}
                 <p class="pp-vacio">Nada por aquí.</p>
             {else}
@@ -189,7 +189,7 @@
     {/foreach}
 
     <section class="card card-pad reveal" id="reuniones">
-        <div class="pp-cab"><div><h2>Reuniones</h2><p class="pp-sub">{$reu['n_proximas']} {$reu['n_proximas'] === 1 ? 'próxima' : 'próximas'} · {$reu['n_hechas']} {$reu['n_hechas'] === 1 ? 'realizada' : 'realizadas'}</p></div><a href="/equipo/reuniones?proyecto={$proyecto['id']}">Ver →</a></div>
+        <div class="pp-cab"><div><h2>Reuniones</h2><p class="pp-sub">{$reu['n_proximas']} {$reu['n_proximas'] === 1 ? t('próxima') : t('próximas')} · {$reu['n_hechas']} {$reu['n_hechas'] === 1 ? t('realizada') : t('realizadas')}</p></div><a href="/equipo/reuniones?proyecto={$proyecto['id']}">Ver →</a></div>
         {if !$reu['proxima'] && !$reu['ultima']}
             <p class="pp-vacio">Sin reuniones registradas.</p>
         {else}
@@ -210,9 +210,9 @@
                 {if $reu['tareas']}
                     {var $rt = $reu['tareas']}
                     <div class="pp-tareas">
-                        <b>{$rt['total']} {$rt['total'] === 1 ? 'tarea' : 'tareas'}</b> {$rt['total'] === 1 ? 'salió' : 'salieron'} de esta reunión
+                        <b>{$rt['total']} {$rt['total'] === 1 ? t('tarea') : t('tareas')}</b> {$rt['total'] === 1 ? t('salió') : t('salieron')} de esta reunión
                         <div class="mt-2 flex flex-wrap gap-1.5"><span class="pp-pill" style="color:var(--brand-ink)"><b>{$rt['equipo']}</b> para el equipo</span><span class="pp-pill" style="color:var(--muted)"><b>{$rt['cliente']}</b> para el cliente</span></div>
-                        {if $rt['equipo'] > 0}<p class="pp-sub" style="margin-top:.45rem">Del equipo: {$rt['equipo_listas']} {$rt['equipo_listas'] === 1 ? 'lista' : 'listas'} · {$rt['equipo_en_curso']} en curso · {$rt['equipo_vencidas']} {$rt['equipo_vencidas'] === 1 ? 'vencida' : 'vencidas'}</p>{/if}
+                        {if $rt['equipo'] > 0}<p class="pp-sub" style="margin-top:.45rem">Del equipo: {$rt['equipo_listas']} {$rt['equipo_listas'] === 1 ? t('lista') : t('listas')} · {$rt['equipo_en_curso']} en curso · {$rt['equipo_vencidas']} {$rt['equipo_vencidas'] === 1 ? t('vencida') : t('vencidas')}</p>{/if}
                     </div>
                 {else}
                     <p class="pp-sub" style="margin-top:.6rem">De esta reunión no salieron tareas.</p>
@@ -227,7 +227,7 @@
     {var $cg = $panel['contactos']}
     {var $mx = max(1, ...array_column($cg['semanas'], 'llegaron'))}
     <section class="card card-pad reveal">
-        <div class="pp-cab"><div><h2>Contactos ganados de la campaña</h2><p class="pp-sub">{$cg['total']['llegaron']} {$cg['total']['llegaron'] === 1 ? 'contacto' : 'contactos'} · {$cg['total']['contactados']} {$cg['total']['contactados'] === 1 ? 'contactado' : 'contactados'} · {$cg['total']['calificado']} {$cg['total']['calificado'] === 1 ? 'calificado' : 'calificados'} · {$cg['total']['ganado']} {$cg['total']['ganado'] === 1 ? 'ganado' : 'ganados'} · {$cg['total']['perdido']} {$cg['total']['perdido'] === 1 ? 'perdido' : 'perdidos'}</p></div><a href="/equipo/leads?proyecto={$proyecto['id']}">Ver contactos →</a></div>
+        <div class="pp-cab"><div><h2>Contactos ganados de la campaña</h2><p class="pp-sub">{$cg['total']['llegaron']} {$cg['total']['llegaron'] === 1 ? t('contacto') : t('contactos')} · {$cg['total']['contactados']} {$cg['total']['contactados'] === 1 ? t('contactado') : t('contactados')} · {$cg['total']['calificado']} {$cg['total']['calificado'] === 1 ? t('calificado') : t('calificados')} · {$cg['total']['ganado']} {$cg['total']['ganado'] === 1 ? t('ganado') : t('ganados')} · {$cg['total']['perdido']} {$cg['total']['perdido'] === 1 ? t('perdido') : t('perdidos')}</p></div><a href="/equipo/leads?proyecto={$proyecto['id']}">Ver contactos →</a></div>
         {include '../_lead_semanal.latte', cg: $cg, mx: $mx, fmt: $fmt}
     </section>
 {/if}
@@ -242,7 +242,7 @@
             {foreach $ri['semanas'] as $n}<i style="height:{round($n * 100 / $mr)}%" title="{$n}"></i>{/foreach}
         </div>
         <p class="pp-sub" style="margin-top:.5rem">
-            {if $ri['promedio'] > 0}Promedio {str_replace('.', ',', (string) $ri['promedio'])} por semana{if $ri['proyeccion'] !== null} · con ese ritmo, {$ri['abiertas'] === 1 ? 'la abierta se cierra' : 'las ' . $ri['abiertas'] . ' abiertas se cierran'} en ~{$ri['proyeccion']} {$ri['proyeccion'] === 1 ? 'semana' : 'semanas'}{/if}
+            {if $ri['promedio'] > 0}{_'Promedio %s por semana', str_replace('.', ',', (string) $ri['promedio'])}{if $ri['proyeccion'] !== null}{var $sem = $ri['proyeccion'] === 1 ? t('semana') : t('semanas')} · {$ri['abiertas'] === 1 ? t('con ese ritmo, la abierta se cierra en ~%d %s', $ri['proyeccion'], $sem) : t('con ese ritmo, las %d abiertas se cierran en ~%d %s', $ri['abiertas'], $ri['proyeccion'], $sem)}{/if}
             {else}Todavía no se cerraron tareas en estas semanas{/if}
         </p>
     </section>
@@ -281,7 +281,7 @@
     {if $quien}<div class="min-w-0 flex-1" style="min-width:16rem">{include '_quien.latte', gente: $quien['gente'], disponibles: $quien['disponibles'], base: '/equipo/proyectos/' . $proyecto['id'] . '/equipo', puede: true, csrf: $csrf, fmt: $fmt, general: $usuario['rol'] === 'coordinador'}</div>{/if}
     <p class="flex flex-wrap gap-2">
         <a href="/equipo/tareas?proyecto={$proyecto['id']}&amp;estado=todas" class="btn btn-ghost btn-sm">Ver todas las tareas</a>
-        {if $nArchivadas > 0}<a href="/equipo/tareas?proyecto={$proyecto['id']}&amp;estado=archivadas" class="btn btn-ghost btn-sm text-muted!">{$nArchivadas} {$nArchivadas === 1 ? 'archivada' : 'archivadas'}</a>{/if}
+        {if $nArchivadas > 0}<a href="/equipo/tareas?proyecto={$proyecto['id']}&amp;estado=archivadas" class="btn btn-ghost btn-sm text-muted!">{$nArchivadas} {$nArchivadas === 1 ? t('archivada') : t('archivadas')}</a>{/if}
     </p>
 </div>
 

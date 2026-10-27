@@ -14,8 +14,8 @@
         <h1 class="relative mt-1 text-[2rem] font-extrabold leading-[1.08] tracking-tight sm:text-5xl">{$fmt->saludo()}, {$nombre}</h1>
         <p class="relative mt-3 max-w-2xl text-base text-muted sm:text-lg">
             {if $nTurno === 0}Nada esperando al equipo por ahora. Buen momento para adelantar.
-            {elseif $nCliente > 0}Hay {$nCliente} {$nCliente === 1 ? 'respuesta' : 'respuestas'} de clientes para revisar y {$nTurno} {$nTurno === 1 ? 'tarea' : 'tareas'} en tu turno.
-            {else}Tienes {$nTurno} {$nTurno === 1 ? 'tarea' : 'tareas'} en el turno del equipo.{/if}
+            {elseif $nCliente > 0}{_'Hay %d %s de clientes para revisar y %d %s en tu turno.', $nCliente, $nCliente === 1 ? t('respuesta') : t('respuestas'), $nTurno, $nTurno === 1 ? t('tarea') : t('tareas')}
+            {else}{_'Tienes %d %s en el turno del equipo.', $nTurno, $nTurno === 1 ? t('tarea') : t('tareas')}{/if}
         </p>
     </section>
 
@@ -98,7 +98,7 @@
             <ul class="px-2 pb-2 sm:px-3 sm:pb-3">
                 {foreach $resto as $t}{include '_tarea.latte', t: $t, fmt: $fmt}{/foreach}
             </ul>
-            {if $nResto > count($resto)}<p class="px-6 pb-5 text-sm text-muted">Y {$nResto - count($resto)} más en tus proyectos.</p>{/if}
+            {if $nResto > count($resto)}<p class="px-6 pb-5 text-sm text-muted">{_'Y %d más en tus proyectos.', $nResto - count($resto)}</p>{/if}
         {/if}
     </section>
 </div>
@@ -158,9 +158,9 @@
                     <span class="avatar avatar-team flex-none">{$cu['id'] !== '' ? $fmt->iniciales($cu['nombre']) : '—'}</span>
                     <span class="min-w-0 flex-1 leading-snug">
                         <span class="block truncate text-sm font-semibold">{$cu['nombre']}</span>
-                        <span class="block truncate text-xs text-muted">{$cu['clientes']} {$cu['clientes'] === 1 ? 'cliente activo' : 'clientes activos'}{if $cu['respuestas'] > 0} · <span class="font-bold text-brand-ink">{$cu['respuestas']} {$cu['respuestas'] === 1 ? 'respuesta' : 'respuestas'} del cliente</span>{/if}</span>
+                        <span class="block truncate text-xs text-muted">{$cu['clientes']} {$cu['clientes'] === 1 ? t('cliente activo') : t('clientes activos')}{if $cu['respuestas'] > 0} · <span class="font-bold text-brand-ink">{$cu['respuestas']} {$cu['respuestas'] === 1 ? t('respuesta') : t('respuestas')} del cliente</span>{/if}</span>
                     </span>
-                    <span class="flex-none text-right text-xs leading-snug {$cu['atrasadas'] > 0 ? 'font-bold text-danger' : 'text-muted'}">{$cu['atrasadas'] > 0 ? $cu['atrasadas'] . ($cu['atrasadas'] === 1 ? ' atrasada' : ' atrasadas') : 'al día'}</span>
+                    <span class="flex-none text-right text-xs leading-snug {$cu['atrasadas'] > 0 ? 'font-bold text-danger' : 'text-muted'}">{$cu['atrasadas'] > 0 ? ($cu['atrasadas'] === 1 ? t('1 atrasada') : t('%d atrasadas', $cu['atrasadas'])) : t('al día')}</span>
                 </a></li>
             {/foreach}
         </ul>
@@ -181,13 +181,13 @@
                     </span>
                     <span class="flex-none text-right leading-snug">
                         <span class="block text-sm font-extrabold">{(int) $g['abiertas']}</span>
-                        <span class="block text-xs {(int) $g['atrasadas'] > 0 ? 'font-bold text-danger' : 'text-muted'}">{if (int) $g['atrasadas'] > 0}{(int) $g['atrasadas']} {(int) $g['atrasadas'] === 1 ? 'atrasada' : 'atrasadas'}{else}{(int) $g['abiertas'] === 1 ? 'abierta' : 'abiertas'}{/if}</span>
+                        <span class="block text-xs {(int) $g['atrasadas'] > 0 ? 'font-bold text-danger' : 'text-muted'}">{if (int) $g['atrasadas'] > 0}{(int) $g['atrasadas']} {(int) $g['atrasadas'] === 1 ? t('atrasada') : t('atrasadas')}{else}{(int) $g['abiertas'] === 1 ? t('abierta') : t('abiertas')}{/if}</span>
                     </span>
                 </a></li>
             {/foreach}
         </ul>
         {if $sinResponsable > 0}
-            <p class="mt-4 border-t border-line pt-3 text-xs text-muted"><a href="/equipo/tareas" class="font-bold text-brand-ink hover:underline">{$sinResponsable} {$sinResponsable === 1 ? 'tarea' : 'tareas'} del equipo sin responsable</a></p>
+            <p class="mt-4 border-t border-line pt-3 text-xs text-muted"><a href="/equipo/tareas" class="font-bold text-brand-ink hover:underline">{$sinResponsable} {$sinResponsable === 1 ? t('tarea') : t('tareas')} del equipo sin responsable</a></p>
         {/if}
     </section>
     {/if}

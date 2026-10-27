@@ -77,7 +77,7 @@
                     {foreach $verProy as $p}{include '_proyecto_card.latte', p: $p, fmt: $fmt}{/foreach}
                 </div>
             {/if}
-            {if $otros > 0}<p class="mt-3 text-xs text-muted">+ {$otros} {$otros === 1 ? 'proyecto en pausa o cerrado' : 'proyectos en pausa o cerrados'} · <a href="/equipo/clientes/{$c['id']}" class="font-semibold text-brand-ink hover:underline">ver</a></p>{/if}
+            {if $otros > 0}<p class="mt-3 text-xs text-muted">+ {$otros} {$otros === 1 ? t('proyecto en pausa o cerrado') : t('proyectos en pausa o cerrados')} · <a href="/equipo/clientes/{$c['id']}" class="font-semibold text-brand-ink hover:underline">ver</a></p>{/if}
         </section>
     {/foreach}
 </div>

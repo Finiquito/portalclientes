@@ -4,12 +4,12 @@
 {var $t = $grafico['totales'] ?? []}
 <div data-grafico="{json_encode($grafico, \JSON_UNESCAPED_UNICODE)}" class="ll-g{if $corto} corto{/if}">
     <div class="ll-resumen">
-        <span><i style="background:var(--e-llegaron)"></i><b>{$t['llegaron'] ?? 0}</b> {($t['llegaron'] ?? 0) === 1 ? 'llegó' : 'llegaron'}</span>
-        <span><i style="background:var(--e-contactado)"></i><b>{$t['contactados'] ?? 0}</b> {($t['contactados'] ?? 0) === 1 ? 'contactado' : 'contactados'}</span>
+        <span><i style="background:var(--e-llegaron)"></i><b>{$t['llegaron'] ?? 0}</b> {($t['llegaron'] ?? 0) === 1 ? t('llegó') : t('llegaron')}</span>
+        <span><i style="background:var(--e-contactado)"></i><b>{$t['contactados'] ?? 0}</b> {($t['contactados'] ?? 0) === 1 ? t('contactado') : t('contactados')}</span>
         <span class="sep ll-res-h" aria-hidden="true"></span>
-        <span class="ll-res-h"><i class="rombo" style="background:var(--e-calificado)"></i><b>{$t['calificado'] ?? 0}</b> {($t['calificado'] ?? 0) === 1 ? 'calificado' : 'calificados'}</span>
-        <span class="ll-res-h"><i style="background:var(--e-ganado)"></i><b>{$t['ganado'] ?? 0}</b> {($t['ganado'] ?? 0) === 1 ? 'ganado' : 'ganados'}</span>
-        <span class="ll-res-h"><i style="background:var(--e-perdido)"></i><b>{$t['perdido'] ?? 0}</b> {($t['perdido'] ?? 0) === 1 ? 'perdido' : 'perdidos'}</span>
+        <span class="ll-res-h"><i class="rombo" style="background:var(--e-calificado)"></i><b>{$t['calificado'] ?? 0}</b> {($t['calificado'] ?? 0) === 1 ? t('calificado') : t('calificados')}</span>
+        <span class="ll-res-h"><i style="background:var(--e-ganado)"></i><b>{$t['ganado'] ?? 0}</b> {($t['ganado'] ?? 0) === 1 ? t('ganado') : t('ganados')}</span>
+        <span class="ll-res-h"><i style="background:var(--e-perdido)"></i><b>{$t['perdido'] ?? 0}</b> {($t['perdido'] ?? 0) === 1 ? t('perdido') : t('perdidos')}</span>
     </div>
     <div class="ll-vol-cab">
         <p class="ll-tit ll-tit-g">Volumen<span class="ll-solo-pc" data-t="acum"> · cuántos van llegando y siendo contactados</span><span class="ll-solo-pc" data-t="dia" hidden> · cuántos llegaron y fueron contactados cada {if ($grafico['paso'] ?? 'dia') === 'semana'}semana{else}día{/if}</span></p>

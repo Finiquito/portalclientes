@@ -54,7 +54,7 @@
                 <ul>
                     {foreach $pl['e']['tareas'] as $t}
                         {if ($t['fase'] ?? null) === $i}
-                        <li class="quien-{$t['quien'] ?? 'equipo'}"><span>{$t['titulo']}</span><small>{$t['dias']} {$t['dias'] == 1 ? 'día' : 'días'}</small></li>
+                        <li class="quien-{$t['quien'] ?? 'equipo'}"><span>{$t['titulo']}</span><small>{$t['dias']} {$t['dias'] == 1 ? t('día') : t('días')}</small></li>
                         {/if}
                     {/foreach}
                     {foreach $pl['e']['hitos'] as $h}

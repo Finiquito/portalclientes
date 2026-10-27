@@ -66,6 +66,9 @@ final class Idioma
     public static function de(AjustesService $aj, string $ownerTipo, string $ownerId, string $clienteId = ''): string
     {
         $v = $aj->get($ownerTipo, $ownerId, 'idioma');
+        if (!self::valido($v)) {
+            $v = (string) ($_COOKIE[self::COOKIE] ?? '');   // lo que eligió en la pantalla de ingreso
+        }
         if (!self::valido($v) && $clienteId !== '') {
             $v = $aj->get('cliente', $clienteId, 'idioma');
         }

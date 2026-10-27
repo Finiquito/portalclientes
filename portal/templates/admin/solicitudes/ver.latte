@@ -56,7 +56,7 @@
                     {/if}
                     <div class="pa-meta">
                         <a class="pa-name" href="{$admin_url('archivos/' . $a['id'])}" target="_blank" rel="noopener">{$a['nombre_original']}</a>
-                        <span class="pa-muted">{$a['subido_por_tipo'] === 'equipo' ? 'Equipo' : $a['subido_por_nombre'] . ' (cliente)'} · {$fmt->tamano($a['tamano'])}</span>
+                        <span class="pa-muted">{$a['subido_por_tipo'] === 'equipo' ? t('Equipo') : t('%s (cliente)', $a['subido_por_nombre'])} · {$fmt->tamano($a['tamano'])}</span>
                     </div>
                 </li>
             {/foreach}

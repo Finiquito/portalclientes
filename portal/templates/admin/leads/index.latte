@@ -30,7 +30,7 @@
             <div style="display:flex;gap:.4rem;flex-wrap:wrap;min-height:1.3rem">{foreach $p['etiquetas'] as $t}<span class="ll-pub" data-p="{$t}">{$t}</span>{/foreach}{if $p['estado'] !== 'activo'}<span class="ll-chip" data-e="nuevo">{$p['estado'] === 'pausado' ? 'Pausado' : 'Cerrado'}</span>{/if}</div>
             <h3 style="margin-top:.45rem">{$p['nombre']}</h3>
             <p class="ll-sub">{if $p['desde']}Desde {$fmt->fecha($p['desde'])}{else}Todavía sin contactos{/if}</p>
-            <div style="display:flex;align-items:baseline;gap:.5rem;margin-top:.7rem"><b style="font-size:2rem;font-weight:800;letter-spacing:-.04em;line-height:1">{$p['total']}</b><span class="ll-sub" style="margin:0">{$p['total'] === 1 ? 'contacto' : 'contactos'}{if $p['nuevos_semana'] > 0} · {$p['nuevos_semana']} esta semana{/if}</span></div>
+            <div style="display:flex;align-items:baseline;gap:.5rem;margin-top:.7rem"><b style="font-size:2rem;font-weight:800;letter-spacing:-.04em;line-height:1">{$p['total']}</b><span class="ll-sub" style="margin:0">{$p['total'] === 1 ? t('contacto') : t('contactos')}{if $p['nuevos_semana'] > 0} · {$p['nuevos_semana']} esta semana{/if}</span></div>
             {if $p['total'] > 0}<div class="ll-barra">{foreach $estados as $k => $txt}{if $p['conteo'][$k] > 0}<i data-e="{$k}" style="flex:{$p['conteo'][$k]}" title="{$txt}: {$p['conteo'][$k]}"></i>{/if}{/foreach}</div>{/if}
         </a>
     {/foreach}

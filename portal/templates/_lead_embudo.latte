@@ -12,7 +12,7 @@
             <div class="r"><b>Calificados</b><div class="bar"><i style="width:{round($embudo['calificados'] * 100 / $base)}%;background:var(--e-calificado)"></i></div><span class="v">{$embudo['calificados']}</span></div>
             {if $embudo['pasos'][2] !== null}<div class="pc">{$embudo['pasos'][2]}% llega a ganado</div>{/if}
             <div class="r"><b>Ganados</b><div class="bar"><i style="width:{round($embudo['ganados'] * 100 / $base)}%;background:var(--e-ganado)"></i></div><span class="v">{$embudo['ganados']}</span></div>
-            {if $embudo['perdidos'] > 0}<p class="ll-aviso" style="margin-top:.2rem">Además, {$embudo['perdidos']} {$embudo['perdidos'] === 1 ? 'quedó' : 'quedaron'} como perdidos.</p>{/if}
+            {if $embudo['perdidos'] > 0}<p class="ll-aviso" style="margin-top:.2rem">Además, {$embudo['perdidos']} {$embudo['perdidos'] === 1 ? t('quedó') : t('quedaron')} como perdidos.</p>{/if}
         </div>
     </div>
     <div>

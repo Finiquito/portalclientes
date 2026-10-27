@@ -485,7 +485,11 @@ class EquipoController
             @session_regenerate_id(true);
         }
         unset($_SESSION['portal_equipo_email']);
-        $_SESSION[self::SESION] = (string) $u['id'];
+        $_SESSION[self::SESION] = (string) $u["id"];
+        $elegido = (string) ($_COOKIE[Idioma::COOKIE] ?? "");
+        if (Idioma::valido($elegido) && !Idioma::valido($this->ajustes()->get("equipo", (string) $u["id"], "idioma"))) {
+            $this->ajustes()->set("equipo", (string) $u["id"], "idioma", $elegido);
+        }
         $this->equipo()->marcarAcceso((string) $u['id']);
         $this->redirectTo('/equipo');
     }

@@ -3241,10 +3241,22 @@ $verE('calendario', fn() => (new PublicoPrueba($ctx))->calendario());
 $verE('ayuda', fn() => (new PublicoPrueba($ctx))->ayuda());
 $verE('ajustes', fn() => (new PublicoPrueba($ctx))->ajustesForm());
 $verE('archivos', fn() => (new PublicoPrueba($ctx))->archivosPagina());
-foreach (['lista'] as $m) {
-    $paginasE['solicitudes'] = (new SolicitudPrueba($ctx))->correr($m)[0];
-    $paginasE['contactos'] = (new LeadPrueba($ctx))->correr($m)[0];
+$paginasE['solicitudes'] = (new SolicitudPrueba($ctx))->correr('lista')[0];
+$paginasE['contactos'] = (new LeadPrueba($ctx))->correr('lista')[0];
+$paginasE['solicitud nueva'] = (new SolicitudPrueba($ctx))->correr('nueva')[0];
+$paginasE['solicitud'] = (new SolicitudPrueba($ctx))->correr('ver', [$sNid])[0];
+$paginasE['contacto'] = (new LeadPrueba($ctx))->correr('ver', [$idLola])[0];
+final class VerEntregaPrueba extends P\EntregaPublicController
+{
+    protected function redirectTo(string $path, array $query = []): void { throw new RuntimeException('redirect'); }
+    protected function terminate(): void { throw new RuntimeException('fin'); }
 }
+$verE('tarea', fn() => (new PublicoPrueba($ctx))->tarea($tN));
+$verE('reunion', fn() => (new PublicoPrueba($ctx))->reunion($rRec));
+$verE('revisiones', fn() => (new VerEntregaPrueba($ctx))->entregas());
+$verE('revision', fn() => (new VerEntregaPrueba($ctx))->entrega($eRev));
+$verE('contenido', fn() => (new VerEntregaPrueba($ctx))->contenido($piezas[0]));
+$verE('mensajes', fn() => (new P\MensajePublicController($ctx))->lista());
 check(str_contains($paginasE['inicio'], 'lang="en"') && str_contains($paginasE['ajustes'], 'Language'), 'la página sale con lang="en" y en inglés');
 check(str_contains($paginasE['tareas'], 'Tasks') && !str_contains($paginasE['tareas'], '>Tareas<'), 'las tareas dicen «Tasks»');
 $faltasE = P\Idioma::faltas();

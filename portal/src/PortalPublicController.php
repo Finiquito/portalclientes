@@ -503,6 +503,11 @@ class PortalPublicController
         } catch (\Throwable) {
             // sin las columnas nuevas todavía: no impide entrar
         }
+        // Si eligió idioma en la pantalla de ingreso y aún no tenía uno, queda guardado en su cuenta.
+        $elegido = (string) ($_COOKIE[Idioma::COOKIE] ?? '');
+        if (Idioma::valido($elegido) && !Idioma::valido($this->ajustes()->get('contacto', (string) $contacto['id'], 'idioma'))) {
+            $this->ajustes()->set('contacto', (string) $contacto['id'], 'idioma', $elegido);
+        }
 
         $this->redirectTo('');
     }

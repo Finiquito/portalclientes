@@ -97,7 +97,7 @@
         var n = numeros(f.name), p = n ? pieza(n[0]) : null, chip, sel;
         if (CSV.test(f.name)) { chip = '<span class="pa-chip info">Planilla: un contenido por fila</span>'; sel = 'nuevo'; }
         else if (p && (IMG.test(f.name) || VID.test(f.name) || PDF.test(f.name))) { reconocidos++; chip = '<span class="pa-chip ok">' + esc(corto(p.titulo)) + (n[1] ? ' · lámina ' + n[1] : '') + '</span>'; sel = 'pieza:' + p.id; }
-        else if (IMG.test(f.name)) { chip = n ? '<span class="pa-chip warn">No hay pieza ' + n[0] + '</span>' : '<span class="pa-chip">Imagen sin número de pieza</span>'; sel = sinPiezaImg > 1 ? 'carrusel' : 'nuevo'; }
+        else if (IMG.test(f.name)) { chip = n ? '<span class="pa-chip warn">No hay pieza ' + n[0] + '</span>' : '<span class="pa-chip">Imagen sin número de pieza</span>'; sel = sinPiezaImg > 1 ? t('carrusel') : t('nuevo'); }
         else if (PDF.test(f.name)) { chip = '<span class="pa-chip">PDF: documento nuevo</span>'; sel = 'nuevo'; }
         else if (VID.test(f.name)) { chip = '<span class="pa-chip">Video: reel nuevo</span>'; sel = 'nuevo'; }
         else { chip = '<span class="pa-chip">Archivo</span>'; sel = 'nuevo'; }
@@ -218,7 +218,7 @@
         tapaDe(pdf).then(function (r) {
           if (!r) { media.innerHTML = '<span>' + esc(pdf.name) + '</span>'; return; }
           media.innerHTML = '<img src="' + urlDe(r.blob) + '" alt="Página 1">';
-          pie.textContent = pdf.name + ' · ' + r.paginas + (r.paginas === 1 ? ' página' : ' páginas') + '. El cliente lo ve por páginas y lo puede descargar.';
+          pie.textContent = pdf.name + ' · ' + r.paginas + (r.paginas === 1 ? t(' página') : t(' páginas')) + '. El cliente lo ve por páginas y lo puede descargar.';
         });
       } else if (vid) {
         media.innerHTML = '<span>Leyendo el video…</span>';

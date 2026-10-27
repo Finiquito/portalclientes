@@ -117,7 +117,7 @@
         <p class="pa-muted" style="margin:0">
             {if !empty($mc['alta'])}Se inscribió el {$fmt->fecha($mc['alta'])}{/if}
             {if $mc['estado'] === 'unsubscribed' && !empty($mc['cambio'])} · se dio de baja el {$fmt->fecha($mc['cambio'])}{if !empty($mc['motivo'])} («{$mc['motivo']}»){/if}{/if}
-            {if !empty($mc['conteo'])}{var $c = $mc['conteo']} · {if $c['enviados'] === 0}todavía no recibe correos{else}{if !$c['completo']}al menos {/if}{$c['enviados']} {$c['enviados'] === 1 ? 'correo recibido' : 'correos recibidos'}, abrió {$c['abiertos']}{if $c['clics'] > 0} e hizo clic en {$c['clics']}{/if}{/if}{/if}
+            {if !empty($mc['conteo'])}{var $c = $mc['conteo']} · {if $c['enviados'] === 0}todavía no recibe correos{else}{if !$c['completo']}al menos {/if}{$c['enviados']} {$c['enviados'] === 1 ? t('correo recibido') : t('correos recibidos')}, abrió {$c['abiertos']}{if $c['clics'] > 0} e hizo clic en {$c['clics']}{/if}{/if}{/if}
             {if isset($mc['aperturas']) && $mc['aperturas'] !== null} · abre el {$mc['aperturas']}% y hace clic en el {$mc['clics'] ?? 0}% de los correos{/if}
             {if !empty($mc['origen'])} · origen en Mailchimp: {$mc['origen']}{/if}
         </p>

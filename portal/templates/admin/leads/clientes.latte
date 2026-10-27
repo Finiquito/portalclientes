@@ -27,8 +27,8 @@
         <a class="ll-card" href="{$admin_url('leads')}?cliente={$c['id']}">
             <div class="ll-cab">
                 <span class="ll-av" style="{if $m && !empty($m['color'])}background:{$m['color']|noescape};color:{($m['texto'] ?? '#fff')|noescape}{/if}">{if $m && !empty($m['logo'])}<img src="{$m['logo']}" alt="">{else}{$fmt->iniciales($c['nombre'])}{/if}</span>
-                <div><h2>{$c['nombre']}</h2><p class="ll-sub">{$c['proyectos']} {$c['proyectos'] === 1 ? 'proyecto' : 'proyectos'} con contactos ganados</p></div>
-                <div class="ll-num"><b>{$c['total']}</b><span>{$c['total'] === 1 ? 'contacto' : 'contactos'}</span></div>
+                <div><h2>{$c['nombre']}</h2><p class="ll-sub">{$c['proyectos']} {$c['proyectos'] === 1 ? t('proyecto') : t('proyectos')} con contactos ganados</p></div>
+                <div class="ll-num"><b>{$c['total']}</b><span>{$c['total'] === 1 ? t('contacto') : t('contactos')}</span></div>
             </div>
             {if $c['total'] > 0}
             <div class="ll-barra" role="img" aria-label="Contactos por estado">
@@ -38,7 +38,7 @@
             {/if}
             <div class="ll-pie">
                 <div class="tags">{foreach $c['publico'] as $p}<span class="ll-pub" data-p="{$p}">{$p}</span>{/foreach}</div>
-                <span class="nv">{if $c['nuevos_semana'] > 0}{$c['nuevos_semana']} {$c['nuevos_semana'] === 1 ? 'nuevo' : 'nuevos'} esta semana · {/if}Entrar →</span>
+                <span class="nv">{if $c['nuevos_semana'] > 0}{$c['nuevos_semana']} {$c['nuevos_semana'] === 1 ? t('nuevo') : t('nuevos')} esta semana · {/if}Entrar →</span>
             </div>
         </a>
     {/foreach}
