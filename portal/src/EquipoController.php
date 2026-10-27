@@ -80,7 +80,7 @@ class EquipoController
             $f = dirname(__DIR__) . '/assets/' . $nombre;
             self::$assets[$nombre] = is_file($f) ? (string) file_get_contents($f) : '';
         }
-        return self::$assets[$nombre];
+        return $nombre === 'portal.js' ? Idioma::conTraducciones(self::$assets[$nombre], $this->asset('pdfviewer.js')) : self::$assets[$nombre];
     }
 
     /** @return array<string, mixed>|null */

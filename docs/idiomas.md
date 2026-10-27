@@ -14,11 +14,14 @@ Los correos y avisos usan el idioma **de quien los recibe** (`Idioma::de()` sin 
 
 ## Cómo se traduce
 
+- **Motor propio**: el portal del cliente y el panel del equipo se dibujan con su propio motor de Latte (`Vista`), que lleva la traducción. No se toca el motor de TypeDock: el admin y el resto del sitio quedan como estaban (el núcleo ya trae su propio traductor para el admin, con el tag `{_}`; por eso acá no se usa).
+
 - **El texto en español es la clave.** Si falta la traducción se ve el español, nunca una pantalla vacía.
 - **Plantillas (Latte)**: no se editan. `IdiomaExtension` traduce al compilar los textos fijos, los atributos `placeholder`, `title`, `aria-label` y `alt`, los textos que van dentro de `?:`/`??`/listas y las etiquetas de las listas escritas en la plantilla. Para frases con valores dentro: `{t('Hola, %s', $nombre)}` (no se usa `{_…}`: el núcleo de TypeDock ya la ocupa).
 - **PHP**: `Idioma::t('Texto %s', $valor)` (usa sprintf, así el orden de las palabras puede cambiar). Los avisos que alguien arma para que otra persona los lea llevan `Idioma::f(...)` (se traducen al guardarse para cada destinatario) o `Idioma::perezoso(fn() => …)`.
 - **Tablas de etiquetas** (estados, tipos…): se pasan por `Idioma::lista(...)`.
 - **JS**: `T('texto')` en `portal.js` y `pdfviewer.js`; el servidor antepone `window.PORTAL_T` con las traducciones.
+- **Función `t()`**: está registrada en el motor propio y, como función global (`portal/src/funciones.php`), también en las pantallas de gestión cuando las dibuja el admin de TypeDock (siempre en español).
 - **Fechas y horas**: `Fmt` (mes primero y 12 horas en inglés).
 
 ## Traducciones
