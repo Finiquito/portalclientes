@@ -65,7 +65,7 @@ if (($argv[1] ?? '') === '--literales') {
 
 $args = array_slice($argv, 1);
 $todas = in_array('--todas', $args, true);
-$args = array_values(array_filter($args, fn($a) => $a !== '--todas'));
+$args = array_values(array_filter($args, fn($a) => $a !== '--todas' && $a !== '--contexto'));
 $cod = $args[0] ?? 'en';
 $carpetas = array_slice($args, 1) ?: ['public', 'equipo', 'admin', '.'];
 
@@ -93,12 +93,24 @@ foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($base)) as
 }
 $tabla = Idioma::tabla($cod);
 ksort($claves);
+$conContexto = in_array('--contexto', $argv, true);
 $n = 0;
 foreach ($claves as $k => $archivos) {
     if (!$todas && isset($tabla[$k])) {
         continue;
     }
     $n++;
-    echo $k, "\t", implode(',', array_slice(array_keys($archivos), 0, 3)), "\n";
+    echo $k, "\t", implode(',', array_slice(array_keys($archivos), 0, 3));
+    if ($conContexto) {
+        $f1 = $base . '/' . array_key_first($archivos);
+        foreach (file($f1) ?: [] as $linea) {
+            $aguja = html_entity_decode(mb_substr($k, 0, 24));
+            if ($aguja !== '' && str_contains(preg_replace('/\s+/u', ' ', $linea), $aguja)) {
+                echo "\t", mb_substr(trim(preg_replace('/\s+/u', ' ', $linea)), 0, 220);
+                break;
+            }
+        }
+    }
+    echo "\n";
 }
 fwrite(STDERR, ($todas ? 'frases en plantillas' : 'sin traducir en ' . $cod) . ': ' . $n . ' de ' . count($claves) . "\n");

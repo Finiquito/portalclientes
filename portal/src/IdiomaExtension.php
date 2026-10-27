@@ -65,7 +65,7 @@ final class IdiomaExtension extends Extension
 
     public function getCacheKey(\Latte\Engine $engine): mixed
     {
-        return 'idioma6';
+        return 'idioma7';
     }
 
     public static function pase(TemplateNode $plantilla): void
@@ -94,6 +94,12 @@ final class IdiomaExtension extends Extension
                 foreach ($n->items as $item) {
                     if ($item->value instanceof StringNode && self::pareceTexto($item->value->value)) {
                         $item->value = self::llamarT($item->value);
+                    } elseif ($item->value instanceof TernaryNode) {   // ['x', 'Y', $a ? 'Proyectos' : 'Proyecto']
+                        foreach (['if', 'else'] as $rama) {
+                            if ($item->value->$rama instanceof StringNode && self::pareceTexto($item->value->$rama->value)) {
+                                $item->value->$rama = self::llamarT($item->value->$rama);
+                            }
+                        }
                     }
                 }
                 return null;

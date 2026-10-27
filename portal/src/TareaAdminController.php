@@ -114,8 +114,8 @@ class TareaAdminController
             'firma'     => $this->firma(),
             'fmt'       => new Fmt(),
             'maxMb'     => (int) round($this->archivos()->limiteBytes(max(1, (int) $this->ajustes()->get('global', 'portal', 'max_mb', '20'))) / 1048576),
-            'estados'   => Fmt::ESTADOS,
-            'tipos'     => Fmt::TIPOS,
+            'estados'   => Idioma::lista(Fmt::ESTADOS),
+            'tipos'     => Idioma::lista(Fmt::TIPOS),
         ] + $extra;
     }
 

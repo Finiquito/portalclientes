@@ -43,7 +43,7 @@ class LeadPublicController extends PortalPublicController
         if (!in_array($f['proyecto_id'], array_column($proyectos, 'id'), true)) {
             $f['proyecto_id'] = '';
         }
-        if (!isset(Idioma::lista(LeadService::ESTADOS)[$f['estado']])) {
+        if (!isset(LeadService::ESTADOS[$f['estado']])) {
             $f['estado'] = '';
         }
         return $f;

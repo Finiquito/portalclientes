@@ -3258,6 +3258,7 @@ $verE('revision', fn() => (new VerEntregaPrueba($ctx))->entrega($eRev));
 $verE('contenido', fn() => (new VerEntregaPrueba($ctx))->contenido($piezas[0]));
 $verE('mensajes', fn() => (new P\MensajePublicController($ctx))->lista());
 check(str_contains($paginasE['inicio'], 'lang="en"') && str_contains($paginasE['ajustes'], 'Language'), 'la página sale con lang="en" y en inglés');
+check(str_contains($paginasE['inicio'], 'window.PORTAL_T=') && str_contains($paginasE['inicio'], '"Subir":"Upload"'), 'el JS de la página recibe sus textos en inglés');
 check(str_contains($paginasE['tareas'], 'Tasks') && !str_contains($paginasE['tareas'], '>Tareas<'), 'las tareas dicen «Tasks»');
 $faltasE = P\Idioma::faltas();
 if (getenv('PORTAL_FALTAS')) {
@@ -3268,6 +3269,57 @@ P\Idioma::$registrarFaltas = false;
 P\Idioma::limpiarFaltas();
 $ajE->set('contacto', $contacto, 'idioma', 'es');
 P\Idioma::fijar('es');
+
+// ---------------------------------------------------------------------------
+seccion('Idiomas: el panel del equipo y las pantallas de gestión en inglés');
+$ajQ = new P\AjustesService($pdo);
+$ajQ->set('equipo', $coord, 'idioma', 'en');
+$_SESSION[P\EquipoController::SESION] = $coord;
+unset($_SESSION[P\PortalSession::CONTACTO], $_SESSION[P\PortalSession::VISTA]);
+P\Idioma::$registrarFaltas = true;
+P\Idioma::limpiarFaltas();
+$gq = new GestionPrueba($ctx);
+$epq = new EquipoPrueba($ctx);
+$paginasQ = [];
+$vista = function (string $n, array $r) use (&$paginasQ): void { $paginasQ[$n] = $r[0]; };
+foreach ([
+    ['tareas', P\TareaAdminController::class, 'index', [], null],
+    ['tarea', P\TareaAdminController::class, 'edit', [$tMia], 'tarea'],
+    ['tarea nueva', P\TareaAdminController::class, 'create', [], null],
+    ['entregas', P\EntregaAdminController::class, 'index', [], null],
+    ['entrega', P\EntregaAdminController::class, 'edit', [$eRev], 'entrega'],
+    ['contenido', P\EntregaAdminController::class, 'editContenido', [$piezas[0]], 'contenido'],
+    ['reuniones', P\ReunionAdminController::class, 'index', [], null],
+    ['reunion', P\ReunionAdminController::class, 'edit', [$rRec], 'reunion'],
+    ['reunion nueva', P\ReunionAdminController::class, 'create', [], null],
+    ['solicitudes', P\SolicitudAdminController::class, 'index', [], null],
+    ['solicitud', P\SolicitudAdminController::class, 'ver', [$sNid], 'solicitud'],
+    ['clientes', P\ClienteAdminController::class, 'index', [], null],
+    ['cliente', P\ClienteAdminController::class, 'edit', [$c1], 'cliente'],
+    ['contactos', P\ContactoAdminController::class, 'index', [], null],
+    ['contacto', P\ContactoAdminController::class, 'edit', [$contacto], 'contacto'],
+    ['proyectos', P\ProyectoAdminController::class, 'index', [], null],
+    ['proyecto', P\ProyectoAdminController::class, 'edit', [$p1a], 'proyecto'],
+    ['fases', P\FaseAdminController::class, 'index', [], null],
+    ['plantillas', P\PlantillaAdminController::class, 'index', [], null],
+    ['equipo', P\EquipoAdminController::class, 'index', [], null],
+] as [$nombreQ, $claseQ, $metodoQ, $argsQ, $tipoQ]) {
+    $vista($nombreQ, $gq->hacer('GET', $claseQ, $metodoQ, $argsQ, $tipoQ, true));
+}
+foreach (['inicio' => fn() => $epq->inicio(), 'clientes' => fn() => $epq->clientes(), 'cliente' => fn() => $epq->cliente($c1), 'proyectos' => fn() => $epq->proyectos(), 'proyecto' => fn() => $epq->proyecto($p1a), 'ajustes' => fn() => $epq->misAjustes()] as $nQ => $fQ) {
+    $vista('panel ' . $nQ, $epq->correr($fQ));
+}
+$tamQ = array_map('strlen', $paginasQ);
+check(min($tamQ) > 500, 'todas las pantallas del panel se dibujan' . (min($tamQ) > 500 ? '' : ': ' . json_encode(array_filter($tamQ, fn($x) => $x <= 500))));
+check(str_contains($paginasQ['panel inicio'], 'lang="en"') && str_contains($paginasQ['panel ajustes'], 'Language'), 'el panel sale con lang="en" y en inglés');
+$faltasQ = P\Idioma::faltas();
+if (getenv('PORTAL_FALTAS_Q')) {
+    file_put_contents(getenv('PORTAL_FALTAS_Q'), implode("\n", $faltasQ) . "\n");
+}
+check($faltasQ === [], 'ninguna frase sin traducir al recorrer el panel en inglés' . ($faltasQ ? ' (' . count($faltasQ) . '): ' . implode(' | ', array_slice($faltasQ, 0, 10)) : ''));
+P\Idioma::reiniciar();
+$ajQ->borrar('equipo', $coord, 'idioma');
+$_SESSION[P\EquipoController::SESION] = $ana;
 
 // ---------------------------------------------------------------------------
 seccion('Idiomas: los correos salen en el idioma de quien los recibe');

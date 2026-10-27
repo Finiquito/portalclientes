@@ -106,7 +106,7 @@ class SolicitudPublicController extends PortalPublicController
 
         $this->ctx->view('templates/public/solicitud_nueva.latte', $this->contexto($c, 'solicitudes') + [
             'tipos'       => Idioma::lista(SolicitudService::TIPOS),
-            'tipo'        => isset(Idioma::lista(SolicitudService::TIPOS)[$tipo]) ? $tipo : '',
+            'tipo'        => isset(SolicitudService::TIPOS[$tipo]) ? $tipo : '',
             'urgencias'   => Idioma::lista(SolicitudService::URGENCIAS),
             'modalidades' => Idioma::lista(SolicitudService::MODALIDADES),
             'proyectos'   => $proyectos,
@@ -160,7 +160,7 @@ class SolicitudPublicController extends PortalPublicController
         }
 
         if ($s !== null) {
-            $this->actividad()->registrar($clienteId, ((string) $s['proyecto_id']) ?: null, 'contacto', (string) $c['nombre'], 'solicito', 'solicitud', $id, (string) $s['titulo'], Idioma::lista(SolicitudService::TIPOS)[$s['tipo']][0]);
+            $this->actividad()->registrar($clienteId, ((string) $s['proyecto_id']) ?: null, 'contacto', (string) $c['nombre'], 'solicito', 'solicitud', $id, (string) $s['titulo'], SolicitudService::TIPOS[$s['tipo']][0]);
             $this->avisarSolicitud($s, (string) $c['nombre'], count($lista) - count($errores));
         }
 

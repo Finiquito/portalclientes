@@ -279,7 +279,7 @@ class ContenidoService
     {
         $del = $this->pdo->prepare('DELETE FROM portal_reacciones WHERE version_id = ? AND contacto_id = ?');
         $del->execute([$versionId, $contactoId]);
-        if (isset(Idioma::lista(TiposContenido::REACCIONES)[$valor])) {
+        if (isset(TiposContenido::REACCIONES[$valor])) {
             $this->pdo->prepare('INSERT INTO portal_reacciones (id, version_id, contacto_id, valor, created_at) VALUES (?, ?, ?, ?, ?)')
                 ->execute([typedock_uuid7(), $versionId, $contactoId, $valor, self::ahora()]);
         }

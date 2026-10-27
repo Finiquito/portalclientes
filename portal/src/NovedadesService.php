@@ -247,7 +247,7 @@ final class NovedadesService
             }
         }
         $tablas = [
-            'tarea'     => ['portal_tareas', Fmt::ESTADOS],
+            'tarea'     => ['portal_tareas', Idioma::lista(Fmt::ESTADOS)],
             'entrega'   => ['portal_entregas', Idioma::lista(TiposContenido::ESTADOS_ENTREGA)],
             'contenido' => ['portal_contenidos', Idioma::lista(TiposContenido::ESTADOS_CONTENIDO)],
         ];

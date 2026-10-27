@@ -216,9 +216,9 @@ final class Idioma
     /**
      * Antepone al JS las traducciones de los textos marcados con T('…'). En español no agrega nada.
      */
-    public static function conTraducciones(string $js): string
+    public static function conTraducciones(string $js, string ...$otros): string
     {
-        if (self::$actual === self::DEFECTO || !preg_match_all("/\\bT\\('((?:[^'\\\\]|\\\\.)*)'\\)/u", $js, $m)) {
+        if (self::$actual === self::DEFECTO || !preg_match_all("/\\bT\\('((?:[^'\\\\]|\\\\.)*)'\\)/u", $js . "\n" . implode("\n", $otros), $m)) {
             return $js;
         }
         $tabla = [];

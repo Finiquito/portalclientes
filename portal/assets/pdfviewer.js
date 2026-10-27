@@ -10,21 +10,24 @@ try {
 const $ = (s, c) => (c || document).querySelector(s);
 const $$ = (s, c) => Array.from((c || document).querySelectorAll(s));
 
+/* Textos de pantalla: window.PORTAL_T (lo arma el servidor según el idioma); si falta, queda el español. */
+const T = (s) => (window.PORTAL_T && window.PORTAL_T[s]) || s;
+
 function esc(t) { return String(t).replace(/[&<>"]/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m])); }
 
 function sinVisor(root, motivo) {
   const m = $('[data-pdf-mount]', root);
-  m.innerHTML = '<p class="border-t border-line p-4 text-sm text-muted">' + esc(motivo) + ' Puedes abrir el archivo con el botón de arriba.</p>';
+  m.innerHTML = '<p class="border-t border-line p-4 text-sm text-muted">' + esc(motivo) + T(' Puedes abrir el archivo con el botón de arriba.') + '</p>';
 }
 
 async function iniciar(root) {
   const mount = $('[data-pdf-mount]', root);
-  if (!pdfjs) { sinVisor(root, 'Tu navegador no puede mostrar la vista por páginas.'); return; }
+  if (!pdfjs) { sinVisor(root, T('Tu navegador no puede mostrar la vista por páginas.')); return; }
 
   let doc;
   try {
     doc = await pdfjs.getDocument({ url: root.dataset.src, withCredentials: true }).promise;
-  } catch (e) { sinVisor(root, 'No se pudo abrir el PDF.'); return; }
+  } catch (e) { sinVisor(root, T('No se pudo abrir el PDF.')); return; }
 
   const total = doc.numPages;
   const conNotas = root.hasAttribute('data-comments');
@@ -32,18 +35,18 @@ async function iniciar(root) {
 
   mount.innerHTML =
     '<div class="relative border-t border-line bg-surface2">' +
-      '<div data-stage class="flex h-[58vh] overflow-auto sm:h-[68vh]" style="scrollbar-width:thin"><div data-lienzo class="relative m-auto shrink-0"><canvas data-canvas class="block cursor-zoom-in bg-white shadow-soft" aria-label="Página del documento"></canvas></div></div>' +
-      '<button type="button" data-prev class="absolute left-2 top-1/2 flex size-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/60 text-white transition hover:bg-black/80 disabled:opacity-30" aria-label="Página anterior"><svg class="size-5"><use href="#i-back"/></svg></button>' +
-      '<button type="button" data-next class="absolute right-2 top-1/2 flex size-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/60 text-white transition hover:bg-black/80 disabled:opacity-30" aria-label="Página siguiente"><svg class="size-5"><use href="#i-chevron"/></svg></button>' +
+      '<div data-stage class="flex h-[58vh] overflow-auto sm:h-[68vh]" style="scrollbar-width:thin"><div data-lienzo class="relative m-auto shrink-0"><canvas data-canvas class="block cursor-zoom-in bg-white shadow-soft" aria-label="' + T('Página del documento') + '"></canvas></div></div>' +
+      '<button type="button" data-prev class="absolute left-2 top-1/2 flex size-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/60 text-white transition hover:bg-black/80 disabled:opacity-30" aria-label="' + T('Página anterior') + '"><svg class="size-5"><use href="#i-back"/></svg></button>' +
+      '<button type="button" data-next class="absolute right-2 top-1/2 flex size-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/60 text-white transition hover:bg-black/80 disabled:opacity-30" aria-label="' + T('Página siguiente') + '"><svg class="size-5"><use href="#i-chevron"/></svg></button>' +
     '</div>' +
     '<div class="flex flex-wrap items-center justify-between gap-2 border-t border-line px-3 py-2">' +
       '<p class="text-sm font-bold" aria-live="polite"><span data-count></span><span data-notas class="ml-2 text-xs font-semibold text-muted"></span></p>' +
       '<span class="flex items-center gap-1.5">' +
-        (conNotas ? '<button type="button" data-marcar class="btn btn-soft btn-sm" aria-pressed="false"><svg class="size-4"><use href="#i-pin"/></svg> <span data-marcar-txt>Marcar un punto</span></button><button type="button" data-comentar class="btn btn-ghost btn-sm">Comentar esta página</button>' : '') +
-        '<button type="button" data-full class="btn btn-ghost btn-sm w-9 px-0!" aria-label="Pantalla completa"><svg class="size-4"><use href="#i-zoom"/></svg></button>' +
+        (conNotas ? '<button type="button" data-marcar class="btn btn-soft btn-sm" aria-pressed="false"><svg class="size-4"><use href="#i-pin"/></svg> <span data-marcar-txt>' + T('Marcar un punto') + '</span></button><button type="button" data-comentar class="btn btn-ghost btn-sm">' + T('Comentar esta página') + '</button>' : '') +
+        '<button type="button" data-full class="btn btn-ghost btn-sm w-9 px-0!" aria-label="' + T('Pantalla completa') + '"><svg class="size-4"><use href="#i-zoom"/></svg></button>' +
       '</span>' +
     '</div>' +
-    (total > 1 ? '<div data-thumbs class="flex gap-2 overflow-x-auto border-t border-line bg-surface p-2.5" role="tablist" aria-label="Páginas"></div>' : '');
+    (total > 1 ? '<div data-thumbs class="flex gap-2 overflow-x-auto border-t border-line bg-surface p-2.5" role="tablist" aria-label="' + T('Páginas') + '"></div>' : '');
 
   const stage = $('[data-stage]', root), canvas = $('[data-canvas]', root), lienzo = $('[data-lienzo]', root);
   let pines = [];
@@ -96,11 +99,11 @@ async function iniciar(root) {
   }
 
   function actualizar() {
-    $('[data-count]', root).textContent = total > 1 ? 'Página ' + cur + ' de ' + total : 'Página 1';
+    $('[data-count]', root).textContent = total > 1 ? T('Página') + ' ' + cur + ' ' + T('de') + ' ' + total : T('Página') + ' 1';
     btnPrev.disabled = cur <= 1; btnNext.disabled = cur >= total;
     canvas.classList.toggle('cursor-zoom-in', zoom === 1); canvas.classList.toggle('cursor-zoom-out', zoom !== 1);
     const n = conNotas ? (notasPorPagina()[cur] || 0) : 0;
-    $('[data-notas]', root).textContent = n ? '· ' + n + (n === 1 ? ' nota aquí' : ' notas aquí') : '';
+    $('[data-notas]', root).textContent = n ? '· ' + n + (n === 1 ? T(' nota aquí') : T(' notas aquí')) : '';
     if (thumbs) {
       $$('[data-t]', thumbs).forEach((b) => {
         const on = +b.dataset.t === cur;
@@ -123,7 +126,7 @@ async function iniciar(root) {
       nuevo = { p: cur, x, y };
       modoMarcar(false);
       dibujarPines();
-      if (window.portalMarcar) window.portalMarcar('p' + cur + '@' + x + ',' + y, 'Punto en la página ' + cur);
+      if (window.portalMarcar) window.portalMarcar('p' + cur + '@' + x + ',' + y, T('Punto en la página ') + cur);
       return;
     }
     zoom = zoom === 1 ? 2 : 1; actualizar();
@@ -133,7 +136,7 @@ async function iniciar(root) {
     const b = $('[data-marcar]', root);
     if (!b) return;
     b.setAttribute('aria-pressed', on ? 'true' : 'false');
-    $('[data-marcar-txt]', root).textContent = on ? 'Toca el punto · cancelar' : 'Marcar un punto';
+    $('[data-marcar-txt]', root).textContent = on ? T('Toca el punto · cancelar') : T('Marcar un punto');
     canvas.classList.toggle('cursor-crosshair', on);
     canvas.style.cursor = on ? 'crosshair' : '';
     lienzo.style.outline = on ? '3px dashed var(--warn)' : '';
@@ -180,7 +183,7 @@ async function iniciar(root) {
     }, { root: thumbs, rootMargin: '0px 200px' });
     for (let i = 1; i <= total; i++) {
       const b = document.createElement('button');
-      b.type = 'button'; b.dataset.t = i; b.setAttribute('role', 'tab'); b.setAttribute('aria-label', 'Ir a la página ' + i);
+      b.type = 'button'; b.dataset.t = i; b.setAttribute('role', 'tab'); b.setAttribute('aria-label', T('Ir a la página ') + i);
       b.className = 'relative flex-none overflow-hidden rounded-lg border-2 border-transparent bg-white transition hover:border-brand/50';
       b.innerHTML = '<canvas class="block" style="width:96px;height:68px"></canvas><span class="absolute bottom-1 left-1 rounded bg-black/65 px-1.5 text-[10px] font-bold leading-4 text-white">' + i + '</span><span data-badge hidden class="absolute right-1 top-1 min-w-4 rounded-full bg-brand px-1 text-center text-[10px] font-bold leading-4 text-brand-fg"></span>';
       b.addEventListener('click', () => ir(i));
@@ -198,7 +201,7 @@ async function iniciar(root) {
   if (conNotas) {
     $('[data-comentar]', root).addEventListener('click', () => {
       nuevo = null; dibujarPines();
-      if (window.portalMarcar) window.portalMarcar('p' + cur, 'Sobre la página ' + cur);
+      if (window.portalMarcar) window.portalMarcar('p' + cur, T('Sobre la página ') + cur);
     });
     $('[data-marcar]', root).addEventListener('click', () => { modoMarcar(!marcando); if (marcando) zoom = 1; });
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && marcando) modoMarcar(false); });

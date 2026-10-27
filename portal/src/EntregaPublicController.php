@@ -288,7 +288,7 @@ class EntregaPublicController extends PortalPublicController
             return;
         }
         $valor = (string) ($_POST['valor'] ?? '');
-        if (isset(Idioma::lista(TiposContenido::REACCIONES)[$valor])) {
+        if (isset(TiposContenido::REACCIONES[$valor])) {
             $actual = $this->contenidosSvc()->reacciones((string) $x['version_id'], (string) $c['id'])['mia'];
             // Tocar la misma reacción otra vez la quita.
             $this->contenidosSvc()->reaccionar((string) $x['version_id'], (string) $c['id'], $actual === $valor ? '' : $valor);

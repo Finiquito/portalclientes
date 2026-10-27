@@ -371,7 +371,7 @@ class PortalPublicController
             $f = dirname(__DIR__) . '/assets/' . $nombre;
             self::$assets[$nombre] = is_file($f) ? (string) file_get_contents($f) : '';
         }
-        return $nombre === 'portal.js' ? Idioma::conTraducciones(self::$assets[$nombre]) : self::$assets[$nombre];
+        return $nombre === 'portal.js' ? Idioma::conTraducciones(self::$assets[$nombre], $this->asset('pdfviewer.js')) : self::$assets[$nombre];
     }
 
     // ---------------------------------------------------------------------
@@ -605,7 +605,7 @@ class PortalPublicController
             'nArchivos'   => $nArchivos,
             'reuniones'   => $reuniones,
             'novedades'   => (new NovedadesService($this->pdo()))->cuadro($clienteId, (string) $c['id']),
-            'seccionesN'  => NovedadesService::SECCIONES,
+            'seccionesN'  => Idioma::lista(NovedadesService::SECCIONES),
             'multiples'   => count($proyectos) > 1,
             'pasos'       => $this->primerosPasos($c, $pref, $meTocan),
         ]));
@@ -1298,7 +1298,7 @@ class PortalPublicController
         $c = $this->requerirContacto();
         $this->marcarPaso($c, 'ayuda');
         $this->ctx->view('templates/public/ayuda.latte', $this->contexto($c, 'ayuda') + [
-            'estados'  => Fmt::ESTADOS,
+            'estados'  => Idioma::lista(Fmt::ESTADOS),
             'agencia'  => (new MarcaService($this->pdo()))->nombreEquipo(),
             'maxUrgentes' => (new SolicitudService($this->pdo()))->maxUrgentes(),
         ]);
