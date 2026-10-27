@@ -622,6 +622,36 @@ check(str_contains($html, 'Clara'), 'inicio del cliente se dibuja');
 check(str_contains($html, 'id="i-home"'), 'íconos compartidos incluidos en el layout del cliente');
 
 // ---------------------------------------------------------------------------
+seccion('Idiomas: el texto en español es la clave y se traduce al compilar');
+P\Idioma::fijar('es');
+$ajI = new P\AjustesService($pdo);
+$motorI = new Latte\Engine();
+$motorI->setLoader(new Latte\Loaders\StringLoader(['t' => '<p title="Hola mundo">Hola <b>mundo</b>, {$n}!</p><input type="submit" value="Enviar"><script>var a="Hola";</script><textarea>Hola</textarea>{_"Hola, %s", $n}<i>&middot;</i>']));
+P\IdiomaExtension::instalar($motorI);
+P\IdiomaExtension::instalar($motorI);   // idempotente
+P\Idioma::registrar('en', ['Hola mundo' => 'Hello world', 'Hola' => 'Hi', 'mundo' => 'world', 'Enviar' => 'Send', 'Hola, %s' => 'Hello, %s']);
+$esI = $motorI->renderToString('t', ['n' => 'Ana']);
+check(str_contains($esI, '<p title="Hola mundo">Hola <b>mundo</b>, Ana!</p>') && str_contains($esI, 'value="Enviar"') && str_contains($esI, 'Hola, Ana'), 'en español la plantilla sale tal cual está escrita');
+P\Idioma::fijar('en');
+$enI = $motorI->renderToString('t', ['n' => 'Ana']);   // misma plantilla compilada: el idioma se elige al dibujar
+check(str_contains($enI, '<p title="Hello world">Hi <b>world</b>, Ana!</p>') && str_contains($enI, 'value="Send"') && str_contains($enI, 'Hello, Ana'), 'en inglés se traducen textos, title, botón y {_…} con valores');
+check(str_contains($enI, '<script>var a="Hola";</script>') && str_contains($enI, '<textarea>Hola</textarea>'), 'script y textarea no se tocan');
+check(P\Idioma::t('Frase que no existe') === 'Frase que no existe' && P\Idioma::t('Hola, %s', 'Luis') === 'Hello, Luis', 'lo que falta cae al español y los valores entran con %s');
+P\Idioma::fijar('xx');
+check(P\Idioma::actual() === 'es', 'un idioma desconocido vuelve al español');
+$cI = $ajI;
+$cI->set('global', 'portal', 'idioma', 'en');
+check(P\Idioma::de($cI, 'contacto', 'nadie') === 'en', 'sin elección propia vale el idioma de la agencia');
+$cI->set('cliente', 'cli1', 'idioma', 'es');
+check(P\Idioma::de($cI, 'contacto', 'nadie', 'cli1') === 'es', 'el idioma del cliente gana al de la agencia');
+$cI->set('contacto', 'pers1', 'idioma', 'en');
+check(P\Idioma::de($cI, 'contacto', 'pers1', 'cli1') === 'en', 'el idioma de la persona gana a todos');
+$cI->borrar('global', 'portal', 'idioma');
+check(P\Idioma::con('en', fn() => P\Idioma::actual()) === 'en' && P\Idioma::actual() === 'es', 'Idioma::con() cambia y vuelve');
+P\Idioma::registrar('en', []);
+unset($GLOBALS['_cI']);
+
+// ---------------------------------------------------------------------------
 seccion('Solicitudes del cliente');
 final class SolicitudPrueba extends P\SolicitudPublicController
 {
@@ -3118,6 +3148,7 @@ check(P\Paleta::elegir('xx', '') === '', 'sin color válido ni actual vuelve vac
 seccion('Plantillas: compilan sin avisos (el TypeDock real convierte un aviso en error)');
 $dirT = dirname(__DIR__) . '/portal/templates';
 $motorT = new Latte\Engine();
+P\IdiomaExtension::instalar($motorT);
 $avisosT = [];
 set_error_handler(function (int $n, string $m) use (&$avisosT): bool { $avisosT[] = $m; return true; });
 $nT = 0;

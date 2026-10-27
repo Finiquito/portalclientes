@@ -30,6 +30,8 @@ class PortalPlugin implements PluginInterface
             // Si la BD no está lista no bloqueamos el arranque del resto del sistema.
         }
 
+        self::instalarIdiomas($ctx);
+
         $clientes = new ClienteAdminController($ctx);
         $ctx->registerAdminRoute('GET',  '',                 [$clientes, 'index']);
         $ctx->registerAdminRoute('GET',  'clientes/nuevo',    [$clientes, 'create']);
@@ -311,5 +313,18 @@ class PortalPlugin implements PluginInterface
     public function provides(): array
     {
         return [];
+    }
+
+    /** Engancha la traducción de plantillas al motor Latte que usa TypeDock (idempotente). */
+    public static function instalarIdiomas(object $ctx): void
+    {
+        try {
+            $motor = method_exists($ctx, 'latte') ? $ctx->latte() : \Flight::latte();
+            if ($motor instanceof \Latte\Engine) {
+                IdiomaExtension::instalar($motor);
+            }
+        } catch (\Throwable) {
+            // sin motor todavía: las pantallas del portal lo reintentan al dibujarse
+        }
     }
 }

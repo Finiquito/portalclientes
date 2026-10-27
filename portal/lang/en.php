@@ -1,0 +1,1 @@
+<?php return ["Hola mundo"=>"Hello world","Hola"=>"Hi","mundo"=>"world",", "=>", ","Enviar"=>"Send","Hola, %s"=>"Hello, %s"];

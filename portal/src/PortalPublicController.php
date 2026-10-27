@@ -232,7 +232,12 @@ class PortalPublicController
     {
         PortalSession::iniciar();
         $id = $_SESSION[PortalSession::CONTACTO] ?? null;
-        return is_string($id) ? $this->contactos()->find($id) : null;
+        $c = is_string($id) ? $this->contactos()->find($id) : null;
+        PortalPlugin::instalarIdiomas($this->ctx);
+        Idioma::fijar($c !== null
+            ? Idioma::de($this->ajustes(), 'contacto', (string) $c['id'], (string) $c['cliente_id'])
+            : Idioma::visitante($this->ajustes()->get('global', 'portal', 'idioma')));
+        return $c;
     }
 
     /** @return array<string, mixed> */
@@ -379,6 +384,8 @@ class PortalPublicController
     /** Lo común de las pantallas de ingreso: la pieza de la agencia y el favicon. */
     protected function datosIngreso(): array
     {
+        PortalPlugin::instalarIdiomas($this->ctx);
+        Idioma::fijar(Idioma::visitante($this->ajustes()->get('global', 'portal', 'idioma')));
         $m = $this->marca();
         return [
             'agencia' => ['nombre' => $m->nombreEquipo(), 'logo' => $m->urlLogoAgencia('') ?: null],
@@ -1312,6 +1319,7 @@ class PortalPublicController
         $this->ctx->view('templates/public/ajustes.latte', $this->contexto($c, 'ajustes') + [
             'pref' => [
                 'tema'         => in_array($pref['tema'] ?? '', ['claro', 'oscuro'], true) ? $pref['tema'] : 'auto',
+                'idioma'       => Idioma::actual(),
                 'apodo'        => $pref['apodo'] ?? '',
                 'frase_propia' => $pref['frase_propia'] ?? '',
                 'avisos_email' => ($pref['avisos_email'] ?? '1') !== '0',
@@ -1327,7 +1335,12 @@ class PortalPublicController
         $this->exigirCsrf('portal/ajustes');
 
         $tema = (string) ($_POST['tema'] ?? 'auto');
-        $this->ajustes()->setMuchos('contacto', (string) $c['id'], [
+        $idioma = (string) ($_POST['idioma'] ?? '');
+        if (Idioma::valido($idioma)) {
+            Idioma::fijar($idioma);
+            Idioma::recordar($idioma);
+        }
+        $this->ajustes()->setMuchos('contacto', (string) $c['id'], (Idioma::valido($idioma) ? ['idioma' => $idioma] : []) + [
             'tema'         => in_array($tema, ['claro', 'oscuro'], true) ? $tema : 'auto',
             'apodo'        => $this->tomarString('apodo', 40),
             'frase_propia' => $this->tomarString('frase_propia', 140),

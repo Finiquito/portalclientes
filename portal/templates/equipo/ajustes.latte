@@ -42,6 +42,16 @@
             {/foreach}
         </div>
 
+        <h2 class="mt-7 text-lg font-extrabold tracking-tight">Idioma</h2>
+        <div class="mt-3 grid grid-cols-2 gap-2">
+            {foreach \TypeDock\Plugin\Portal\Idioma::DISPONIBLES as $cod => $nombre}
+                <label class="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-line px-3 py-2.5 text-sm font-semibold has-[:checked]:border-brand has-[:checked]:bg-brand-soft has-[:checked]:text-brand-ink">
+                    <input type="radio" name="idioma" value="{$cod}" class="sr-only" {if $idiomaPref === $cod}checked{/if}><span lang="{$cod}">{$nombre}</span>
+                </label>
+            {/foreach}
+        </div>
+        <p class="hint mt-2">Cambia el idioma de tu panel y de los correos que recibes.</p>
+
         <button type="submit" class="btn btn-primary mt-6" data-sending="Guardando…">Guardar</button>
     </form>
 

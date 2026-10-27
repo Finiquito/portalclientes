@@ -42,6 +42,20 @@
     </section>
 
     <section class="card card-pad reveal" style="--i:3">
+        <h2 class="text-lg font-extrabold tracking-tight">Idioma</h2>
+        <fieldset class="mt-4 grid grid-cols-2 gap-3">
+            <legend class="sr-only">Idioma</legend>
+            {foreach \TypeDock\Plugin\Portal\Idioma::DISPONIBLES as $cod => $nombre}
+                <label class="cursor-pointer">
+                    <input type="radio" name="idioma" value="{$cod}" class="peer sr-only" lang="{$cod}" {if $pref['idioma'] === $cod}checked{/if}>
+                    <span lang="{$cod}" class="flex items-center justify-center rounded-2xl border border-line bg-surface px-3 py-3.5 text-sm font-semibold text-muted transition peer-checked:border-brand peer-checked:bg-brand-soft peer-checked:text-brand-ink peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-brand">{$nombre}</span>
+                </label>
+            {/foreach}
+        </fieldset>
+        <p class="hint mt-3">Cambia el idioma de las pantallas y de los correos que te enviamos.</p>
+    </section>
+
+    <section class="card card-pad reveal" style="--i:3">
         <h2 class="text-lg font-extrabold tracking-tight">Avisos por correo</h2>
         <label class="mt-4 flex cursor-pointer items-start gap-3">
             <input type="checkbox" name="avisos_email" value="1" class="mt-1 size-5 accent-[var(--brand)]" {if $pref['avisos_email']}checked{/if}>

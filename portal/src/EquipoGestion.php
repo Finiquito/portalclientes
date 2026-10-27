@@ -333,6 +333,7 @@ class EquipoGestion extends EquipoController
     {
         if ($this->latte === null) {
             $this->latte = new \Latte\Engine();
+            IdiomaExtension::instalar($this->latte);
             $dir = (new ArchivoService($this->pdo()))->directorioBase() . '/.latte';
             if (!is_dir($dir)) {
                 @mkdir($dir, 0750, true);

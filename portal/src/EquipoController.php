@@ -87,15 +87,15 @@ class EquipoController
     protected function usuarioActual(): ?array
     {
         PortalSession::iniciar();
+        PortalPlugin::instalarIdiomas($this->ctx);
         $id = $_SESSION[self::SESION] ?? null;
-        if (!is_string($id)) {
-            return null;
-        }
-        $u = $this->equipo()->find($id);
+        $u = is_string($id) ? $this->equipo()->find($id) : null;
         if ($u === null || (int) $u['activo'] !== 1) {
             unset($_SESSION[self::SESION]);
+            Idioma::fijar(Idioma::visitante($this->ajustes()->get('global', 'portal', 'idioma')));
             return null;
         }
+        Idioma::fijar(Idioma::de($this->ajustes(), 'equipo', (string) $u['id']));
         return $u;
     }
 
@@ -133,6 +133,8 @@ class EquipoController
     /** Variables de las páginas sin sesión (entrar, verificar). @return array<string, mixed> */
     protected function contextoPublico(array $extra = []): array
     {
+        PortalPlugin::instalarIdiomas($this->ctx);
+        Idioma::fijar(Idioma::visitante($this->ajustes()->get('global', 'portal', 'idioma')));
         return [
             'marca'      => $this->marca(),
             'favicon'    => (new MarcaService($this->pdo()))->urlIcono(),
@@ -519,6 +521,7 @@ class EquipoController
         $this->view('ajustes.latte', $this->contexto($u, 'ajustes', [
             'prefAvisos' => Avisos::preferencias($this->ajustes(), (string) $u['id']),
             'temaPref' => in_array($pref['tema'] ?? '', ['claro', 'oscuro'], true) ? $pref['tema'] : 'auto',
+            'idiomaPref' => Idioma::actual(),
             'asignados' => $this->acceso($u)->todo() ? null : $this->fetchAll(
                 'SELECT a.proyecto_id, c.nombre AS cliente_nombre, p.nombre AS proyecto_nombre
                  FROM portal_equipo_asignaciones a JOIN portal_clientes c ON c.id = a.cliente_id
@@ -539,7 +542,11 @@ class EquipoController
         }
         $tema = (string) ($_POST['tema'] ?? 'auto');
         $que = (string) ($_POST['avisos_que'] ?? 'mio');
-        $this->ajustes()->setMuchos('equipo', (string) $u['id'], [
+        $idioma = (string) ($_POST['idioma'] ?? '');
+        if (Idioma::valido($idioma)) {
+            Idioma::fijar($idioma);
+        }
+        $this->ajustes()->setMuchos('equipo', (string) $u['id'], (Idioma::valido($idioma) ? ['idioma' => $idioma] : []) + [
             'avisos_que'     => in_array($que, ['mio', 'todo', 'nada'], true) ? $que : 'mio',
             'resumen_diario' => !empty($_POST['resumen_diario']) ? '1' : '0',
             'tema'           => in_array($tema, ['claro', 'oscuro'], true) ? $tema : 'auto',
