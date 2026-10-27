@@ -564,10 +564,10 @@ class LeadService
         $st = $this->pdo->prepare("SELECT id, nombre, email FROM portal_contactos WHERE cliente_id = ? AND rol = 'aprobador' AND email IS NOT NULL AND email <> ''");
         $st->execute([$clienteId]);
         $aj = new AjustesService($this->pdo);
-        $asunto = $total === 1 ? 'Llegó un contacto nuevo · ' . $proyectoNombre : "Tienes {$total} contactos nuevos por atender";
+        $asunto = $total === 1 ? Idioma::f('Llegó un contacto nuevo · %s', $proyectoNombre) : Idioma::f('Tienes %d contactos nuevos por atender', $total);
         $cuerpo = $total === 1
-            ? "Llegó un contacto nuevo por tu campaña «{$proyectoNombre}». Revísalo en el portal y anota el próximo paso."
-            : "Tienes {$total} contactos nuevos por atender en tus campañas. Revísalos en el portal y anota el próximo paso de cada uno.";
+            ? Idioma::f('Llegó un contacto nuevo por tu campaña «%s». Revísalo en el portal y anota el próximo paso.', $proyectoNombre)
+            : Idioma::f('Tienes %d contactos nuevos por atender en tus campañas. Revísalos en el portal y anota el próximo paso de cada uno.', $total);
         $avisados = 0;
         foreach ($st->fetchAll() as $c) {
             $pref = $aj->todos('contacto', (string) $c['id']);

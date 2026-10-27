@@ -17,7 +17,7 @@ $lit = "'((?:[^'\\\\\\\\]|\\\\\\\\.)*)'";
 foreach ($archivos as $a) {
     $src = file_get_contents(dirname(__DIR__) . '/portal/src/' . $a);
     $patrones = [
-        "/Idioma::(?:t|lista)\\(\\s*$lit/u",
+        "/Idioma::(?:t|f|lista)\\(\\s*$lit/u",
         "/(?:PortalSession::flash|->flash)\\(\\s*[^,]+,\\s*$lit/u",
         "/->redirect\\([^;]*?,\\s*$lit\\s*[,)]/u",
     ];

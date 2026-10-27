@@ -39,6 +39,7 @@ final class CorreoPlantilla
     /** @param array<string, mixed> $d @return array{0: string, 1: string} [html, texto] */
     public static function render(array $d): array
     {
+        $d = Idioma::resolver($d);   // frases por traducir (Idioma::f) → texto en el idioma activo
         return [self::html($d), self::texto($d)];
     }
 
@@ -143,7 +144,7 @@ final class CorreoPlantilla
                 . '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid ' . self::LINEA . ';border-radius:12px;background:#f8fafc;"><tr>'
                 . '<td width="44" style="padding:12px 0 12px 14px;" valign="middle">' . $avatar . '</td>'
                 . '<td style="padding:12px 16px;" valign="middle">'
-                . '<div style="font:700 11px/1.3 ' . $f . ';letter-spacing:.06em;text-transform:uppercase;color:' . self::SUAVE . ';">Cliente' . ($proy !== '' ? ' · Proyecto' : '') . '</div>'
+                . '<div style="font:700 11px/1.3 ' . $f . ';letter-spacing:.06em;text-transform:uppercase;color:' . self::SUAVE . ';">' . self::e(Idioma::t('Cliente')) . ($proy !== '' ? ' · ' . self::e(Idioma::t('Proyecto')) : '') . '</div>'
                 . '<div style="font:800 16px/1.35 ' . $f . ';color:' . self::TINTA . ';">' . self::e($cliente) . ($proy !== '' ? ' <span style="color:' . self::SUAVE . ';font-weight:600;">·</span> <span style="color:' . $acento . ';">' . self::e($proy) . '</span>' : '') . '</div>'
                 . '</td></tr></table></td></tr>';
         }
@@ -211,7 +212,7 @@ final class CorreoPlantilla
             $cuerpo .= '<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 6px;"><tr>'
                 . '<td bgcolor="' . $color . '" style="border-radius:12px;background:' . $color . ';">'
                 . '<a href="' . self::e((string) $d['boton']['url']) . '" style="display:inline-block;padding:14px 26px;font:700 15px/1 ' . $f . ';color:' . $textoBt . ';text-decoration:none;border-radius:12px;">'
-                . self::e((string) ($d['boton']['texto'] ?? 'Abrir el portal')) . '</a></td></tr></table>';
+                . self::e((string) ($d['boton']['texto'] ?? Idioma::t('Abrir el portal'))) . '</a></td></tr></table>';
         }
 
         // Pie
@@ -224,7 +225,7 @@ final class CorreoPlantilla
         $pre = (string) ($d['preheader'] ?? '');
         $preHtml = $pre !== '' ? '<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">' . self::e($pre) . '&#8199;&#847;&#8199;&#847;&#8199;&#847;</div>' : '';
 
-        return '<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
+        return '<!DOCTYPE html><html lang="' . Idioma::actual() . '"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
             . '<meta name="color-scheme" content="light"><meta name="supported-color-schemes" content="light"><title>' . self::e($titulo) . '</title>'
             . '<style>@media (max-width:620px){.caja{width:100%!important;border-radius:0!important}.cab{padding-left:22px!important;padding-right:22px!important}.cu{padding-left:22px!important;padding-right:22px!important}h1{font-size:25px!important}}</style>'
             . '</head><body style="margin:0;padding:0;background:#f1f3f8;">' . $preHtml
@@ -242,7 +243,7 @@ final class CorreoPlantilla
     {
         $o = [];
         if (!empty($d['contexto']) && is_array($d['contexto'])) {
-            $o[] = 'CLIENTE: ' . ($d['contexto']['cliente'] ?? '') . (($d['contexto']['proyecto'] ?? '') !== '' ? ' · PROYECTO: ' . $d['contexto']['proyecto'] : '');
+            $o[] = mb_strtoupper(Idioma::t('Cliente')) . ': ' . ($d['contexto']['cliente'] ?? '') . (($d['contexto']['proyecto'] ?? '') !== '' ? ' · ' . mb_strtoupper(Idioma::t('Proyecto')) . ': ' . $d['contexto']['proyecto'] : '');
             $o[] = '';
         }
         $o[] = (string) ($d['titulo'] ?? '');
@@ -282,7 +283,7 @@ final class CorreoPlantilla
             $o[] = '';
         }
         if (!empty($d['boton']['url'])) {
-            $o[] = ($d['boton']['texto'] ?? 'Abrir el portal') . ': ' . $d['boton']['url'];
+            $o[] = ($d['boton']['texto'] ?? Idioma::t('Abrir el portal')) . ': ' . $d['boton']['url'];
             $o[] = '';
         }
         foreach ((array) ($d['pie'] ?? []) as $l) {

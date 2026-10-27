@@ -46,6 +46,10 @@
         })();
         </script>
 
+        <label class="form-label mt-3">Idioma de sus pantallas y correos</label>
+        {include '../_idioma.latte', actual: $idiomaContacto ?? '', heredado: 'El de su empresa'}
+        <p class="form-hint mt-1">Define en qué idioma ve el portal y recibe la invitación y los avisos. Si no eliges, usa el de su empresa.</p>
+
         <label class="form-label mt-3">Rol</label>
         <select name="rol" class="form-input">
             {var $rolActual = $contacto['rol'] ?? 'aprobador'}

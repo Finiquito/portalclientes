@@ -3270,6 +3270,45 @@ $ajE->set('contacto', $contacto, 'idioma', 'es');
 P\Idioma::fijar('es');
 
 // ---------------------------------------------------------------------------
+seccion('Idiomas: los correos salen en el idioma de quien los recibe');
+$ajC = new P\AjustesService($pdo);
+$filaC = (new P\ContactoService($pdo))->find($contacto);
+$nC = new P\Notifier($ctx, $pdo);
+P\Idioma::fijar('es');
+$ctx->correos = [];
+$nC->codigoAcceso($filaC, '123456');
+check(count($ctx->correos) === 1 && str_contains($ctx->correos[0]['subject'], 'Tu código de acceso') && str_contains($ctx->correos[0]['body'], 'Vence en 10 minutos'), 'sin idioma elegido, el código llega en español');
+$ajC->set('contacto', $contacto, 'idioma', 'en');
+$ctx->correos = [];
+$nC->codigoAcceso($filaC, '123456');
+check(count($ctx->correos) === 1 && str_contains($ctx->correos[0]['subject'], 'Your access code: 123456') && str_contains($ctx->correos[0]['body'], 'It expires in 10 minutes') && !str_contains($ctx->correos[0]['body'], 'Vence en'), 'si el contacto lo eligió en inglés, el código llega en inglés');
+check(P\Idioma::actual() === 'es', 'enviar el correo no cambia el idioma de quien está usando el panel');
+$ctx->correos = [];
+$nC->invitacionCliente($filaC, 'Welcome aboard', 'Ana');
+check(count($ctx->correos) === 1 && str_contains($ctx->correos[0]['subject'], 'invites you to your project portal') && str_contains($ctx->correos[0]['body'], 'Go to my portal'), 'la invitación sale en inglés');
+$ajC->set('cliente', $c1, 'idioma', 'es');
+$ajC->borrar('contacto', $contacto, 'idioma');
+check(P\Idioma::de($ajC, 'contacto', $contacto, $c1) === 'es', 'sin idioma propio, el contacto usa el de su cliente');
+$ajC->set('contacto', $contacto, 'idioma', 'en');
+// Aviso de lo que hizo el equipo (escrito en español) → buzón del cliente en inglés
+$nC->alCliente($c1, $contacto, P\Idioma::f('Tienes algo pendiente: %s', 'Logo'), P\Idioma::f('Te dejamos una nueva tarea en el portal.'), '/portal/tareas/x', ['proyecto_id' => $p1a]);
+$buzon = $pdo->query("SELECT asunto, detalle FROM portal_avisos_buzon WHERE usuario_id = '{$contacto}' ORDER BY created_at DESC LIMIT 1")->fetch();
+check($buzon && $buzon['asunto'] === 'You have something pending: Logo' && $buzon['detalle'] === 'We left you a new task in the portal.', 'el aviso queda guardado en el idioma de quien lo va a leer' . ($buzon ? '' : ' (sin fila)'));
+$ctx->correos = [];
+(new P\Avisos($ctx, $pdo, $nC))->enviarAgrupadoCliente($filaC);
+check(count($ctx->correos) === 1 && str_contains($ctx->correos[0]['subject'], 'updates in your portal') && str_contains($ctx->correos[0]['body'], 'Hi ') && str_contains($ctx->correos[0]['body'], 'You have something pending: Logo'), 'y el correo agrupado también sale en inglés');
+// Aviso al equipo, a una persona que lo prefiere en inglés
+$ajC->set('equipo', $ana, 'idioma', 'en');
+$ctx->correos = [];
+$nC->alEquipo(P\Idioma::f('%s comentó en «%s»', 'Clara', 'Logo'), '', 'tareas/' . $tMia, ['proyecto_id' => $p1a]);
+$buzonE = $pdo->query("SELECT asunto FROM portal_avisos_buzon WHERE usuario_id = '{$ana}' ORDER BY created_at DESC LIMIT 1")->fetch();
+check($buzonE && $buzonE['asunto'] === 'Clara commented on “Logo”', 'el aviso al equipo queda en el idioma de esa persona');
+$ajC->borrar('equipo', $ana, 'idioma');
+$ajC->borrar('contacto', $contacto, 'idioma');
+$ajC->borrar('cliente', $c1, 'idioma');
+P\Idioma::reiniciar();
+
+// ---------------------------------------------------------------------------
 seccion('Panel de control del proyecto');
 
 $pp = new P\ProyectoPanel($pdo, new DateTimeImmutable('2026-10-20'));

@@ -514,9 +514,9 @@ class ReunionAdminController
         }
         $convContactos = $this->convocados()->ids((string) $ahora['id'])['contacto'];
         (new Notifier($this->ctx, $this->pdo()))->alCliente(
-            (string) $ahora['cliente_id'], null, 'Novedades de la reunión «' . $ahora['titulo'] . '»', '', '/portal/reuniones/' . $ahora['id'],
-            ($convContactos !== [] ? ['contactos' => $convContactos] : []) + ['etiqueta' => 'Reunión', 'titulo' => 'Novedades de la reunión', 'resaltado' => 'reunión', 'boton' => 'Ver el detalle', 'bloques' => $bloques,
-             'preheader' => 'Resumen, acuerdos y próximos pasos de «' . $ahora['titulo'] . '»']
+            (string) $ahora['cliente_id'], null, Idioma::f('Novedades de la reunión «%s»', (string) $ahora['titulo']), '', '/portal/reuniones/' . $ahora['id'],
+            ($convContactos !== [] ? ['contactos' => $convContactos] : []) + ['etiqueta' => Idioma::f('Reunión'), 'titulo' => Idioma::f('Novedades de la reunión'), 'resaltado' => Idioma::f('reunión'), 'boton' => Idioma::f('Ver el detalle'), 'bloques' => $bloques,
+             'preheader' => Idioma::f('Resumen, acuerdos y próximos pasos de «%s»', (string) $ahora['titulo'])]
         );
         return true;
     }

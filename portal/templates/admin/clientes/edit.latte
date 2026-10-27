@@ -106,6 +106,10 @@
         <input type="text" name="titulo" class="form-input" value="{$cfg['titulo']}" maxlength="60" placeholder="{$cliente['empresa'] ?: $cliente['nombre']}">
         <p class="form-hint mt-1">Si lo dejas vacío se usa el nombre de la empresa.</p>
 
+        <label class="form-label mt-3">Idioma de su portal y de sus correos</label>
+        {include '../_idioma.latte', actual: $cfg['idioma'], heredado: 'El de la agencia'}
+        <p class="form-hint mt-1">Es el que usan sus contactos mientras no elijan uno propio. Cada contacto puede tener el suyo (en su ficha o en «Ajustes» del portal).</p>
+
         <label class="form-label mt-3">Color de marca</label>
         {include '../_paleta.latte', nombre: 'color', actual: $cfg['color']}
         <p class="form-hint mt-1">Tiñe botones, avances y acentos. Cada color cumple los mínimos de contraste: el texto sobre el botón y el aro de foco se ajustan solos para que se lean, en claro y en oscuro.</p>

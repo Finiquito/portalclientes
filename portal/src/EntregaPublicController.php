@@ -320,7 +320,8 @@ class EntregaPublicController extends PortalPublicController
 
         // Durante la revisión activa no se manda correo por comentario: llega todo junto al enviar.
         if ($x['entrega_estado'] !== 'publicada') {
-            $this->notificador()->alEquipo("{$c['nombre']} comentó en «{$x['titulo']}»", '', 'contenidos/' . $id, [
+            $this->notificador()->alEquipo(Idioma::f('%s comentó en «%s»', (string) $c['nombre'], (string) $x['titulo']), '', 'contenidos/' . $id, [
+                'detalle' => Idioma::perezoso(fn(): string => mb_substr($pref . $texto, 0, 160)),
                 'etiqueta' => 'Comentario', 'titulo' => "{$c['nombre']} comentó en «{$x['titulo']}»", 'resaltado' => (string) $c['nombre'], 'proyecto_id' => (string) $x['proyecto_id'],
                 'bloques' => [['cita' => $pref . $texto]], 'preheader' => mb_substr($pref . $texto, 0, 110), 'boton' => 'Ver el contenido',
             ]);
@@ -390,7 +391,8 @@ class EntregaPublicController extends PortalPublicController
             $bloques[] = ['p' => 'Pidió cambios en:'];
             $bloques[] = ['lista' => array_map(fn($l) => ltrim(preg_replace('/^•\s*/u', '', $l) ?? $l), $lineas)];
         }
-        $this->notificador()->alEquipo("{$nombre} respondió la revisión: {$e['titulo']}", '', 'entregas/' . $e['id'], [
+        $this->notificador()->alEquipo(Idioma::f('%s respondió la revisión: %s', $nombre, (string) $e['titulo']), '', 'entregas/' . $e['id'], [
+            'detalle' => Idioma::f('%d aprobados · %d con cambios', (int) $e['n_aprobados'], (int) $e['n_cambios']),
             'etiqueta' => 'Revisión', 'titulo' => "{$nombre} respondió la revisión", 'resaltado' => 'respondió', 'proyecto_id' => (string) $e['proyecto_id'],
             'bloques' => array_merge([['p' => "Terminó de revisar «{$e['titulo']}»."]], $bloques), 'preheader' => "{$e['n_aprobados']} aprobados · {$e['n_cambios']} con cambios",
             'boton' => 'Abrir la entrega',

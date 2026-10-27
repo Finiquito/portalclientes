@@ -244,11 +244,11 @@ class EntregaAdminController
             $e['n_total'] . ' contenido(s)'
         );
         if (!empty($_POST['avisar'])) {
-            $cuerpo = trim((string) $e['mensaje']) !== '' ? (string) $e['mensaje'] : 'Dejamos contenido listo para que lo revises.';
+            $cuerpo = trim((string) $e['mensaje']) !== '' ? (string) $e['mensaje'] : Idioma::f('Dejamos contenido listo para que lo revises.');
             (new Notifier($this->ctx, $this->pdo()))->alCliente(
-                (string) $e['cliente_id'], null, 'Tienes contenido para revisar: ' . $e['titulo'], $cuerpo, '/portal/entregas/' . $id,
-                ['etiqueta' => 'Revisión', 'titulo' => 'Tienes contenido para revisar', 'resaltado' => 'contenido', 'boton' => 'Revisar contenido',
-                 'bloques' => [['tarjetas' => [['titulo' => (string) $e['titulo'], 'detalle' => ((int) $e['n_total']) . ' contenido(s) esperando tu opinión', 'chip' => 'Para revisar']]]],
+                (string) $e['cliente_id'], null, Idioma::f('Tienes contenido para revisar: %s', (string) $e['titulo']), $cuerpo, '/portal/entregas/' . $id,
+                ['etiqueta' => Idioma::f('Revisión'), 'titulo' => Idioma::f('Tienes contenido para revisar'), 'resaltado' => Idioma::f('contenido'), 'boton' => Idioma::f('Revisar contenido'),
+                 'bloques' => [['tarjetas' => [['titulo' => (string) $e['titulo'], 'detalle' => Idioma::f('%d contenido(s) esperando tu opinión', (int) $e['n_total']), 'chip' => Idioma::f('Para revisar')]]]],
                  'vigencia' => Vigencia::revision($id)]
             );
         }
@@ -975,10 +975,10 @@ class EntregaAdminController
             if (!empty($_POST['avisar_cambio']) && $c['entrega_estado'] !== 'borrador') {
                 $this->contenidos()->marcarActualizado($id);
                 (new Notifier($this->ctx, $this->pdo()))->alCliente(
-                    (string) $c['cliente_id'], null, 'Actualizamos una pieza: ' . $c['titulo'],
-                    'Hicimos cambios en «' . $c['titulo'] . '» de «' . $c['entrega_titulo'] . '». Échale un vistazo cuando puedas.', '/portal/contenidos/' . $id,
-                    ['etiqueta' => 'Pieza actualizada', 'titulo' => 'Actualizamos una pieza para que la revises', 'resaltado' => 'actualizamos', 'boton' => 'Ver la pieza',
-                     'bloques' => [['tarjetas' => [['titulo' => (string) $c['titulo'], 'detalle' => (string) $c['entrega_titulo'], 'chip' => 'Actualizado']]]],
+                    (string) $c['cliente_id'], null, Idioma::f('Actualizamos una pieza: %s', (string) $c['titulo']),
+                    Idioma::f('Hicimos cambios en «%s» de «%s». Échale un vistazo cuando puedas.', (string) $c['titulo'], (string) $c['entrega_titulo']), '/portal/contenidos/' . $id,
+                    ['etiqueta' => Idioma::f('Pieza actualizada'), 'titulo' => Idioma::f('Actualizamos una pieza para que la revises'), 'resaltado' => Idioma::f('actualizamos'), 'boton' => Idioma::f('Ver la pieza'),
+                     'bloques' => [['tarjetas' => [['titulo' => (string) $c['titulo'], 'detalle' => (string) $c['entrega_titulo'], 'chip' => Idioma::f('Actualizado')]]]],
                      'vigencia' => Vigencia::contenido($id)]
                 );
                 (new ActividadService($this->pdo()))->registrar(
@@ -1035,9 +1035,9 @@ class EntregaAdminController
         }
         if ($vid !== null && !empty($_POST['avisar'])) {
             (new Notifier($this->ctx, $this->pdo()))->alCliente(
-                (string) $c['cliente_id'], null, 'Nueva versión para revisar: ' . $c['titulo'],
-                'Subimos una nueva versión de «' . $c['titulo'] . '» en «' . $c['entrega_titulo'] . '». Échale un vistazo cuando puedas.', '/portal/entregas/' . $c['entrega_id'],
-                ['etiqueta' => 'Nueva versión', 'titulo' => 'Hay una nueva versión para revisar', 'resaltado' => 'nueva versión', 'boton' => 'Ver la nueva versión',
+                (string) $c['cliente_id'], null, Idioma::f('Nueva versión para revisar: %s', (string) $c['titulo']),
+                Idioma::f('Subimos una nueva versión de «%s» en «%s». Échale un vistazo cuando puedas.', (string) $c['titulo'], (string) $c['entrega_titulo']), '/portal/entregas/' . $c['entrega_id'],
+                ['etiqueta' => Idioma::f('Nueva versión'), 'titulo' => Idioma::f('Hay una nueva versión para revisar'), 'resaltado' => Idioma::f('nueva versión'), 'boton' => Idioma::f('Ver la nueva versión'),
                  'bloques' => [['tarjetas' => [['titulo' => (string) $c['titulo'], 'detalle' => (string) $c['entrega_titulo'], 'chip' => 'v' . ((int) $c['version_actual'] + 1)]]]],
                  'vigencia' => Vigencia::contenido($id)]
             );
@@ -1104,10 +1104,10 @@ class EntregaAdminController
             );
             if (!empty($_POST['avisar'])) {
                 (new Notifier($this->ctx, $this->pdo()))->alCliente(
-                    (string) $c['cliente_id'], null, 'Nuevo comentario en: ' . $c['titulo'], '', '/portal/contenidos/' . $id,
-                    ['etiqueta' => 'Comentario', 'titulo' => 'Nuevo comentario del equipo', 'resaltado' => 'comentario', 'boton' => 'Ver y responder',
+                    (string) $c['cliente_id'], null, Idioma::f('Nuevo comentario en: %s', (string) $c['titulo']), '', '/portal/contenidos/' . $id,
+                    ['etiqueta' => Idioma::f('Comentario'), 'titulo' => Idioma::f('Nuevo comentario del equipo'), 'resaltado' => Idioma::f('comentario'), 'boton' => Idioma::f('Ver y responder'),
                      'preheader' => mb_substr($texto, 0, 110),
-                     'bloques' => [['p' => 'En «' . $c['titulo'] . '»:'], ['cita' => mb_substr($texto, 0, 800)]]]
+                     'bloques' => [['p' => Idioma::f('En «%s»:', (string) $c['titulo'])], ['cita' => mb_substr($texto, 0, 800)]]]
                 );
             }
         }

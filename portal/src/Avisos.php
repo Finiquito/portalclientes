@@ -171,9 +171,17 @@ final class Avisos
     }
 
     /** @param ?string $vigencia marca de Vigencia: si deja de aplicar antes de salir, el aviso se descarta */
-    public function guardar(string $usuarioId, ?string $clienteId, ?string $proyectoId, string $clave, string $asunto, string $detalle, ?string $ruta, ?string $vigencia = null, bool $urgente = false, string $para = 'equipo', bool $reemplaza = false): void
+    public function guardar(string $usuarioId, ?string $clienteId, ?string $proyectoId, string $clave, string|\Stringable $asunto, string|\Stringable $detalle, ?string $ruta, ?string $vigencia = null, bool $urgente = false, string $para = 'equipo', bool $reemplaza = false): void
     {
         Schema::asegurar($this->pdo);
+        // El aviso se escribe en el idioma de quien lo va a leer, no en el de quien lo provocó.
+        $aj = new AjustesService($this->pdo);
+        $lang = match ($para) {
+            'cliente' => Idioma::de($aj, 'contacto', $usuarioId, (string) $clienteId),
+            'copia'   => Idioma::de($aj, 'global', 'portal'),
+            default   => Idioma::de($aj, 'equipo', $usuarioId),
+        };
+        [$asunto, $detalle] = Idioma::con($lang, fn(): array => [(string) $asunto, (string) $detalle]);
         if ($reemplaza) {
             // Un aviso que se va actualizando (p. ej. «tienes 3 contactos nuevos»): el nuevo reemplaza al que seguía esperando.
             $this->pdo->prepare('DELETE FROM ' . self::BUZON . ' WHERE usuario_id = ? AND clave = ? AND enviado_en IS NULL')->execute([$usuarioId, mb_substr($clave, 0, 120)]);
@@ -251,7 +259,7 @@ final class Avisos
                 $vistas[$g . '|' . $k] = true;
             }
             $quien = !$conCliente ? (string) ($i['proyecto_nombre'] ?? '') : trim(($i['cliente_nombre'] ?? '') . (($i['proyecto_nombre'] ?? '') !== '' ? ' · ' . $i['proyecto_nombre'] : ''));
-            $grupos[$g]['titulo'] = $quien !== '' ? $quien : ($conCliente ? 'General' : '');
+            $grupos[$g]['titulo'] = $quien !== '' ? $quien : ($conCliente ? Idioma::t('General') : '');
             $grupos[$g]['color'] = $colores[(string) $i['proyecto_id']] ?? '';
             $previo = $grupos[$g]['items'][$k] ?? null;
             $grupos[$g]['items'][$k] = $i + ['n' => ($previo['n'] ?? 0) + 1];
@@ -263,7 +271,7 @@ final class Avisos
             }
             $tarjetas = [];
             foreach ($g['items'] as $i) {
-                $mas = $i['n'] > 1 ? ($i['n'] - 1 === 1 ? ' · y 1 novedad más' : ' · y ' . ($i['n'] - 1) . ' novedades más') : '';
+                $mas = $i['n'] > 1 ? ' · ' . ($i['n'] - 1 === 1 ? Idioma::t('y 1 novedad más') : Idioma::t('y %d novedades más', $i['n'] - 1)) : '';
                 $ruta = (string) $i['ruta'];
                 $tarjetas[] = [
                     'titulo'  => (string) $i['asunto'],
@@ -276,7 +284,7 @@ final class Avisos
             $bloques[] = ['tarjetas' => $tarjetas];
         }
         if ($extra > 0) {
-            $bloques[] = ['p' => 'Y ' . ($extra === 1 ? '1 novedad más' : $extra . ' novedades más') . ': las ves al abrir ' . ($base === '' ? 'tu portal' : 'el panel') . '.'];
+            $bloques[] = ['p' => ($extra === 1 ? Idioma::t('Y 1 novedad más') : Idioma::t('Y %d novedades más', $extra)) . ': ' . ($base === '' ? Idioma::t('las ves al abrir tu portal.') : Idioma::t('las ves al abrir el panel.'))];
         }
         return $bloques;
     }
@@ -286,11 +294,17 @@ final class Avisos
     {
         $h = self::HORAS_ENVIO;
         $ultima = array_pop($h);
-        return $h === [] ? (string) $ultima : implode(', ', $h) . ' y ' . $ultima;
+        return $h === [] ? (string) $ultima : implode(', ', $h) . ' ' . Idioma::t('y') . ' ' . $ultima;
     }
 
     /** Correo agrupado con lo pendiente de una persona del equipo. @param array<string, mixed> $u */
     public function enviarAgrupado(array $u): bool
+    {
+        return (bool) Idioma::con(Idioma::de(new AjustesService($this->pdo), 'equipo', (string) $u['id']), fn(): bool => $this->armarAgrupado($u));
+    }
+
+    /** @param array<string, mixed> $u */
+    private function armarAgrupado(array $u): bool
     {
         $items = $this->pendientes((string) $u['id']);
         if ($items === []) {
@@ -300,20 +314,25 @@ final class Avisos
         $n = count($items);
         $proyectos = count(array_unique(array_map(fn($i) => (string) ($i['proyecto_id'] ?: $i['cliente_id']), $items)));
         $asunto = $n === 1 ? (string) $items[0]['asunto']
-            : $n . ' novedades' . ($proyectos > 1 ? ' de ' . $proyectos . ' proyectos' : ' en ' . ($items[0]['proyecto_nombre'] ?: $items[0]['cliente_nombre']));
+            : ($proyectos > 1 ? Idioma::t('%d novedades de %d proyectos', $n, $proyectos) : Idioma::t('%d novedades en %s', $n, (string) ($items[0]['proyecto_nombre'] ?: $items[0]['cliente_nombre'])));
         [$html, $texto] = $this->n->componer($asunto, '', [
-            'etiqueta' => 'Novedades', 'titulo' => 'Tus novedades', 'resaltado' => 'novedades', 'boton' => 'Abrir el panel',
+            'etiqueta' => Idioma::t('Novedades'), 'titulo' => Idioma::t('Tus novedades'), 'resaltado' => Idioma::t('novedades'), 'boton' => Idioma::t('Abrir el panel'),
             'bloques' => $this->bloquesBuzon($items, '/equipo', self::JUNTOS), 'compacto' => true,
             'preheader' => implode(' · ', array_slice(array_map(fn($i) => (string) $i['asunto'], $items), 0, 3)),
-        ], 'Hola ' . $this->n->primerNombre((string) $u['nombre']) . ',', $this->n->absoluta('/equipo'), null, [
-            'Te llegan agrupadas: a las ' . self::horasTexto() . ' (hora de ' . Zona::nombre() . '), o antes si se juntan ' . self::JUNTOS . '.',
-            'Puedes cambiar qué te llega en «Mis ajustes» del panel.',
+        ], Idioma::t('Hola %s,', $this->n->primerNombre((string) $u['nombre'])), $this->n->absoluta('/equipo'), null, [
+            Idioma::t('Te llegan agrupadas: a las %s (hora de %s), o antes si se juntan %d.', self::horasTexto(), Zona::nombre(), self::JUNTOS),
+            Idioma::t('Puedes cambiar qué te llega en «Mis ajustes» del panel.'),
         ]);
         return $this->n->enviarCorreo((string) $u['email'], $asunto, $html, $texto);
     }
 
     /** Correo agrupado para el correo de copia de todos los avisos (Ajustes), con enlaces al admin. */
     public function enviarAgrupadoCopia(string $to): bool
+    {
+        return (bool) Idioma::con(Idioma::de(new AjustesService($this->pdo), 'global', 'portal'), fn(): bool => $this->armarAgrupadoCopia($to));
+    }
+
+    private function armarAgrupadoCopia(string $to): bool
     {
         $items = $this->pendientes(self::DESTINO_COPIA);
         if ($items === []) {
@@ -325,19 +344,25 @@ final class Avisos
             $i['ruta'] = $this->n->absoluta($this->ctx->adminUrl((string) ($i['ruta'] ?? '')));   // enlace completo al admin
         }
         unset($i);
-        $asunto = $n === 1 ? (string) $items[0]['asunto'] : $n . ' novedades del portal';
+        $asunto = $n === 1 ? (string) $items[0]['asunto'] : Idioma::t('%d novedades del portal', $n);
         [$html, $texto] = $this->n->componer($asunto, '', [
-            'etiqueta' => 'Copia de avisos', 'titulo' => 'Novedades del portal', 'resaltado' => 'novedades', 'boton' => 'Abrir en el admin',
+            'etiqueta' => Idioma::t('Copia de avisos'), 'titulo' => Idioma::t('Novedades del portal'), 'resaltado' => Idioma::t('novedades'), 'boton' => Idioma::t('Abrir en el admin'),
             'bloques' => $this->bloquesBuzon($items, '', self::JUNTOS, '', true), 'compacto' => true,
             'preheader' => implode(' · ', array_slice(array_map(fn($i) => (string) $i['asunto'], $items), 0, 3)),
         ], null, $this->n->absoluta($this->ctx->adminUrl('')), null, [
-            'Aviso interno: el cliente no ve este correo. Es la copia de todos los avisos (Ajustes) y sale agrupada: a las ' . self::horasTexto() . ', o antes si se juntan ' . self::JUNTOS . '.',
+            Idioma::t('Aviso interno: el cliente no ve este correo. Es la copia de todos los avisos (Ajustes) y sale agrupada: a las %s, o antes si se juntan %d.', self::horasTexto(), self::JUNTOS),
         ]);
         return $this->n->enviarCorreo($to, $asunto, $html, $texto);
     }
 
     /** Correo agrupado con lo pendiente de un contacto del cliente. @param array<string, mixed> $c contacto: id, nombre, email, cliente_id */
     public function enviarAgrupadoCliente(array $c): bool
+    {
+        return (bool) Idioma::con($this->n->idiomaContacto($c), fn(): bool => $this->armarAgrupadoCliente($c));
+    }
+
+    /** @param array<string, mixed> $c */
+    private function armarAgrupadoCliente(array $c): bool
     {
         $items = $this->pendientes((string) $c['id']);
         if ($items === []) {
@@ -348,14 +373,14 @@ final class Avisos
             return false;
         }
         $n = count($items);
-        $asunto = $n === 1 ? (string) $items[0]['asunto'] : $n . ' novedades en tu portal';
+        $asunto = $n === 1 ? (string) $items[0]['asunto'] : Idioma::t('%d novedades en tu portal', $n);
         [$html, $texto] = $this->n->componer($asunto, '', [
-            'etiqueta' => 'Novedades', 'titulo' => 'Novedades en tu portal', 'resaltado' => 'novedades', 'boton' => 'Abrir mi portal',
+            'etiqueta' => Idioma::t('Novedades'), 'titulo' => Idioma::t('Novedades en tu portal'), 'resaltado' => Idioma::t('novedades'), 'boton' => Idioma::t('Abrir mi portal'),
             'bloques' => $this->bloquesBuzon($items, '', self::JUNTOS_CLIENTE, null), 'compacto' => true,
             'preheader' => implode(' · ', array_slice(array_map(fn($i) => (string) $i['asunto'], $items), 0, 3)),
-        ], 'Hola ' . $this->n->primerNombre((string) $c['nombre']) . ',', $this->n->absoluta('/portal'), (string) $c['cliente_id'] ?: null, [
-            'Te llegan agrupadas: a las ' . self::horasTexto() . ' (tu hora), o antes si se juntan ' . self::JUNTOS_CLIENTE . '.',
-            'Puedes desactivar estos avisos en Ajustes dentro del portal.',
+        ], Idioma::t('Hola %s,', $this->n->primerNombre((string) $c['nombre'])), $this->n->absoluta('/portal'), (string) $c['cliente_id'] ?: null, [
+            Idioma::t('Te llegan agrupadas: a las %s (tu hora), o antes si se juntan %d.', self::horasTexto(), self::JUNTOS_CLIENTE),
+            Idioma::t('Puedes desactivar estos avisos en Ajustes dentro del portal.'),
         ]);
         return $this->n->enviarCorreo((string) $c['email'], $asunto, $html, $texto);
     }
@@ -555,6 +580,12 @@ final class Avisos
      */
     public function resumenEquipo(array $u): bool
     {
+        return (bool) Idioma::con(Idioma::de(new AjustesService($this->pdo), 'equipo', (string) $u['id']), fn(): bool => $this->armarResumenEquipo($u));
+    }
+
+    /** @param array<string, mixed> $u */
+    private function armarResumenEquipo(array $u): bool
+    {
         $uid = (string) $u['id'];
         $pref = self::preferencias(new AjustesService($this->pdo), $uid);
         $todo = $pref['que'] === 'todo';
@@ -608,52 +639,52 @@ final class Avisos
         ];
         $bloques = [];
         if ($reuniones !== []) {
-            $bloques[] = ['seccion' => ['titulo' => 'Reuniones de hoy']];
+            $bloques[] = ['seccion' => ['titulo' => Idioma::t('Reuniones de hoy')]];
             $bloques[] = ['tarjetas' => array_map(fn($r) => [
                 'titulo' => (string) $r['titulo'], 'chip' => $fmt->hora((string) $r['fecha']),
-                'detalle' => $r['cliente_nombre'] . ' · ' . $r['proyecto_nombre'] . ($r['enlace_meet'] ? ' · con Meet' : ''),
+                'detalle' => $r['cliente_nombre'] . ' · ' . $r['proyecto_nombre'] . ($r['enlace_meet'] ? ' · ' . Idioma::t('con Meet') : ''),
                 'url' => $r['enlace_meet'] ?: $panel('reuniones/' . $r['id']),
             ], $reuniones)];
         }
         if ($vencenHoy !== []) {
-            $bloques[] = ['seccion' => ['titulo' => 'Vencen hoy']];
+            $bloques[] = ['seccion' => ['titulo' => Idioma::t('Vencen hoy')]];
             $bloques[] = ['tarjetas' => array_map(fn($t) => $tarjetaTarea($t), $vencenHoy)];
         }
         if ($atrasadas !== []) {
-            $bloques[] = ['seccion' => ['titulo' => 'Atrasadas', 'color' => '#dc2626']];
-            $bloques[] = ['tarjetas' => array_map(fn($t) => $tarjetaTarea($t, 'desde el ' . $fmt->fechaCorta((string) $t['fecha_vencimiento'])), $atrasadas)];
+            $bloques[] = ['seccion' => ['titulo' => Idioma::t('Atrasadas'), 'color' => '#dc2626']];
+            $bloques[] = ['tarjetas' => array_map(fn($t) => $tarjetaTarea($t, Idioma::t('desde el %s', $fmt->fechaCorta((string) $t['fecha_vencimiento']))), $atrasadas)];
         }
         if ($esperan !== []) {
-            $bloques[] = ['seccion' => ['titulo' => 'Esperan tu respuesta']];
-            $bloques[] = ['tarjetas' => array_map(fn($t) => $tarjetaTarea($t, $t['estado'] === 'cambios' ? 'Pidió cambios' : 'Entregado'), $esperan)];
+            $bloques[] = ['seccion' => ['titulo' => Idioma::t('Esperan tu respuesta')]];
+            $bloques[] = ['tarjetas' => array_map(fn($t) => $tarjetaTarea($t, $t['estado'] === 'cambios' ? Idioma::t('Pidió cambios') : Idioma::t('Entregado')), $esperan)];
         }
         if ($noche !== []) {
-            $bloques[] = ['p' => 'Y esto llegó mientras no estabas:'];
+            $bloques[] = ['p' => Idioma::t('Y esto llegó mientras no estabas:')];
             $bloques = array_merge($bloques, $this->bloquesBuzon($noche));
         }
         $this->marcarEnviados($nocheTodas);
 
         $partes = [];
         if ($reuniones !== []) {
-            $partes[] = count($reuniones) . (count($reuniones) === 1 ? ' reunión' : ' reuniones');
+            $partes[] = count($reuniones) === 1 ? Idioma::t('1 reunión') : Idioma::t('%d reuniones', count($reuniones));
         }
         $nT = count($vencenHoy) + count($atrasadas);
         if ($nT > 0) {
-            $partes[] = $nT . ($nT === 1 ? ' tarea' : ' tareas') . ' por cerrar';
+            $partes[] = $nT === 1 ? Idioma::t('1 tarea por cerrar') : Idioma::t('%d tareas por cerrar', $nT);
         }
         if ($esperan !== []) {
-            $partes[] = count($esperan) . ' por responder';
+            $partes[] = Idioma::t('%d por responder', count($esperan));
         }
         if ($partes === []) {
-            $partes[] = count($noche) . (count($noche) === 1 ? ' novedad' : ' novedades');
+            $partes[] = count($noche) === 1 ? Idioma::t('1 novedad') : Idioma::t('%d novedades', count($noche));
         }
-        $asunto = 'Tu día: ' . implode(', ', $partes);
+        $asunto = Idioma::t('Tu día: %s', implode(', ', $partes));
         [$html, $texto] = $this->n->componer($asunto, '', [
-            'etiqueta' => 'Resumen del día', 'titulo' => 'Tu día de hoy', 'resaltado' => 'hoy', 'boton' => 'Abrir el panel',
+            'etiqueta' => Idioma::t('Resumen del día'), 'titulo' => Idioma::t('Tu día de hoy'), 'resaltado' => Idioma::t('hoy'), 'boton' => Idioma::t('Abrir el panel'),
             'bloques' => $bloques, 'preheader' => implode(' · ', $partes),
-        ], 'Buenos días, ' . $this->n->primerNombre((string) $u['nombre']) . '.', $this->n->absoluta('/equipo'), null, [
-            'Te llega de lunes a viernes a las ' . self::HORA_RESUMEN . ' (hora de ' . Zona::nombre() . '). Si un día no hay nada, no te escribimos.',
-            'Puedes desactivarlo en «Mis ajustes» del panel.',
+        ], Idioma::t('Buenos días, %s.', $this->n->primerNombre((string) $u['nombre'])), $this->n->absoluta('/equipo'), null, [
+            Idioma::t('Te llega de lunes a viernes a las %s (hora de %s). Si un día no hay nada, no te escribimos.', self::HORA_RESUMEN, Zona::nombre()),
+            Idioma::t('Puedes desactivarlo en «Mis ajustes» del panel.'),
         ]);
         return $this->n->enviarCorreo((string) $u['email'], $asunto, $html, $texto);
     }
@@ -664,6 +695,12 @@ final class Avisos
      * @param array<string, mixed> $c contacto (con 'pais' del cliente)
      */
     public function resumenCliente(array $c, \DateTimeImmutable $local): bool
+    {
+        return (bool) Idioma::con($this->n->idiomaContacto($c), fn(): bool => $this->armarResumenCliente($c, $local));
+    }
+
+    /** @param array<string, mixed> $c */
+    private function armarResumenCliente(array $c, \DateTimeImmutable $local): bool
     {
         $cid = (string) $c['cliente_id'];
         $hoy = $local->format('Y-m-d');
@@ -704,36 +741,36 @@ final class Avisos
         }
         $bloques = [];
         if ($reuniones !== []) {
-            $bloques[] = ['seccion' => ['titulo' => 'Hoy tienes reunión']];
+            $bloques[] = ['seccion' => ['titulo' => Idioma::t('Hoy tienes reunión')]];
             $bloques[] = ['tarjetas' => array_map(fn($r) => [
                 'titulo' => (string) $r['titulo'], 'chip' => $fmt->hora(Zona::aPais((string) $r['fecha'], $pais)),
-                'detalle' => (string) $r['proyecto_nombre'] . ($r['enlace_meet'] ? ' · con Meet' : ''),
+                'detalle' => (string) $r['proyecto_nombre'] . ($r['enlace_meet'] ? ' · ' . Idioma::t('con Meet') : ''),
                 'url' => $r['enlace_meet'] ?: $portal('/reuniones/' . $r['id']),
             ], $reuniones)];
         }
         if ($revisiones !== []) {
-            $bloques[] = ['seccion' => ['titulo' => 'Para revisar']];
+            $bloques[] = ['seccion' => ['titulo' => Idioma::t('Para revisar')]];
             $bloques[] = ['tarjetas' => array_map(fn($e) => [
                 'titulo' => (string) $e['titulo'], 'url' => $portal('/entregas/' . $e['id']),
-                'detalle' => (int) $e['n'] === 1 ? '1 pieza esperando tu revisión' : $e['n'] . ' piezas esperando tu revisión',
+                'detalle' => (int) $e['n'] === 1 ? Idioma::t('1 pieza esperando tu revisión') : Idioma::t('%d piezas esperando tu revisión', (int) $e['n']),
             ], $revisiones)];
         }
         if ($tareas !== []) {
-            $bloques[] = ['seccion' => ['titulo' => 'Lo que te toca']];
+            $bloques[] = ['seccion' => ['titulo' => Idioma::t('Lo que te toca')]];
             $bloques[] = ['tarjetas' => array_map(fn($t) => [
                 'titulo' => (string) $t['titulo'], 'url' => $portal('/tareas/' . $t['id']), 'detalle' => (string) $t['proyecto_nombre'],
-                'chip' => $t['fecha_vencimiento'] ? 'para el ' . $fmt->fechaCorta((string) $t['fecha_vencimiento']) : '',
+                'chip' => $t['fecha_vencimiento'] ? Idioma::t('para el %s', $fmt->fechaCorta((string) $t['fecha_vencimiento'])) : '',
             ], $tareas)];
         }
         $n = count($tareas) + count($revisiones);
-        $asunto = 'Tu día: ' . implode(', ', array_filter([
-            $reuniones !== [] ? (count($reuniones) === 1 ? '1 reunión' : count($reuniones) . ' reuniones') : '',
-            $n > 0 ? ($n === 1 ? '1 pendiente' : $n . ' pendientes') : '',
-        ]));
+        $asunto = Idioma::t('Tu día: %s', implode(', ', array_filter([
+            $reuniones !== [] ? (count($reuniones) === 1 ? Idioma::t('1 reunión') : Idioma::t('%d reuniones', count($reuniones))) : '',
+            $n > 0 ? ($n === 1 ? Idioma::t('1 pendiente') : Idioma::t('%d pendientes', $n)) : '',
+        ])));
         [$html, $texto] = $this->n->componer($asunto, '', [
-            'etiqueta' => 'Resumen del día', 'titulo' => 'Lo de hoy en tu portal', 'resaltado' => 'hoy', 'boton' => 'Abrir mi portal', 'bloques' => $bloques,
-        ], 'Buenos días, ' . $this->n->primerNombre((string) $c['nombre']) . '.', $portal(''), $cid, [
-            'Lo pediste en Ajustes, dentro del portal: ahí mismo lo puedes desactivar.',
+            'etiqueta' => Idioma::t('Resumen del día'), 'titulo' => Idioma::t('Lo de hoy en tu portal'), 'resaltado' => Idioma::t('hoy'), 'boton' => Idioma::t('Abrir mi portal'), 'bloques' => $bloques,
+        ], Idioma::t('Buenos días, %s.', $this->n->primerNombre((string) $c['nombre'])), $portal(''), $cid, [
+            Idioma::t('Lo pediste en Ajustes, dentro del portal: ahí mismo lo puedes desactivar.'),
         ]);
         return $this->n->enviarCorreo((string) $c['email'], $asunto, $html, $texto);
     }
@@ -758,9 +795,9 @@ final class Avisos
         foreach ($st->fetchAll() as $t) {
             $f = substr((string) $t['fecha_vencimiento'], 0, 10);
             if ($f === $manana) {
-                [$clave, $asunto, $titulo] = ['venc:' . $t['id'] . ':' . $f, 'Vence mañana: «' . $t['titulo'] . '»', 'Vence mañana'];
+                [$clave, $asunto, $titulo] = ['venc:' . $t['id'] . ':' . $f, Idioma::f('Vence mañana: «%s»', (string) $t['titulo']), Idioma::f('Vence mañana')];
             } elseif ($f < $hoy) {
-                [$clave, $asunto, $titulo] = ['atr:' . $t['id'] . ':' . $f, 'Se atrasó: «' . $t['titulo'] . '»', 'Esta tarea se atrasó'];
+                [$clave, $asunto, $titulo] = ['atr:' . $t['id'] . ':' . $f, Idioma::f('Se atrasó: «%s»', (string) $t['titulo']), Idioma::f('Esta tarea se atrasó')];
             } else {
                 continue;
             }
@@ -770,9 +807,9 @@ final class Avisos
             $resp = (string) ($t['responsable_usuario_id'] ?? '');
             $this->n->alEquipo($asunto, '', 'tareas/' . $t['id'], [
                 'proyecto_id' => (string) $t['proyecto_id'], 'responsable' => $resp !== '' ? $resp : null, 'solo_responsable' => $resp !== '',
-                'etiqueta' => 'Tarea', 'titulo' => $titulo, 'resaltado' => $f === $manana ? 'mañana' : 'atrasó',
-                'bloques' => [['tarjetas' => [['titulo' => (string) $t['titulo'], 'detalle' => 'Fecha: ' . (new Fmt())->fechaLarga($f)]]]],
-                'detalle' => 'Fecha: ' . (new Fmt())->fechaLarga($f), 'clave' => 'venc/tareas/' . $t['id'], 'vigencia' => Vigencia::tarea((string) $t['id']),
+                'etiqueta' => Idioma::f('Tarea'), 'titulo' => $titulo, 'resaltado' => Idioma::f($f === $manana ? 'mañana' : 'atrasó'),
+                'bloques' => [['tarjetas' => [['titulo' => (string) $t['titulo'], 'detalle' => Idioma::perezoso(fn() => Idioma::t('Fecha: %s', (new Fmt())->fechaLarga($f)))]]]],
+                'detalle' => Idioma::perezoso(fn() => Idioma::t('Fecha: %s', (new Fmt())->fechaLarga($f))), 'clave' => 'venc/tareas/' . $t['id'], 'vigencia' => Vigencia::tarea((string) $t['id']),
             ]);
             $n++;
         }

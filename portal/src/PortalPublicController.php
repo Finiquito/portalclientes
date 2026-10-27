@@ -235,7 +235,7 @@ class PortalPublicController
         $c = is_string($id) ? $this->contactos()->find($id) : null;
         PortalPlugin::instalarIdiomas($this->ctx);
         Idioma::fijar($c !== null
-            ? Idioma::de($this->ajustes(), 'contacto', (string) $c['id'], (string) $c['cliente_id'])
+            ? Idioma::de($this->ajustes(), 'contacto', (string) $c['id'], (string) $c['cliente_id'], true)
             : Idioma::visitante($this->ajustes()->get('global', 'portal', 'idioma')));
         return $c;
     }
@@ -811,7 +811,7 @@ class PortalPublicController
                 }
                 $tareas->cambiarEstado($id, 'hecha');
                 $this->actividad()->registrar($clienteId, $t['proyecto_id'], 'contacto', $nombre, 'completo', 'tarea', $id, $t['titulo']);
-                $this->avisarEquipo("{$nombre} completó «{$t['titulo']}»", $t, 'Marcó la tarea como lista.', $nombre);
+                $this->avisarEquipo(Idioma::f('%s completó «%s»', $nombre, (string) $t['titulo']), $t, Idioma::f('Marcó la tarea como lista.'), $nombre);
                 PortalSession::flash('ok', '¡Listo! Marcamos la tarea como completada.');
                 break;
 
@@ -823,7 +823,7 @@ class PortalPublicController
                 }
                 $tareas->cambiarEstado($id, 'entregada');
                 $this->actividad()->registrar($clienteId, $t['proyecto_id'], 'contacto', $nombre, 'entrego', 'tarea', $id, $t['titulo'], count($tuyos) . ' archivo(s)');
-                $this->avisarEquipo("{$nombre} entregó archivos: «{$t['titulo']}»", $t, count($tuyos) . ' archivo(s) subido(s).', $nombre);
+                $this->avisarEquipo(Idioma::f('%s entregó archivos: «%s»', $nombre, (string) $t['titulo']), $t, Idioma::f('%d archivo(s) subido(s).', count($tuyos)), $nombre);
                 PortalSession::flash('ok', 'Entregado. Te avisaremos si necesitamos algo más.');
                 break;
 
@@ -833,7 +833,7 @@ class PortalPublicController
                 }
                 $tareas->cambiarEstado($id, 'hecha');
                 $this->actividad()->registrar($clienteId, $t['proyecto_id'], 'contacto', $nombre, 'aprobo', 'tarea', $id, $t['titulo']);
-                $this->avisarEquipo("{$nombre} aprobó «{$t['titulo']}»", $t, 'Aprobado por el cliente.', $nombre);
+                $this->avisarEquipo(Idioma::f('%s aprobó «%s»', $nombre, (string) $t['titulo']), $t, Idioma::f('Aprobado por el cliente.'), $nombre);
                 PortalSession::flash('ok', 'Aprobado. ¡Gracias!');
                 break;
 
@@ -849,7 +849,7 @@ class PortalPublicController
                 $this->comentarios()->crear($clienteId, 'tarea', $id, 'contacto', (string) $c['id'], $nombre, $texto);
                 $tareas->cambiarEstado($id, 'cambios');
                 $this->actividad()->registrar($clienteId, $t['proyecto_id'], 'contacto', $nombre, 'pidio_cambios', 'tarea', $id, $t['titulo'], mb_substr($texto, 0, 200));
-                $this->avisarEquipo("{$nombre} pidió cambios: «{$t['titulo']}»", $t, $texto, $nombre);
+                $this->avisarEquipo(Idioma::f('%s pidió cambios: «%s»', $nombre, (string) $t['titulo']), $t, $texto, $nombre);
                 PortalSession::flash('ok', 'Enviamos tus comentarios al equipo.');
                 break;
         }
@@ -878,7 +878,7 @@ class PortalPublicController
 
         $this->comentarios()->crear((string) $c['cliente_id'], 'tarea', $id, 'contacto', (string) $c['id'], (string) $c['nombre'], $texto);
         $this->actividad()->registrar((string) $c['cliente_id'], $t['proyecto_id'], 'contacto', (string) $c['nombre'], 'comento', 'tarea', $id, $t['titulo'], mb_substr($texto, 0, 200));
-        $this->avisarEquipo("{$c['nombre']} comentó en «{$t['titulo']}»", $t, $texto, (string) $c['nombre']);
+        $this->avisarEquipo(Idioma::f('%s comentó en «%s»', (string) $c['nombre'], (string) $t['titulo']), $t, $texto, (string) $c['nombre']);
 
         PortalSession::flash('ok', 'Comentario enviado.');
         $this->redirectTo(MensajeService::destino('/portal/mensajes', '/' . $vol . '#conversacion'));
@@ -927,7 +927,7 @@ class PortalPublicController
             }
             $this->actividad()->registrar((string) $c['cliente_id'], $t['proyecto_id'], 'contacto', (string) $c['nombre'], 'subio_archivo', 'tarea', $id, $t['titulo'], $n . ' archivo(s)');
             if ($t['tipo'] !== 'archivo') {
-                $this->avisarEquipo("{$c['nombre']} subió archivos en «{$t['titulo']}»", $t, $n . ' archivo(s).', (string) $c['nombre']);
+                $this->avisarEquipo(Idioma::f('%s subió archivos en «%s»', (string) $c['nombre'], (string) $t['titulo']), $t, Idioma::f('%d archivo(s).', $n), (string) $c['nombre']);
             }
         }
 
@@ -1375,19 +1375,15 @@ class PortalPublicController
     // ---------------------------------------------------------------------
 
     /** @param array<string, mixed> $t */
-    private function avisarEquipo(string $asunto, array $t, string $detalle, string $quien = ''): void
+    private function avisarEquipo(string|\Stringable $asunto, array $t, string|\Stringable $detalle, string $quien = ''): void
     {
-        $detalle = mb_substr(trim($detalle), 0, 800);
-        $bloques = [['tarjetas' => [['titulo' => (string) $t['titulo'], 'detalle' => 'Tarea']]]];
-        if ($detalle !== '') {
-            $bloques[] = mb_strlen($detalle) > 60 ? ['cita' => $detalle] : ['p' => $detalle];
-        }
+        // El aviso se escribe en el idioma de cada persona del equipo que lo recibe (Avisos::guardar).
         $this->notificador()->alEquipo($asunto, '', 'tareas/' . $t['id'], [
-            'etiqueta' => 'Del cliente', 'titulo' => $asunto, 'resaltado' => $quien, 'proyecto_id' => (string) $t['proyecto_id'],
-            'bloques' => $bloques, 'preheader' => $detalle !== '' ? mb_substr($detalle, 0, 110) : $asunto, 'boton' => 'Abrir la tarea',
+            'proyecto_id' => (string) $t['proyecto_id'],
             // A quien es responsable de la tarea; si no tiene, a quienes tienen asignado el proyecto.
             'responsable' => ($t['responsable_tipo'] ?? '') === 'equipo' ? ($t['responsable_usuario_id'] ?? null) : null,
-            'clave' => 'tareas/' . $t['id'], 'detalle' => $detalle !== '' ? mb_substr($detalle, 0, 160) : (string) $t['titulo'],
+            'clave' => 'tareas/' . $t['id'],
+            'detalle' => Idioma::perezoso(fn(): string => ($d = mb_substr(trim((string) $detalle), 0, 160)) !== '' ? $d : (string) $t['titulo']),
         ]);
     }
 }

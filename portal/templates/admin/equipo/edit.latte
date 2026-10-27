@@ -30,6 +30,10 @@
             <input type="text" name="cargo" class="form-input" value="{$persona['cargo'] ?? ''}" maxlength="120" placeholder="Ej.: Diseñadora, Community manager">
         </div>
         <div>
+            <label class="form-label">Idioma de su panel y de sus correos</label>
+            {include '../_idioma.latte', actual: $idiomaPersona ?? '', heredado: 'El de la agencia'}
+        </div>
+        <div>
             <label class="form-label">Rol</label>
             {var $rolActual = $persona['rol'] ?? 'equipo'}
             <select name="rol" class="form-input" id="rol">

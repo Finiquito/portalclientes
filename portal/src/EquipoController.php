@@ -95,7 +95,7 @@ class EquipoController
             Idioma::fijar(Idioma::visitante($this->ajustes()->get('global', 'portal', 'idioma')));
             return null;
         }
-        Idioma::fijar(Idioma::de($this->ajustes(), 'equipo', (string) $u['id']));
+        Idioma::fijar(Idioma::de($this->ajustes(), 'equipo', (string) $u['id'], '', true));
         return $u;
     }
 

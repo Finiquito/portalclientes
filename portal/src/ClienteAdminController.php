@@ -144,6 +144,7 @@ class ClienteAdminController
             'eligeResponsable' => $this->ui->esGeneral(),
             'cfg'           => [
                 'titulo' => $cfg['titulo'] ?? '',
+                'idioma' => $cfg['idioma'] ?? '',
                 'color'  => AjustesService::colorValido($cfg['color'] ?? ''),
                 'frases' => implode("\n", $this->ajustes()->frasesDeCliente($id)),
                 'logo_id' => $cfg['logo_id'] ?? '',
@@ -178,6 +179,8 @@ class ClienteAdminController
             'color'  => AjustesService::colorValido(Paleta::elegir((string) ($_POST['color'] ?? ''), (string) ($aj->todos('cliente', $id)['color'] ?? ''))),
             'frases' => json_encode(AjustesService::frasesDesdeTexto((string) ($_POST['frases'] ?? '')), JSON_UNESCAPED_UNICODE),
         ]);
+
+        Idioma::guardarDePost($aj, 'cliente', $id);
 
         $avisoLogo = '';
         $archivos  = new ArchivoService($this->pdo());

@@ -72,6 +72,7 @@ class EquipoAdminController
         $asig = $u !== null ? $this->service()->asignaciones((string) $u['id']) : [];
         $this->ui->view('equipo/edit.latte', [
             'persona'      => $u,
+            'idiomaPersona' => $u !== null ? (new AjustesService($this->pdo()))->get('equipo', (string) $u['id'], 'idioma') : '',
             'roles'        => EquipoService::ROLES,
             'arbol'        => $this->arbol(),
             'clientesFull' => array_values(array_map(fn($a) => $a['cliente_id'], array_filter($asig, fn($a) => $a['proyecto_id'] === null))),
@@ -98,6 +99,7 @@ class EquipoAdminController
             return;
         }
         $id = $this->service()->create($datos);
+        Idioma::guardarDePost(new AjustesService($this->pdo()), 'equipo', $id);   // antes de la invitación: sale en su idioma
         [$c, $p] = $this->asignacionesPost();
         $this->service()->guardarAsignaciones($id, $c, $p);
         $msg = 'Listo: ' . trim((string) ($datos['nombre'] ?? '')) . ' ya es parte del equipo.';
@@ -123,6 +125,7 @@ class EquipoAdminController
             return;
         }
         $this->service()->update($id, $_POST);
+        Idioma::guardarDePost(new AjustesService($this->pdo()), 'equipo', $id);
         [$c, $p] = $this->asignacionesPost();
         $this->service()->guardarAsignaciones($id, $c, $p);
         $this->ui->redirect($this->ui->url('equipo/' . $id), 'Cambios guardados.');

@@ -1,0 +1,7 @@
+{* Selector de idioma. Parámetros: actual (código o ''), heredado (texto de la opción «el mismo de…», o null si no hay). *}
+<select name="idioma" class="form-input" style="max-width:22rem">
+    {if $heredado !== null}<option value="" {if $actual === ''}selected{/if}>{$heredado}</option>{/if}
+    {foreach \TypeDock\Plugin\Portal\Idioma::DISPONIBLES as $cod => $nombre}
+        <option value="{$cod}" lang="{$cod}" {if $actual === $cod}selected{/if}>{$nombre}</option>
+    {/foreach}
+</select>

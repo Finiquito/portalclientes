@@ -461,7 +461,7 @@ class ReunionService
         $metodo = in_array($inv['metodo'] ?? '', ['REQUEST', 'CANCEL'], true) ? $inv['metodo'] : 'PUBLISH';
         $fin = $ini->modify('+' . max(5, (int) $r['duracion_min']) . ' minutes');
         $esc = static fn(string $t): string => str_replace(["\\", ';', ',', "\r", "\n"], ['\\\\', '\\;', '\\,', '', '\\n'], $t);
-        $desc = ($r['enlace_meet'] ? 'Unirse: ' . $r['enlace_meet'] : '') . ($urlPortal !== '' ? ($r['enlace_meet'] ? "\n" : '') . 'Detalle: ' . $urlPortal : '');
+        $desc = ($r['enlace_meet'] ? Idioma::t('Unirse: %s', (string) $r['enlace_meet']) : '') . ($urlPortal !== '' ? ($r['enlace_meet'] ? "\n" : '') . Idioma::t('Detalle: %s', $urlPortal) : '');
         $lineas = [
             'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Portal de Clientes//ES', 'CALSCALE:GREGORIAN', 'METHOD:' . $metodo,
             'BEGIN:VEVENT',
@@ -523,7 +523,7 @@ class ReunionService
             'action'  => 'TEMPLATE',
             'text'    => (string) $r['titulo'],
             'dates'   => $ini->format('Ymd\THis\Z') . '/' . $fin->format('Ymd\THis\Z'),
-            'details' => trim('Proyecto: ' . ($r['proyecto_nombre'] ?? '') . ($r['enlace_meet'] ? "\nUnirse: " . $r['enlace_meet'] : '')),
+            'details' => trim(Idioma::t('Proyecto: %s', (string) ($r['proyecto_nombre'] ?? '')) . ($r['enlace_meet'] ? "\n" . Idioma::t('Unirse: %s', (string) $r['enlace_meet']) : '')),
             'location' => (string) ($r['enlace_meet'] ?? ''),
         ], '', '&', PHP_QUERY_RFC3986);
     }

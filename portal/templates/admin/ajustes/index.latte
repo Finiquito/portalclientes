@@ -76,6 +76,16 @@
 
         <div class="pa-fila">
             <div>
+                <p class="pa-fila-et"><label for="f-idioma">Idioma por defecto</label></p>
+                <p class="pa-fila-ayuda">El de las pantallas y los correos de quien no eligió uno. Cada cliente, cada contacto y cada persona del equipo puede tener el suyo.</p>
+            </div>
+            <div class="pa-fila-campo">
+                {include '../_idioma.latte', actual: $cfg['idioma'], heredado: null}
+            </div>
+        </div>
+
+        <div class="pa-fila">
+            <div>
                 <p class="pa-fila-et"><label for="f-copia">Copia de todos los avisos</label> <span class="pa-muted">(opcional)</span></p>
                 <p class="pa-fila-ayuda">Un correo que recibe todo lo que pasa, agrupado (a las {\TypeDock\Plugin\Portal\Avisos::horasTexto()}). Útil para supervisar. Vacío = sin copia.</p>
             </div>

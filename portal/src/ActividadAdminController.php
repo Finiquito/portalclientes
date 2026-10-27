@@ -95,6 +95,7 @@ class ActividadAdminController
                 'max_mb'        => $aj['max_mb'] ?? '20',
                 'urgentes_max'  => $aj['urgentes_max'] ?? '1',
                 'pais_agencia'  => HorarioHabil::paisValido($aj['pais_agencia'] ?? HorarioHabil::PAIS_DEFECTO),
+                'idioma'        => Idioma::valido($aj['idioma'] ?? '') ? $aj['idioma'] : Idioma::DEFECTO,
             ],
             'ia' => (function () {
                 $ia = new IaService($this->pdo());
@@ -140,6 +141,7 @@ class ActividadAdminController
             'max_mb'        => (string) max(1, min(500, (int) ($_POST['max_mb'] ?? 20))),
             'urgentes_max'  => (string) max(0, min(20, (int) ($_POST['urgentes_max'] ?? 1))),
             'pais_agencia'  => HorarioHabil::paisValido((string) ($_POST['pais_agencia'] ?? HorarioHabil::PAIS_DEFECTO)),
+            'idioma'        => Idioma::valido((string) ($_POST['idioma'] ?? '')) ? (string) $_POST['idioma'] : Idioma::DEFECTO,
             'color_agencia' => Paleta::elegir((string) ($_POST['color_agencia'] ?? ''), (string) ($this->ajustes()->todos('global', 'portal')['color_agencia'] ?? '')),
         ]);
         // IA (opcional): las claves sólo se cambian si se escribe una nueva; nunca se muestran de vuelta.

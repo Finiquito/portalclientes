@@ -95,7 +95,7 @@ class SolicitudAdminController
             'grupos'      => self::FILTRO_ESTADOS,
             'tipos'       => Idioma::lista(SolicitudService::TIPOS),
             'estadosS'    => Idioma::lista(SolicitudService::ESTADOS),
-            'urgencias'   => SolicitudService::URGENCIAS,
+            'urgencias'   => Idioma::lista(SolicitudService::URGENCIAS),
             'proyectosF'  => $proyectos,
             'colorProy'   => Fmt::coloresTodos($this->pdo()),
             'marcasCli'   => Fmt::marcasClientes($this->pdo()),
@@ -129,7 +129,7 @@ class SolicitudAdminController
             's'           => $s,
             'tipos'       => Idioma::lista(SolicitudService::TIPOS),
             'estadosS'    => Idioma::lista(SolicitudService::ESTADOS),
-            'urgencias'   => SolicitudService::URGENCIAS,
+            'urgencias'   => Idioma::lista(SolicitudService::URGENCIAS),
             'modalidades' => Idioma::lista(SolicitudService::MODALIDADES),
             'horarios'    => $horarios,
             'proyectosCliente' => array_values(array_filter(
@@ -169,12 +169,12 @@ class SolicitudAdminController
         }
         $this->registrar($s, 'atendio', 'Convertida en tarea');
         $fecha = trim((string) ($_POST['fecha_vencimiento'] ?? ''));
-        $this->avisarCliente($s, 'Tomamos tu solicitud: ' . $s['titulo'], [
-            'etiqueta' => 'Solicitud', 'titulo' => 'Tomamos tu solicitud', 'resaltado' => 'Tomamos',
+        $this->avisarCliente($s, Idioma::f('Tomamos tu solicitud: %s', (string) $s['titulo']), [
+            'etiqueta' => Idioma::f('Solicitud'), 'titulo' => Idioma::f('Tomamos tu solicitud'), 'resaltado' => Idioma::f('Tomamos'),
             'bloques' => array_values(array_filter([
-                ['tarjetas' => [['titulo' => (string) $s['titulo'], 'detalle' => $fecha !== '' ? 'Para el ' . (new Fmt())->fecha($fecha) : 'Sin fecha por ahora']]],
+                ['tarjetas' => [['titulo' => (string) $s['titulo'], 'detalle' => $fecha !== '' ? Idioma::perezoso(fn(): string => Idioma::t('Para el %s', (new Fmt())->fecha($fecha))) : Idioma::f('Sin fecha por ahora')]]],
                 trim((string) ($_POST['mensaje'] ?? '')) !== '' ? ['cita' => mb_substr(trim((string) $_POST['mensaje']), 0, 800)] : null,
-                ['p' => 'Ya es una tarea del equipo: puedes seguir su avance en tu portal.'],
+                ['p' => Idioma::f('Ya es una tarea del equipo: puedes seguir su avance en tu portal.')],
             ])),
             'boton' => 'Ver la tarea',
         ], '/portal/tareas/' . $tareaId);
@@ -220,11 +220,11 @@ class SolicitudAdminController
             $this->ui->redirect($this->url('reuniones/' . $reunionId), 'Reunión agendada: le llegó la invitación de calendario a ' . $s['contacto_nombre'] . '.');
             return;
         }
-        $this->avisarCliente($s, 'Reunión confirmada: ' . $fmt->fecha((string) $r['fecha']) . ' ' . $fmt->hora((string) $r['fecha']), [
-            'etiqueta' => 'Reunión', 'titulo' => 'Tu reunión quedó confirmada', 'resaltado' => 'confirmada',
-            'bloques' => [['tarjetas' => [['titulo' => (string) $r['titulo'], 'detalle' => $fmt->fechaLarga((string) $r['fecha']) . ' · ' . $fmt->hora((string) $r['fecha'])]]],
-                ['p' => $r['enlace_meet'] ? 'El enlace para conectarte está en tu portal, y puedes agregarla a tu calendario.' : 'En tu portal puedes agregarla a tu calendario.']],
-            'boton' => 'Ver la reunión', 'inmediato' => true,
+        $this->avisarCliente($s, Idioma::perezoso(fn(): string => Idioma::t('Reunión confirmada: %s %s', $fmt->fecha((string) $r['fecha']), $fmt->hora((string) $r['fecha']))), [
+            'etiqueta' => Idioma::f('Reunión'), 'titulo' => Idioma::f('Tu reunión quedó confirmada'), 'resaltado' => Idioma::f('confirmada'),
+            'bloques' => [['tarjetas' => [['titulo' => (string) $r['titulo'], 'detalle' => Idioma::perezoso(fn(): string => $fmt->fechaLarga((string) $r['fecha']) . ' · ' . $fmt->hora((string) $r['fecha']))]]],
+                ['p' => $r['enlace_meet'] ? Idioma::f('El enlace para conectarte está en tu portal, y puedes agregarla a tu calendario.') : Idioma::f('En tu portal puedes agregarla a tu calendario.')]],
+            'boton' => Idioma::f('Ver la reunión'), 'inmediato' => true,
         ], '/portal/reuniones/' . $reunionId);
         $this->comentarDesdePost($s);
         $this->ui->redirect($this->url('reuniones/' . $reunionId), 'Reunión agendada y confirmada al cliente.');
@@ -244,11 +244,11 @@ class SolicitudAdminController
                 ['tipo' => 'equipo', 'id' => $this->ui->autorId(), 'nombre' => $this->ui->firma()], $maxMb);
         }
         $this->registrar($s, 'cotizo', (string) ($_POST['monto'] ?? ''));
-        $this->avisarCliente($s, 'Tu cotización está lista: ' . $s['titulo'], [
-            'etiqueta' => 'Presupuesto', 'titulo' => 'Tu cotización está lista', 'resaltado' => 'lista',
+        $this->avisarCliente($s, Idioma::f('Tu cotización está lista: %s', (string) $s['titulo']), [
+            'etiqueta' => Idioma::f('Presupuesto'), 'titulo' => Idioma::f('Tu cotización está lista'), 'resaltado' => Idioma::f('está lista'),
             'bloques' => [['tarjetas' => [['titulo' => (string) $s['titulo'], 'detalle' => trim((string) $_POST['monto'])]]],
-                ['p' => 'Revísala en tu portal y apruébala con un clic, o escríbenos si quieres ajustar algo.']],
-            'boton' => 'Ver la cotización',
+                ['p' => Idioma::f('Revísala en tu portal y apruébala con un clic, o escríbenos si quieres ajustar algo.')]],
+            'boton' => Idioma::f('Ver la cotización'),
         ]);
         $this->ui->redirect($this->url('solicitudes/' . $id), 'Cotización enviada al cliente.');
     }
@@ -264,10 +264,10 @@ class SolicitudAdminController
             return;
         }
         $this->registrar($s, 'atendio', $estado === 'rechazada' ? 'No tomada' : 'Respondida');
-        $this->avisarCliente($s, ($estado === 'rechazada' ? 'Sobre tu solicitud: ' : 'Respondimos tu solicitud: ') . $s['titulo'], [
-            'etiqueta' => 'Solicitud', 'titulo' => $estado === 'rechazada' ? 'Sobre tu solicitud' : 'Respondimos tu solicitud',
-            'bloques' => [['tarjetas' => [['titulo' => (string) $s['titulo'], 'detalle' => Idioma::lista(SolicitudService::TIPOS)[$s['tipo']][0]]]], ['cita' => mb_substr(trim($mensaje), 0, 800)]],
-            'boton' => 'Ver en el portal',
+        $this->avisarCliente($s, $estado === 'rechazada' ? Idioma::f('Sobre tu solicitud: %s', (string) $s['titulo']) : Idioma::f('Respondimos tu solicitud: %s', (string) $s['titulo']), [
+            'etiqueta' => Idioma::f('Solicitud'), 'titulo' => $estado === 'rechazada' ? Idioma::f('Sobre tu solicitud') : Idioma::f('Respondimos tu solicitud'),
+            'bloques' => [['tarjetas' => [['titulo' => (string) $s['titulo'], 'detalle' => Idioma::perezoso(fn(): string => Idioma::lista(SolicitudService::TIPOS)[$s['tipo']][0])]]], ['cita' => mb_substr(trim($mensaje), 0, 800)]],
+            'boton' => Idioma::f('Ver en el portal'),
         ]);
         $this->ui->redirect($this->url('solicitudes'), $estado === 'rechazada' ? 'Solicitud cerrada y avisada al cliente.' : 'Respuesta enviada al cliente.');
     }
@@ -283,9 +283,9 @@ class SolicitudAdminController
         (new ComentarioService($this->pdo()))->crear((string) $s['cliente_id'], 'solicitud', $id, 'equipo', $this->ui->autorId(), $this->ui->firma(), $texto);
         (new ActividadService($this->pdo()))->registrar((string) $s['cliente_id'], ((string) $s['proyecto_id']) ?: null, 'equipo', $this->ui->firma(), 'comento', 'solicitud', $id, (string) $s['titulo'], mb_substr($texto, 0, 200));
         if (!empty($_POST['avisar'])) {
-            $this->avisarCliente($s, 'Nuevo comentario en tu solicitud: ' . $s['titulo'], [
-                'etiqueta' => 'Comentario', 'titulo' => 'Nuevo comentario del equipo', 'resaltado' => 'comentario', 'boton' => 'Ver y responder',
-                'preheader' => mb_substr($texto, 0, 110), 'bloques' => [['p' => 'En «' . $s['titulo'] . '»:'], ['cita' => mb_substr($texto, 0, 800)]],
+            $this->avisarCliente($s, Idioma::f('Nuevo comentario en tu solicitud: %s', (string) $s['titulo']), [
+                'etiqueta' => Idioma::f('Comentario'), 'titulo' => Idioma::f('Nuevo comentario del equipo'), 'resaltado' => Idioma::f('comentario'), 'boton' => Idioma::f('Ver y responder'),
+                'preheader' => mb_substr($texto, 0, 110), 'bloques' => [['p' => Idioma::f('En «%s»:', (string) $s['titulo'])], ['cita' => mb_substr($texto, 0, 800)]],
             ]);
         }
         $this->ui->redirect(MensajeService::destino($this->ui->url('mensajes'), $this->url('solicitudes/' . $id) . '#conversacion'), 'Comentario publicado.');
@@ -314,7 +314,7 @@ class SolicitudAdminController
     }
 
     /** @param array<string, mixed> $op */
-    private function avisarCliente(array $s, string $asunto, array $op, ?string $ruta = null): void
+    private function avisarCliente(array $s, string|\Stringable $asunto, array $op, ?string $ruta = null): void
     {
         try {
             (new Notifier($this->ctx, $this->pdo()))->alCliente(

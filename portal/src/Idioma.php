@@ -63,11 +63,11 @@ final class Idioma
     /**
      * Elige el idioma de una persona: el suyo, si no el del cliente, si no el de la agencia.
      */
-    public static function de(AjustesService $aj, string $ownerTipo, string $ownerId, string $clienteId = ''): string
+    public static function de(AjustesService $aj, string $ownerTipo, string $ownerId, string $clienteId = '', bool $conCookie = false): string
     {
         $v = $aj->get($ownerTipo, $ownerId, 'idioma');
-        if (!self::valido($v)) {
-            $v = (string) ($_COOKIE[self::COOKIE] ?? '');   // lo que eligió en la pantalla de ingreso
+        if (!self::valido($v) && $conCookie) {
+            $v = (string) ($_COOKIE[self::COOKIE] ?? '');   // lo que eligió en la pantalla de ingreso (sólo para quien está en esta visita)
         }
         if (!self::valido($v) && $clienteId !== '') {
             $v = $aj->get('cliente', $clienteId, 'idioma');
@@ -118,6 +118,52 @@ final class Idioma
                 'samesite' => 'Lax',
             ]);
         }
+    }
+
+    /**
+     * Guarda el idioma elegido en un formulario del equipo (campo «idioma»): vacío = hereda el del cliente o la agencia.
+     * No toca nada si el formulario no trae el campo.
+     */
+    public static function guardarDePost(AjustesService $aj, string $ownerTipo, string $ownerId): void
+    {
+        if (!isset($_POST['idioma'])) {
+            return;
+        }
+        $v = (string) $_POST['idioma'];
+        if (self::valido($v)) {
+            $aj->set($ownerTipo, $ownerId, 'idioma', $v);
+        } elseif ($v === '') {
+            $aj->borrar($ownerTipo, $ownerId, 'idioma');
+        }
+    }
+
+    /** Una frase que se traduce al momento de leerla (ver Frase): Idioma::f('%s completó «%s»', $quien, $titulo). */
+    public static function f(string $texto, string|int|float|\Stringable ...$valores): Frase
+    {
+        return new Frase($texto, $valores);
+    }
+
+    /** Un texto calculado al leerlo, en el idioma que esté activo en ese momento. */
+    public static function perezoso(callable $f): \Stringable
+    {
+        return new class($f) implements \Stringable {
+            public function __construct(private readonly mixed $f) {}
+            public function __toString(): string { return (string) ($this->f)(); }
+        };
+    }
+
+    /** Pasa a texto lo que sea Stringable, también dentro de listas. */
+    public static function resolver(mixed $v): mixed
+    {
+        if ($v instanceof \Stringable) {
+            return (string) $v;
+        }
+        if (is_array($v)) {
+            foreach ($v as $k => $x) {
+                $v[$k] = self::resolver($x);
+            }
+        }
+        return $v;
     }
 
     /** Normaliza una frase de plantilla para usarla de clave (espacios y saltos de línea en uno). */

@@ -257,6 +257,20 @@ final class Convocados
      */
     private function enviar(array $r, array $p, string $tipo, ?int $seq = null): int
     {
+        // Cada persona recibe la invitación en su idioma.
+        $aj = new AjustesService($this->pdo);
+        $lang = $p['tipo'] === 'contacto'
+            ? Idioma::de($aj, 'contacto', (string) ($p['id'] ?? ''), (string) ($r['cliente_id'] ?? ''))
+            : Idioma::de($aj, 'equipo', (string) ($p['id'] ?? ''));
+        return (int) Idioma::con($lang, fn(): int => $this->armarEnvio($r, $p, $tipo, $seq));
+    }
+
+    /**
+     * @param array<string, mixed> $r
+     * @param array<string, mixed> $p
+     */
+    private function armarEnvio(array $r, array $p, string $tipo, ?int $seq): int
+    {
         $esCliente = $p['tipo'] === 'contacto';
         if ($esCliente && (int) ($r['publicada'] ?? 0) !== 1) {
             return 0;   // el cliente no la ve: no se le invita
@@ -273,29 +287,29 @@ final class Convocados
         $fmt = new Fmt();
         $pais = $esCliente ? $this->n->paisDeContacto(isset($p['id']) ? (string) $p['id'] : null, $cid) : Zona::pais();
         $fechaLocal = $esCliente ? Zona::aPais((string) $r['fecha'], $pais) : (string) $r['fecha'];
-        $cuando = $fmt->fechaLarga($fechaLocal) . ' a las ' . $fmt->hora($fechaLocal);
-        $zona = 'hora de ' . HorarioHabil::nombreDe($pais);
+        $cuando = Idioma::t('%s a las %s', $fmt->fechaLarga($fechaLocal), $fmt->hora($fechaLocal));
+        $zona = Idioma::t('hora de %s', HorarioHabil::nombreDe($pais));
         $url = $this->n->absoluta(($esCliente ? '/portal' : '/equipo') . '/reuniones/' . $r['id']);
 
         [$asunto, $etiqueta, $titulo, $resaltado, $intro] = match ($tipo) {
-            'cambio'       => ['Cambió la reunión: ' . $r['titulo'] . ' — ' . $fmt->fechaCorta($fechaLocal) . ' ' . $fmt->hora($fechaLocal), 'Reunión', 'La reunión cambió', 'cambió',
-                               'Actualizamos los datos de la reunión. Si ya la tenías en tu calendario, se reemplaza sola con la invitación adjunta.'],
-            'cancelada'    => ['Se canceló la reunión: ' . $r['titulo'], 'Reunión', 'Se canceló la reunión', 'canceló',
-                               'Esta reunión ya no va. Si la tenías en tu calendario, la invitación adjunta la quita.'],
-            'recordatorio' => ['Mañana: ' . $r['titulo'] . ' a las ' . $fmt->hora($fechaLocal), 'Recordatorio', 'Mañana tienes reunión', 'Mañana',
+            'cambio'       => [Idioma::t('Cambió la reunión: %s — %s %s', $r['titulo'], $fmt->fechaCorta($fechaLocal), $fmt->hora($fechaLocal)), Idioma::t('Reunión'), Idioma::t('La reunión cambió'), Idioma::t('cambió'),
+                               Idioma::t('Actualizamos los datos de la reunión. Si ya la tenías en tu calendario, se reemplaza sola con la invitación adjunta.')],
+            'cancelada'    => [Idioma::t('Se canceló la reunión: %s', $r['titulo']), Idioma::t('Reunión'), Idioma::t('Se canceló la reunión'), Idioma::t('canceló'),
+                               Idioma::t('Esta reunión ya no va. Si la tenías en tu calendario, la invitación adjunta la quita.')],
+            'recordatorio' => [Idioma::t('Mañana: %s a las %s', $r['titulo'], $fmt->hora($fechaLocal)), Idioma::t('Recordatorio'), Idioma::t('Mañana tienes reunión'), Idioma::t('Mañana'),
                                ''],
-            default        => ['Invitación: ' . $r['titulo'] . ' — ' . $fmt->fechaCorta($fechaLocal) . ' ' . $fmt->hora($fechaLocal), 'Reunión', 'Te invitamos a una reunión', 'reunión',
-                               'Agrégala a tu calendario con un clic.'],
+            default        => [Idioma::t('Invitación: %s — %s %s', $r['titulo'], $fmt->fechaCorta($fechaLocal), $fmt->hora($fechaLocal)), Idioma::t('Reunión'), Idioma::t('Te invitamos a una reunión'), Idioma::t('reunión'),
+                               Idioma::t('Agrégala a tu calendario con un clic.')],
         };
 
         $nombres = array_map(fn($x) => (string) $x['nombre'], $this->personas((string) $r['id']));
         $datos = [
-            ['Cuándo', $cuando . ' (' . $zona . ')'],
-            ['Duración', (int) $r['duracion_min'] . ' minutos'],
-            ['Proyecto', trim(($esCliente ? '' : $r['cliente_nombre'] . ' · ') . $r['proyecto_nombre'])],
+            [Idioma::t('Cuándo'), $cuando . ' (' . $zona . ')'],
+            [Idioma::t('Duración'), Idioma::t('%d minutos', (int) $r['duracion_min'])],
+            [Idioma::t('Proyecto'), trim(($esCliente ? '' : $r['cliente_nombre'] . ' · ') . $r['proyecto_nombre'])],
         ];
         if ($nombres !== []) {
-            $datos[] = ['Convocados', implode(', ', $nombres)];
+            $datos[] = [Idioma::t('Convocados'), implode(', ', $nombres)];
         }
         $bloques = [['tarjetas' => [['titulo' => (string) $r['titulo']]]]];
         if ($intro !== '') {
@@ -305,10 +319,10 @@ final class Convocados
         if ($tipo !== 'cancelada') {
             $enlaces = [];
             if ((string) $r['enlace_meet'] !== '') {
-                $enlaces[] = ['texto' => 'Unirse con Meet', 'url' => (string) $r['enlace_meet']];
+                $enlaces[] = ['texto' => Idioma::t('Unirse con Meet'), 'url' => (string) $r['enlace_meet']];
             }
-            $enlaces[] = ['texto' => 'Agregar a Google Calendar', 'url' => $svc->enlaceGoogleCalendar($r)];
-            $enlaces[] = ['texto' => 'Outlook o Apple (.ics)', 'url' => $this->urlIcs((string) $r['id'])];
+            $enlaces[] = ['texto' => Idioma::t('Agregar a Google Calendar'), 'url' => $svc->enlaceGoogleCalendar($r)];
+            $enlaces[] = ['texto' => Idioma::t('Outlook o Apple (.ics)'), 'url' => $this->urlIcs((string) $r['id'])];
             $bloques[] = ['enlaces' => $enlaces];
         }
 
@@ -318,14 +332,14 @@ final class Convocados
             'para' => (string) $p['email'], 'nombre_para' => (string) $p['nombre'],
         ]);
         $op = ['etiqueta' => $etiqueta, 'titulo' => $titulo, 'resaltado' => $resaltado, 'bloques' => $bloques,
-            'boton' => $tipo === 'cancelada' ? 'Ver mis reuniones' : 'Ver la reunión', 'preheader' => $cuando . ' (' . $zona . ')'];
+            'boton' => $tipo === 'cancelada' ? Idioma::t('Ver mis reuniones') : Idioma::t('Ver la reunión'), 'preheader' => $cuando . ' (' . $zona . ')'];
 
         if ($esCliente) {
             if ($tipo === 'recordatorio' && (new AjustesService($this->pdo))->get('contacto', (string) $p['id'], 'avisos_email', '1') === '0') {
                 return 0;
             }
-            [$html, $texto] = $this->n->componer($asunto, '', $op, 'Hola ' . $this->n->primerNombre((string) $p['nombre']) . ',', $url, $cid,
-                ['Te llega porque te convocaron a esta reunión.']);
+            [$html, $texto] = $this->n->componer($asunto, '', $op, Idioma::t('Hola %s,', $this->n->primerNombre((string) $p['nombre'])), $url, $cid,
+                [Idioma::t('Te llega porque te convocaron a esta reunión.')]);
             $ini = ReunionService::aUtc((string) $r['fecha']);
             $pronto = $ini !== null && $ini <= (Notifier::$ahora ?? new \DateTimeImmutable('now', new \DateTimeZone('UTC')))->modify('+36 hours');
             // La cancelación sale siempre; la invitación y el recordatorio, sólo si la reunión sigue en pie.
@@ -349,8 +363,8 @@ final class Convocados
             return 1;
         }
         [, , $contexto] = $this->n->contextoAviso(['proyecto_id' => (string) $r['proyecto_id']]);
-        [$html, $texto] = $this->n->componer($asunto, '', $op + ['boton' => 'Abrir en el panel'], 'Hola ' . $this->n->primerNombre((string) $u['nombre']) . ',',
-            $url, $cid, ['Te llega porque te convocaron a esta reunión.'], $contexto);
+        [$html, $texto] = $this->n->componer($asunto, '', $op + ['boton' => Idioma::t('Abrir en el panel')], Idioma::t('Hola %s,', $this->n->primerNombre((string) $u['nombre'])),
+            $url, $cid, [Idioma::t('Te llega porque te convocaron a esta reunión.')], $contexto);
         return $this->n->enviarCorreo((string) $u['email'], $asunto, $html, $texto, true, $ics) ? 1 : 0;
     }
 }
