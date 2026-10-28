@@ -45,7 +45,7 @@ return [
     'El ícono debe ser cuadrado y de al menos 32 × 32 px.' => 'The icon must be square and at least 32 × 32 px.',
     'No se pudo guardar el ícono en el servidor.' => 'The icon could not be saved on the server.',
     'Ya no hacía falta: se resolvió antes de enviarlo.' => 'No longer needed: it was resolved before sending.',
-    'El servidor SMTP no parece válido (ej.: smtp.hostinger.com).' => 'The SMTP server doesn’t look valid (e.g.: smtp.hostinger.com).',
+    'El servidor SMTP no parece válido (ej.: smtp.hostinger.com).' => 'The SMTP server doesn’t look valid (e.g. smtp.hostinger.com).',
     'El correo «Enviar desde» no es válido.' => 'The “Send from” email is not valid.',
     'Falta completar servidor, usuario y contraseña del correo.' => 'The mail server, user and password still need to be filled in.',
     'Clave incorrecta.' => 'Wrong key.',

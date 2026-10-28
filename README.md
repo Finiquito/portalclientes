@@ -74,6 +74,9 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### v0.47.7: Revisión de las 81 frases nuevas
+- Se aplicó la revisión de las frases armadas y los mensajes sueltos (9 ajustes en francés e inglés: «attribué», «mettre en forme», «calendrier éditorial», «rubrique « Demandes »», etc.).
+
 ### v0.47.6: Contactos ganados y Mailchimp en inglés y francés
 - El módulo de contactos ganados (pantallas del equipo y del cliente) y la revisión de Mailchimp salen completos en el idioma de la persona: estados, eventos («Recibió», «Abrió»…), avisos de la importación de planillas, mensajes de conexión con Mailchimp, errores del formulario directo (que responde en el idioma del navegador de quien envía, o el de la agencia).
 - Textos con números o nombres (por ejemplo «Importados 3 contactos nuevos», «2 correos · abrió 1», «Mailchimp conectado para X») ahora son frases completas con `%s`/`%d`, para que el orden de las palabras sea el correcto en cada idioma.
