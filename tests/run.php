@@ -3361,6 +3361,21 @@ $ajC->borrar('cliente', $c1, 'idioma');
 P\Idioma::reiniciar();
 
 // ---------------------------------------------------------------------------
+seccion('Idiomas: el francés tiene las mismas frases que el inglés');
+$tEn = P\Idioma::tabla('en');
+$tFr = P\Idioma::tabla('fr');
+check(count($tFr) === count($tEn) && array_diff_key($tEn, $tFr) === [], 'el francés cubre las mismas frases que el inglés (' . count($tFr) . ')');
+$malPh = 0;
+foreach ($tFr as $k => $v) {
+    preg_match_all('/%[sd]/', $k, $a1);
+    preg_match_all('/%[sd]/', $v, $a2);
+    $malPh += $a1[0] === $a2[0] ? 0 : 1;
+}
+check($malPh === 0, 'las frases en francés conservan sus %s y %d');
+check(isset(P\Idioma::DISPONIBLES['fr']), 'el francés se puede elegir');
+$fFr = P\Idioma::con('fr', fn() => [(new P\Fmt(new DateTimeImmutable('2026-10-01 10:00', new DateTimeZone('America/Santiago'))))->fecha('2026-10-12 15:30:00'), (new P\Fmt(new DateTimeImmutable('2026-10-01 10:00', new DateTimeZone('America/Santiago'))))->hora('2026-10-12 15:30:00'), (new P\Fmt(new DateTimeImmutable('2026-10-01 10:00', new DateTimeZone('America/Santiago'))))->fechaLarga('2026-10-12 15:30:00')]);
+check($fFr[0] === '12 oct.' && $fFr[1] === '15:30' && $fFr[2] === 'lundi 12 oct.', 'las fechas en francés van con día primero y reloj de 24 horas (' . implode(' | ', $fFr) . ')');
+
 seccion('Idiomas: las plantillas compilan con el Latte del TypeDock real');
 exec(PHP_BINARY . ' ' . escapeshellarg(dirname(__DIR__) . '/dev/compilar-con-nucleo.php') . ' 2>&1', $salidaN, $codN);
 if ($codN === 2) {

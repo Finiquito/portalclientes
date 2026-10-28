@@ -16,6 +16,8 @@ final class Fmt
     private const DIAS  = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
     private const MESES_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     private const DIAS_EN  = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    private const MESES_FR = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+    private const DIAS_FR  = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
 
     /** ¿Las fechas van en inglés? (mes primero: «Oct 12»). Los demás idiomas usan el orden del español. */
     private static function en(): bool
@@ -23,14 +25,25 @@ final class Fmt
         return Idioma::actual() === 'en';
     }
 
+    private static function fr(): bool
+    {
+        return Idioma::actual() === 'fr';
+    }
+
+    /** Nombre completo del día de la semana en el idioma activo. */
+    private static function nombreDia(\DateTimeImmutable $d): string
+    {
+        return (self::en() ? self::DIAS_EN : (self::fr() ? self::DIAS_FR : self::DIAS))[(int) $d->format('w')];
+    }
+
     private static function mes(\DateTimeImmutable $d): string
     {
-        return (self::en() ? self::MESES_EN : self::MESES)[(int) $d->format('n') - 1];
+        return (self::en() ? self::MESES_EN : (self::fr() ? self::MESES_FR : self::MESES))[(int) $d->format('n') - 1];
     }
 
     private static function dia3(\DateTimeImmutable $d): string
     {
-        return mb_substr((self::en() ? self::DIAS_EN : self::DIAS)[(int) $d->format('w')], 0, 3);
+        return mb_substr(self::nombreDia($d), 0, 3);
     }
 
     /** estado => [etiqueta, tono]. Los tonos son clases .chip-* de portal.css */
@@ -96,7 +109,7 @@ final class Fmt
         if (self::en()) {
             return self::DIAS_EN[(int) $d->format('w')] . ', ' . self::mes($d) . ' ' . $d->format('j');
         }
-        return self::DIAS[(int) $d->format('w')] . ' ' . $d->format('j') . ' ' . self::mes($d);
+        return self::nombreDia($d) . ' ' . $d->format('j') . ' ' . self::mes($d);
     }
 
     /** "vie 2 oct" */
@@ -126,7 +139,7 @@ final class Fmt
         if ($a->format('n') !== $b->format('n')) {
             $ini = self::en() ? self::dia3($a) . ', ' . self::mes($a) . ' ' . $a->format('j') : $ini . ' ' . self::mes($a);
         }
-        return $ini . (self::en() ? ' – ' : ' al ') . $this->fechaCorta($hasta);
+        return $ini . (self::en() ? ' – ' : (self::fr() ? ' au ' : ' al ')) . $this->fechaCorta($hasta);
     }
 
     /** Bandera (emoji) de un código de país de dos letras. */

@@ -74,6 +74,11 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### v0.47.3: Français
+- Tercer idioma: **francés** (`portal/lang/fr/`, las mismas 2.588 frases que el inglés). Sale en el selector de idioma de todas partes (ingreso, Ajustes del portal, Mis ajustes del panel, fichas de contacto, cliente y persona del equipo) y también en los correos.
+- Fechas en francés (`lundi 12 oct.`, día primero, reloj de 24 horas, «au» en los rangos) y dictado por voz en `fr-FR`.
+- Pruebas: el francés cubre las mismas frases que el inglés y conserva todos los `%s`/`%d`.
+
 ### v0.47.2: Revisión del inglés
 - Se aplicó la revisión completa de las traducciones al inglés (592 frases ajustadas): «batch» para las entregas, «dashboard» para el panel, «content calendar» para la grilla, «caption» para el copy, y comillas curvas “ ” en vez de « ».
 

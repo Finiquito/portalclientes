@@ -1,0 +1,26 @@
+<?php
+// Frases de actividad («Ana comentó en «Logo»»).
+return [
+    'comentó en' => 'a commenté',
+    'subió un archivo en' => 'a importé un fichier dans',
+    'entregó' => 'a envoyé',
+    'completó' => 'a terminé',
+    'aprobó' => 'a validé',
+    'pidió cambios en' => 'a demandé des modifications sur',
+    'asignó al cliente' => 'a attribué au client',
+    'te pidió' => 'vous a demandé',
+    'publicó para el cliente' => 'a publié pour le client',
+    'te compartió' => 'a partagé avec vous',
+    'subió una versión nueva de' => 'a importé une nouvelle version de',
+    'terminó la revisión de' => 'a terminé la relecture de',
+    'compartió novedades de la reunión' => 'a partagé les nouveautés de la réunion',
+    'hizo una solicitud:' => 'a fait une demande :',
+    'atendió la solicitud' => 'a traité la demande',
+    'respondió tu solicitud' => 'a répondu à votre demande',
+    'envió la cotización' => 'a envoyé le devis',
+    'te envió la cotización de' => 'vous a envoyé le devis de',
+    'respondió la cotización de' => 'a répondu au devis de',
+    'cambió el estado de' => 'a modifié le statut de',
+    'actualizó' => 'a mis à jour',
+    'Urgente · ' => 'Urgent · ',
+];

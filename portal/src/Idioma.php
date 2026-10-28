@@ -19,7 +19,7 @@ final class Idioma
     public const DEFECTO = 'es';
 
     /** código => nombre en su propio idioma */
-    public const DISPONIBLES = ['es' => 'Español', 'en' => 'English'];
+    public const DISPONIBLES = ['es' => 'Español', 'en' => 'English', 'fr' => 'Français'];
 
     public const COOKIE = 'portal_idioma';
 

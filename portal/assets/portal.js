@@ -104,7 +104,7 @@
       };
       var empezar = function () {
         rec = new SR();
-        var idioma = IDIOMA === 'en' ? 'en-US' : ((navigator.language || '').toLowerCase().indexOf('es') === 0 ? navigator.language : 'es-419');
+        var idioma = IDIOMA === 'en' ? 'en-US' : IDIOMA === 'fr' ? 'fr-FR' : ((navigator.language || '').toLowerCase().indexOf('es') === 0 ? navigator.language : 'es-419');
         rec.lang = idioma;
         rec.continuous = true;
         rec.interimResults = true;
