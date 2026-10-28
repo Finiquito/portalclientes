@@ -441,10 +441,10 @@ class LeadService
             $estado = 'nuevo';
             if (($f['correo'] ?? '') !== '' && $d['correo'] === '') {
                 $estado = 'error';
-                $out['errores'][] = 'Fila ' . ($f['_fila'] ?? '?') . ': el correo «' . mb_substr((string) $f['correo'], 0, 60) . '» no es válido.';
+                $out['errores'][] = Idioma::t('Fila %s: el correo «%s» no es válido.', (string) ($f['_fila'] ?? '?'), mb_substr((string) $f['correo'], 0, 60));
             } elseif ($d['correo'] === '' && $d['telefono'] === '') {
                 $estado = 'error';
-                $out['errores'][] = 'Fila ' . ($f['_fila'] ?? '?') . ': no tiene correo ni teléfono.';
+                $out['errores'][] = Idioma::t('Fila %s: no tiene correo ni teléfono.', (string) ($f['_fila'] ?? '?'));
             } else {
                 $claves = array_filter(['c:' . $d['correo'], 't:' . $d['telefono']], fn($k) => strlen($k) > 2);
                 if (array_intersect($claves, array_keys($vistos)) !== [] || $this->duplicado($proyectoId, $d['correo'], $d['telefono'], null) !== null) {
@@ -668,9 +668,12 @@ class LeadService
         }
         $n = (int) $c['enviados'];
         if ($n === 0) {
-            return 'Sin correos aún';
+            return Idioma::t('Sin correos aún');
         }
-        return (empty($c['completo']) ? 'Al menos ' : '') . $n . ($n === 1 ? ' correo' : ' correos') . ' · abrió ' . (int) $c['abiertos'];
+        $texto = empty($c['completo'])
+            ? ($n === 1 ? 'Al menos %d correo · abrió %d' : 'Al menos %d correos · abrió %d')
+            : ($n === 1 ? '%d correo · abrió %d' : '%d correos · abrió %d');
+        return Idioma::t($texto, $n, (int) $c['abiertos']);
     }
 
     /** Resumen guardado, listo para mostrar. */

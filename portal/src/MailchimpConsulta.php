@@ -88,7 +88,7 @@ final class MailchimpConsulta
     public function persona(string $audiencia, string $correo, bool $actividad = true): array
     {
         if (preg_match('/^[0-9a-z]{1,32}$/i', $audiencia) !== 1) {
-            return ['estado' => 'error', 'datos' => ['error' => 'Falta elegir la audiencia de Mailchimp.']];
+            return ['estado' => 'error', 'datos' => ['error' => Idioma::t('Falta elegir la audiencia de Mailchimp.')]];
         }
         $hash = md5(mb_strtolower(trim($correo)));
         [$cod, $m] = $this->get("/lists/{$audiencia}/members/{$hash}?fields=status,timestamp_signup,timestamp_opt,last_changed,member_rating,stats.avg_open_rate,stats.avg_click_rate,tags,unsubscribe_reason,source");
@@ -182,12 +182,12 @@ final class MailchimpConsulta
     {
         $det = trim((string) ($r['detail'] ?? $r['title'] ?? ''));
         return match (true) {
-            $cod === 0   => 'No se pudo conectar con Mailchimp.',
-            $cod === 401 => 'La clave de Mailchimp no es válida o fue revocada.',
-            $cod === 403 => 'La clave de Mailchimp no tiene acceso a eso.',
-            $cod === 404 => 'No se encontró la audiencia en Mailchimp.',
-            $cod === 429 => 'Mailchimp pidió esperar un poco (muchas consultas seguidas).',
-            default      => 'Mailchimp respondió ' . $cod . ($det !== '' ? ': ' . mb_substr($det, 0, 150) : '.'),
+            $cod === 0   => Idioma::t('No se pudo conectar con Mailchimp.'),
+            $cod === 401 => Idioma::t('La clave de Mailchimp no es válida o fue revocada.'),
+            $cod === 403 => Idioma::t('La clave de Mailchimp no tiene acceso a eso.'),
+            $cod === 404 => Idioma::t('No se encontró la audiencia en Mailchimp.'),
+            $cod === 429 => Idioma::t('Mailchimp pidió esperar un poco (muchas consultas seguidas).'),
+            default      => Idioma::t('Mailchimp respondió %s', $cod . ($det !== '' ? ': ' . mb_substr($det, 0, 150) : '.')),
         };
     }
 

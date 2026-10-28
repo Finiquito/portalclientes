@@ -111,7 +111,7 @@
     {elseif !$mc}
         <p class="pa-muted" style="margin:0">Todavía no se revisa.</p>
     {else}
-        <p style="margin:0 0 .5rem"><span class="pa-chip {$mc['etiqueta'][1]}">{$mc['etiqueta'][0]}</span>
+        <p style="margin:0 0 .5rem"><span class="pa-chip {$mc['etiqueta'][1]}">{t($mc['etiqueta'][0])}</span>
             {if !empty($mc['rating'])} <span title="Calificación de Mailchimp" style="color:#d97706;letter-spacing:.1em">{str_repeat('★', $mc['rating'])}</span><span class="pa-muted" style="letter-spacing:.1em">{str_repeat('★', 5 - $mc['rating'])}</span>{/if}</p>
         {if $mc['estado'] !== 'no_esta' && $mc['estado'] !== 'error'}
         <p class="pa-muted" style="margin:0">
@@ -125,11 +125,11 @@
         {if !empty($mc['actividad'])}
             <table class="table" style="margin-top:.75rem">
                 <thead><tr><th>Últimos correos</th><th></th></tr></thead>
-                <tbody>{foreach $mc['actividad'] as $a}<tr><td><strong>{$mcEventos[$a['tipo']] ?? $a['tipo']}</strong>{if $a['titulo']} «{$a['titulo']}»{/if}</td><td class="pa-muted">{$fmt->rel($a['fecha'])}</td></tr>{/foreach}</tbody>
+                <tbody>{foreach $mc['actividad'] as $a}<tr><td><strong>{t($mcEventos[$a['tipo']] ?? $a['tipo'])}</strong>{if $a['titulo']} «{$a['titulo']}»{/if}</td><td class="pa-muted">{$fmt->rel($a['fecha'])}</td></tr>{/foreach}</tbody>
             </table>
         {/if}
         {/if}
-        {if $mc['estado'] === 'error' && !empty($mc['error'])}<p class="pa-muted" style="margin:.5rem 0 0">{$mc['error']}</p>{/if}
+        {if $mc['estado'] === 'error' && !empty($mc['error'])}<p class="pa-muted" style="margin:.5rem 0 0">{t($mc['error'])}</p>{/if}
         <p class="pa-muted" style="margin:.5rem 0 0">Revisado {$fmt->rel($mc['revisado'])}. Sólo consultamos: no se cambia nada en Mailchimp.</p>
     {/if}
     {if $l['correo'] && !$l['anonimizado_en']}

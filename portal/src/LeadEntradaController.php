@@ -55,19 +55,20 @@ class LeadEntradaController
             http_response_code($codigo);
             header('Content-Type: application/json; charset=utf-8');
             header('Cache-Control: no-store');
-            echo json_encode($ok ? ['ok' => true] : ['ok' => false, 'error' => $mensaje], JSON_UNESCAPED_UNICODE);
+            echo json_encode($ok ? ['ok' => true] : ['ok' => false, 'error' => Idioma::t($mensaje)], JSON_UNESCAPED_UNICODE);
         } elseif ($ok && !empty($fuente['url_gracias'])) {
             header('Location: ' . $fuente['url_gracias'], true, 303);
         } else {
             http_response_code($ok ? 200 : $codigo);
             header('Cache-Control: no-store');
-            Vista::mostrar($this->pdo(), 'templates/public/lead_gracias.latte', ['ok' => $ok, 'mensaje' => $mensaje]);
+            Vista::mostrar($this->pdo(), 'templates/public/lead_gracias.latte', ['ok' => $ok, 'mensaje' => Idioma::t($mensaje)]);
         }
         $this->terminate();
     }
 
     public function recibir(string $token = ''): void
     {
+        Idioma::fijar(Idioma::delVisitante((string) (new AjustesService($this->pdo()))->get('global', 'portal', 'idioma')));   // el idioma del navegador de quien envía; si no hay, el de la agencia
         $token = $token !== '' ? $token : trim((string) ($_SERVER['HTTP_X_PORTAL_TOKEN'] ?? ''));
         $webhook = $this->esJson() || ($_SERVER['HTTP_X_PORTAL_TOKEN'] ?? '') !== '';
         $ip = LeadFuenteService::ipHash((string) ($_SERVER['REMOTE_ADDR'] ?? ''));

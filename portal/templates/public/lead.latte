@@ -113,7 +113,7 @@
         {elseif !$mc}
             <p class="mt-3 text-muted">Todavía no se revisa.</p>
         {else}
-            <p class="mt-3"><span class="chip chip-{$mc['etiqueta'][1] === 'gris' ? 'muted' : $mc['etiqueta'][1]}">{$mc['etiqueta'][0]}</span></p>
+            <p class="mt-3"><span class="chip chip-{$mc['etiqueta'][1] === 'gris' ? 'muted' : $mc['etiqueta'][1]}">{t($mc['etiqueta'][0])}</span></p>
             {if $mc['estado'] !== 'no_esta' && $mc['estado'] !== 'error'}
             <dl class="mt-3 space-y-2.5">
                 {if !empty($mc['alta'])}<div><dt class="text-xs text-muted">Se inscribió</dt><dd class="font-semibold">{$fmt->fecha($mc['alta'])}</dd></div>{/if}
@@ -127,12 +127,12 @@
                 <h3 class="mt-4 text-xs font-bold uppercase tracking-wide text-muted">Últimos correos</h3>
                 <ul class="mt-2 space-y-2">
                     {foreach $mc['actividad'] as $a}
-                        <li class="leading-snug"><span class="font-semibold">{$mcEventos[$a['tipo']] ?? $a['tipo']}</span>{if $a['titulo']} «{$a['titulo']}»{/if} <span class="block text-xs text-muted">{$fmt->rel($a['fecha'])}</span></li>
+                        <li class="leading-snug"><span class="font-semibold">{t($mcEventos[$a['tipo']] ?? $a['tipo'])}</span>{if $a['titulo']} «{$a['titulo']}»{/if} <span class="block text-xs text-muted">{$fmt->rel($a['fecha'])}</span></li>
                     {/foreach}
                 </ul>
             {/if}
             {/if}
-            {if $mc['estado'] === 'error' && !empty($mc['error'])}<p class="mt-2 text-xs text-muted">{$mc['error']}</p>{/if}
+            {if $mc['estado'] === 'error' && !empty($mc['error'])}<p class="mt-2 text-xs text-muted">{t($mc['error'])}</p>{/if}
             <p class="mt-3 text-xs text-muted">Revisado {$fmt->rel($mc['revisado'])}.</p>
         {/if}
         {if $l['correo'] && !$l['anonimizado_en'] && !$vistaPrevia}

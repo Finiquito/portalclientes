@@ -56,7 +56,7 @@
                     <div class="ll-quien">
                         {if $iniciales !== ''}<span class="ll-yo" data-t="{$e['autor_tipo']}" aria-hidden="true">{$iniciales}</span>{/if}
                         {$e['autor'] ?: 'Nota'}
-                        {if $e['autor_tipo']}<span class="ll-own" data-t="{$e['autor_tipo']}">{\TypeDock\Plugin\Portal\LeadLinea::AUTORES[$e['autor_tipo']] ?? ''}</span>{/if}
+                        {if $e['autor_tipo']}<span class="ll-own" data-t="{$e['autor_tipo']}">{t(\TypeDock\Plugin\Portal\LeadLinea::AUTORES[$e['autor_tipo']] ?? '')}</span>{/if}
                         {if !empty($e['legado'])}<span class="ll-own" data-t="sistema">Nota anterior</span>{/if}
                     </div>
                     <p>{$e['texto']|breakLines}</p>
@@ -67,7 +67,7 @@
                     <span class="ll-chip" data-e="{$e['a_estado']}">{$estados[$e['a_estado']] ?? $e['a_estado']}</span>
                 </div>
             {elseif $e['tipo'] === 'proximo_paso'}
-                <p class="ll-tit-ev">Próximo paso: {$e['texto']}</p>
+                <p class="ll-tit-ev">Próximo paso: {t($e['texto'])}</p>
             {else}
                 <p class="ll-tit-ev">Llegó por {mb_strtolower($origenes[$l['origen']] ?? $l['origen'])}</p>
                 {if $l['campana'] || $l['utm_source']}<p class="ll-meta">{if $l['campana']}Campaña {$l['campana']}{/if}{if $l['utm_source']}{if $l['campana']} · {/if}{$l['utm_source']}{if $l['utm_medium']} / {$l['utm_medium']}{/if}{/if}</p>{/if}
@@ -76,7 +76,7 @@
                 <div class="ll-quien">
                     {if $iniciales !== ''}<span class="ll-yo" data-t="{$e['autor_tipo']}" aria-hidden="true">{$iniciales}</span>{/if}
                     {$e['autor']}
-                    {if $e['autor_tipo']}<span class="ll-own" data-t="{$e['autor_tipo']}">{\TypeDock\Plugin\Portal\LeadLinea::AUTORES[$e['autor_tipo']] ?? ''}</span>{/if}
+                    {if $e['autor_tipo']}<span class="ll-own" data-t="{$e['autor_tipo']}">{t(\TypeDock\Plugin\Portal\LeadLinea::AUTORES[$e['autor_tipo']] ?? '')}</span>{/if}
                 </div>
             {/if}
             {if !empty($e['ajustada']) || $e['registrado_en'] !== $e['ocurrio_en']}

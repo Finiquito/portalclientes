@@ -3376,6 +3376,20 @@ check(isset(P\Idioma::DISPONIBLES['fr']), 'el francés se puede elegir');
 $fFr = P\Idioma::con('fr', fn() => [(new P\Fmt(new DateTimeImmutable('2026-10-01 10:00', new DateTimeZone('America/Santiago'))))->fecha('2026-10-12 15:30:00'), (new P\Fmt(new DateTimeImmutable('2026-10-01 10:00', new DateTimeZone('America/Santiago'))))->hora('2026-10-12 15:30:00'), (new P\Fmt(new DateTimeImmutable('2026-10-01 10:00', new DateTimeZone('America/Santiago'))))->fechaLarga('2026-10-12 15:30:00')]);
 check($fFr[0] === '12 oct.' && $fFr[1] === '15:30' && $fFr[2] === 'lundi 12 oct.', 'las fechas en francés van con día primero y reloj de 24 horas (' . implode(' | ', $fFr) . ')');
 
+seccion('Idiomas: contactos ganados y Mailchimp en inglés y francés');
+$tFrL = P\Idioma::tabla('fr');
+$tEnL = P\Idioma::tabla('en');
+$sinTraducir = [];
+foreach (array_merge(array_column(P\MailchimpConsulta::ESTADOS, 0), array_values(P\MailchimpConsulta::EVENTOS)) as $et) {
+    if (!isset($tFrL[$et], $tEnL[$et])) {
+        $sinTraducir[] = $et;
+    }
+}
+check($sinTraducir === [], 'los estados y eventos de Mailchimp tienen traducción' . ($sinTraducir ? ' (faltan: ' . implode(', ', $sinTraducir) . ')' : ''));
+check(P\Idioma::con('fr', fn() => P\Idioma::t('%d correos · abrió %d', 2, 1)) === '2 e-mails · a ouvert 1', 'el resumen de correos en francés');
+check(P\Idioma::con('en', fn() => P\Idioma::t('Fila %s: el correo «%s» no es válido.', '3', 'x@')) === 'Row 3: the email “x@” is not valid.', 'el error de fila de la importación en inglés');
+check(P\Idioma::con('fr', fn() => P\Idioma::t('Mailchimp conectado para %s. Ahora elige la audiencia de esta campaña.', 'Panadería Ruiz')) === 'Mailchimp connecté pour Panadería Ruiz. Choisissez maintenant l’audience de cette campagne.', 'el aviso de conexión con Mailchimp en francés');
+
 seccion('Idiomas: el JS de las plantillas no llama a t() suelta');
 // t() es función de Latte: dentro de un <script> hay que escribirla entre llaves ({t('…')}); suelta es un error de JavaScript
 $sueltas = [];

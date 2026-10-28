@@ -74,6 +74,12 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### v0.47.6: Contactos ganados y Mailchimp en inglés y francés
+- El módulo de contactos ganados (pantallas del equipo y del cliente) y la revisión de Mailchimp salen completos en el idioma de la persona: estados, eventos («Recibió», «Abrió»…), avisos de la importación de planillas, mensajes de conexión con Mailchimp, errores del formulario directo (que responde en el idioma del navegador de quien envía, o el de la agencia).
+- Textos con números o nombres (por ejemplo «Importados 3 contactos nuevos», «2 correos · abrió 1», «Mailchimp conectado para X») ahora son frases completas con `%s`/`%d`, para que el orden de las palabras sea el correcto en cada idioma.
+- 64 mensajes sueltos más (errores de logo e ícono, de la IA, del .docx, del correo SMTP, avisos de las solicitudes del cliente, pies de los correos) que no estaban en la tabla de traducciones.
+- `dev/seed-leads.php`: contactos ganados de ejemplo para ver esas pantallas (se corre después de `dev/seed-demo.php`).
+
 ### v0.47.5: Restos en inglés y francés
 - **Arreglo importante:** en la pantalla de subir contenidos del equipo, el paso «Revisa antes de crear» llamaba a `t()` suelta dentro del JavaScript y fallaba (error de JS al soltar imágenes sin número de pieza o un PDF). Ahora usa los textos traducidos y hay una prueba que impide que vuelva a pasar.
 - Los textos que arma el JavaScript de las pantallas de gestión (subir entregas y piezas, resumen «Al guardar» de reuniones, hora del cliente, hitos del cronograma, avisos de importación, etc.) ahora salen en el idioma de la persona. Dentro de los `<script n:syntax="off">` se usa `__t()` con el diccionario `PA_I18N`.

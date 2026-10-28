@@ -140,7 +140,7 @@
                     <span class="pa-proy"><span class="pa-dot" style="background: {($colorProy[$l['proyecto_id']] ?? '#94a3b8')|noescape}" aria-hidden="true"></span><strong>{$l['proyecto_nombre']}</strong></span>
                     {if $l['campana']}<div class="pa-muted">{$l['campana']}</div>{/if}
                 </td>
-                <td><span class="pa-chip {$chips[$l['estado']]}">{$estados[$l['estado']]}</span>{if $l['mc_estado'] && isset($mcEstados[$l['mc_estado']])}<div class="pa-muted" style="margin-top:.25rem">Mailchimp: {$mcEstados[$l['mc_estado']][0]}</div>{/if}{var $correos = \TypeDock\Plugin\Portal\LeadService::mcCorreos($l)}{if $correos}<div class="pa-muted">{$correos}</div>{/if}</td>
+                <td><span class="pa-chip {$chips[$l['estado']]}">{$estados[$l['estado']]}</span>{if $l['mc_estado'] && isset($mcEstados[$l['mc_estado']])}<div class="pa-muted" style="margin-top:.25rem">Mailchimp: {t($mcEstados[$l['mc_estado']][0])}</div>{/if}{var $correos = \TypeDock\Plugin\Portal\LeadService::mcCorreos($l)}{if $correos}<div class="pa-muted">{$correos}</div>{/if}</td>
                 <td>{if $l['proximo_paso'] && $abierto}{$l['proximo_paso']}{if $l['proximo_paso_fecha']}<div class="pa-muted" {if $l['proximo_paso_fecha'] < $hoy}style="color:#e11d48;font-weight:700"{/if}>{$fmt->fechaCorta($l['proximo_paso_fecha'])}</div>{/if}{else}<span class="pa-muted">—</span>{/if}</td>
                 <td>{$fmt->rel($l['created_at'])}<div class="pa-muted">{$origenes[$l['origen']] ?? $l['origen']}</div></td>
             </tr>

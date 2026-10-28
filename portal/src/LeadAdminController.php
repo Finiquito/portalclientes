@@ -240,7 +240,7 @@ class LeadAdminController
             return;
         }
         $this->ui->redirect($this->ui->url('leads/' . $r['id']), !empty($r['duplicado'])
-            ? 'Ese contacto ya estaba (mismo correo o teléfono en los últimos ' . LeadService::DIAS_DUPLICADO . ' días).'
+            ? Idioma::t('Ese contacto ya estaba (mismo correo o teléfono en los últimos %d días).', LeadService::DIAS_DUPLICADO)
             : 'Contacto agregado. El cliente lo ve en su portal.');
     }
 
@@ -527,12 +527,12 @@ class LeadAdminController
                 error_log('[portal] aviso de importación: ' . $e->getMessage());
             }
         }
-        $msg = $n['nuevos'] === 1 ? 'Importado 1 contacto nuevo.' : "Importados {$n['nuevos']} contactos nuevos.";
+        $msg = $n['nuevos'] === 1 ? Idioma::t('Importado 1 contacto nuevo.') : Idioma::t('Importados %d contactos nuevos.', $n['nuevos']);
         if ($n['duplicados'] > 0) {
-            $msg .= $n['duplicados'] === 1 ? ' 1 ya estaba y se saltó.' : " {$n['duplicados']} ya estaban y se saltaron.";
+            $msg .= $n['duplicados'] === 1 ? Idioma::t(' 1 ya estaba y se saltó.') : Idioma::t(' %d ya estaban y se saltaron.', $n['duplicados']);
         }
         if ($n['errores'] > 0) {
-            $msg .= $n['errores'] === 1 ? ' 1 fila sin correo ni teléfono válido no se importó.' : " {$n['errores']} filas sin correo ni teléfono válidos no se importaron.";
+            $msg .= $n['errores'] === 1 ? Idioma::t(' 1 fila sin correo ni teléfono válido no se importó.') : Idioma::t(' %d filas sin correo ni teléfono válidos no se importaron.', $n['errores']);
         }
         $this->ui->redirect($this->ui->url('leads') . '?proyecto=' . rawurlencode($proyectoId), $msg);
     }
@@ -586,7 +586,7 @@ class LeadAdminController
             return;
         }
         MailchimpConsulta::guardarClave($this->pdo(), (string) $p['cliente_id'], $clave);
-        $this->volverFuentes($proyectoId, 'Mailchimp conectado para ' . $p['cliente_nombre'] . '. Ahora elige la audiencia de esta campaña.');
+        $this->volverFuentes($proyectoId, Idioma::t('Mailchimp conectado para %s. Ahora elige la audiencia de esta campaña.', (string) $p['cliente_nombre']));
     }
 
     public function mcQuitar(string $proyectoId): void
@@ -597,7 +597,7 @@ class LeadAdminController
             return;
         }
         MailchimpConsulta::quitarClave($this->pdo(), (string) $p['cliente_id']);
-        $this->volverFuentes($proyectoId, 'Se quitó la clave de Mailchimp de ' . $p['cliente_nombre'] . ' y sus campañas quedaron desconectadas.');
+        $this->volverFuentes($proyectoId, Idioma::t('Se quitó la clave de Mailchimp de %s y sus campañas quedaron desconectadas.', (string) $p['cliente_nombre']));
     }
 
     public function mcAudiencia(string $proyectoId): void
@@ -625,7 +625,7 @@ class LeadAdminController
         $this->pdo()->prepare('UPDATE portal_proyectos SET mc_audiencia = ?, mc_audiencia_nombre = ? WHERE id = ?')->execute([$id ?: null, $nombre, $proyectoId]);
         // Otra audiencia: lo revisado contra la anterior ya no vale.
         $this->pdo()->prepare('UPDATE portal_leads SET mc_estado = NULL, mc_datos = NULL, mc_revisado_en = NULL WHERE proyecto_id = ?')->execute([$proyectoId]);
-        $this->volverFuentes($proyectoId, $id === '' ? 'Campaña desconectada de Mailchimp.' : 'Listo: los contactos de esta campaña se contrastan con «' . $nombre . '».');
+        $this->volverFuentes($proyectoId, $id === '' ? 'Campaña desconectada de Mailchimp.' : Idioma::t('Listo: los contactos de esta campaña se contrastan con «%s».', (string) $nombre));
     }
 
     /** Revisa en Mailchimp los contactos de la campaña (los que no se han revisado hoy). */
@@ -637,9 +637,9 @@ class LeadAdminController
             return;
         }
         $r = $this->service()->revisarProyecto($proyectoId);
-        $msg = $r['revisados'] === 1 ? 'Se revisó 1 contacto en Mailchimp.' : "Se revisaron {$r['revisados']} contactos en Mailchimp.";
+        $msg = $r['revisados'] === 1 ? Idioma::t('Se revisó 1 contacto en Mailchimp.') : Idioma::t('Se revisaron %d contactos en Mailchimp.', $r['revisados']);
         if ($r['pendientes'] > 0) {
-            $msg .= " Quedan {$r['pendientes']}: vuelve a apretar el botón para seguir.";
+            $msg .= Idioma::t(' Quedan %d: vuelve a apretar el botón para seguir.', $r['pendientes']);
         }
         $this->ui->redirect($volver, $r['error'] !== null ? $msg . ' ' . $r['error'] : $msg, $r['error'] !== null && $r['revisados'] === 0 ? 'error' : 'success');
     }
