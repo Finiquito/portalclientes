@@ -74,6 +74,9 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### v0.47.2: Revisión del inglés
+- Se aplicó la revisión completa de las traducciones al inglés (592 frases ajustadas): «batch» para las entregas, «dashboard» para el panel, «content calendar» para la grilla, «caption» para el copy, y comillas curvas “ ” en vez de « ».
+
 ### v0.47.1: Ajustes de la agencia en inglés
 - «Ajustes del portal» (en el panel del equipo: Agencia, Avisos, Clientes, IA, Correos y Tarea programada) ya sale completo en el idioma de la persona: textos, ayudas, nombres de colores, países y modelos de IA, y los textos de ejemplo de los campos. Antes quedaba mezclado con español.
 - Quedan sólo en español el admin de TypeDock y el módulo «Contactos ganados» (leads).

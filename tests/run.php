@@ -3345,7 +3345,7 @@ $ajC->set('contacto', $contacto, 'idioma', 'en');
 // Aviso de lo que hizo el equipo (escrito en español) → buzón del cliente en inglés
 $nC->alCliente($c1, $contacto, P\Idioma::f('Tienes algo pendiente: %s', 'Logo'), P\Idioma::f('Te dejamos una nueva tarea en el portal.'), '/portal/tareas/x', ['proyecto_id' => $p1a]);
 $buzon = $pdo->query("SELECT asunto, detalle FROM portal_avisos_buzon WHERE usuario_id = '{$contacto}' ORDER BY created_at DESC LIMIT 1")->fetch();
-check($buzon && $buzon['asunto'] === 'You have something pending: Logo' && $buzon['detalle'] === 'We left you a new task in the portal.', 'el aviso queda guardado en el idioma de quien lo va a leer' . ($buzon ? '' : ' (sin fila)'));
+check($buzon && $buzon['asunto'] === 'You have something pending: Logo' && $buzon['detalle'] === 'We’ve added a new task for you in the portal.', 'el aviso queda guardado en el idioma de quien lo va a leer' . ($buzon ? '' : ' (sin fila)'));
 $ctx->correos = [];
 (new P\Avisos($ctx, $pdo, $nC))->enviarAgrupadoCliente($filaC);
 check(count($ctx->correos) === 1 && str_contains($ctx->correos[0]['subject'], 'updates in your portal') && str_contains($ctx->correos[0]['body'], 'Hi ') && str_contains($ctx->correos[0]['body'], 'You have something pending: Logo'), 'y el correo agrupado también sale en inglés');

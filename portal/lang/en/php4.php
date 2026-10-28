@@ -13,7 +13,7 @@ return [
     'te compartió' => 'shared with you',
     'subió una versión nueva de' => 'uploaded a new version of',
     'terminó la revisión de' => 'finished reviewing',
-    'compartió novedades de la reunión' => 'shared news from the meeting',
+    'compartió novedades de la reunión' => 'shared meeting updates',
     'hizo una solicitud:' => 'made a request:',
     'atendió la solicitud' => 'handled the request',
     'respondió tu solicitud' => 'replied to your request',
