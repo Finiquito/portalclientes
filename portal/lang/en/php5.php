@@ -178,4 +178,7 @@ return [
     'el proyecto «%s»' => 'the project “%s”',
     'el contacto %s' => 'the contact %s',
     'Subir archivos o planilla' => 'Upload files or spreadsheet',
+    'Abrir tarea' => 'Open task',
+    'Abrir contenido' => 'Open content',
+    'Abrir solicitud' => 'Open request',
 ];

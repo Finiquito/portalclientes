@@ -74,6 +74,9 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### v0.47.4: Mensajes en todos los idiomas
+- En la bandeja de mensajes, el tipo (Tarea, Contenido, Solicitud) en el encabezado y en el filtro, y el botón «Abrir…», salían en español aunque el resto estuviera traducido. Ahora siguen el idioma de la persona.
+
 ### v0.47.3: Français
 - Tercer idioma: **francés** (`portal/lang/fr/`, las mismas 2.588 frases que el inglés). Sale en el selector de idioma de todas partes (ingreso, Ajustes del portal, Mis ajustes del panel, fichas de contacto, cliente y persona del equipo) y también en los correos.
 - Fechas en francés (`lundi 12 oct.`, día primero, reloj de 24 horas, «au» en los rangos) y dictado por voz en `fr-FR`.

@@ -178,4 +178,7 @@ return [
     'el proyecto «%s»' => 'le projet « %s »',
     'el contacto %s' => 'le contact %s',
     'Subir archivos o planilla' => 'Importer des fichiers ou un tableur',
+    'Abrir tarea' => 'Ouvrir la tâche',
+    'Abrir contenido' => 'Ouvrir le contenu',
+    'Abrir solicitud' => 'Ouvrir la demande',
 ];
