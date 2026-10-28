@@ -1,4 +1,14 @@
 {* Formularios de reunión: la hora se escribe en la de la agencia y se muestra su equivalente en la hora del cliente del proyecto. *}
+<script>
+window.PA_I18N = Object.assign(window.PA_I18N || {}, {
+  "Aquí verás a qué hora es para el cliente (": {t('Aquí verás a qué hora es para el cliente (')},
+  "Para el cliente (": {t('Para el cliente (')},
+  ") es la misma hora.": {t(') es la misma hora.')},
+  "Para el cliente: ": {t('Para el cliente: ')},
+  " en ": {t(' en ')}
+});
+window.__t = window.__t || function (s) { var d = window.PA_I18N || {}; return d[s] !== undefined ? d[s] : s; };
+</script>
 <script n:syntax="off">
 (function () {
   var sel = document.querySelector('select[data-proyecto-zona]');
@@ -26,13 +36,13 @@
       var d = form.querySelector('[name="' + k + '_d"]'), h = form.querySelector('[name="' + k + '_t"]');
       if (zonaCli === zonaAg) { p.textContent = ''; return; }
       if (!d || !h || !d.value || !h.value) {
-        p.textContent = 'Aquí verás a qué hora es para el cliente (' + pais + ').';
+        p.textContent = __t('Aquí verás a qué hora es para el cliente (') + pais + ').';
         return;
       }
       var t = aUtc(d.value, h.value, zonaAg);
-      if (offset(zonaAg, t) === offset(zonaCli, t)) { p.textContent = 'Para el cliente (' + pais + ') es la misma hora.'; return; }
-      var txt = new Intl.DateTimeFormat('es', { timeZone: zonaCli, weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(t));
-      p.textContent = 'Para el cliente: ' + txt + ' en ' + pais;
+      if (offset(zonaAg, t) === offset(zonaCli, t)) { p.textContent = __t('Para el cliente (') + pais + __t(') es la misma hora.'); return; }
+      var txt = new Intl.DateTimeFormat(document.documentElement.lang || 'es', { timeZone: zonaCli, weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(t));
+      p.textContent = __t('Para el cliente: ') + txt + __t(' en ') + pais;
     });
   }
   sel.addEventListener('change', actualizar);

@@ -236,6 +236,38 @@
     </div>
 </form>
 
+<script>
+window.PA_I18N = Object.assign(window.PA_I18N || {}, {
+  "Lo ve el cliente": {t('Lo ve el cliente')},
+  "· siempre, le toca a él": {t('· siempre, le toca a él')},
+  "Solo el equipo": {t('Solo el equipo')},
+  "Se puede mostrar si la agendas al guardar (sección 5).": {t('Se puede mostrar si la agendas al guardar (sección 5).')},
+  "Se agenda al guardar; elige si la ve.": {t('Se agenda al guardar; elige si la ve.')},
+  "Lo escrito en la sección 3, con la grabación si la hay.": {t('Lo escrito en la sección 3, con la grabación si la hay.')},
+  "Necesita que la reunión esté visible.": {t('Necesita que la reunión esté visible.')},
+  "Se crea 1 tarea.": {t('Se crea 1 tarea.')},
+  "Se crean %d tareas.": {t('Se crean %d tareas.')},
+  "Se actualiza 1 tarea creada.": {t('Se actualiza 1 tarea creada.')},
+  "Se actualizan %d tareas creadas.": {t('Se actualizan %d tareas creadas.')},
+  "Se descarta 1 sugerencia.": {t('Se descarta 1 sugerencia.')},
+  "Se descartan %d sugerencias.": {t('Se descartan %d sugerencias.')},
+  "1 sugerencia queda pendiente para otro día.": {t('1 sugerencia queda pendiente para otro día.')},
+  "%d sugerencias quedan pendientes para otro día.": {t('%d sugerencias quedan pendientes para otro día.')},
+  "Se agenda la próxima reunión.": {t('Se agenda la próxima reunión.')},
+  "la reunión": {t('la reunión')},
+  "el resumen y los acuerdos": {t('el resumen y los acuerdos')},
+  "1 tarea": {t('1 tarea')},
+  "%d tareas": {t('%d tareas')},
+  "la próxima reunión": {t('la próxima reunión')},
+  "El cliente verá ": {t('El cliente verá ')},
+  "y": {t('y')},
+  "El cliente no verá nada de esta reunión.": {t('El cliente no verá nada de esta reunión.')},
+  "Le llega un correo con lo nuevo que pueda ver.": {t('Le llega un correo con lo nuevo que pueda ver.')},
+  "No se le envía correo.": {t('No se le envía correo.')},
+  "Al guardar": {t('Al guardar')}
+});
+window.__t = window.__t || function (s) { var d = window.PA_I18N || {}; return d[s] !== undefined ? d[s] : s; };
+</script>
 <script n:syntax="off">
     /* Tareas de la reunión y «Qué ve el cliente»: Crear/Descartar se desmarcan con otro clic,
        «Lo ve el cliente» queda fijo si la tarea es del cliente, aviso de cambios sin guardar
@@ -270,7 +302,7 @@
                 if (sw && cli) {
                     if (cli.checked) { if (!sw.disabled) { sw.dataset.antes = sw.checked ? '1' : ''; } sw.checked = true; sw.disabled = true; }
                     else if (sw.disabled) { sw.disabled = false; sw.checked = sw.dataset.antes === '1'; }
-                    txt.innerHTML = cli.checked ? 'Lo ve el cliente <small>· siempre, le toca a él</small>' : (sw.checked ? 'Lo ve el cliente' : 'Solo el equipo');
+                    txt.innerHTML = cli.checked ? __t('Lo ve el cliente') + ' <small>' + __t('· siempre, le toca a él') + '</small>' : (sw.checked ? __t('Lo ve el cliente') : __t('Solo el equipo'));
                 }
                 var d = t.querySelector('input[name^="decision"]:checked');
                 t.dataset.d = d ? d.value : '';
@@ -289,25 +321,25 @@
             var agendar = form.querySelector('[data-agendar]'), proxSw = form.querySelector('[data-pub-pendiente]');
             if (proxSw) {
                 proxSw.disabled = !(agendar && agendar.checked);
-                form.querySelector('[data-pub-nota="prox"]').textContent = proxSw.disabled ? 'Se puede mostrar si la agendas al guardar (sección 5).' : 'Se agenda al guardar; elige si la ve.';
+                form.querySelector('[data-pub-nota="prox"]').textContent = proxSw.disabled ? __t('Se puede mostrar si la agendas al guardar (sección 5).') : __t('Se agenda al guardar; elige si la ve.');
             }
             var reunion = pub('reunion');
-            form.querySelector('[data-pub-nota="resumen"]').textContent = reunion ? 'Lo escrito en la sección 3, con la grabación si la hay.' : 'Necesita que la reunión esté visible.';
+            form.querySelector('[data-pub-nota="resumen"]').textContent = reunion ? __t('Lo escrito en la sección 3, con la grabación si la hay.') : __t('Necesita que la reunión esté visible.');
             form.querySelector('[data-n-visibles]').textContent = '· ' + vis;
             var li = [];
-            if (crear) li.push('Se ' + (crear === 1 ? 'crea 1 tarea' : 'crean ' + crear + ' tareas') + '.');
-            if (cambios) li.push('Se ' + (cambios === 1 ? 'actualiza 1 tarea creada' : 'actualizan ' + cambios + ' tareas creadas') + '.');
-            if (desc) li.push('Se ' + (desc === 1 ? 'descarta 1 sugerencia' : 'descartan ' + desc + ' sugerencias') + '.');
-            if (pend) li.push(plural(pend, 'sugerencia queda pendiente', 'sugerencias quedan pendientes') + ' para otro día.');
-            if (agendar && agendar.checked) li.push('Se agenda la próxima reunión.');
+            if (crear) li.push(crear === 1 ? __t('Se crea 1 tarea.') : __t('Se crean %d tareas.').replace('%d', crear));
+            if (cambios) li.push(cambios === 1 ? __t('Se actualiza 1 tarea creada.') : __t('Se actualizan %d tareas creadas.').replace('%d', cambios));
+            if (desc) li.push(desc === 1 ? __t('Se descarta 1 sugerencia.') : __t('Se descartan %d sugerencias.').replace('%d', desc));
+            if (pend) li.push(pend === 1 ? __t('1 sugerencia queda pendiente para otro día.') : __t('%d sugerencias quedan pendientes para otro día.').replace('%d', pend));
+            if (agendar && agendar.checked) li.push(__t('Se agenda la próxima reunión.'));
             var veCli = [];
-            if (reunion) veCli.push('la reunión');
-            if (reunion && pub('resumen')) veCli.push('el resumen y los acuerdos');
-            if (vis) veCli.push(plural(vis, 'tarea', 'tareas'));
-            if (pub('prox')) veCli.push('la próxima reunión');
-            li.push(veCli.length ? 'El cliente verá ' + veCli.join(', ').replace(/, ([^,]*)$/, ' y $1') + '.' : 'El cliente no verá nada de esta reunión.');
-            li.push(pub('correo') ? 'Le llega un correo con lo nuevo que pueda ver.' : 'No se le envía correo.');
-            caja.innerHTML = '<b>Al guardar</b><ul><li>' + li.join('</li><li>') + '</li></ul>';
+            if (reunion) veCli.push(__t('la reunión'));
+            if (reunion && pub('resumen')) veCli.push(__t('el resumen y los acuerdos'));
+            if (vis) veCli.push(vis === 1 ? __t('1 tarea') : __t('%d tareas').replace('%d', vis));
+            if (pub('prox')) veCli.push(__t('la próxima reunión'));
+            li.push(veCli.length ? __t('El cliente verá ') + veCli.join(', ').replace(/, ([^,]*)$/, ' '+__t('y')+' $1') + '.' : __t('El cliente no verá nada de esta reunión.'));
+            li.push(pub('correo') ? __t('Le llega un correo con lo nuevo que pueda ver.') : __t('No se le envía correo.'));
+            caja.innerHTML = '<b>' + __t('Al guardar') + '</b><ul><li>' + li.join('</li><li>') + '</li></ul>';
         }
         form.addEventListener('input', pintar);
         form.addEventListener('change', pintar);
@@ -350,11 +382,21 @@
     @keyframes pa-ia-barra { 0% { margin-left: -35%; } 100% { margin-left: 100%; } }
     @media (prefers-reduced-motion: reduce) { .pa-ia-spin, .pa-ia-barra span { animation-duration: 3s; } }
 </style>
+<script>
+window.PA_I18N = Object.assign(window.PA_I18N || {}, {
+  "Leyendo la transcripción": {t('Leyendo la transcripción')},
+  "Identificando acuerdos y decisiones": {t('Identificando acuerdos y decisiones')},
+  "Armando las tareas propuestas": {t('Armando las tareas propuestas')},
+  "Revisando fechas y la próxima reunión": {t('Revisando fechas y la próxima reunión')},
+  "Sigue trabajando; las transcripciones largas tardan más": {t('Sigue trabajando; las transcripciones largas tardan más')}
+});
+window.__t = window.__t || function (s) { var d = window.PA_I18N || {}; return d[s] !== undefined ? d[s] : s; };
+</script>
 <script n:syntax="off">
     (function () {
         var form = document.querySelector('form.pa-stack'), caja = document.getElementById('pa-ia-espera');
         if (!form || !caja) return;
-        var pasos = [[0, 'Leyendo la transcripción'], [8, 'Identificando acuerdos y decisiones'], [18, 'Armando las tareas propuestas'], [30, 'Revisando fechas y la próxima reunión'], [45, 'Sigue trabajando; las transcripciones largas tardan más']];
+        var pasos = [[0, __t('Leyendo la transcripción')], [8, __t('Identificando acuerdos y decisiones')], [18, __t('Armando las tareas propuestas')], [30, __t('Revisando fechas y la próxima reunión')], [45, __t('Sigue trabajando; las transcripciones largas tardan más')]];
         form.addEventListener('submit', function (e) {
             var b = e.submitter;
             if (!b || b.value !== 'analizar' || e.defaultPrevented) return;

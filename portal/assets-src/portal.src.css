@@ -152,6 +152,9 @@
   .btn-danger-ghost { background: transparent; color: var(--danger); }
   .btn-danger-ghost:hover { background: color-mix(in oklab, var(--danger) 10%, transparent); }
   .btn-sm { min-height: 2.25rem; padding: 0 .8rem; border-radius: .7rem; font-size: .8125rem; }
+  /* Botones que se reparten una fila: si el texto no cabe (idiomas más largos), baja de línea en vez de salirse. */
+  .btn.flex-1 { min-width: 0; white-space: normal; line-height: 1.2; padding-block: .45rem; }
+  .btn.flex-1 > svg { flex: none; }
 
   /* Chips de estado */
   /* Pines: un punto numerado sobre la imagen o la página que comenta el cliente.

@@ -152,7 +152,7 @@ return [
     'Revisar «%s»' => 'Relire « %s »',
     'Revisiones' => 'Retours',
     'Revisión' => 'Retour',
-    'Salir' => 'Se déconnecter',
+    'Salir' => 'Déconnexion',
     'Salir de la vista previa' => 'Quitter l’aperçu',
     'Saltar al contenido' => 'Aller au contenu',
     'Se dio de baja' => 'Désinscrit',

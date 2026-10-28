@@ -3376,6 +3376,32 @@ check(isset(P\Idioma::DISPONIBLES['fr']), 'el francés se puede elegir');
 $fFr = P\Idioma::con('fr', fn() => [(new P\Fmt(new DateTimeImmutable('2026-10-01 10:00', new DateTimeZone('America/Santiago'))))->fecha('2026-10-12 15:30:00'), (new P\Fmt(new DateTimeImmutable('2026-10-01 10:00', new DateTimeZone('America/Santiago'))))->hora('2026-10-12 15:30:00'), (new P\Fmt(new DateTimeImmutable('2026-10-01 10:00', new DateTimeZone('America/Santiago'))))->fechaLarga('2026-10-12 15:30:00')]);
 check($fFr[0] === '12 oct.' && $fFr[1] === '15:30' && $fFr[2] === 'lundi 12 oct.', 'las fechas en francés van con día primero y reloj de 24 horas (' . implode(' | ', $fFr) . ')');
 
+seccion('Idiomas: el JS de las plantillas no llama a t() suelta');
+// t() es función de Latte: dentro de un <script> hay que escribirla entre llaves ({t('…')}); suelta es un error de JavaScript
+$sueltas = [];
+foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator(dirname(__DIR__) . '/portal/templates')) as $fl) {
+    if ($fl->getExtension() !== 'latte') {
+        continue;
+    }
+    $src = (string) file_get_contents($fl->getPathname());
+    if (preg_match_all('#<script\b[^>]*>(.*?)</script>#s', $src, $bloques) < 1) {
+        continue;
+    }
+    foreach ($bloques[1] as $b) {
+        if (preg_match('/(?<![\w.$\{])t\([\'"]/', $b)) {
+            $sueltas[] = substr($fl->getPathname(), strlen(dirname(__DIR__) . '/portal/templates/'));
+        }
+    }
+}
+$enOff = [];
+foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator(dirname(__DIR__) . '/portal/templates')) as $fl) {
+    if ($fl->getExtension() === 'latte' && preg_match_all('#<script n:syntax="off">(.*?)</script>#s', (string) file_get_contents($fl->getPathname()), $bl) && preg_grep("/\\{t\\('/", $bl[1])) {
+        $enOff[] = basename($fl->getPathname());
+    }
+}
+check($enOff === [], 'los <script n:syntax="off"> no llevan {t(…)} (Latte no los procesa): usan __t() y el diccionario PA_I18N' . ($enOff ? ' (' . implode(', ', $enOff) . ')' : ''));
+check($sueltas === [], 'ninguna plantilla llama a t() suelta dentro de un <script>' . ($sueltas ? ' (' . implode(', ', array_unique($sueltas)) . ')' : ''));
+
 seccion('Idiomas: las plantillas compilan con el Latte del TypeDock real');
 exec(PHP_BINARY . ' ' . escapeshellarg(dirname(__DIR__) . '/dev/compilar-con-nucleo.php') . ' 2>&1', $salidaN, $codN);
 if ($codN === 2) {

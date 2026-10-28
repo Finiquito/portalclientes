@@ -44,7 +44,7 @@
         <label class="form-label mt-3">País del cliente</label>
         <select name="pais" class="form-input" style="max-width:26rem">
             {foreach \TypeDock\Plugin\Portal\HorarioHabil::PAISES as $codigo => $pp}
-                <option value="{$codigo}" {if ($cliente['pais'] ?? 'CL') === $codigo}selected{/if}>{$pp[0]}</option>
+                <option value="{$codigo}" {if ($cliente['pais'] ?? 'CL') === $codigo}selected{/if}>{t($pp[0])}</option>
             {/foreach}
         </select>
         <p class="form-hint mt-1">Define su huso horario: los correos del sistema sólo le llegan de lunes a viernes en horario hábil de su país (por defecto 07:00–19:00). Lo que se genere fuera de ese horario queda en cola y sale en la próxima apertura.</p>

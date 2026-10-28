@@ -45,7 +45,7 @@ class EquipoAdminController
             'usuarios'      => $this->service()->listAll(),
             've'            => $this->service()->resumenAsignaciones(),
             'fmt'           => new Fmt(),
-            'roles'         => EquipoService::ROLES,
+            'roles'         => Idioma::lista(EquipoService::ROLES),
             'flash_success' => $this->ui->flash('success'),
             'flash_error'   => $this->ui->flash('error'),
         ]);
@@ -73,7 +73,7 @@ class EquipoAdminController
         $this->ui->view('equipo/edit.latte', [
             'persona'      => $u,
             'idiomaPersona' => $u !== null ? (new AjustesService($this->pdo()))->get('equipo', (string) $u['id'], 'idioma') : '',
-            'roles'        => EquipoService::ROLES,
+            'roles'        => Idioma::lista(EquipoService::ROLES),
             'arbol'        => $this->arbol(),
             'clientesFull' => array_values(array_map(fn($a) => $a['cliente_id'], array_filter($asig, fn($a) => $a['proyecto_id'] === null))),
             'proyAsig'     => array_values(array_filter(array_map(fn($a) => $a['proyecto_id'], $asig))),

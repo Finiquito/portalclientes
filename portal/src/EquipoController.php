@@ -871,7 +871,7 @@ class EquipoController
             'nActivas'    => $cuenta('activas'),
             'nArchivadas' => $cuenta('archivadas'),
             'nDestacadas' => $cuenta('destacadas'),
-            'filtros'     => ['campo' => 'cliente', 'valor' => $cliF, 'tipo' => $tipoF, 'etiqueta' => 'Cliente', 'todos' => 'Todos los clientes'],
+            'filtros'     => ['campo' => 'cliente', 'valor' => $cliF, 'tipo' => $tipoF, 'etiqueta' => Idioma::t('Cliente'), 'todos' => Idioma::t('Todos los clientes')],
             'opciones'    => MensajeService::opciones($todas, 'cliente_id', $cliF, $tipoF),
             'reacciones'  => $svc->reacciones(array_column($hilo, 'id'), 'equipo', (string) $u['id']),
             'puedeReaccionar' => true,

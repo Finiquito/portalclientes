@@ -33,7 +33,7 @@
         <select name="pais" class="form-input" style="max-width:26rem" data-pais-persona>
             <option value="">No: el mismo de su empresa</option>
             {foreach \TypeDock\Plugin\Portal\HorarioHabil::PAISES as $codigo => $pp}
-                <option value="{$codigo}" {if ($contacto['pais'] ?? '') === $codigo}selected{/if}>{\TypeDock\Plugin\Portal\Fmt::bandera($codigo)} {$pp[0]}</option>
+                <option value="{$codigo}" {if ($contacto['pais'] ?? '') === $codigo}selected{/if}>{\TypeDock\Plugin\Portal\Fmt::bandera($codigo)} {t($pp[0])}</option>
             {/foreach}
         </select>
         <p class="form-hint mt-1">Para una socia en otro país: sus correos le llegan en su horario y ve las reuniones en su hora. El resto del cliente sigue con la hora de la empresa.</p>
@@ -41,7 +41,7 @@
         (() => {
             const f = document.currentScript.closest('form');
             const cli = f.querySelector('[name=cliente_id]'), sel = f.querySelector('[data-pais-persona]');
-            const poner = () => { const o = cli.selectedOptions[0]; sel.options[0].textContent = 'No: el mismo de su empresa' + (o && o.dataset.pais ? ' (' + o.dataset.pais + ')' : ''); };
+            const poner = () => { const o = cli.selectedOptions[0]; sel.options[0].textContent = {t('No: el mismo de su empresa')} + (o && o.dataset.pais ? ' (' + o.dataset.pais + ')' : ''); };
             cli.addEventListener('change', poner); poner();
         })();
         </script>

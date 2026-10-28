@@ -68,7 +68,13 @@
             </div>
         </div>
         {include '_tapas.js.latte'}
-        <script n:syntax="off">
+        <script>
+window.PA_I18N = Object.assign(window.PA_I18N || {}, {
+  "No pudimos leer el video en este navegador. Sube una imagen como portada.": {t('No pudimos leer el video en este navegador. Sube una imagen como portada.')}
+});
+window.__t = window.__t || function (s) { var d = window.PA_I18N || {}; return d[s] !== undefined ? d[s] : s; };
+</script>
+<script n:syntax="off">
         (function () {
           // Portada desde un cuadro del video del reel.
           var box = document.querySelector('[data-cuadro]'), pf = document.querySelector('[data-portada-file]');
@@ -79,21 +85,27 @@
                 if (!r || !r.blob) { return; }
                 if (typeof seg !== 'number') { sl.max = String(Math.max(0.1, Math.floor((r.duracion || 1) * 10) / 10)); }
                 try { var dt = new DataTransfer(); dt.items.add(new File([r.blob], 'portada.jpg', { type: 'image/jpeg' })); pf.files = dt.files; pf.dispatchEvent(new Event('change')); } catch (e) {}
-              }).catch(function () { box.querySelector('[data-cuadro-txt]').textContent = 'No pudimos leer el video en este navegador. Sube una imagen como portada.'; });
+              }).catch(function () { box.querySelector('[data-cuadro-txt]').textContent = __t('No pudimos leer el video en este navegador. Sube una imagen como portada.'); });
             };
             box.querySelector('[data-cuadro-abrir]').addEventListener('click', function () { box.querySelector('[data-cuadro-panel]').hidden = false; this.hidden = true; usar(); });
             sl.addEventListener('input', function () { clearTimeout(t); t = setTimeout(function () { usar(parseFloat(sl.value)); }, 200); });
           }
         })();
         </script>
-        <script n:syntax="off">
+        <script>
+window.PA_I18N = Object.assign(window.PA_I18N || {}, {
+  "Portada nueva": {t('Portada nueva')}
+});
+window.__t = window.__t || function (s) { var d = window.PA_I18N || {}; return d[s] !== undefined ? d[s] : s; };
+</script>
+<script n:syntax="off">
         (function () {
           var f = document.querySelector('[data-portada-file]');
           if (!f) return;
           f.addEventListener('change', function () {
             if (!f.files || !f.files[0]) return;
             var img = document.createElement('img');
-            img.src = URL.createObjectURL(f.files[0]); img.alt = 'Portada nueva'; img.setAttribute('data-portada-thumb', '');
+            img.src = URL.createObjectURL(f.files[0]); img.alt = __t('Portada nueva'); img.setAttribute('data-portada-thumb', '');
             f.closest('label').querySelector('[data-portada-thumb]').replaceWith(img);
             f.closest('label').classList.add('nueva');
           });

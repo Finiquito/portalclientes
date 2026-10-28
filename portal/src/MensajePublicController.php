@@ -66,7 +66,7 @@ class MensajePublicController extends PortalPublicController
             'nActivas'    => $cuenta('activas'),
             'nArchivadas' => $cuenta('archivadas'),
             'nDestacadas' => $cuenta('destacadas'),
-            'filtros'     => ['campo' => 'proyecto', 'valor' => $proyF, 'tipo' => $tipoF, 'etiqueta' => 'Proyecto', 'todos' => 'Todos los proyectos'],
+            'filtros'     => ['campo' => 'proyecto', 'valor' => $proyF, 'tipo' => $tipoF, 'etiqueta' => Idioma::t('Proyecto'), 'todos' => Idioma::t('Todos los proyectos')],
             'opciones'    => MensajeService::opciones($todas, 'proyecto_id', $proyF, $tipoF),
             'reacciones'  => $svc->reacciones(array_column($hilo, 'id'), 'contacto', (string) $c['id']),
             'puedeReaccionar' => !PortalSession::vistaPrevia(),

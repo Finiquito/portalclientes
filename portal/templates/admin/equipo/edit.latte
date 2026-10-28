@@ -105,10 +105,10 @@
     if (lista) lista.hidden = coord;
     document.getElementById('todo-coord').hidden = !coord;
     document.getElementById('hint-coord').textContent = coord
-      ? 'Con Coordinación general no hace falta elegir: ve todo. Si cambias el rol, aquí eliges qué clientes y proyectos ve.'
+      ? {t('Con Coordinación general no hace falta elegir: ve todo. Si cambias el rol, aquí eliges qué clientes y proyectos ve.')}
       : (rol.value === 'cuentas'
-        ? 'Ve completos los clientes de los que es responsable (se elige en la ficha de cada cliente). Aquí puedes sumarle otros clientes o proyectos en que trabaja.'
-        : 'Marca el cliente completo (incluye los proyectos que se creen después) o solo algunos proyectos.');
+        ? {t('Ve completos los clientes de los que es responsable (se elige en la ficha de cada cliente). Aquí puedes sumarle otros clientes o proyectos en que trabaja.')}
+        : {t('Marca el cliente completo (incluye los proyectos que se creen después) o solo algunos proyectos.')});
     document.querySelectorAll('[data-cliente]').forEach(function (c) {
       var full = c.querySelector('[data-full]').checked;
       c.querySelectorAll('[data-proy]').forEach(function (p) { if (full) p.checked = true; p.disabled = full; });

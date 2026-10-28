@@ -30,26 +30,26 @@
   var total = +box.getAttribute('data-total');
   var barra = box.querySelector('[data-barra]'), estado = box.querySelector('[data-estado]'), aviso = box.querySelector('[data-aviso]');
   function siguiente() {
-    if (!pend.length) { estado.textContent = 'Listo. Cargando la vista previa…'; location.reload(); return; }
+    if (!pend.length) { estado.textContent = {t('Listo. Cargando la vista previa…')}; location.reload(); return; }
     var n = pend.shift();
     var fd = new FormData(); fd.append('_csrf_token', box.getAttribute('data-csrf')); fd.append('_csrf', box.getAttribute('data-csrf'));
     // La URL base viene sin barra final (el panel la quita): se agrega aquí.
     fetch(box.getAttribute('data-base').replace(/\/$/, '') + '/' + n, { method: 'POST', body: fd, credentials: 'same-origin' })
       .then(function (r) {
         return r.text().then(function (txt) {
-          try { return JSON.parse(txt); } catch (e) { throw new Error('el servidor respondió ' + r.status + (r.statusText ? ' ' + r.statusText : '')); }
+          try { return JSON.parse(txt); } catch (e) { throw new Error({t('el servidor respondió ')} + r.status + (r.statusText ? ' ' + r.statusText : '')); }
         });
       })
       .then(function (j) {
         if (j.error) throw new Error(j.error);
         barra.value = j.hechas;
-        estado.textContent = j.hechas < total ? 'Tanda ' + (j.hechas + 1) + ' de ' + total + '…' : 'Listo.';
+        estado.textContent = j.hechas < total ? {t('Tanda ')} + (j.hechas + 1) + {t(' de ')} + total + '…' : {t('Listo.')};
         if (j.aviso) { aviso.hidden = false; aviso.textContent = j.aviso; }
         siguiente();
       })
       .catch(function (e) {
         aviso.hidden = false;
-        aviso.textContent = 'Se cortó la conexión con el servidor (' + e.message + '). Recarga la página para seguir donde quedó.';
+        aviso.textContent = {t('Se cortó la conexión con el servidor (')} + e.message + {t('). Recarga la página para seguir donde quedó.')};
       });
   }
   siguiente();

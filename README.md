@@ -74,6 +74,12 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### v0.47.5: Restos en inglés y francés
+- **Arreglo importante:** en la pantalla de subir contenidos del equipo, el paso «Revisa antes de crear» llamaba a `t()` suelta dentro del JavaScript y fallaba (error de JS al soltar imágenes sin número de pieza o un PDF). Ahora usa los textos traducidos y hay una prueba que impide que vuelva a pasar.
+- Los textos que arma el JavaScript de las pantallas de gestión (subir entregas y piezas, resumen «Al guardar» de reuniones, hora del cliente, hitos del cronograma, avisos de importación, etc.) ahora salen en el idioma de la persona. Dentro de los `<script n:syntax="off">` se usa `__t()` con el diccionario `PA_I18N`.
+- Más textos que salían en español: «Todos los proyectos / clientes» en Mensajes, los roles del equipo («Coordinación general…»), los países en las fichas de cliente y contacto.
+- Francés: el botón «Salir» pasa a «Déconnexion» (cabe en la barra lateral). Los botones que se reparten una fila bajan de línea si el texto no cabe, en vez de salirse de la tarjeta.
+
 ### v0.47.4: Mensajes en todos los idiomas
 - En la bandeja de mensajes, el tipo (Tarea, Contenido, Solicitud) en el encabezado y en el filtro, y el botón «Abrir…», salían en español aunque el resto estuviera traducido. Ahora siguen el idioma de la persona.
 
