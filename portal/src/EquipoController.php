@@ -24,7 +24,10 @@ class EquipoController
     /** @var array<string, string> */
     private static array $assets = [];
 
-    public function __construct(protected readonly PluginContext $ctx) {}
+    public function __construct(protected readonly PluginContext $ctx)
+    {
+        Idioma::cookieDelEquipo();
+    }
 
     // ---------------------------------------------------------------------
     // Infraestructura
@@ -91,10 +94,11 @@ class EquipoController
         $u = is_string($id) ? $this->equipo()->find($id) : null;
         if ($u === null || (int) $u['activo'] !== 1) {
             unset($_SESSION[self::SESION]);
-            Idioma::fijar(Idioma::visitante($this->ajustes()->get('global', 'portal', 'idioma')));
+            Idioma::fijar(Idioma::visitante($this->ajustes()->get('global', 'portal', 'idioma'), false));
             return null;
         }
         Idioma::fijar(Idioma::de($this->ajustes(), 'equipo', (string) $u['id'], '', true));
+        Idioma::recordar(Idioma::actual());   // así el próximo ingreso desde este equipo sale en su idioma
         return $u;
     }
 
@@ -132,7 +136,7 @@ class EquipoController
     /** Variables de las páginas sin sesión (entrar, verificar). @return array<string, mixed> */
     protected function contextoPublico(array $extra = []): array
     {
-        Idioma::fijar(Idioma::visitante($this->ajustes()->get('global', 'portal', 'idioma')));
+        Idioma::fijar(Idioma::visitante($this->ajustes()->get('global', 'portal', 'idioma'), false));
         return [
             'marca'      => $this->marca(),
             'favicon'    => (new MarcaService($this->pdo()))->urlIcono(),

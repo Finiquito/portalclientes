@@ -41,3 +41,13 @@ $pdo->prepare('UPDATE portal_leads SET mc_estado = ?, mc_datos = ?, mc_revisado_
 $pdo->prepare('UPDATE portal_leads SET mc_estado = ?, mc_datos = ?, mc_revisado_en = ? WHERE id = ?')
     ->execute(['error', json_encode(['error' => 'La clave de Mailchimp no es válida o fue revocada.'], JSON_UNESCAPED_UNICODE), date('Y-m-d H:i:s'), $ids[1]]);
 echo "Contactos ganados de ejemplo en el proyecto «{$proy['nombre']}»: ", implode(', ', array_filter($ids)), "\n";
+
+// Dos contactos llegan a «Contactado» y otro pasa a «Ganado»: sirve para ver el gráfico con números en el mismo punto.
+$ll = new P\LeadLinea($pdo);
+foreach ([[0, 'contactado', '-1 day'], [1, 'contactado', '-1 day'], [2, 'contactado', '-1 day']] as [$i, $est, $cuando]) {
+    $lead = $ls->find((string) $ids[$i]);
+    if ($lead) {
+        $ll->cambiarEstado($lead, $est, date('Y-m-d H:i:s', strtotime($cuando)), 'Camila Rojas', 'agencia');
+    }
+}
+echo "Estados de ejemplo listos.\n";

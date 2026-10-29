@@ -3390,6 +3390,20 @@ check(P\Idioma::con('fr', fn() => P\Idioma::t('%d correos · abrió %d', 2, 1)) 
 check(P\Idioma::con('en', fn() => P\Idioma::t('Fila %s: el correo «%s» no es válido.', '3', 'x@')) === 'Row 3: the email “x@” is not valid.', 'el error de fila de la importación en inglés');
 check(P\Idioma::con('fr', fn() => P\Idioma::t('Mailchimp conectado para %s. Ahora elige la audiencia de esta campaña.', 'Panadería Ruiz')) === 'Mailchimp connecté pour Panadería Ruiz. Choisissez maintenant l’audience de cette campagne.', 'el aviso de conexión con Mailchimp en francés');
 
+seccion('Idiomas: el ingreso del equipo no se deja llevar por el navegador');
+$_SERVER['HTTP_ACCEPT_LANGUAGE'] = 'en-US,en;q=0.9';
+unset($_COOKIE[P\Idioma::COOKIE], $_COOKIE[P\Idioma::COOKIE . '_equipo']);
+check(P\Idioma::delVisitante('es', false) === 'es', 'sin cookie, el ingreso del equipo usa el idioma de la agencia aunque el navegador esté en inglés');
+check(P\Idioma::delVisitante('es') === 'en', 'el ingreso de los clientes sí sigue al navegador');
+$_COOKIE[P\Idioma::COOKIE] = 'en';
+P\Idioma::cookieDelEquipo();
+check(P\Idioma::delVisitante('es', false) === 'es', 'lo que se eligió como cliente en el mismo navegador no cambia el idioma del equipo');
+$_COOKIE[P\Idioma::COOKIE . '_equipo'] = 'fr';
+check(P\Idioma::delVisitante('es', false) === 'fr', 'el equipo recuerda su propia elección');
+unset($_COOKIE[P\Idioma::COOKIE], $_COOKIE[P\Idioma::COOKIE . '_equipo'], $_SERVER['HTTP_ACCEPT_LANGUAGE']);
+P\Idioma::reiniciar();
+P\Idioma::registrar('en', []);
+
 seccion('Idiomas: el JS de las plantillas no llama a t() suelta');
 // t() es función de Latte: dentro de un <script> hay que escribirla entre llaves ({t('…')}); suelta es un error de JavaScript
 $sueltas = [];

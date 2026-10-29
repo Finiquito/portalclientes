@@ -23,6 +23,14 @@ final class Idioma
 
     public const COOKIE = 'portal_idioma';
 
+    /** Cookie en uso: el panel del equipo tiene la suya, para que lo que se vea como cliente en el mismo navegador no le cambie el idioma. */
+    private static string $nombreCookie = self::COOKIE;
+
+    public static function cookieDelEquipo(): void
+    {
+        self::$nombreCookie = self::COOKIE . '_equipo';
+    }
+
     private static string $actual = self::DEFECTO;
 
     /** @var array<string, array<string, string>> */
@@ -67,7 +75,7 @@ final class Idioma
     {
         $v = $aj->get($ownerTipo, $ownerId, 'idioma');
         if (!self::valido($v) && $conCookie) {
-            $v = (string) ($_COOKIE[self::COOKIE] ?? '');   // lo que eligió en la pantalla de ingreso (sólo para quien está en esta visita)
+            $v = (string) ($_COOKIE[self::$nombreCookie] ?? '');   // lo que eligió en la pantalla de ingreso (sólo para quien está en esta visita)
         }
         if (!self::valido($v) && $clienteId !== '') {
             $v = $aj->get('cliente', $clienteId, 'idioma');
@@ -78,14 +86,18 @@ final class Idioma
         return self::valido($v) ? $v : self::DEFECTO;
     }
 
-    /** Para las pantallas sin sesión (ingreso): cookie, luego el idioma del navegador, luego el de la agencia. */
-    public static function delVisitante(string $deLaAgencia = self::DEFECTO): string
+    /**
+     * Para las pantallas sin sesión (ingreso): la cookie (lo último que usó o eligió esa persona en este equipo), luego
+     * —salvo que $navegador sea false— el idioma del navegador, y al final el de la agencia.
+     * El ingreso del equipo no mira el navegador: sus personas usan el idioma de la agencia hasta que eligen otro.
+     */
+    public static function delVisitante(string $deLaAgencia = self::DEFECTO, bool $navegador = true): string
     {
-        $c = (string) ($_COOKIE[self::COOKIE] ?? '');
+        $c = (string) ($_COOKIE[self::$nombreCookie] ?? '');
         if (self::valido($c)) {
             return $c;
         }
-        $h = strtolower((string) ($_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? ''));
+        $h = $navegador ? strtolower((string) ($_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? '')) : '';
         foreach (explode(',', $h) as $parte) {
             $cod = substr(trim($parte), 0, 2);
             if (self::valido($cod)) {
@@ -96,21 +108,21 @@ final class Idioma
     }
 
     /** Idioma de quien aún no ingresó; si viene ?idioma=en lo recuerda para las próximas pantallas. */
-    public static function visitante(string $deLaAgencia = self::DEFECTO): string
+    public static function visitante(string $deLaAgencia = self::DEFECTO, bool $navegador = true): string
     {
         $elegido = (string) ($_GET['idioma'] ?? '');
         if (self::valido($elegido)) {
             self::recordar($elegido);
-            $_COOKIE[self::COOKIE] = $elegido;
+            $_COOKIE[self::$nombreCookie] = $elegido;
         }
-        return self::delVisitante($deLaAgencia);
+        return self::delVisitante($deLaAgencia, $navegador);
     }
 
     /** Deja la cookie con la elección (sirve para el ingreso y los correos de acceso). */
     public static function recordar(string $codigo): void
     {
         if (self::valido($codigo) && !headers_sent()) {
-            setcookie(self::COOKIE, $codigo, [
+            setcookie(self::$nombreCookie, $codigo, [
                 'expires'  => time() + 86400 * 365,
                 'path'     => '/',
                 'secure'   => !empty($_SERVER['HTTPS']),
@@ -282,6 +294,7 @@ final class Idioma
         self::$faltas = [];
         self::$actual = self::DEFECTO;
         self::$registrarFaltas = false;
+        self::$nombreCookie = self::COOKIE;
     }
 
     /** @return list<string> */

@@ -140,13 +140,29 @@
         id: 'finales', afterDatasetsDraw: function (g) {
           var cx = g.ctx;
           if (porDia) { return; }
+          // Los números del final de cada línea van en una pastilla del color de su serie. Si dos caen casi en el mismo
+          // lugar (mismo valor), se apilan en vez de taparse: la de más abajo se corre hacia abajo.
+          var alto = 18, sep = alto + 2, items = [];
           g.data.datasets.forEach(function (d, i) {
             var m = g.getDatasetMeta(i).data[n - 1];
             if (!m) { return; }
-            cx.save(); cx.fillStyle = d.borderColor; cx.beginPath(); cx.arc(m.x, m.y, 4.5, 0, 7); cx.fill();
-            cx.fillStyle = c.tip; cx.font = '800 12px ' + fam; cx.textAlign = 'right';
-            cx.fillText(String(d.data[n - 1].y), m.x - 9, m.y - 8); cx.restore();
+            items.push({ m: m, col: d.borderColor, txt: String(d.data[n - 1].y), y: m.y - 14 });
           });
+          items.sort(function (a, b) { return a.y - b.y; });
+          for (var k = 1; k < items.length; k++) { if (items[k].y - items[k - 1].y < sep) { items[k].y = items[k - 1].y + sep; } }
+          var limite = g.chartArea.bottom - alto / 2;
+          var sobra = items.length ? items[items.length - 1].y - limite : 0;
+          if (sobra > 0) { items.forEach(function (it) { it.y -= sobra; }); }
+          cx.save(); cx.font = '800 12px ' + fam; cx.textAlign = 'center'; cx.textBaseline = 'middle';
+          items.forEach(function (it) {
+            cx.fillStyle = it.col; cx.beginPath(); cx.arc(it.m.x, it.m.y, 4.5, 0, 7); cx.fill();
+            var w = Math.max(alto, cx.measureText(it.txt).width + 12), x = it.m.x - 10 - w;
+            cx.fillStyle = it.col; cx.beginPath();
+            if (cx.roundRect) { cx.roundRect(x, it.y - alto / 2, w, alto, alto / 2); } else { cx.rect(x, it.y - alto / 2, w, alto); }
+            cx.fill();
+            cx.fillStyle = c.marca; cx.fillText(it.txt, x + w / 2, it.y + 0.5);
+          });
+          cx.restore();
         }
       }]
     });

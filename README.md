@@ -74,6 +74,10 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### v0.47.8: Ingreso del equipo en el idioma de la agencia y números del gráfico
+- **Ingreso del equipo:** ya no se deja llevar por el idioma del navegador. Sin una elección previa, sale en el idioma de la agencia («Idioma por defecto» en Ajustes). Además el equipo tiene su propia cookie de idioma: lo que se vea como cliente en el mismo navegador (por ejemplo probando el portal en inglés) ya no le cambia el idioma al panel, y cada ingreso recuerda el idioma con que la persona usó el portal la última vez.
+- **Gráfico de contactos ganados:** los números del final de cada línea van en una pastilla del color de su serie y, si dos coinciden (mismo valor), se apilan en vez de taparse.
+
 ### v0.47.7: Revisión de las 81 frases nuevas
 - Se aplicó la revisión de las frases armadas y los mensajes sueltos (9 ajustes en francés e inglés: «attribué», «mettre en forme», «calendrier éditorial», «rubrique « Demandes »», etc.).
 

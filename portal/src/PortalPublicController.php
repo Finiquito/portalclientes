@@ -236,6 +236,9 @@ class PortalPublicController
         Idioma::fijar($c !== null
             ? Idioma::de($this->ajustes(), 'contacto', (string) $c['id'], (string) $c['cliente_id'], true)
             : Idioma::visitante($this->ajustes()->get('global', 'portal', 'idioma')));
+        if ($c !== null) {
+            Idioma::recordar(Idioma::actual());   // el próximo ingreso desde este equipo sale en su idioma
+        }
         return $c;
     }
 
