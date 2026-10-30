@@ -52,9 +52,11 @@ final class OnboardingService
             'agencia' => trim($a->get('global', 'portal', 'nombre_equipo')),
             'color' => AjustesService::colorValido($a->get('global', 'portal', 'color_agencia'), self::COLOR_DEFECTO),
             'cliente' => '', 'contacto' => '', 'correo' => '', 'idiomaCliente' => '', 'proyecto' => '', 'plantilla' => '',
-            'equipo' => [], 'invitar' => true, 'hechos' => [],
+            'equipo' => [], 'invitar' => true, 'hechos' => [], 'idiomaElegido' => false,
         ];
         $e = array_merge($base, array_intersect_key($g, $base));
+        // El idioma se pregunta primero: no se vuelve a preguntar si ya se eligió, si la agencia ya trae uno o si el asistente va avanzado (la agencia sí trae nombre desde `prisma crear`, por eso no cuenta).
+        $e['idiomaElegido'] = !empty($e['idiomaElegido']) || Idioma::valido($a->get('global', 'portal', 'idioma')) || (int) $e['max'] > 1;
         $e['paso'] = max(1, min(5, (int) $e['paso']));
         $e['max'] = max($e['paso'], min(5, (int) $e['max']));
         if ($e['plantilla'] === '') {
@@ -92,6 +94,16 @@ final class OnboardingService
         }
         if (array_key_exists('correo', $d)) {
             $e['correo'] = strtolower($txt($d['correo'], 190));
+        }
+        if (isset($d['idioma']) && Idioma::valido((string) $d['idioma'])) {
+            // El idioma elegido al empezar es el de la agencia (lo que ven quienes no eligieron otro) y el de quien usa el asistente.
+            $a0 = $this->ajustes();
+            $a0->set('global', 'portal', 'idioma', (string) $d['idioma']);
+            if (!empty($usuario['id'])) {
+                $a0->set('equipo', (string) $usuario['id'], 'idioma', (string) $d['idioma']);
+            }
+            $e['idiomaElegido'] = true;
+            Idioma::recordar((string) $d['idioma']);
         }
         if (array_key_exists('idiomaCliente', $d)) {
             // Vacío = el del cliente hereda el de la agencia; si no, es el que se elige para su portal y sus correos.

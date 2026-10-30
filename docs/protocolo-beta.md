@@ -341,12 +341,13 @@ Ya existe (`prisma/`, ver `prisma/README.md`): `crear`, `secreto`, `version agre
 
 Construido y probado: el asistente de bienvenida en `/equipo/bienvenida` (5 pantallas, guardado en cada una), el primer coordinador automático, la invitación al cliente programada a 6 horas (con «Enviar ahora» y «Cancelar envío» en la ficha del cliente), `prisma crear` con dueña y admin de respaldo separados, `prisma acceso` (código de emergencia), `prisma cola` (cron de toda la flota) y la regla de contraste de colores. Decisiones tomadas por el diseño: el paso 4 se llama «¿Quieres agregar a tu equipo?»; el interruptor de invitar parte encendido y sale en 6 horas; las plantillas son las 3 que el plugin ya trae (Sitio web, Branding, Campaña digital) y sólo se ofrecen en el asistente, sin sembrar nada extra.
 
-### Estado (beta 0.12): con idiomas
+### Estado (beta 0.12 y 0.13): con idiomas
 
 La beta 0.12 une el asistente con los idiomas del plugin personal (v0.47: español, inglés y francés). Lo que cambia para el onboarding:
 - La agencia puede ser siempre español: quien usa el asistente y el panel ven el idioma de la agencia (o el suyo, si lo eligió).
 - **El primer cliente puede estar en otro idioma.** El paso 2 pregunta «Idioma de su portal y de sus correos» (por defecto, el de la agencia). Se guarda en el cliente antes de programar su invitación, así que esa invitación, los avisos y el portal de sus contactos salen en ese idioma. Cada contacto puede tener además el suyo (resuelve: persona → cliente → agencia).
 - El asistente completo está traducido; sus textos de JavaScript van por `__t()` y el diccionario `PA_I18N` (los genera `dev/maquetas/armar-latte.py`).
+- **Desde la beta 0.13 lo primero que ve la persona es el idioma** (pantalla 0 del asistente: español, inglés, francés o italiano). Lo que elige queda como idioma de la agencia y de ella.
 - Sigue pendiente: que `prisma crear` pueda fijar el idioma por defecto de una agencia (`--idioma`), y traducir las etapas y tareas de las plantillas de proyecto al crearlas.
 
 ## 13. Alta de una agencia, de punta a punta (estado actual)

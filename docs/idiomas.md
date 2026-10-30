@@ -1,6 +1,6 @@
-# Idiomas (v0.47)
+# Idiomas (v0.47; francés en 0.47.3 e italiano en beta 0.13)
 
-Español (por defecto) e inglés. El idioma es **de cada persona**: contactos del cliente y personas del equipo.
+Español (por defecto), inglés, francés e italiano. El idioma es **de cada persona**: contactos del cliente y personas del equipo.
 
 ## Qué idioma se usa
 

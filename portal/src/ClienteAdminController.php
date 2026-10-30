@@ -70,7 +70,7 @@ class ClienteAdminController
             return;
         }
         if ($contactoEmail !== '' && (new ContactoService($this->pdo()))->findByEmail($contactoEmail) !== null) {
-            $this->ui->redirect($this->ui->url('clientes/nuevo'), 'Ya existe un contacto con el correo ' . $contactoEmail . '. Usa otro o agrégalo después desde el cliente.', 'error');
+            $this->ui->redirect($this->ui->url('clientes/nuevo'), Idioma::t('Ya existe un contacto con el correo %s. Usa otro o agrégalo después desde el cliente.', $contactoEmail), 'error');
             return;
         }
         // Coordinación de cuentas: el cliente que crea queda a su cargo.

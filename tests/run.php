@@ -3444,6 +3444,30 @@ putenv('PORTAL_PRIMER_COORDINADOR');
 putenv('PORTAL_AGENCIA_NOMBRE');
 putenv('PORTAL_ONBOARDING');
 
+seccion('Beta: lo primero que ve la persona en el asistente es el idioma');
+$pdoL = baseLimpia();
+$ctxL = portal_dev_contexto($pdoL);
+P\Schema::asegurar($pdoL);
+putenv('PORTAL_PRIMER_COORDINADOR=camila.soto@estudiopampa.cl');
+putenv('PORTAL_AGENCIA_NOMBRE=Estudio Pampa');
+putenv('PORTAL_ONBOARDING=1');
+P\Arranque::asegurar($pdoL);
+$ajL = new P\AjustesService($pdoL);
+$duenaL = (new P\EquipoService($pdoL))->findByEmail('camila.soto@estudiopampa.cl');
+$svcL = new P\OnboardingService($pdoL);
+check($svcL->estado($duenaL)['idiomaElegido'] === false, 'en una agencia nueva (aunque traiga nombre) el asistente empieza preguntando el idioma');
+$svcL->guardar(['idioma' => 'xx'], $duenaL);
+check($svcL->estado($duenaL)['idiomaElegido'] === false && $ajL->get('global', 'portal', 'idioma') === '', 'un idioma que no existe no se guarda');
+$eL = $svcL->guardar(['idioma' => 'it', 'paso' => 1], $duenaL);
+check($eL['idiomaElegido'] === true && $ajL->get('global', 'portal', 'idioma') === 'it' && $ajL->get('equipo', (string) $duenaL['id'], 'idioma') === 'it', 'al elegirlo queda como idioma de la agencia y de la persona');
+check($svcL->estado($duenaL)['idiomaElegido'] === true, 'y no se vuelve a preguntar');
+$ajL->borrar('global', 'portal', 'idioma');
+$svcL2 = new P\OnboardingService($pdoL);
+check($svcL2->guardar(['paso' => 3], $duenaL)['max'] === 3 && $svcL2->estado($duenaL)['idiomaElegido'] === true, 'un asistente que ya va avanzado tampoco lo pregunta');
+putenv('PORTAL_PRIMER_COORDINADOR');
+putenv('PORTAL_AGENCIA_NOMBRE');
+putenv('PORTAL_ONBOARDING');
+
 seccion('Beta: los 12 colores del asistente se leen bien (contraste AA) en claro y oscuro');
 $paleta = array_column(P\EquipoOnboarding::COLORES, 0);
 check(count($paleta) === 12 && count(array_unique($paleta)) === 12 && count(array_filter($paleta, fn($c) => preg_match('/^#[0-9a-f]{6}$/', $c) === 1)) === 12, 'son 12 colores distintos, en #rrggbb');
@@ -3720,6 +3744,18 @@ foreach ($tFr as $k => $v) {
 }
 check($malPh === 0, 'las frases en francés conservan sus %s y %d');
 check(isset(P\Idioma::DISPONIBLES['fr']), 'el francés se puede elegir');
+$tIt = P\Idioma::tabla('it');
+check(count($tIt) === count($tEn) && array_diff_key($tEn, $tIt) === [], 'el italiano cubre las mismas frases que el inglés (' . count($tIt) . ')');
+$malPhIt = 0;
+foreach ($tIt as $k => $v) {
+    preg_match_all('/%[sd]/', $k, $b1);
+    preg_match_all('/%[sd]/', $v, $b2);
+    $malPhIt += $b1[0] === $b2[0] ? 0 : 1;
+}
+check($malPhIt === 0, 'las frases en italiano conservan sus %s y %d');
+check(isset(P\Idioma::DISPONIBLES['it']), 'el italiano se puede elegir');
+$fIt = P\Idioma::con('it', fn() => [(new P\Fmt(new DateTimeImmutable('2026-10-01 10:00', new DateTimeZone('America/Santiago'))))->fecha('2026-10-12 15:30:00'), (new P\Fmt(new DateTimeImmutable('2026-10-01 10:00', new DateTimeZone('America/Santiago'))))->fechaLarga('2026-10-12 15:30:00')]);
+check($fIt[0] === '12 ott' && $fIt[1] === 'lunedì 12 ott', 'las fechas en italiano (' . implode(' | ', $fIt) . ')');
 $fFr = P\Idioma::con('fr', fn() => [(new P\Fmt(new DateTimeImmutable('2026-10-01 10:00', new DateTimeZone('America/Santiago'))))->fecha('2026-10-12 15:30:00'), (new P\Fmt(new DateTimeImmutable('2026-10-01 10:00', new DateTimeZone('America/Santiago'))))->hora('2026-10-12 15:30:00'), (new P\Fmt(new DateTimeImmutable('2026-10-01 10:00', new DateTimeZone('America/Santiago'))))->fechaLarga('2026-10-12 15:30:00')]);
 check($fFr[0] === '12 oct.' && $fFr[1] === '15:30' && $fFr[2] === 'lundi 12 oct.', 'las fechas en francés van con día primero y reloj de 24 horas (' . implode(' | ', $fFr) . ')');
 

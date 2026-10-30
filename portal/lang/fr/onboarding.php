@@ -91,4 +91,12 @@ return [
     'Continuar la configuración' => 'Poursuivre la configuration',
     'Branding' => 'Branding',
     'Campaña digital' => 'Campagne digitale',
+    'Cancelar envío' => 'Annuler l’envoi',
+    'La invitación a <strong>%s</strong> sale automáticamente %s. Puedes adelantarla o cancelarla.' => 'L’invitation à <strong>%s</strong> part automatiquement %s. Vous pouvez l’envoyer plus tôt ou l’annuler.',
+    'hoy a las %s' => 'aujourd’hui à %s',
+    'mañana a las %s' => 'demain à %s',
+    'el %s a las %s' => 'le %s à %s',
+    'Ya existe un contacto con el correo %s. Usa otro o agrégalo después desde el cliente.' => 'Un contact avec l’e-mail %s existe déjà. Utilisez-en un autre ou ajoutez-le plus tard depuis le client.',
+    'Cancelamos el envío programado. Invita a %s cuando quieras.' => 'Nous avons annulé l’envoi programmé. Invitez %s quand vous voulez.',
+    'Elige tu idioma' => 'Choisissez votre langue',
 ];

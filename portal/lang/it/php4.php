@@ -1,0 +1,26 @@
+<?php
+// Italiano · php4
+return [
+    'comentó en' => 'ha commentato su',
+    'subió un archivo en' => 'ha caricato un file in',
+    'entregó' => 'ha consegnato',
+    'completó' => 'ha completato',
+    'aprobó' => 'ha approvato',
+    'pidió cambios en' => 'ha chiesto modifiche su',
+    'asignó al cliente' => 'ha assegnato al cliente',
+    'te pidió' => 'ti ha chiesto',
+    'publicó para el cliente' => 'ha pubblicato per il cliente',
+    'te compartió' => 'ha condiviso con te',
+    'subió una versión nueva de' => 'ha caricato una nuova versione di',
+    'terminó la revisión de' => 'ha terminato di rivedere',
+    'compartió novedades de la reunión' => 'ha condiviso novità dalla riunione',
+    'hizo una solicitud:' => 'ha fatto una richiesta:',
+    'atendió la solicitud' => 'ha gestito la richiesta',
+    'respondió tu solicitud' => 'ha risposto alla tua richiesta',
+    'envió la cotización' => 'ha inviato il preventivo',
+    'te envió la cotización de' => 'ti ha inviato il preventivo di',
+    'respondió la cotización de' => 'ha risposto al preventivo di',
+    'cambió el estado de' => 'ha cambiato lo stato di',
+    'actualizó' => 'ha aggiornato',
+    'Urgente · ' => 'Urgente · ',
+];

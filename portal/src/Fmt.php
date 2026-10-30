@@ -18,6 +18,8 @@ final class Fmt
     private const DIAS_EN  = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     private const MESES_FR = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
     private const DIAS_FR  = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+    private const MESES_IT = ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic'];
+    private const DIAS_IT  = ['domenica', 'lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì', 'sabato'];
 
     /** ¿Las fechas van en inglés? (mes primero: «Oct 12»). Los demás idiomas usan el orden del español. */
     private static function en(): bool
@@ -30,15 +32,20 @@ final class Fmt
         return Idioma::actual() === 'fr';
     }
 
+    private static function it(): bool
+    {
+        return Idioma::actual() === 'it';
+    }
+
     /** Nombre completo del día de la semana en el idioma activo. */
     private static function nombreDia(\DateTimeImmutable $d): string
     {
-        return (self::en() ? self::DIAS_EN : (self::fr() ? self::DIAS_FR : self::DIAS))[(int) $d->format('w')];
+        return (self::en() ? self::DIAS_EN : (self::fr() ? self::DIAS_FR : (self::it() ? self::DIAS_IT : self::DIAS)))[(int) $d->format('w')];
     }
 
     private static function mes(\DateTimeImmutable $d): string
     {
-        return (self::en() ? self::MESES_EN : (self::fr() ? self::MESES_FR : self::MESES))[(int) $d->format('n') - 1];
+        return (self::en() ? self::MESES_EN : (self::fr() ? self::MESES_FR : (self::it() ? self::MESES_IT : self::MESES)))[(int) $d->format('n') - 1];
     }
 
     private static function dia3(\DateTimeImmutable $d): string

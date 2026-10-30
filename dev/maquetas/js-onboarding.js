@@ -47,6 +47,28 @@
     selI.innerHTML = '<option value="">' + __t('Igual que mi agencia') + ' (' + nombreIdioma(D.idiomaAgencia) + ')</option>' + IDIOMAS.map(function (i) { return '<option value="' + i[0] + '">' + i[1] + '</option>'; }).join('');
   }
 
+  // --- Pantalla 0: el idioma es lo primero que se ve. Al elegir, se guarda (agencia y persona) y la página se recarga en ese idioma.
+  var SUBTITULOS = { es: 'Continuar en español', en: 'Continue in English', fr: 'Continuer en français', it: 'Continua in italiano' };
+  var cajaI = $('#idiomas');
+  if (cajaI) {
+    IDIOMAS.forEach(function (i) {
+      var d = document.createElement('div'); d.className = 'plantilla';
+      d.innerHTML = '<input type="radio" name="idioma"><label><b></b><span class="etapas"></span><span class="radio"></span></label>';
+      var inp = d.querySelector('input'), lab = d.querySelector('label');
+      inp.id = 'idioma-' + i[0]; inp.value = i[0]; lab.setAttribute('for', inp.id);
+      lab.querySelector('b').textContent = i[1]; lab.querySelector('.etapas').textContent = SUBTITULOS[i[0]] || '';
+      cajaI.appendChild(d);
+    });
+    cajaI.addEventListener('click', function (e) {
+      if (e.target.tagName !== 'INPUT') return;   // el clic en la tarjeta llega también como clic en su botón
+      var fd = new FormData(); fd.append('_csrf', CSRF); fd.append('datos', JSON.stringify({ idioma: e.target.value, paso: 1 }));
+      fetch('/equipo/bienvenida/guardar', { method: 'POST', body: fd, credentials: 'same-origin' })
+        .then(function (r) { return r.json(); })
+        .then(function (j) { if (j && j.ok) { location.reload(); } else { aviso((j && j.error) || __t('No se pudo guardar. Revisa tu conexión.')); } })
+        .catch(function () { aviso(__t('No hay conexión. Inténtalo de nuevo.')); });
+    });
+  }
+
   // --- pintar estado
   document.querySelectorAll('[data-k]').forEach(function (el) { el.value = estado[el.dataset.k] || ''; });
   function pintarColor() {
@@ -166,9 +188,10 @@
       b.setAttribute('aria-label', NOMBRES[i] + (k < n ? __t(', completado') : ''));
     });
     $('#barra').style.width = (n / 5 * 100) + '%';
-    $('#atras').hidden = n === 1; $('#omitir').hidden = n !== 4;
+    $('#atras').hidden = n <= 1; $('#omitir').hidden = n !== 4;
+    ['#pasos', '#sig', '#salir'].forEach(function (q) { $(q).style.display = n === 0 ? 'none' : ''; });
     $('#sigTxt').textContent = n === 5 ? __t('Ir a mi panel') : __t('Continuar');
-    $('#centro').textContent = n === 5 ? '' : __t('Paso %d de 5 · se guarda solo').replace('%d', n);
+    $('#centro').textContent = (n === 5 || n === 0) ? '' : __t('Paso %d de 5 · se guarda solo').replace('%d', n);
     if (n === 5) resumen(); if (n === 4) pintarTu();
     if (!primeraVez) { enviar(); var f = s.querySelector('input:not([type=radio]):not([type=checkbox])'); if (f && window.innerWidth > 720) setTimeout(function () { f.focus({ preventScroll: true }); }, 60); }
     primeraVez = false; window.scrollTo(0, 0);
@@ -185,7 +208,7 @@
       })
       .catch(function () { ocupado = false; b.disabled = false; $('#sigTxt').textContent = __t('Ir a mi panel'); aviso(__t('No hay conexión. Inténtalo de nuevo.')); });
   }
-  function siguiente() { var n = estado.paso; if (n === 5) { finalizar(); return; } if (!validar(n)) return; ir(n + 1); }
+  function siguiente() { var n = estado.paso; if (n === 0) return; if (n === 5) { finalizar(); return; } if (!validar(n)) return; ir(n + 1); }
   $('#sig').onclick = siguiente;
   $('#atras').onclick = function () { if (estado.paso > 1) ir(estado.paso - 1, true); };
   $('#omitir').onclick = function () { ir(5); };
@@ -197,5 +220,5 @@
   };
 
   pintarColor(); pintarPlantilla(); pintarVista(); pintarEquipo(); pintarTu(); pintarInvitar();
-  ir(estado.paso);
+  ir(D.estado.idiomaElegido ? estado.paso : 0);
 })();

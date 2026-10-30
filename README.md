@@ -74,6 +74,11 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### beta 0.13 (0.13.0-beta): italiano y el idioma primero
+- **Italiano** como cuarto idioma (`portal/lang/it/`, las mismas ~3.060 frases que el inglés): portal del cliente, panel del equipo, gestión, contactos ganados, correos, JavaScript y fechas (`lunedì 12 ott`). Se elige donde se eligen los demás idiomas.
+- **Lo primero que ve la persona en el asistente de bienvenida es el idioma** (pantalla 0: Español · English · Français · Italiano). Al elegirlo se guarda como idioma de la agencia y de esa persona, y el asistente sigue en él. No se vuelve a preguntar si ya se eligió, si la agencia ya tiene un idioma por defecto o si el asistente va avanzado.
+- Textos de la beta 0.11 que faltaban en las tablas (el aviso de la invitación programada, «Cancelar envío», los avisos de contacto) ya están en los cuatro idiomas.
+
 ### beta 0.12 (0.12.0-beta): la beta con idiomas (español, inglés y francés)
 - Une la beta 0.11 (asistente de bienvenida, primer coordinador automático, invitación programada) con el plugin personal 0.47.8: portal del cliente y panel del equipo en español, inglés y francés, correos en el idioma de quien los recibe, contactos ganados y Mailchimp traducidos. Detalle de cada parte en las entradas «v0.47.x» de abajo y en `docs/idiomas.md`.
 - **Cada cliente tiene su idioma:** aunque la agencia use siempre español, el primer cliente puede estar en otro. El paso 2 del asistente («Tu primer cliente») pregunta «Idioma de su portal y de sus correos» (por defecto, el de la agencia); ese idioma se guarda en el cliente y manda sobre su invitación (también la programada a 6 horas), sus avisos y el portal de sus contactos. La agencia y quien usa el asistente siguen en el suyo.

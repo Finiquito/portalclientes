@@ -91,7 +91,7 @@ class ContactoAdminController
             return;
         }
         (new Notifier($this->ctx, $this->ctx->db()->pdo()))->cancelarInvitacionProgramada($id);
-        $this->ui->redirect($volver, 'Cancelamos el envío programado. Invita a ' . explode(' ', (string) $c['nombre'])[0] . ' cuando quieras.');
+        $this->ui->redirect($volver, Idioma::t('Cancelamos el envío programado. Invita a %s cuando quieras.', explode(' ', (string) $c['nombre'])[0]));
     }
 
     /** «Ver como cliente» desde el admin de TypeDock (sólo lectura). */
