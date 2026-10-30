@@ -19,6 +19,9 @@ class EquipoOnboarding extends EquipoController
     {
         http_response_code($codigo);
         header('Content-Type: application/json; charset=utf-8');
+        if (isset($d['error']) && is_string($d['error'])) {
+            $d['error'] = Idioma::t($d['error']);   // los avisos se escriben en español y salen en el idioma de quien usa el asistente
+        }
         echo json_encode($d, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         $this->terminate();
     }
@@ -63,12 +66,14 @@ class EquipoOnboarding extends EquipoController
             'correoPrisma' => Compartido::correo() !== null,
             'iaPrueba'    => Compartido::ia() !== null,
             'horas'       => OnboardingService::INVITACION_HORAS,
-            'colores'     => self::COLORES,
+            'colores'     => array_map(fn(array $c): array => [$c[0], Idioma::t($c[1])], self::COLORES),
+            'idiomas'     => array_map(null, array_keys(Idioma::DISPONIBLES), array_values(Idioma::DISPONIBLES)),
+            'idiomaAgencia' => Idioma::de($this->ajustes(), 'global', 'portal'),
         ];
         $this->view('bienvenida.latte', [
             'csrf'      => PortalSession::csrf(),
             'datosJson' => json_encode($datos, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT),
-            'titulo'    => 'Bienvenida a Prisma',
+            'titulo'    => Idioma::t('Bienvenida a Prisma'),
         ]);
     }
 

@@ -76,7 +76,9 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ### beta 0.12 (0.12.0-beta): la beta con idiomas (español, inglés y francés)
 - Une la beta 0.11 (asistente de bienvenida, primer coordinador automático, invitación programada) con el plugin personal 0.47.8: portal del cliente y panel del equipo en español, inglés y francés, correos en el idioma de quien los recibe, contactos ganados y Mailchimp traducidos. Detalle de cada parte en las entradas «v0.47.x» de abajo y en `docs/idiomas.md`.
-- **Cada cliente tiene su idioma:** aunque la agencia use siempre español, el primer cliente puede estar en otro idioma. El asistente de bienvenida lo pregunta al crear al primer cliente; ese idioma manda sobre la invitación (también la programada a 6 horas), los avisos y el portal de sus contactos.
+- **Cada cliente tiene su idioma:** aunque la agencia use siempre español, el primer cliente puede estar en otro. El paso 2 del asistente («Tu primer cliente») pregunta «Idioma de su portal y de sus correos» (por defecto, el de la agencia); ese idioma se guarda en el cliente y manda sobre su invitación (también la programada a 6 horas), sus avisos y el portal de sus contactos. La agencia y quien usa el asistente siguen en el suyo.
+- **El asistente está traducido** (español, inglés y francés): textos, mensajes de error y avisos del panel; sus textos de JavaScript van por el diccionario `__t()`. `armar-latte.py` los arma solo a partir de `js-onboarding.js`.
+- Las plantillas de proyecto de fábrica (Sitio web, Branding, Campaña digital) muestran su nombre traducido en el asistente; sus etapas y tareas se crean en español.
 - Se unificó el cálculo de colores con contraste: el portal usa la `Paleta` de la línea personal y el asistente conserva sus 12 colores AA.
 
 ### v0.47.8: Ingreso del equipo en el idioma de la agencia y números del gráfico

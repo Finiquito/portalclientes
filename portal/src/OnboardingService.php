@@ -51,7 +51,7 @@ final class OnboardingService
             'tuNombre' => (string) ($usuario['nombre'] ?? ''),
             'agencia' => trim($a->get('global', 'portal', 'nombre_equipo')),
             'color' => AjustesService::colorValido($a->get('global', 'portal', 'color_agencia'), self::COLOR_DEFECTO),
-            'cliente' => '', 'contacto' => '', 'correo' => '', 'proyecto' => '', 'plantilla' => '',
+            'cliente' => '', 'contacto' => '', 'correo' => '', 'idiomaCliente' => '', 'proyecto' => '', 'plantilla' => '',
             'equipo' => [], 'invitar' => true, 'hechos' => [],
         ];
         $e = array_merge($base, array_intersect_key($g, $base));
@@ -68,7 +68,8 @@ final class OnboardingService
     {
         $out = [];
         foreach ((new PlantillaService($this->pdo))->lista() as $p) {
-            $out[] = ['id' => (string) $p['id'], 'nombre' => (string) $p['nombre'],
+            // Las tres plantillas de fábrica tienen traducción; las que crea la agencia salen como las escribió.
+            $out[] = ['id' => (string) $p['id'], 'nombre' => Idioma::t((string) $p['nombre']),
                 'etapas' => implode(' · ', array_map(fn($f) => (string) ($f['nombre'] ?? ''), $p['e']['fases']))];
         }
         return $out;
@@ -91,6 +92,10 @@ final class OnboardingService
         }
         if (array_key_exists('correo', $d)) {
             $e['correo'] = strtolower($txt($d['correo'], 190));
+        }
+        if (array_key_exists('idiomaCliente', $d)) {
+            // Vacío = el del cliente hereda el de la agencia; si no, es el que se elige para su portal y sus correos.
+            $e['idiomaCliente'] = Idioma::valido((string) $d['idiomaCliente']) ? (string) $d['idiomaCliente'] : '';
         }
         if (array_key_exists('color', $d)) {
             $e['color'] = AjustesService::colorValido((string) $d['color'], $e['color']);
@@ -138,22 +143,22 @@ final class OnboardingService
     public function falta(array $e): ?array
     {
         if ($e['tuNombre'] === '') {
-            return ['paso' => 1, 'campo' => 'tuNombre', 'mensaje' => 'Escribe tu nombre.'];
+            return ['paso' => 1, 'campo' => 'tuNombre', 'mensaje' => Idioma::t('Escribe tu nombre.')];
         }
         if ($e['agencia'] === '') {
-            return ['paso' => 1, 'campo' => 'agencia', 'mensaje' => 'Escribe el nombre de tu agencia.'];
+            return ['paso' => 1, 'campo' => 'agencia', 'mensaje' => Idioma::t('Escribe el nombre de tu agencia.')];
         }
         if ($e['cliente'] === '') {
-            return ['paso' => 2, 'campo' => 'cliente', 'mensaje' => 'Escribe el nombre del cliente.'];
+            return ['paso' => 2, 'campo' => 'cliente', 'mensaje' => Idioma::t('Escribe el nombre del cliente.')];
         }
         if ($e['contacto'] === '') {
-            return ['paso' => 2, 'campo' => 'contacto', 'mensaje' => 'Escribe el nombre del contacto.'];
+            return ['paso' => 2, 'campo' => 'contacto', 'mensaje' => Idioma::t('Escribe el nombre del contacto.')];
         }
         if (filter_var($e['correo'], FILTER_VALIDATE_EMAIL) === false) {
-            return ['paso' => 2, 'campo' => 'correo', 'mensaje' => 'Escribe un correo válido.'];
+            return ['paso' => 2, 'campo' => 'correo', 'mensaje' => Idioma::t('Escribe un correo válido.')];
         }
         if ($e['proyecto'] === '') {
-            return ['paso' => 3, 'campo' => 'proyecto', 'mensaje' => 'Escribe el nombre del proyecto.'];
+            return ['paso' => 3, 'campo' => 'proyecto', 'mensaje' => Idioma::t('Escribe el nombre del proyecto.')];
         }
         return null;
     }
@@ -172,12 +177,12 @@ final class OnboardingService
         $eqSvc = new EquipoService($this->pdo);
         // El correo del contacto no puede ser de una persona de la agencia (una casilla no entra a los dos portales).
         if ($eqSvc->findByEmail($e['correo']) !== null) {
-            return ['ok' => false, 'error' => 'Ese correo es de una persona de tu agencia. Usa el del contacto del cliente.', 'paso' => 2, 'campo' => 'correo'];
+            return ['ok' => false, 'error' => Idioma::t('Ese correo es de una persona de tu agencia. Usa el del contacto del cliente.'), 'paso' => 2, 'campo' => 'correo'];
         }
         $existente = (new ContactoService($this->pdo))->findByEmail($e['correo']);
         $h = is_array($e['hechos']) ? $e['hechos'] : [];
         if ($existente !== null && ($h['contacto_id'] ?? '') !== $existente['id']) {
-            return ['ok' => false, 'error' => 'Ya hay un contacto con ese correo.', 'paso' => 2, 'campo' => 'correo'];
+            return ['ok' => false, 'error' => Idioma::t('Ya hay un contacto con ese correo.'), 'paso' => 2, 'campo' => 'correo'];
         }
 
         $uid = (string) $usuario['id'];
@@ -185,6 +190,10 @@ final class OnboardingService
             $h['cliente_id'] = (new ClienteService($this->pdo))->create(['nombre' => $e['cliente'], 'empresa' => $e['cliente'], 'pais' => Zona::pais(), 'responsable_id' => $uid]);
         }
         $cid = (string) $h['cliente_id'];
+        // El idioma del cliente se fija antes de programar su invitación: así ese correo, y todos los que le lleguen, salen en él.
+        if ($e['idiomaCliente'] !== '') {
+            $this->ajustes()->set('cliente', $cid, 'idioma', $e['idiomaCliente']);
+        }
         if (empty($h['contacto_id'])) {
             $h['contacto_id'] = (new ContactoService($this->pdo))->create(['cliente_id' => $cid, 'nombre' => $e['contacto'], 'email' => $e['correo'], 'rol' => 'aprobador']);
         }

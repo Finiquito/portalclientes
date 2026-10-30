@@ -106,6 +106,7 @@ h1 { font-size: clamp(30px, 2.2rem + 1vw, 42px); line-height: 1.1; font-weight: 
 .in:hover { border-color: color-mix(in srgb, var(--ink) 35%, transparent); }
 .in:focus { outline: none; border-color: var(--ink); box-shadow: 0 0 0 4px color-mix(in srgb, var(--signal) 22%, transparent); }
 .in[aria-invalid="true"] { border-color: var(--error); }
+select.in { cursor: pointer; font-family: inherit; color: var(--ink); }
 .err { color: var(--error); font-size: 14px; min-height: 0; display: none; }
 .err.ver { display: block; animation: entra 240ms var(--ease) both; }
 .dos { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
@@ -278,7 +279,8 @@ body.limpio .maqueta { display: none; }
         <div class="campo"><label for="contacto">Persona de contacto</label><input class="in" id="contacto" data-k="contacto" autocomplete="off" placeholder="Josefa Ruiz"><span class="err" id="e-contacto">Escribe el nombre del contacto.</span></div>
         <div class="campo"><label for="correo">Su correo</label><input class="in" id="correo" data-k="correo" type="email" inputmode="email" autocomplete="off" placeholder="josefa@panaderiaruiz.cl"><span class="err" id="e-correo">Escribe un correo válido.</span></div>
       </div>
-      <p class="ayuda">No le enviamos nada todavía. Tú decides al final si la invitas.</p>
+      <div class="campo"><label for="idiomaCliente">Idioma de su portal y de sus correos</label><select class="in" id="idiomaCliente" data-k="idiomaCliente"><option value="">Igual que mi agencia</option></select></div>
+      <p class="ayuda">No le enviamos nada todavía. Tú decides al final si la invitas. Tú sigues usando el panel en el idioma de tu agencia.</p>
     </section>
 
     <!-- 3 -->
@@ -341,7 +343,7 @@ body.limpio .maqueta { display: none; }
   var KEY = 'prisma-onboarding-maqueta';
   var q = new URLSearchParams(location.search);
   var $ = function (s, r) { return (r || document).querySelector(s); };
-  var estado = { paso: 1, max: 1, tuNombre: '', agencia: '', color: COLORES[0][0], logo: '', cliente: '', contacto: '', correo: '', proyecto: '', plantilla: 'branding', equipo: [] };
+  var estado = { paso: 1, max: 1, tuNombre: '', agencia: '', color: COLORES[0][0], logo: '', cliente: '', contacto: '', correo: '', idiomaCliente: '', proyecto: '', plantilla: 'branding', equipo: [] };
   try { var g = JSON.parse(localStorage.getItem(KEY) || 'null'); if (g && !q.get('demo') && !q.get('limpio-estado')) { estado = Object.assign(estado, g); } } catch (e) {}
   if (q.get('limpio')) document.body.classList.add('limpio');
   if (q.get('tema')) document.documentElement.setAttribute('data-tema', q.get('tema'));

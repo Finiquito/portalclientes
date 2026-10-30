@@ -1,6 +1,6 @@
 """Arma portal/templates/equipo/bienvenida.latte desde la maqueta aprobada (CSS y marcado) y el JS real."""
-import re
-d='/home/user/portalclientes/'
+import re, os, json
+d=os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))+'/'
 src=open(d+'dev/maquetas/onboarding-agencia.src.html',encoding='utf-8').read()
 css=re.search(r'<style>(.*?)</style>',src,re.S).group(1).replace('{{FONT}}','X')
 css=re.sub(r'@font-face \{[^}]*\}','@font-face { font-family: "Schibsted Grotesk"; font-style: normal; font-weight: 400 900; font-display: swap;\n  src: url("/plugins/portal/assets/fonts/schibsted-grotesk.woff2") format("woff2"); }',css,count=1,flags=re.S)
@@ -21,9 +21,20 @@ body=body.replace('<div class="etiquetas"><span class="etiqueta">Correo de Prism
 body=body.replace('<p class="kicker">Bienvenida a Prisma</p>','<p class="kicker">Bienvenida a Prisma</p>')
 assert '{' not in body.replace('{{','') , 'el marcado no debe llevar llaves (Latte)'
 js=open(d+'dev/maquetas/js-onboarding.js',encoding='utf-8').read()
+# Los textos del JS van con __t('…'): el servidor los traduce en un diccionario (el script lleva n:syntax="off", Latte no lo procesa).
+claves=[]
+for k in re.findall(r"__t\('((?:[^'\\]|\\.)*)'\)",js):
+    if k not in claves: claves.append(k)
+dic=',\n'.join('  '+json.dumps(k.replace("\\'","'"),ensure_ascii=False)+": {t('"+k+"')}" for k in claves)
+dic=f'''<script>
+window.PA_I18N = Object.assign(window.PA_I18N || {{}}, {{
+{dic}
+}});
+window.__t = window.__t || function (s) {{ var d = window.PA_I18N || {{}}; return d[s] !== undefined ? d[s] : s; }};
+</script>'''
 out=f'''{{* Asistente de arranque de la agencia (beta). Generado por dev/maquetas/armar-latte.py desde la maqueta aprobada: no editar a mano. *}}
 <!DOCTYPE html>
-<html lang="es" data-tema="auto">
+<html lang="{{\\TypeDock\\Plugin\\Portal\\Idioma::actual()}}" data-tema="auto">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -33,6 +44,7 @@ out=f'''{{* Asistente de arranque de la agencia (beta). Generado por dev/maqueta
 <style n:syntax="off">{css}</style>
 </head>
 <body>{body}<script type="application/json" id="onb-datos">{{$datosJson|noescape}}</script>
+{dic}
 <script n:syntax="off">
 {js}</script>
 </body>

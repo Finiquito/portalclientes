@@ -3413,6 +3413,37 @@ if ($sesPrev !== null) {
 $_POST = [];
 
 // ---------------------------------------------------------------------------
+seccion('Beta: la agencia en español y el primer cliente en otro idioma');
+$pdoI = baseLimpia();
+$ctxI = portal_dev_contexto($pdoI);
+P\Schema::asegurar($pdoI);
+putenv('PORTAL_PRIMER_COORDINADOR=camila.soto@estudiopampa.cl');
+putenv('PORTAL_AGENCIA_NOMBRE=Estudio Pampa');
+putenv('PORTAL_ONBOARDING=1');
+P\Arranque::asegurar($pdoI);
+$ajI = new P\AjustesService($pdoI);
+$duenaI = (new P\EquipoService($pdoI))->findByEmail('camila.soto@estudiopampa.cl');
+$svcI = new P\OnboardingService($pdoI);
+$eI = $svcI->guardar(['cliente' => 'Boulangerie Dupont', 'contacto' => 'Marie Dupont', 'correo' => 'marie@dupont.fr', 'proyecto' => 'Rebranding', 'idiomaCliente' => 'fr', 'invitar' => true], $duenaI);
+check($eI['idiomaCliente'] === 'fr', 'el asistente guarda el idioma elegido para el primer cliente');
+check($svcI->guardar(['idiomaCliente' => 'xx'], $duenaI)['idiomaCliente'] === '', 'un idioma que no existe vuelve a «igual que mi agencia»');
+$svcI->guardar(['idiomaCliente' => 'fr'], $duenaI);
+check($ajI->get('global', 'portal', 'idioma') === '', 'la agencia sigue en su idioma por defecto (español)');
+$nI = new P\Notifier($ctxI, $pdoI);
+$finI = $svcI->finalizar($duenaI, $nI);
+check(!empty($finI['ok']) && $ajI->get('cliente', (string) $finI['cliente_id'], 'idioma') === 'fr', 'al terminar, el cliente queda con su idioma');
+$ctI = $pdoI->query('SELECT * FROM portal_contactos')->fetch();
+check(P\Idioma::de($ajI, 'contacto', (string) $ctI['id'], (string) $ctI['cliente_id']) === 'fr', 'su contacto hereda el idioma del cliente');
+$colaI = $pdoI->query('SELECT * FROM portal_correos_cola')->fetch();
+check($colaI !== false && str_contains((string) $colaI['asunto'], 'vous invite sur votre portail') && !str_contains((string) $colaI['asunto'], 'te invita'), 'la invitación programada sale en el idioma del cliente');
+check(str_contains((string) $colaI['html'], 'lang="fr"') && !str_contains((string) $colaI['html'], 'Te abrimos un portal'), 'y el cuerpo del correo también');
+check(P\Idioma::actual() === 'es', 'armar el correo no cambia el idioma de quien usa el asistente');
+$nombresI = P\Idioma::con('en', fn() => (new P\OnboardingService($pdoI))->falta(['tuNombre' => '']) ['mensaje']);
+check($nombresI === 'Enter your name.', 'los avisos del asistente salen en el idioma de quien lo usa');
+putenv('PORTAL_PRIMER_COORDINADOR');
+putenv('PORTAL_AGENCIA_NOMBRE');
+putenv('PORTAL_ONBOARDING');
+
 seccion('Beta: los 12 colores del asistente se leen bien (contraste AA) en claro y oscuro');
 $paleta = array_column(P\EquipoOnboarding::COLORES, 0);
 check(count($paleta) === 12 && count(array_unique($paleta)) === 12 && count(array_filter($paleta, fn($c) => preg_match('/^#[0-9a-f]{6}$/', $c) === 1)) === 12, 'son 12 colores distintos, en #rrggbb');
