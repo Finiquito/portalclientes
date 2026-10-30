@@ -46,10 +46,10 @@ class EntregaPublicController extends PortalPublicController
         }
         $todas = $this->entregasSvc()->delCliente((string) $c['cliente_id']);
         $pag = Paginacion::delContacto($this->pdo(), (string) $c['id'], '/portal/entregas', count($todas));
-        $this->ctx->view('templates/public/entregas.latte', $this->contexto($c, 'revisiones') + [
+        Vista::mostrar($this->pdo(), 'templates/public/entregas.latte', $this->contexto($c, 'revisiones') + [
             'pag'      => $pag,
             'entregas' => $pag->cortar($pag->orden === 'antiguos' ? array_reverse($todas) : $todas),
-            'estados'  => TiposContenido::ESTADOS_ENTREGA,
+            'estados'  => Idioma::lista(TiposContenido::ESTADOS_ENTREGA),
         ]);
     }
 
@@ -80,16 +80,16 @@ class EntregaPublicController extends PortalPublicController
         $total = (int) $e['n_total'];
         $decididos = (int) $e['n_aprobados'] + (int) $e['n_cambios'];
 
-        $this->ctx->view('templates/public/entrega.latte', $this->contexto($c, 'revisiones') + [
+        Vista::mostrar($this->pdo(), 'templates/public/entrega.latte', $this->contexto($c, 'revisiones') + [
             'e'          => $e,
             'contenidos' => $lista,
             'portadas'   => $portadas,
             'etiquetas'  => $etiquetas,
             'reacc'      => $reacc,
-            'tipos'      => TiposContenido::TIPOS,
-            'estadosC'   => TiposContenido::ESTADOS_CONTENIDO,
-            'estadosE'   => TiposContenido::ESTADOS_ENTREGA,
-            'reaccionesDef' => TiposContenido::REACCIONES,
+            'tipos'      => Idioma::lista(TiposContenido::TIPOS),
+            'estadosC'   => Idioma::lista(TiposContenido::ESTADOS_CONTENIDO),
+            'estadosE'   => Idioma::lista(TiposContenido::ESTADOS_ENTREGA),
+            'reaccionesDef' => Idioma::lista(TiposContenido::REACCIONES),
             'pct'        => $total > 0 ? (int) round($decididos * 100 / $total) : 0,
             'decididos'  => $decididos,
             'abierta'    => $e['estado'] === 'publicada',
@@ -145,7 +145,7 @@ class EntregaPublicController extends PortalPublicController
         $pines = Ubicacion::pines($comentarios, $ver !== null ? (string) $ver['id'] : null, $posImagen);
         $pinesPdf = array_filter($pines, fn($p) => $p['tipo'] === 'pagina');
 
-        $this->ctx->view('templates/public/contenido.latte', $this->contexto($c, 'revisiones') + [
+        Vista::mostrar($this->pdo(), 'templates/public/contenido.latte', $this->contexto($c, 'revisiones') + [
             'x'          => $x,
             'ver'        => $ver,
             'versiones'  => $versiones,
@@ -170,8 +170,8 @@ class EntregaPublicController extends PortalPublicController
             )),
             'numeros'    => $numeros,
             'reacc'      => $ver !== null ? $this->contenidosSvc()->reacciones((string) $ver['id'], (string) $c['id']) : ['conteo' => [], 'mia' => '', 'total' => 0],
-            'reaccionesDef' => TiposContenido::REACCIONES,
-            'estadosC'   => TiposContenido::ESTADOS_CONTENIDO,
+            'reaccionesDef' => Idioma::lista(TiposContenido::REACCIONES),
+            'estadosC'   => Idioma::lista(TiposContenido::ESTADOS_CONTENIDO),
             'prev'       => $pos !== false && $pos > 0 ? $ids[$pos - 1] : null,
             'next'       => $pos !== false && $pos < count($ids) - 1 ? $ids[$pos + 1] : null,
             'posicion'   => $pos !== false ? $pos + 1 : 1,
@@ -320,7 +320,8 @@ class EntregaPublicController extends PortalPublicController
 
         // Durante la revisión activa no se manda correo por comentario: llega todo junto al enviar.
         if ($x['entrega_estado'] !== 'publicada') {
-            $this->notificador()->alEquipo("{$c['nombre']} comentó en «{$x['titulo']}»", '', 'contenidos/' . $id, [
+            $this->notificador()->alEquipo(Idioma::f('%s comentó en «%s»', (string) $c['nombre'], (string) $x['titulo']), '', 'contenidos/' . $id, [
+                'detalle' => Idioma::perezoso(fn(): string => mb_substr($pref . $texto, 0, 160)),
                 'etiqueta' => 'Comentario', 'titulo' => "{$c['nombre']} comentó en «{$x['titulo']}»", 'resaltado' => (string) $c['nombre'], 'proyecto_id' => (string) $x['proyecto_id'],
                 'bloques' => [['cita' => $pref . $texto]], 'preheader' => mb_substr($pref . $texto, 0, 110), 'boton' => 'Ver el contenido',
             ]);
@@ -390,7 +391,8 @@ class EntregaPublicController extends PortalPublicController
             $bloques[] = ['p' => 'Pidió cambios en:'];
             $bloques[] = ['lista' => array_map(fn($l) => ltrim(preg_replace('/^•\s*/u', '', $l) ?? $l), $lineas)];
         }
-        $this->notificador()->alEquipo("{$nombre} respondió la revisión: {$e['titulo']}", '', 'entregas/' . $e['id'], [
+        $this->notificador()->alEquipo(Idioma::f('%s respondió la revisión: %s', $nombre, (string) $e['titulo']), '', 'entregas/' . $e['id'], [
+            'detalle' => Idioma::f('%d aprobados · %d con cambios', (int) $e['n_aprobados'], (int) $e['n_cambios']),
             'etiqueta' => 'Revisión', 'titulo' => "{$nombre} respondió la revisión", 'resaltado' => 'respondió', 'proyecto_id' => (string) $e['proyecto_id'],
             'bloques' => array_merge([['p' => "Terminó de revisar «{$e['titulo']}»."]], $bloques), 'preheader' => "{$e['n_aprobados']} aprobados · {$e['n_cambios']} con cambios",
             'boton' => 'Abrir la entrega',

@@ -74,6 +74,182 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### beta 0.12 (0.12.0-beta): la beta con idiomas (español, inglés y francés)
+- Une la beta 0.11 (asistente de bienvenida, primer coordinador automático, invitación programada) con el plugin personal 0.47.8: portal del cliente y panel del equipo en español, inglés y francés, correos en el idioma de quien los recibe, contactos ganados y Mailchimp traducidos. Detalle de cada parte en las entradas «v0.47.x» de abajo y en `docs/idiomas.md`.
+- **Cada cliente tiene su idioma:** aunque la agencia use siempre español, el primer cliente puede estar en otro idioma. El asistente de bienvenida lo pregunta al crear al primer cliente; ese idioma manda sobre la invitación (también la programada a 6 horas), los avisos y el portal de sus contactos.
+- Se unificó el cálculo de colores con contraste: el portal usa la `Paleta` de la línea personal y el asistente conserva sus 12 colores AA.
+
+### v0.47.8: Ingreso del equipo en el idioma de la agencia y números del gráfico
+- **Ingreso del equipo:** ya no se deja llevar por el idioma del navegador. Sin una elección previa, sale en el idioma de la agencia («Idioma por defecto» en Ajustes). Además el equipo tiene su propia cookie de idioma: lo que se vea como cliente en el mismo navegador (por ejemplo probando el portal en inglés) ya no le cambia el idioma al panel, y cada ingreso recuerda el idioma con que la persona usó el portal la última vez.
+- **Gráfico de contactos ganados:** los números del final de cada línea van en una pastilla del color de su serie y, si dos coinciden (mismo valor), se apilan en vez de taparse.
+
+### v0.47.7: Revisión de las 81 frases nuevas
+- Se aplicó la revisión de las frases armadas y los mensajes sueltos (9 ajustes en francés e inglés: «attribué», «mettre en forme», «calendrier éditorial», «rubrique « Demandes »», etc.).
+
+### v0.47.6: Contactos ganados y Mailchimp en inglés y francés
+- El módulo de contactos ganados (pantallas del equipo y del cliente) y la revisión de Mailchimp salen completos en el idioma de la persona: estados, eventos («Recibió», «Abrió»…), avisos de la importación de planillas, mensajes de conexión con Mailchimp, errores del formulario directo (que responde en el idioma del navegador de quien envía, o el de la agencia).
+- Textos con números o nombres (por ejemplo «Importados 3 contactos nuevos», «2 correos · abrió 1», «Mailchimp conectado para X») ahora son frases completas con `%s`/`%d`, para que el orden de las palabras sea el correcto en cada idioma.
+- 64 mensajes sueltos más (errores de logo e ícono, de la IA, del .docx, del correo SMTP, avisos de las solicitudes del cliente, pies de los correos) que no estaban en la tabla de traducciones.
+- `dev/seed-leads.php`: contactos ganados de ejemplo para ver esas pantallas (se corre después de `dev/seed-demo.php`).
+
+### v0.47.5: Restos en inglés y francés
+- **Arreglo importante:** en la pantalla de subir contenidos del equipo, el paso «Revisa antes de crear» llamaba a `t()` suelta dentro del JavaScript y fallaba (error de JS al soltar imágenes sin número de pieza o un PDF). Ahora usa los textos traducidos y hay una prueba que impide que vuelva a pasar.
+- Los textos que arma el JavaScript de las pantallas de gestión (subir entregas y piezas, resumen «Al guardar» de reuniones, hora del cliente, hitos del cronograma, avisos de importación, etc.) ahora salen en el idioma de la persona. Dentro de los `<script n:syntax="off">` se usa `__t()` con el diccionario `PA_I18N`.
+- Más textos que salían en español: «Todos los proyectos / clientes» en Mensajes, los roles del equipo («Coordinación general…»), los países en las fichas de cliente y contacto.
+- Francés: el botón «Salir» pasa a «Déconnexion» (cabe en la barra lateral). Los botones que se reparten una fila bajan de línea si el texto no cabe, en vez de salirse de la tarjeta.
+
+### v0.47.4: Mensajes en todos los idiomas
+- En la bandeja de mensajes, el tipo (Tarea, Contenido, Solicitud) en el encabezado y en el filtro, y el botón «Abrir…», salían en español aunque el resto estuviera traducido. Ahora siguen el idioma de la persona.
+
+### v0.47.3: Français
+- Tercer idioma: **francés** (`portal/lang/fr/`, las mismas 2.588 frases que el inglés). Sale en el selector de idioma de todas partes (ingreso, Ajustes del portal, Mis ajustes del panel, fichas de contacto, cliente y persona del equipo) y también en los correos.
+- Fechas en francés (`lundi 12 oct.`, día primero, reloj de 24 horas, «au» en los rangos) y dictado por voz en `fr-FR`.
+- Pruebas: el francés cubre las mismas frases que el inglés y conserva todos los `%s`/`%d`.
+
+### v0.47.2: Revisión del inglés
+- Se aplicó la revisión completa de las traducciones al inglés (592 frases ajustadas): «batch» para las entregas, «dashboard» para el panel, «content calendar» para la grilla, «caption» para el copy, y comillas curvas “ ” en vez de « ».
+
+### v0.47.1: Ajustes de la agencia en inglés
+- «Ajustes del portal» (en el panel del equipo: Agencia, Avisos, Clientes, IA, Correos y Tarea programada) ya sale completo en el idioma de la persona: textos, ayudas, nombres de colores, países y modelos de IA, y los textos de ejemplo de los campos. Antes quedaba mezclado con español.
+- Quedan sólo en español el admin de TypeDock y el módulo «Contactos ganados» (leads).
+
+### v0.47.0: Idiomas (español e inglés)
+- **Cada persona elige su idioma**: los contactos del cliente en «Ajustes» del portal y las personas del equipo en «Mis ajustes». Si no eligen, vale el del cliente (se fija en su ficha), luego el de la agencia (Portal · Ajustes) y al final el español. En la pantalla de ingreso hay un selector «Español · English» que se recuerda.
+- **Todo lo que ve el cliente sale en su idioma**: pantallas, fechas y horas (`Oct 12`, `2:30 pm`), avisos, el JS (dictado, subida de archivos, visor de PDF) y los correos: código de acceso, invitación, avisos agrupados, resumen de la mañana, recordatorios y las invitaciones de reunión (con su `.ics`). Cada correo se escribe en el idioma de **quien lo recibe**, no de quien lo provocó.
+- **El panel del equipo y las pantallas de gestión también** (tareas, entregas, reuniones, solicitudes, clientes, contactos, proyectos…). Queda sólo en español el módulo «Contactos ganados» del lado de la agencia (los ajustes de la agencia se tradujeron en la 0.47.1).
+- En los formularios de contacto, cliente, persona del equipo y ajustes de la agencia hay un selector de idioma (la invitación sale en el idioma que se elija ahí).
+- Cómo funciona: el texto en español es la clave y las plantillas se traducen solas al compilarse (`IdiomaExtension`); en PHP se usa `Idioma::t()` y, para avisos que otra persona va a leer, `Idioma::f()`. Las traducciones están en `portal/lang/en/*.php`. Para sumar un idioma: copiar esa carpeta, traducir y agregar el código en `Idioma::DISPONIBLES`. Detalles y herramientas en `docs/idiomas.md`.
+- Pruebas: el portal del cliente y el panel completos en inglés sin frases sin traducir, y los correos en cada idioma.
+
+### v0.46.3: Mensajes sin animación al cargar
+- Se quitó la animación de entrada en Mensajes: al recargar o responder, el bloque ya no «sube» ni parpadea; se ve la pantalla estable.
+
+### v0.46.2: Mensajes, la conversación abierta no se pierde de la lista
+- La conversación que tienes abierta queda siempre fija en la lista de la izquierda, aunque ya no calce con la pestaña o los filtros (por ejemplo, al responder desde Archivadas); en ese caso aparece con la marca «Abierta · en Activas/Archivadas/Destacados».
+- Una conversación terminada ya no se desvanece de Activas mientras la tienes abierta.
+
+### v0.46.1: Mensajes, ajustes de estilo
+- Las reacciones y su selector usan contornos finos y claros; la reacción propia va sobre fondo blanco (antes el color de fondo no dejaba ver bien el ícono) y los íconos son más grandes.
+- Activas, Archivadas y Destacados caben en una sola línea (la columna de la lista es un poco más ancha).
+
+### v0.46.0: Mensajes con filtros, conversaciones destacadas y reacciones
+- **Dos desplegables que se complementan** arriba de la lista: **Proyecto** (en el panel del equipo, **Cliente**) y **Tipo** (tareas, contenidos, solicitudes). Cada uno solo ofrece lo que existe con el otro elegido y trae cuántas conversaciones tiene. Cada conversación muestra el proyecto con su color y un ícono del tipo; se quitaron las demás etiquetas.
+- **Destacar una conversación (★):** botón en la cabecera de cada conversación. Una destacada **no pasa a Archivadas** aunque la tarea termine y se ve en la nueva pestaña **Destacados**. La estrella es de cada persona (el equipo no ve la del cliente).
+- **Reacciones a los mensajes:** pack de 12 (👍 👏 ❤️ 🎉 ✅ 🙏 😄 👀 😮 😕 😢 👎), incluidas las menos positivas. Aparecen bajo el mensaje con su contador; tocar la propia la quita. No envían correo ni marcan la conversación como sin leer.
+- Tablas nuevas `portal_mensaje_destacadas` y `portal_mensaje_reacciones` (migración 0015; también las crea Schema.php).
+
+### v0.45.2: Resumen del cliente sin manchas vacías y con contactos ganados
+- En el Resumen, el bloque de avance se estiraba hasta igualar la altura de «Lo que te toca» y quedaba una mancha vacía. Ahora el Resumen va en dos columnas independientes (cada tarjeta mide lo que necesita) y, en el celular, en una sola, con «Lo que te toca» justo después del avance. En el panel del equipo, «Requiere atención» tampoco se estira.
+- Si el proyecto tiene **contactos ganados** activos, el Resumen del cliente los muestra: totales, llegadas por semana y la tabla «esta semana / semana pasada / toda la campaña».
+
+### v0.45.1: la página «Proyecto» del cliente con tres vistas
+- La página **Proyecto** (portal del cliente) tiene pestañas: **Resumen** (la inicial), **Calendario** y **Línea de tiempo** (la de siempre). Las tarjetas de «Tus proyectos» del Inicio abren el Resumen.
+- **Resumen:** avance y etapa en curso, **lo que te toca** (tareas y piezas por revisar), etapas como barras, contenidos por estado y reuniones (la próxima y los acuerdos de la última, si el resumen está publicado).
+- **Calendario:** en escritorio, el mes en grilla (de lunes a domingo, con mes anterior, siguiente y «Hoy»); en el **celular, la semana como agenda** (de lunes a domingo, con los títulos completos). Muestra tareas del cliente y del equipo, reuniones, hitos y piezas para revisar. No muestra publicaciones de redes.
+
+### v0.45.0: panel de control del proyecto y «Tus proyectos»
+- **Panel del equipo (página de un proyecto):** cabecera con semáforo (En plazo / En riesgo / Atrasado / Completo) y fechas; cuatro números (avance, esperando al cliente, tareas vencidas, próxima reunión); fases como barras con la marca de «hoy»; **Contenidos** del proyecto con una barra por estado (borrador, esperan al cliente, cambios pedidos, aprobadas) y lo que se publica esta semana; **Requiere atención** (tareas vencidas, revisiones sin respuesta desde hace 3 días o más, solicitudes por atender); turno del equipo y del cliente; **Reuniones** con la próxima, la última y cuántas tareas salieron de ella para el equipo y para el cliente; ritmo del equipo (tareas cerradas por semana y proyección); solicitudes y archivos recientes; actividad.
+- **Contactos ganados en el panel:** si el proyecto los tiene activos, un resumen con las llegadas por semana y una tabla «esta semana / semana pasada / toda la campaña» (llegaron, calificados, ganados, perdidos).
+- **Portal del cliente (Inicio):** «Avance del proyecto» con pestañas se reemplaza por **«Tus proyectos»**: una tarjeta por proyecto con su avance, la etapa en curso, lo que le toca a la persona (tareas y piezas para revisar), la entrega estimada y la próxima reunión. Donde más le toca actuar va primero, en el bloque destacado. Si ve contactos ganados, una tarjeta con el mismo resumen semanal. El cliente no ve el semáforo ni el ritmo del equipo.
+- Estilos nuevos en `assets/panel.css`; los bloques oscuros usan `.bloque-azul` (en modo oscuro se invierten).
+
+### v0.44.9: «Perdido» cuenta como contactado en el gráfico y el embudo
+- Un contacto marcado «Perdido» sin haber pasado por «Contactado» no se contaba como contactado: el gráfico mostraba 39 de 41 aunque el cliente los había contactado a todos. Ahora cuenta como contactado desde el día en que se marcó perdido (no se pierde a alguien con quien nunca se habló). Los «Nuevo» siguen sin contar.
+- Los tiempos promedio entre etapas siguen usando solo los movimientos reales de «Contactado».
+
+### v0.44.8: el cliente ve su hora en la línea de tiempo de Contactos ganados
+- Si la agencia y el servidor están en otro país (por ejemplo Francia) y el cliente en Chile, la línea de tiempo de cada contacto mostraba las horas de la agencia. Ahora el cliente las ve en su hora (la de su empresa o, si vive en otro país, la suya), y la hora que escribe al agregar una nota o corregir una fecha se entiende en su hora. El equipo sigue viendo la hora de la agencia.
+- Las reuniones ya se mostraban en la hora del cliente; las demás fechas relativas («hace 3 h») no dependen de la zona.
+
+### v0.44.7: corrige el error al abrir Ajustes
+- Ajustes daba error porque la hora del servidor se pasaba con el nombre `relojes`, que el panel del equipo ya usa para «Hora de tus clientes» y que le ganaba. Ahora se llama distinto, y hay una prueba que dibuja Ajustes con los avisos de plantilla convertidos en error, como el TypeDock real.
+
+### v0.44.6: ver qué hora ve cada persona
+- **Contactos**: nueva columna **Hora que ve**, con el país efectivo de cada persona y si es el de su empresa o uno propio (que pesa más). Sirve para encontrar a quien ve otra hora que su empresa.
+- **Ajustes → País de la agencia**: muestra la hora actual de la agencia y la del servidor de PHP, con su zona; avisa si son zonas distintas (lo que se registra solo —llegada de contactos, comentarios— queda en la hora del servidor).
+
+### v0.44.5: Contactos ganados del cliente: orden a la vista y «Invertir orden»
+- Arriba de la lista (escritorio y celular) hay un selector **Ordenar por**: cuándo llegó, nombre, estado o próximo paso, más un botón **Invertir orden** que da vuelta la columna elegida. Los encabezados de la tabla siguen ordenando con un clic.
+- «Próximo paso» pone arriba lo más urgente (lo vencido primero, en rojo); lo que no tiene fecha, y lo ya ganado o perdido, va al final.
+
+### v0.44.4: la tarjeta destacada se lee al pasar el cursor
+- Al pasar el mouse por la tarjeta destacada del Inicio (equipo y cliente), el fondo se ponía gris claro y el texto blanco no se veía. Ahora conserva su color y solo se oscurece un poco.
+
+### v0.44.3: la copia de todos los avisos también sale agrupada
+- El correo de «Copia de todos los avisos» (Ajustes) mandaba un correo por cada aviso, al tiro. Ahora se junta y sale igual que el resto: a las 10:00, 13:00 y 16:00 (o antes si se juntan 10), un solo correo con enlaces al admin.
+
+### v0.44.2: resumen de la mañana sin horas falsas ni repetidos
+- En «Y esto llegó mientras no estabas», los avisos programados (vence mañana, se atrasó, recordatorio de reunión) ya no muestran una hora: «00:00» era la hora en que el cron los generó, no la de la tarea. Los demás avisos conservan la hora en que ocurrieron.
+- Si una tarea ya aparece en «Atrasadas» o «Vencen hoy», no se repite como novedad.
+
+### v0.44.1: el comando del cron en Ajustes va sin el horario
+- Ajustes mostraba la línea completa (`*/15 * * * * curl …`) y al pegarla entera en Hostinger fallaba («failed to run command '*/15'»). Ahora muestra solo el comando y, aparte, cómo llenar los selectores de horario.
+
+### v0.44.0: avisos siempre agrupados y diagnóstico del cron
+- **No hay correos sueltos.** Los avisos al equipo y al cliente se juntan y salen en un solo correo a horas fijas: **10:00, 13:00 y 16:00** (hora de quien recibe), de lunes a viernes y dentro del horario hábil. Salen antes si se juntan **10** (equipo) o **6** (cliente); el correo muestra hasta ese número y resume el resto («Y N novedades más»). Lo que llega después de una hora fija espera a la siguiente.
+- Antes de salir, cada aviso se revisa: si ya se resolvió (la tarea se completó, el contenido se aprobó), se descarta; si no queda nada, no se manda correo.
+- Se quitó **«Al instante»** de «Mis ajustes» del equipo. Una **urgencia** adelanta el envío a la próxima pasada del cron (máx. 15 minutos) y sale junto con lo demás pendiente, con su motivo.
+- Siguen saliendo al tiro: el código de acceso, las invitaciones, cancelaciones y recordatorios de reuniones (llevan el calendario) y lo que la persona está esperando (p. ej. la confirmación de una reunión pedida).
+- Contactos ganados: el aviso «tienes N contactos nuevos» se actualiza mientras espera, en vez de sumar correos.
+- **Cron:** el comando de Ajustes usa `curl -sL -m 60` (sigue redirecciones); el horario correcto es `*/15 * * * *`. Ajustes muestra si el cron funciona, si lleva más de 1 hora sin correr y si llegó una llamada con la clave incorrecta.
+- El resumen de la mañana (08:30) sigue igual y se lleva lo que llegó en la noche.
+
+### v0.43.3: gráfico «Por día» y público sin repetir
+- El gráfico de volumen tiene un selector **Acumulado | Por día** (**Por semana** en rangos largos): barras suaves de los que llegaron cada día y línea azul de los contactados. Recuerda tu última elección. Está en Contactos ganados del equipo y del cliente; el gráfico del Inicio queda como estaba.
+- El filtro **Todos / B2C / B2B** solo aparece si lo que miras mezcla los dos públicos. Si es de un solo tipo, se muestra únicamente esa etiqueta.
+
+### v0.43.2: el gráfico separa el volumen de los hitos
+- **Volumen** (arriba): dos líneas acumuladas, **Llegaron** y **Contactados** (cuenta a todos los que llegaron a esa etapa o más lejos), con **un punto por día** (por semana si el rango es largo). Al pasar el cursor, o tocar, el globo muestra los dos valores y los hitos de ese día.
+- **Hitos** (abajo, alineados por fecha): **calificados** (rombo ámbar), **ganados** (círculo verde con check) y **perdidos** (círculo rojo con ×), cada uno en su **carril**, marcados en el día en que ocurrieron. No son una línea: son hechos puntuales. Si hay varios el mismo día (o la misma semana), la marca crece y lleva el número. La fecha es la del movimiento de la línea de tiempo, así que si se corrige con el lápiz, la marca se mueve.
+- Un resumen arriba con los totales y los mismos símbolos (llegaron, contactados, calificados, ganados, perdidos).
+- **Versión simple en el celular:** sin puntos en las líneas (salvo al tocar), 4 fechas, los nombres de los carriles pasan a una leyenda con sus totales y los textos largos se acortan.
+- Fechas rotuladas sólo cada tantos días y una línea vertical suave en esas fechas (antes había una por día).
+- Se quitaron los botones Ganados/Perdidos del gráfico: ya no son líneas que encender.
+- `leads.css` sube a `?v=6`, `graficos.js` a `?v=3` y `portal.css` a `?v=40`.
+
+### v0.43.1: contactos ganados, ajustes de la lista del cliente
+- **«Origen» en vez de «Campaña»** en la lista del cliente (y en el filtro): la campaña es el proyecto; lo que trae cada contacto (WhatsApp, Instagram, formulario…) es su origen. Si no trae uno, se muestra cómo llegó (Formulario, Ingreso manual…). La columna «Llegó» ya no repite el origen.
+- **B2C / B2B fuera de cada fila.** Ahora se ve sólo en los datos de la campaña: arriba de la lista del cliente (una tarjeta por campaña, con su etiqueta y su total, que además filtra), en la ficha junto a «Campaña», en las tarjetas de proyecto y al elegir cliente en el equipo.
+- Si el cliente tiene más de un proyecto, la lista suma una columna «Proyecto».
+- **«Agregar contacto» siempre se ve** en la lista del cliente. En vista previa (cuando la agencia mira como cliente) aparece desactivado, con la explicación, en vez de desaparecer.
+- `leads.css` sube a `?v=3`.
+
+### v0.43.0: contactos ganados con línea de tiempo, campañas B2C/B2B y evolución
+Reúne las tres etapas que estaban planeadas (v0.41, v0.42 y v0.43).
+- **Elegir cliente primero (panel del equipo y admin).** `/equipo/leads` es ahora una pantalla con una tarjeta por cliente (total, barra por estado, B2C/B2B y cuántos llegaron esta semana). Al entrar, **sólo se ven los proyectos y contactos de ese cliente**: nunca se mezclan. Quien lleva un solo cliente entra directo. Los enlaces antiguos con `?proyecto=` siguen funcionando.
+- **Línea de tiempo de cada contacto (agencia y cliente).** Cada contacto tiene su llegada, cada cambio de estado, sus notas (con dueño: **Agencia** o **Cliente**) y los próximos pasos. Un solo cuadro agrega una nota, cambia el estado, o las dos cosas, con la fecha en que ocurrió (viene con la de ahora y se puede ajustar). Cada movimiento tiene un **lápiz para corregir su fecha**; la línea se reordena sola y queda «fecha corregida» (se guarda también cuándo se registró). Lo ven y lo pueden corregir la agencia y el cliente. Los contactos que ya existían copian su llegada, su estado actual y su nota única (como «Nota anterior»); las etapas por las que pasaron antes no se guardaron nunca y no se pueden reconstruir. Anonimizar borra las notas y deja los cambios de estado para los conteos.
+- **A quién le habla cada proyecto: B2C, B2B o los dos** (casillas en el formulario del proyecto). Aparece como etiqueta en las tarjetas, las listas y la ficha, y filtra el gráfico y la lista.
+- **Evolución del cliente** (equipo y portal del cliente, en Contactos ganados): línea de **contactos acumulados** con puntos, filtros por público y período, botones para ver ganados y perdidos, embudo («de una etapa a la siguiente», con el % entre etapas) y tiempos promedio entre etapas.
+- **Gráfico en el Inicio del cliente**, con el nombre del proyecto: aparece cuando la campaña está activa y lleva **14 días o más** recibiendo contactos (contados desde el primero). Sólo números, sin nombres de personas, y sólo para quien ya ve contactos ganados.
+- **Gráficos con Chart.js 4.5.1** (licencia MIT, `assets/chart.umd.js`, incluido en el plugin; sin CDN). Los colores siguen al color de cada cliente y al modo claro u oscuro.
+- Estados con un color propio en todo el panel: Nuevo gris, Contactado azul, Calificado ámbar, Ganado verde, Perdido rojo.
+- Datos: migración `0014_lead_linea.sql` (tabla `portal_lead_eventos`) y columna `portal_proyectos.publico`; también las garantiza `Schema.php`. No se borra nada.
+- `portal.css` sube a `?v=38`; `leads.css` es nuevo (`?v=2`).
+
+### v0.40.2: «Novedades» siempre en el color opuesto
+- El bloque de **Novedades** va **siempre en el opuesto del fondo**: en modo claro, azul del sistema (`#14204d`) con texto claro; en modo oscuro, **gris clarito** con texto azul. Los estados (aprobado, en revisión…) y los íconos usan sus tonos de modo claro dentro del gris para leerse bien.
+- `portal.css` sube a `?v=37`.
+
+### v0.40.1: paleta de 12 colores y arreglos de «Azul firme»
+- **Colores de marca elegibles (agencia y cada cliente).** El selector libre se cambia por 12 colores: Naranjo Prisma, Azul, Verde, Violeta, Rosa, Grafito, Ámbar, Azul claro, Gris azulado, Café, Cian y Verde turquesa. Un portal con un color antiguo lo conserva, y aparece como «Actual» hasta que se elija uno de la lista.
+- **Normas de contraste, en los dos portales y en los correos.** El texto del botón llega a 4,5:1 como mínimo y el aro de foco a 3:1, en claro y en oscuro. Naranjo Prisma, Verde, Rosa y Gris azulado se oscurecen un poco para aguantar texto blanco; Ámbar, Azul claro, Cian y Verde turquesa llevan texto oscuro (`#10131f`). Lo que se guarda es el color elegido: el ajuste se aplica al pintar.
+- **Aro de foco** en el tono de acento legible (claro en oscuro, oscuro en claro), no en el color crudo de la marca.
+- **«Novedades»** es siempre el azul del sistema (`#14204d`), también en modo oscuro, y al pasar el cursor la fila se lee (antes quedaba blanco sobre claro).
+- **Inicio del equipo:** se marca con el color del cliente la tarjeta **«Asignadas a ti»** (cuando hay tareas). «Vencidas» ya no se rellena: su cifra va en rojo si hay alguna.
+- `portal.css` sube a `?v=36` y `portal-admin.css` a `?v=17`.
+
+### v0.40.0: «Azul firme», un look más plano y firme en todo el portal
+- **Estilo nuevo, el mismo orden.** Sin sombras ni degradados de fondo, esquinas más chicas y parejas (8 px en tarjetas, 6 px en botones, campos y chips), líneas finas en lugar de sombras y títulos de sección con una división suave.
+- **Una sola tinta, un solo azul.** Textos, íconos, fechas y la pestaña activa del menú van en un azul oscuro común a todos los portales. El acento sigue siendo el color de cada cliente (botones, enlaces, foco, avance).
+- **Chips de borde grueso**, sin relleno tintado: el color intenso va en el borde y el texto. Sobre una imagen mantienen un fondo sólido para leerse.
+- **Íconos sin recuadro de color** y fechas con borde azul; la de hoy va rellena.
+- **Un bloque lleno con el color del cliente**: «Te toca a ti» en el portal del cliente y «Vencidas» en el panel del equipo, sólo cuando hay algo pendiente.
+- **«Novedades» en azul invertido.** En el portal del cliente ahora va **debajo de «Próximas reuniones»**, al pie de la primera pantalla (en escritorio; en el celular sigue el orden de lectura). En el panel del equipo queda al final de la columna.
+- **Contenidos de una entrega**: primero el estado y las piezas; el formulario con los datos de la entrega pasa al final. Al crear una entrega nueva, el formulario sigue arriba.
+- `portal.css` sube a `?v=35` para que el navegador tome los estilos.
+
+### v0.36.1: arreglo del repositorio
+- Sin cambios en lo que hace el plugin. El `.gitignore` ignoraba cualquier carpeta llamada `entregas/` y dejó `_tapas.js.latte` y `_subida.js.latte` fuera del repo; ahora solo ignora `/entregas/` de la raíz y los dos archivos están versionados. Así un clon limpio corre las pruebas y arma el zip completo.
 ### beta 0.11 (0.11.0-beta): la agencia beta se arma sola en el panel de equipo
 - **Asistente de bienvenida** (`/equipo/bienvenida`): pantalla completa, 5 pasos (tu agencia → tu primer cliente → su primer proyecto → tu equipo → listo) con guardado automático en cada pantalla. Al terminar deja armado el cliente, su contacto, el proyecto con las etapas de la plantilla elegida, las personas del equipo (asignadas al cliente) y a la dueña como responsable. Sólo existe donde `prisma crear` dejó `PORTAL_ONBOARDING=1` y mientras no se termine; «Guardar y salir» abre el panel con un aviso para continuar.
 - **Primer coordinador automático:** la dueña entra por `/equipo` con un código al correo (sin contraseña). El plugin la crea como Coordinación general la primera vez que arranca (`PORTAL_PRIMER_COORDINADOR`). El admin de TypeDock queda como respaldo de soporte.

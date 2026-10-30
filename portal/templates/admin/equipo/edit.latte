@@ -3,7 +3,7 @@
 {block page_title}{if $persona}{$persona['nombre']}{else}Nueva persona{/if}{/block}
 
 {block content}
-<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=16">
+<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=17">
 
 <div class="page-header">
     <h1>{if $persona}{$persona['nombre']}{else}Nueva persona del equipo{/if}</h1>
@@ -28,6 +28,10 @@
         <div>
             <label class="form-label">Cargo <span class="pa-muted">(opcional)</span></label>
             <input type="text" name="cargo" class="form-input" value="{$persona['cargo'] ?? ''}" maxlength="120" placeholder="Ej.: Diseñadora, Community manager">
+        </div>
+        <div>
+            <label class="form-label">Idioma de su panel y de sus correos</label>
+            {include '../_idioma.latte', actual: $idiomaPersona ?? '', heredado: 'El de la agencia'}
         </div>
         <div>
             <label class="form-label">Rol</label>
@@ -101,10 +105,10 @@
     if (lista) lista.hidden = coord;
     document.getElementById('todo-coord').hidden = !coord;
     document.getElementById('hint-coord').textContent = coord
-      ? 'Con Coordinación general no hace falta elegir: ve todo. Si cambias el rol, aquí eliges qué clientes y proyectos ve.'
+      ? {t('Con Coordinación general no hace falta elegir: ve todo. Si cambias el rol, aquí eliges qué clientes y proyectos ve.')}
       : (rol.value === 'cuentas'
-        ? 'Ve completos los clientes de los que es responsable (se elige en la ficha de cada cliente). Aquí puedes sumarle otros clientes o proyectos en que trabaja.'
-        : 'Marca el cliente completo (incluye los proyectos que se creen después) o solo algunos proyectos.');
+        ? {t('Ve completos los clientes de los que es responsable (se elige en la ficha de cada cliente). Aquí puedes sumarle otros clientes o proyectos en que trabaja.')}
+        : {t('Marca el cliente completo (incluye los proyectos que se creen después) o solo algunos proyectos.')});
     document.querySelectorAll('[data-cliente]').forEach(function (c) {
       var full = c.querySelector('[data-full]').checked;
       c.querySelectorAll('[data-proy]').forEach(function (p) { if (full) p.checked = true; p.disabled = full; });

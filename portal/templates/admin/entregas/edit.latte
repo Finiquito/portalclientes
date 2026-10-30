@@ -3,7 +3,7 @@
 {block page_title}{if $entrega}{$entrega['titulo']}{else}Nueva entrega{/if}{/block}
 
 {block content}
-<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=16">
+<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=17">
 
 <div class="page-header">
     <h1>{if $entrega}Entrega: {$entrega['titulo']}{else}Nueva entrega{/if}</h1>
@@ -13,7 +13,9 @@
 {if $flash_success}<div class="alert alert-success">{$flash_success}</div>{/if}
 {if $flash_error}<div class="alert alert-error">{$flash_error}</div>{/if}
 
-<div class="card">
+{* Datos de la entrega: al crear van primero; al editar, después de Estado y Contenidos *}
+{define datosEntrega}
+<div class="card{if $entrega} mt-4{/if}">
     <form method="post" action="{if $entrega}{$admin_url('entregas/' . $entrega['id'])}{else}{$admin_url('entregas')}{/if}"{if !$entrega} enctype="multipart/form-data"{/if}>
         <input type="hidden" name="_csrf_token" value="{$csrf_token}">
 
@@ -48,6 +50,9 @@
         <p class="mt-4"><button type="submit" class="btn btn-primary">{if $entrega}Guardar{else}Crear{/if}</button></p>
     </form>
 </div>
+{/define}
+
+{if !$entrega}{include datosEntrega}{/if}
 
 {if $entrega}
 {var $st = $estados[$entrega['estado']] ?? ['—', 'muted']}
@@ -160,6 +165,8 @@
         </div>
     </form>
 </div>
+
+{include datosEntrega}
 
 {* ---- Crear uno a mano: primero el tipo ---- *}
 <details class="card mt-4 pa-plegable" id="a-mano">

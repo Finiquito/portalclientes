@@ -1,0 +1,22 @@
+{* Selector de color de marca: los 12 colores de la paleta (TypeDock\Plugin\Portal\Paleta).
+   Parámetros: $nombre (name del campo), $actual (color guardado, #rrggbb). Si el actual no es de la paleta
+   (un color antiguo) aparece como «Actual» para no perderlo. *}
+{var $lista = \TypeDock\Plugin\Portal\Paleta::COLORES}
+<div class="pa-paleta" role="radiogroup" aria-label="Color de marca">
+    {foreach $lista as $k => $c}
+        {var $m = \TypeDock\Plugin\Portal\Paleta::marca($c[1])}
+        <label class="pa-col" title="{t($c[0])}">
+            <input type="radio" name="{$nombre}" value="{$c[1]}" {if strtolower((string) $actual) === $c[1]}checked{/if}>
+            <span class="pa-col-chip" style="background:{$m['color']|noescape};color:{$m['texto']|noescape}"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3.2L13 4.8" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            <span class="pa-col-nom">{t($c[0])}</span>
+        </label>
+    {/foreach}
+    {if !\TypeDock\Plugin\Portal\Paleta::esElegible((string) $actual) && preg_match('/^#[0-9a-f]{6}$/i', (string) $actual) === 1}
+        {var $m = \TypeDock\Plugin\Portal\Paleta::marca((string) $actual)}
+        <label class="pa-col" title="Color actual (fuera de la paleta)">
+            <input type="radio" name="{$nombre}" value="{$actual}" checked>
+            <span class="pa-col-chip" style="background:{$m['color']|noescape};color:{$m['texto']|noescape}"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3.2L13 4.8" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            <span class="pa-col-nom">Actual</span>
+        </label>
+    {/if}
+</div>

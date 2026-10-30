@@ -19,7 +19,6 @@ namespace TypeDock\Plugin\Portal;
  */
 class EquipoGestion extends EquipoController
 {
-    private ?\Latte\Engine $latte = null;
 
     /** Registra las rutas de gestión. Van antes que las vistas propias del panel (…/nuevo gana a …/@id). */
     public function registrar(): void
@@ -132,6 +131,8 @@ class EquipoGestion extends EquipoController
         $r('POST', 'proyectos/@id/importar/confirmar', LeadAdminController::class, 'importarConfirmar', 'proyecto', 'cuenta');
         $r('POST', 'leads/@id/anonimizar',          LeadAdminController::class, 'anonimizar', 'lead', 'cuenta');
         $r('POST', 'leads/@id/eliminar',            LeadAdminController::class, 'eliminar', 'lead', 'cuenta');
+        $r('POST', 'leads/@id/linea',               LeadAdminController::class, 'linea', 'lead');
+        $r('POST', 'leads/@id/linea/@eid/fecha',    LeadAdminController::class, 'lineaFecha', 'lead');
         $r('POST', 'leads/@id/mailchimp',           LeadAdminController::class, 'mcRevisar', 'lead');
         $r('POST', 'proyectos/@id/mailchimp/clave', LeadAdminController::class, 'mcClave', 'proyecto', 'cuenta');
         $r('POST', 'proyectos/@id/mailchimp/quitar', LeadAdminController::class, 'mcQuitar', 'proyecto', 'cuenta');
@@ -325,19 +326,6 @@ class EquipoGestion extends EquipoController
             'csrf_token'       => PortalSession::csrf(),
             'enPanel'          => true,
         ]) + $datos;
-        echo $this->motor()->renderToString(dirname(__DIR__) . '/templates/admin/' . ltrim($plantilla, '/'), $datos);
-    }
-
-    private function motor(): \Latte\Engine
-    {
-        if ($this->latte === null) {
-            $this->latte = new \Latte\Engine();
-            $dir = (new ArchivoService($this->pdo()))->directorioBase() . '/.latte';
-            if (!is_dir($dir)) {
-                @mkdir($dir, 0750, true);
-            }
-            $this->latte->setTempDirectory(is_dir($dir) && is_writable($dir) ? $dir : sys_get_temp_dir());
-        }
-        return $this->latte;
+        echo Vista::motor($this->pdo())->renderToString(dirname(__DIR__) . '/templates/admin/' . ltrim($plantilla, '/'), $datos);
     }
 }

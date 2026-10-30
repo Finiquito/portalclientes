@@ -105,11 +105,11 @@ class EntregaAdminController
             'entregas'   => $lista,
             'filtros'    => $f,
             'conteos'    => $conteos,
-            'grupos'     => self::FILTRO_ESTADOS,
+            'grupos'     => Idioma::lista(self::FILTRO_ESTADOS),
             'proyectosF' => $proyectos,
             'colorProy'  => Fmt::coloresTodos($this->pdo()),
             'marcasCli'  => Fmt::marcasClientes($this->pdo()),
-            'estados'  => TiposContenido::ESTADOS_ENTREGA,
+            'estados'  => Idioma::lista(TiposContenido::ESTADOS_ENTREGA),
             'fmt'      => new Fmt(),
         ] + $this->flashes());
     }
@@ -124,8 +124,8 @@ class EntregaAdminController
         $this->ui->view('entregas/edit.latte', [
             'entrega' => null, 'proyectos' => $proyectos, 'contenidos' => [], 'fmt' => new Fmt(),
             'fasesRango' => $this->ui->filtrar((new FaseService($this->pdo()))->conRangos(), 'proyecto_id'),
-            'estados' => TiposContenido::ESTADOS_ENTREGA, 'tipos' => TiposContenido::TIPOS,
-            'estadosContenido' => TiposContenido::ESTADOS_CONTENIDO, 'reacciones' => TiposContenido::REACCIONES,
+            'estados' => Idioma::lista(TiposContenido::ESTADOS_ENTREGA), 'tipos' => Idioma::lista(TiposContenido::TIPOS),
+            'estadosContenido' => Idioma::lista(TiposContenido::ESTADOS_CONTENIDO), 'reacciones' => Idioma::lista(TiposContenido::REACCIONES),
             'portadas' => [], 'resumenReacc' => [], 'maxMb' => $this->maxMb(),
         ] + $this->flashes());
     }
@@ -145,7 +145,7 @@ class EntregaAdminController
         }
         if ($planilla !== [] && ($e = $this->entregas()->find($id)) !== null) {
             $r = $this->expandir($e, array_slice($planilla, 0, 30), (string) ($_POST['tipo'] ?? ''), trim((string) ($_POST['cuenta'] ?? '')));
-            $this->ui->redirect($this->url('entregas/' . $id), 'Entrega creada. ' . $r['mensaje']);
+            $this->ui->redirect($this->url('entregas/' . $id), Idioma::t('Entrega creada. ') . $r['mensaje']);
             return;
         }
         $this->ui->redirect($this->url('entregas/' . $id), 'Entrega creada. Agrega los contenidos y luego publícala.');
@@ -203,8 +203,8 @@ class EntregaAdminController
         $this->ui->view('entregas/edit.latte', [
             'entrega' => $e, 'proyectos' => [], 'contenidos' => $lista, 'fmt' => new Fmt(),
             'fasesRango' => $this->ui->filtrar((new FaseService($this->pdo()))->conRangos(), 'proyecto_id'),
-            'estados' => TiposContenido::ESTADOS_ENTREGA, 'tipos' => TiposContenido::TIPOS,
-            'estadosContenido' => TiposContenido::ESTADOS_CONTENIDO, 'reacciones' => TiposContenido::REACCIONES,
+            'estados' => Idioma::lista(TiposContenido::ESTADOS_ENTREGA), 'tipos' => Idioma::lista(TiposContenido::TIPOS),
+            'estadosContenido' => Idioma::lista(TiposContenido::ESTADOS_CONTENIDO), 'reacciones' => Idioma::lista(TiposContenido::REACCIONES),
             'portadas' => $portadas, 'resumenReacc' => $resumen, 'maxMb' => $this->maxMb(),
             'miniaturas' => $miniaturas, 'faltas' => $faltas, 'piezasJs' => $piezasJs,
             'sinTapa' => array_slice($sinTapa, 0, 30), 'linkTapa' => $linkTapa,
@@ -244,11 +244,11 @@ class EntregaAdminController
             $e['n_total'] . ' contenido(s)'
         );
         if (!empty($_POST['avisar'])) {
-            $cuerpo = trim((string) $e['mensaje']) !== '' ? (string) $e['mensaje'] : 'Dejamos contenido listo para que lo revises.';
+            $cuerpo = trim((string) $e['mensaje']) !== '' ? (string) $e['mensaje'] : Idioma::f('Dejamos contenido listo para que lo revises.');
             (new Notifier($this->ctx, $this->pdo()))->alCliente(
-                (string) $e['cliente_id'], null, 'Tienes contenido para revisar: ' . $e['titulo'], $cuerpo, '/portal/entregas/' . $id,
-                ['etiqueta' => 'Revisión', 'titulo' => 'Tienes contenido para revisar', 'resaltado' => 'contenido', 'boton' => 'Revisar contenido',
-                 'bloques' => [['tarjetas' => [['titulo' => (string) $e['titulo'], 'detalle' => ((int) $e['n_total']) . ' contenido(s) esperando tu opinión', 'chip' => 'Para revisar']]]],
+                (string) $e['cliente_id'], null, Idioma::f('Tienes contenido para revisar: %s', (string) $e['titulo']), $cuerpo, '/portal/entregas/' . $id,
+                ['etiqueta' => Idioma::f('Revisión'), 'titulo' => Idioma::f('Tienes contenido para revisar'), 'resaltado' => Idioma::f('contenido'), 'boton' => Idioma::f('Revisar contenido'),
+                 'bloques' => [['tarjetas' => [['titulo' => (string) $e['titulo'], 'detalle' => Idioma::f('%d contenido(s) esperando tu opinión', (int) $e['n_total']), 'chip' => Idioma::f('Para revisar')]]]],
                  'vigencia' => Vigencia::revision($id)]
             );
         }
@@ -298,7 +298,7 @@ class EntregaAdminController
             $this->portadaDesdeTapas($r['ok']);
         }
         $this->reabrirSiCorresponde($e);
-        $this->ui->redirect($volver, $errores === [] ? 'Contenido agregado.' : 'Contenido agregado, pero: ' . implode(' · ', $errores), $errores === [] ? 'success' : 'error');
+        $this->ui->redirect($volver, $errores === [] ? Idioma::t('Contenido agregado.') : Idioma::t('Contenido agregado, pero: ') . implode(' · ', array_map(Idioma::t(...), $errores)), $errores === [] ? 'success' : 'error');
     }
 
     /**
@@ -374,8 +374,8 @@ class EntregaAdminController
             $this->reabrirSiCorresponde($e);
         }
         $msg = $creados > 0
-            ? $creados . ' contenido(s) creados' . ($planillas > 0 ? ' desde la planilla. Ahora súbeles las imágenes a cada uno.' : '.')
-            : 'No se creó ningún contenido.';
+            ? ($planillas > 0 ? Idioma::t('%d contenido(s) creados desde la planilla. Ahora súbeles las imágenes a cada uno.', $creados) : Idioma::t('%d contenido(s) creados.', $creados))
+            : Idioma::t('No se creó ningún contenido.');
         if ($avisos !== []) {
             $msg .= ' Avisos: ' . implode(' · ', array_slice($avisos, 0, 6));
         }
@@ -413,7 +413,7 @@ class EntregaAdminController
         }
         $volver = $this->url('entregas/' . $id) . '#contenidos';
         if (ArchivoService::postExcedido()) {
-            $this->ui->redirect($volver, 'Los archivos superan lo que acepta el servidor de una vez (' . ini_get('post_max_size') . '). Súbelos en grupos más chicos.', 'error');
+            $this->ui->redirect($volver, Idioma::t('Los archivos superan lo que acepta el servidor de una vez (%s). Súbelos en grupos más chicos.', (string) ini_get('post_max_size')), 'error');
             return;
         }
         $lista = array_slice(ArchivoService::normalizar($_FILES['archivos'] ?? null), 0, 80);
@@ -506,7 +506,7 @@ class EntregaAdminController
             $r = $this->expandir($e, array_merge($planillas, $nuevos), '', $cuenta);
             $creados += $r['creados'];
             if ($r['creados'] > 0) {
-                $partes[] = ($r['creados'] === 1 ? '1 contenido nuevo' : $r['creados'] . ' contenidos nuevos');
+                $partes[] = ($r['creados'] === 1 ? Idioma::t('1 contenido nuevo') : Idioma::t('%d contenidos nuevos', $r['creados']));
             } elseif (str_contains($r['mensaje'], 'Avisos:')) {
                 $errores[] = trim(substr($r['mensaje'], (int) strpos($r['mensaje'], 'Avisos:') + 7));
             }
@@ -517,12 +517,12 @@ class EntregaAdminController
         $recientes = $this->archivosRecientes((string) $e['cliente_id'], $inicio);
         $this->aplicarTapas($recientes);
         $this->portadaDesdeTapas($recientes);
-        $msg = $partes !== [] ? 'Listo: ' . implode(' · ', $partes) . '.' : 'No se subió nada.';
+        $msg = $partes !== [] ? Idioma::t('Listo: %s.', implode(' · ', $partes)) : Idioma::t('No se subió nada.');
         if ($omitidos > 0) {
-            $msg .= ' ' . ($omitidos === 1 ? '1 archivo quedó fuera' : $omitidos . ' archivos quedaron fuera') . ', como elegiste.';
+            $msg .= ' ' . ($omitidos === 1 ? Idioma::t('1 archivo quedó fuera, como elegiste.') : Idioma::t('%d archivos quedaron fuera, como elegiste.', $omitidos));
         }
         if ($errores !== []) {
-            $msg .= ' Revisa: ' . implode(' · ', array_slice($errores, 0, 6));
+            $msg .= ' ' . Idioma::t('Revisa: %s', implode(' · ', array_slice($errores, 0, 6)));
         }
         $this->ui->redirect($volver, $msg, $partes !== [] && $errores === [] ? 'success' : 'error');
     }
@@ -800,8 +800,8 @@ class EntregaAdminController
             $posImagen[(string) $a['id']] = $k + 1;
         }
         $this->ui->view('entregas/contenido.latte', [
-            'c' => $c, 'versiones' => $versiones, 'tipos' => TiposContenido::TIPOS,
-            'reacciones' => TiposContenido::REACCIONES, 'estadosContenido' => TiposContenido::ESTADOS_CONTENIDO,
+            'c' => $c, 'versiones' => $versiones, 'tipos' => Idioma::lista(TiposContenido::TIPOS),
+            'reacciones' => Idioma::lista(TiposContenido::REACCIONES), 'estadosContenido' => Idioma::lista(TiposContenido::ESTADOS_CONTENIDO),
             'comentarios' => $comentarios,
             'pines' => Ubicacion::pines($comentarios, $c['version_id'] !== null ? (string) $c['version_id'] : null, $posImagen),
             'imgVigente' => $imgVigente, 'posImagen' => $posImagen,
@@ -975,10 +975,10 @@ class EntregaAdminController
             if (!empty($_POST['avisar_cambio']) && $c['entrega_estado'] !== 'borrador') {
                 $this->contenidos()->marcarActualizado($id);
                 (new Notifier($this->ctx, $this->pdo()))->alCliente(
-                    (string) $c['cliente_id'], null, 'Actualizamos una pieza: ' . $c['titulo'],
-                    'Hicimos cambios en «' . $c['titulo'] . '» de «' . $c['entrega_titulo'] . '». Échale un vistazo cuando puedas.', '/portal/contenidos/' . $id,
-                    ['etiqueta' => 'Pieza actualizada', 'titulo' => 'Actualizamos una pieza para que la revises', 'resaltado' => 'actualizamos', 'boton' => 'Ver la pieza',
-                     'bloques' => [['tarjetas' => [['titulo' => (string) $c['titulo'], 'detalle' => (string) $c['entrega_titulo'], 'chip' => 'Actualizado']]]],
+                    (string) $c['cliente_id'], null, Idioma::f('Actualizamos una pieza: %s', (string) $c['titulo']),
+                    Idioma::f('Hicimos cambios en «%s» de «%s». Échale un vistazo cuando puedas.', (string) $c['titulo'], (string) $c['entrega_titulo']), '/portal/contenidos/' . $id,
+                    ['etiqueta' => Idioma::f('Pieza actualizada'), 'titulo' => Idioma::f('Actualizamos una pieza para que la revises'), 'resaltado' => Idioma::f('actualizamos'), 'boton' => Idioma::f('Ver la pieza'),
+                     'bloques' => [['tarjetas' => [['titulo' => (string) $c['titulo'], 'detalle' => (string) $c['entrega_titulo'], 'chip' => Idioma::f('Actualizado')]]]],
                      'vigencia' => Vigencia::contenido($id)]
                 );
                 (new ActividadService($this->pdo()))->registrar(
@@ -1035,9 +1035,9 @@ class EntregaAdminController
         }
         if ($vid !== null && !empty($_POST['avisar'])) {
             (new Notifier($this->ctx, $this->pdo()))->alCliente(
-                (string) $c['cliente_id'], null, 'Nueva versión para revisar: ' . $c['titulo'],
-                'Subimos una nueva versión de «' . $c['titulo'] . '» en «' . $c['entrega_titulo'] . '». Échale un vistazo cuando puedas.', '/portal/entregas/' . $c['entrega_id'],
-                ['etiqueta' => 'Nueva versión', 'titulo' => 'Hay una nueva versión para revisar', 'resaltado' => 'nueva versión', 'boton' => 'Ver la nueva versión',
+                (string) $c['cliente_id'], null, Idioma::f('Nueva versión para revisar: %s', (string) $c['titulo']),
+                Idioma::f('Subimos una nueva versión de «%s» en «%s». Échale un vistazo cuando puedas.', (string) $c['titulo'], (string) $c['entrega_titulo']), '/portal/entregas/' . $c['entrega_id'],
+                ['etiqueta' => Idioma::f('Nueva versión'), 'titulo' => Idioma::f('Hay una nueva versión para revisar'), 'resaltado' => Idioma::f('nueva versión'), 'boton' => Idioma::f('Ver la nueva versión'),
                  'bloques' => [['tarjetas' => [['titulo' => (string) $c['titulo'], 'detalle' => (string) $c['entrega_titulo'], 'chip' => 'v' . ((int) $c['version_actual'] + 1)]]]],
                  'vigencia' => Vigencia::contenido($id)]
             );
@@ -1079,7 +1079,7 @@ class EntregaAdminController
         if ($n > 0) {
             $this->entregas()->reabrir((string) $c['entrega_id']);
         }
-        $this->ui->redirect($volver, $r['errores'] === [] ? ($n === 1 ? 'Archivo subido a «' . $c['titulo'] . '».' : "{$n} archivos subidos a «{$c['titulo']}».") : ($n > 0 ? "Se subieron {$n}, pero: " : 'No se pudo subir: ') . implode(' · ', $r['errores']), $r['errores'] === [] ? 'success' : 'error');
+        $this->ui->redirect($volver, $r['errores'] === [] ? ($n === 1 ? Idioma::t('Archivo subido a «%s».', (string) $c['titulo']) : Idioma::t('%d archivos subidos a «%s».', $n, (string) $c['titulo'])) : ($n > 0 ? Idioma::t('Se subieron %d, pero: ', $n) : Idioma::t('No se pudo subir: ')) . implode(' · ', array_map(Idioma::t(...), $r['errores'])), $r['errores'] === [] ? 'success' : 'error');
     }
 
     // ---- Conversación -----------------------------------------------------
@@ -1104,10 +1104,10 @@ class EntregaAdminController
             );
             if (!empty($_POST['avisar'])) {
                 (new Notifier($this->ctx, $this->pdo()))->alCliente(
-                    (string) $c['cliente_id'], null, 'Nuevo comentario en: ' . $c['titulo'], '', '/portal/contenidos/' . $id,
-                    ['etiqueta' => 'Comentario', 'titulo' => 'Nuevo comentario del equipo', 'resaltado' => 'comentario', 'boton' => 'Ver y responder',
+                    (string) $c['cliente_id'], null, Idioma::f('Nuevo comentario en: %s', (string) $c['titulo']), '', '/portal/contenidos/' . $id,
+                    ['etiqueta' => Idioma::f('Comentario'), 'titulo' => Idioma::f('Nuevo comentario del equipo'), 'resaltado' => Idioma::f('comentario'), 'boton' => Idioma::f('Ver y responder'),
                      'preheader' => mb_substr($texto, 0, 110),
-                     'bloques' => [['p' => 'En «' . $c['titulo'] . '»:'], ['cita' => mb_substr($texto, 0, 800)]]]
+                     'bloques' => [['p' => Idioma::f('En «%s»:', (string) $c['titulo'])], ['cita' => mb_substr($texto, 0, 800)]]]
                 );
             }
         }

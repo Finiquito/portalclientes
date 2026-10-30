@@ -3,7 +3,7 @@
 {block page_title}Importar contactos{/block}
 
 {block content}
-<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=16">
+<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=17">
 <div class="page-header">
     <h1>Importar contactos</h1>
     <a href="{$admin_url('leads')}" class="btn">Contactos ganados</a>
@@ -37,8 +37,8 @@
 <div class="card">
     <h2 class="pa-h2">Vista previa · {$archivo}</h2>
     <p style="margin:0">
-        <span class="pa-chip ok">{$revision['nuevos']} {$revision['nuevos'] === 1 ? 'nuevo' : 'nuevos'}</span>
-        <span class="pa-chip gris">{$revision['duplicados']} {$revision['duplicados'] === 1 ? 'ya estaba' : 'ya estaban'}</span>
+        <span class="pa-chip ok">{$revision['nuevos']} {$revision['nuevos'] === 1 ? t('nuevo') : t('nuevos')}</span>
+        <span class="pa-chip gris">{$revision['duplicados']} {$revision['duplicados'] === 1 ? t('ya estaba') : t('ya estaban')}</span>
         {if $revision['errores']}<span class="pa-chip danger">{count($revision['errores'])} con problemas</span>{/if}
         <span class="pa-muted">de {$revision['total']} filas · {$proyecto['cliente_nombre']} · {$proyecto['nombre']}</span>
     </p>
@@ -83,7 +83,7 @@
         </div>
         <label class="pa-check mt-3"><input type="checkbox" name="avisar" value="1" checked> <span>Avisar al cliente que llegaron contactos nuevos (un solo correo, sin datos personales)</span></label>
         <p class="mt-4 pa-row">
-            <button type="submit" class="btn btn-primary">Importar {$revision['nuevos']} {$revision['nuevos'] === 1 ? 'contacto' : 'contactos'}</button>
+            <button type="submit" class="btn btn-primary">Importar {$revision['nuevos']} {$revision['nuevos'] === 1 ? t('contacto') : t('contactos')}</button>
             <a href="{$admin_url('leads/importar')}?proyecto={$proyecto['id']}" class="btn">Cancelar</a>
         </p>
     </form>

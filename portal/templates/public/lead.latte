@@ -3,6 +3,7 @@
 {block title}{$l['nombre']}{/block}
 
 {block content}
+<link rel="stylesheet" href="/plugins/portal/assets/leads.css?v=7">
 {var $anonimo = !empty($l['anonimizado_en'])}
 <a href="/portal/contactos-ganados" class="reveal mb-3 inline-flex items-center gap-1.5 text-sm font-semibold text-muted transition hover:text-ink">
     <svg class="size-4"><use href="#i-back"/></svg> Contactos ganados
@@ -33,20 +34,14 @@
         {/if}
     </section>
 
-    {if !$anonimo}
-    <form method="post" action="/portal/contactos-ganados/{$l['id']}" class="card card-pad reveal space-y-5" style="--i:1">
-        <input type="hidden" name="_csrf" value="{$csrf}">
-        <h2 class="text-lg font-extrabold tracking-tight">Seguimiento</h2>
+    <section class="reveal" style="--i:1" aria-label="Línea de tiempo">
+        {include '../_lead_linea.latte', l: $l, eventos: $eventos, estados: $estados, base: '/portal/contactos-ganados/' . $l['id'], csrfCampo: '_csrf', csrfValor: $csrf, ahora: $ahora, fmt: $fmt, origenes: $origenes, puedeEditar: !$vistaPrevia}
+    </section>
 
-        <fieldset>
-            <legend class="label">Estado</legend>
-            <div class="grid grid-cols-2 gap-2.5 sm:grid-cols-5">
-                {foreach $estados as $k => $nombre}
-                    <label class="opcion"><input type="radio" name="estado" value="{$k}" class="sr-only" {if $l['estado'] === $k}checked{/if}><span class="font-semibold">{$nombre}</span></label>
-                {/foreach}
-            </div>
-            {if $l['estado_por'] && $l['estado_en']}<p class="mt-2 text-xs text-muted">Último cambio: {$l['estado_por']}, {$fmt->rel($l['estado_en'])}.</p>{/if}
-        </fieldset>
+    {if !$anonimo}
+    <form method="post" action="/portal/contactos-ganados/{$l['id']}" class="card card-pad reveal space-y-5" style="--i:2">
+        <input type="hidden" name="_csrf" value="{$csrf}">
+        <h2 class="text-lg font-extrabold tracking-tight">Próximo paso y datos</h2>
 
         <div class="grid gap-4 sm:grid-cols-[minmax(0,1fr)_11rem]">
             <div>
@@ -57,11 +52,6 @@
                 <label for="l-fecha" class="label">¿Cuándo?</label>
                 <input id="l-fecha" name="proximo_paso_fecha" type="date" class="field" value="{$l['proximo_paso_fecha']}">
             </div>
-        </div>
-
-        <div>
-            <label for="l-notas" class="label">Notas</label>
-            <textarea id="l-notas" name="notas" rows="4" maxlength="5000" data-autogrow class="field" placeholder="Lo que conversaron, qué le interesa…">{$l['notas']}</textarea>
         </div>
 
         <details class="rounded-2xl border border-line px-4 py-3">
@@ -104,9 +94,9 @@
     <section class="card card-pad reveal text-sm" style="--i:2">
         <h2 class="font-extrabold">De dónde llegó</h2>
         <dl class="mt-3 space-y-2.5">
-            <div><dt class="text-xs text-muted">Proyecto</dt><dd class="font-semibold">{$l['proyecto_nombre']}</dd></div>
-            <div><dt class="text-xs text-muted">Origen</dt><dd class="font-semibold">{$origenes[$l['origen']] ?? $l['origen']}</dd></div>
-            {if $l['campana']}<div><dt class="text-xs text-muted">Campaña</dt><dd class="break-words font-semibold">{$l['campana']}</dd></div>{/if}
+            <div><dt class="text-xs text-muted">Campaña</dt><dd class="font-semibold">{$l['proyecto_nombre']}<span class="ll">{foreach \TypeDock\Plugin\Portal\LeadService::publicoEtiquetas($l['proyecto_publico'] ?? '') as $t} <span class="ll-pub" data-p="{$t}">{$t}</span>{/foreach}</span></dd></div>
+            <div><dt class="text-xs text-muted">Origen</dt><dd class="break-words font-semibold">{$l['campana'] ?: ($origenes[$l['origen']] ?? $l['origen'])}</dd></div>
+            <div><dt class="text-xs text-muted">Cómo llegó</dt><dd class="font-semibold">{$origenes[$l['origen']] ?? $l['origen']}</dd></div>
             {if $l['utm_source'] || $l['utm_medium']}<div><dt class="text-xs text-muted">Fuente / medio</dt><dd class="break-words font-semibold">{$l['utm_source'] ?: '—'} / {$l['utm_medium'] ?: '—'}</dd></div>{/if}
             <div><dt class="text-xs text-muted">Llegó</dt><dd class="font-semibold">{$fmt->fecha($l['created_at'])}</dd></div>
             {if $l['creado_por'] && $l['origen'] === 'manual'}<div><dt class="text-xs text-muted">Lo agregó</dt><dd class="font-semibold">{$l['creado_por']}</dd></div>{/if}
@@ -123,7 +113,7 @@
         {elseif !$mc}
             <p class="mt-3 text-muted">Todavía no se revisa.</p>
         {else}
-            <p class="mt-3"><span class="chip chip-{$mc['etiqueta'][1] === 'gris' ? 'muted' : $mc['etiqueta'][1]}">{$mc['etiqueta'][0]}</span></p>
+            <p class="mt-3"><span class="chip chip-{$mc['etiqueta'][1] === 'gris' ? 'muted' : $mc['etiqueta'][1]}">{t($mc['etiqueta'][0])}</span></p>
             {if $mc['estado'] !== 'no_esta' && $mc['estado'] !== 'error'}
             <dl class="mt-3 space-y-2.5">
                 {if !empty($mc['alta'])}<div><dt class="text-xs text-muted">Se inscribió</dt><dd class="font-semibold">{$fmt->fecha($mc['alta'])}</dd></div>{/if}
@@ -137,12 +127,12 @@
                 <h3 class="mt-4 text-xs font-bold uppercase tracking-wide text-muted">Últimos correos</h3>
                 <ul class="mt-2 space-y-2">
                     {foreach $mc['actividad'] as $a}
-                        <li class="leading-snug"><span class="font-semibold">{$mcEventos[$a['tipo']] ?? $a['tipo']}</span>{if $a['titulo']} «{$a['titulo']}»{/if} <span class="block text-xs text-muted">{$fmt->rel($a['fecha'])}</span></li>
+                        <li class="leading-snug"><span class="font-semibold">{t($mcEventos[$a['tipo']] ?? $a['tipo'])}</span>{if $a['titulo']} «{$a['titulo']}»{/if} <span class="block text-xs text-muted">{$fmt->rel($a['fecha'])}</span></li>
                     {/foreach}
                 </ul>
             {/if}
             {/if}
-            {if $mc['estado'] === 'error' && !empty($mc['error'])}<p class="mt-2 text-xs text-muted">{$mc['error']}</p>{/if}
+            {if $mc['estado'] === 'error' && !empty($mc['error'])}<p class="mt-2 text-xs text-muted">{t($mc['error'])}</p>{/if}
             <p class="mt-3 text-xs text-muted">Revisado {$fmt->rel($mc['revisado'])}.</p>
         {/if}
         {if $l['correo'] && !$l['anonimizado_en'] && !$vistaPrevia}

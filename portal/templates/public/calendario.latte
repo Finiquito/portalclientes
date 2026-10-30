@@ -3,7 +3,8 @@
 {block title}{count($proyectos) > 1 ? 'Proyectos' : 'Tu proyecto'}{/block}
 
 {block content}
-<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=16">
+<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=17">
+<link rel="stylesheet" href="/plugins/portal/assets/panel.css?v=5">
 {var $meses = ['01' => 'Enero', '02' => 'Febrero', '03' => 'Marzo', '04' => 'Abril', '05' => 'Mayo', '06' => 'Junio', '07' => 'Julio', '08' => 'Agosto', '09' => 'Septiembre', '10' => 'Octubre', '11' => 'Noviembre', '12' => 'Diciembre']}
 {var $tipos = ['hito' => ['Hito', 'chip-brand'], 'reunion' => ['Reunión', 'chip-info'], 'entrega' => ['Para revisar', 'chip-warn'], 'fase' => ['Etapa', 'chip-muted'], 'tarea' => ['Te toca', 'chip-danger']]}
 
@@ -16,15 +17,28 @@
 {if count($proyectos) > 1}
     <nav class="reveal mb-5 flex flex-wrap gap-2" aria-label="Proyectos">
         {foreach $proyectos as $p}
-            <a href="?proyecto={$p['id']}" class="chip {$p['id'] === $proyectoId ? 'chip-brand' : 'chip-muted'} px-3! py-1.5!" {if $p['id'] === $proyectoId}aria-current="page"{/if}>
+            <a href="?proyecto={$p['id']}&amp;vista={$vista}" class="chip {$p['id'] === $proyectoId ? 'chip-brand' : 'chip-muted'} px-3! py-1.5!" {if $p['id'] === $proyectoId}aria-current="page"{/if}>
                 <span aria-hidden="true" style="display:inline-block;width:.6rem;height:.6rem;border-radius:9999px;background:{($colorProy[$p['id']] ?? '#94a3b8')|noescape}"></span>{$p['nombre']}
             </a>
         {/foreach}
     </nav>
 {/if}
 
+{* Tres formas de ver el proyecto *}
+{if $d !== null}
+    <nav class="vt reveal" aria-label="Vistas del proyecto">
+        {foreach ['resumen' => 'Resumen', 'calendario' => 'Calendario', 'linea' => 'Línea de tiempo'] as $k => $et}
+            <a href="?proyecto={$proyectoId}&amp;vista={$k}" {if $vista === $k}aria-current="page"{/if}>{$et}</a>
+        {/foreach}
+    </nav>
+{/if}
+
 {if $d === null}
     <div class="card card-pad reveal text-sm text-muted">Todavía no hay proyectos.</div>
+{elseif $vista === 'resumen'}
+    {include '_proyecto_resumen.latte', r: $resumen, proyectoId: $proyectoId, fmt: $fmt}
+{elseif $vista === 'calendario'}
+    {include '_proyecto_mes.latte', m: $calMes, w: $calSemana, proyectoId: $proyectoId}
 {elseif !$momentos && !$d['tareas']}
     <div class="card card-pad reveal text-sm text-muted">Este proyecto todavía no tiene fechas. Apenas el equipo las defina, las verás aquí.</div>
 {else}

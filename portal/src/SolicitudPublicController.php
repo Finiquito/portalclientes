@@ -40,14 +40,14 @@ class SolicitudPublicController extends PortalPublicController
 
         $pag = Paginacion::delContacto($this->pdo(), (string) $c['id'], '/portal/solicitudes', count($cerradas));
         $cerradas = $pag->cortar($pag->orden === 'antiguos' ? array_reverse($cerradas) : $cerradas);
-        $this->ctx->view('templates/public/solicitudes.latte', $this->contexto($c, 'solicitudes') + [
+        Vista::mostrar($this->pdo(), 'templates/public/solicitudes.latte', $this->contexto($c, 'solicitudes') + [
             'pag'      => $pag,
             'marcas'   => (new NovedadesService($this->pdo()))->solicitudes((string) $c['cliente_id'], (string) $c['id']),
             'abiertas' => $abiertas,
             'cerradas' => $cerradas,
-            'tipos'    => SolicitudService::TIPOS,
-            'estadosS' => SolicitudService::ESTADOS_CLIENTE,
-            'urgencias' => SolicitudService::URGENCIAS,
+            'tipos'    => Idioma::lista(SolicitudService::TIPOS),
+            'estadosS' => Idioma::lista(SolicitudService::ESTADOS_CLIENTE),
+            'urgencias' => Idioma::lista(SolicitudService::URGENCIAS),
             'multiples' => count($this->proyectosDe((string) $c['cliente_id'])) > 1,
         ]);
     }
@@ -104,11 +104,11 @@ class SolicitudPublicController extends PortalPublicController
         unset($_SESSION['portal_solicitud_previa']);
         $tipo = (string) ($_GET['tipo'] ?? ($previo['tipo'] ?? ''));
 
-        $this->ctx->view('templates/public/solicitud_nueva.latte', $this->contexto($c, 'solicitudes') + [
-            'tipos'       => SolicitudService::TIPOS,
+        Vista::mostrar($this->pdo(), 'templates/public/solicitud_nueva.latte', $this->contexto($c, 'solicitudes') + [
+            'tipos'       => Idioma::lista(SolicitudService::TIPOS),
             'tipo'        => isset(SolicitudService::TIPOS[$tipo]) ? $tipo : '',
-            'urgencias'   => SolicitudService::URGENCIAS,
-            'modalidades' => SolicitudService::MODALIDADES,
+            'urgencias'   => Idioma::lista(SolicitudService::URGENCIAS),
+            'modalidades' => Idioma::lista(SolicitudService::MODALIDADES),
             'proyectos'   => $proyectos,
             'proyectoSel' => (string) ($_GET['proyecto'] ?? ($previo['proyecto_id'] ?? '')),
             'previo'      => is_array($previo) ? $previo : [],
@@ -128,7 +128,7 @@ class SolicitudPublicController extends PortalPublicController
     {
         $c = $this->requerirContacto();
         if (ArchivoService::postExcedido()) {
-            PortalSession::flash('error', 'Los archivos superan el máximo permitido (' . (int) round($this->archivos()->limiteBytes($this->maxMb()) / 1048576) . ' MB en total).');
+            PortalSession::flash('error', Idioma::t('Los archivos superan el máximo permitido (%d MB en total).', (int) round($this->archivos()->limiteBytes($this->maxMb()) / 1048576)));
             $this->redirectTo('portal/solicitudes/nueva');
             return;
         }
@@ -170,7 +170,7 @@ class SolicitudPublicController extends PortalPublicController
             'problema'    => 'Recibimos el reporte y avisamos al equipo de inmediato.',
             default       => 'Recibimos tu solicitud. Te avisamos cuando la tomemos.',
         };
-        PortalSession::flash($errores === [] ? 'ok' : 'error', $errores === [] ? $gracias : $gracias . ' Pero algunos archivos no se subieron: ' . implode(' · ', $errores));
+        PortalSession::flash($errores === [] ? 'ok' : 'error', $errores === [] ? $gracias : $gracias . Idioma::t(' Pero algunos archivos no se subieron: ') . implode(' · ', array_map(Idioma::t(...), $errores)));
         $this->redirectTo('portal/solicitudes/' . $id);
     }
 
@@ -187,12 +187,12 @@ class SolicitudPublicController extends PortalPublicController
         if ($s['tarea_id']) {
             $this->marcarVisto($c, 'tarea', (string) $s['tarea_id']);
         }
-        $this->ctx->view('templates/public/solicitud.latte', $this->contexto($c, 'solicitudes') + [
+        Vista::mostrar($this->pdo(), 'templates/public/solicitud.latte', $this->contexto($c, 'solicitudes') + [
             's'           => $s,
-            'tipos'       => SolicitudService::TIPOS,
-            'estadosS'    => SolicitudService::ESTADOS_CLIENTE,
-            'urgencias'   => SolicitudService::URGENCIAS,
-            'modalidades' => SolicitudService::MODALIDADES,
+            'tipos'       => Idioma::lista(SolicitudService::TIPOS),
+            'estadosS'    => Idioma::lista(SolicitudService::ESTADOS_CLIENTE),
+            'urgencias'   => Idioma::lista(SolicitudService::URGENCIAS),
+            'modalidades' => Idioma::lista(SolicitudService::MODALIDADES),
             'horarios'    => SolicitudService::horarios($s['horarios']),
             'paisCliente' => $miPais = Zona::paisPersona($this->pdo(), (string) $s['cliente_id'], (string) $c['id']),
             // La reunión se guarda en hora de la agencia: a cada persona se le muestra en la suya.
@@ -221,10 +221,11 @@ class SolicitudPublicController extends PortalPublicController
         }
         $this->comentarios()->crear((string) $c['cliente_id'], 'solicitud', $id, 'contacto', (string) $c['id'], (string) $c['nombre'], $texto);
         $this->actividad()->registrar((string) $c['cliente_id'], ((string) $s['proyecto_id']) ?: null, 'contacto', (string) $c['nombre'], 'comento', 'solicitud', $id, (string) $s['titulo'], mb_substr($texto, 0, 200));
-        $this->notificador()->alEquipo("{$c['nombre']} comentó en la solicitud «{$s['titulo']}»", '', 'solicitudes/' . $id, [
+        $this->notificador()->alEquipo(Idioma::f('%s comentó en la solicitud «%s»', (string) $c['nombre'], (string) $s['titulo']), '', 'solicitudes/' . $id, [
+            'detalle' => Idioma::perezoso(fn(): string => mb_substr($texto, 0, 160)),
             'etiqueta' => 'Del cliente', 'titulo' => "{$c['nombre']} comentó en una solicitud", 'resaltado' => (string) $c['nombre'],
             'proyecto_id' => (string) $s['proyecto_id'], 'cliente_id' => (string) $s['cliente_id'],
-            'bloques' => [['tarjetas' => [['titulo' => (string) $s['titulo'], 'detalle' => SolicitudService::TIPOS[$s['tipo']][0]]]], ['cita' => mb_substr($texto, 0, 800)]],
+            'bloques' => [['tarjetas' => [['titulo' => (string) $s['titulo'], 'detalle' => Idioma::lista(SolicitudService::TIPOS)[$s['tipo']][0]]]], ['cita' => mb_substr($texto, 0, 800)]],
             'preheader' => mb_substr($texto, 0, 110), 'boton' => 'Abrir la solicitud',
         ]);
         PortalSession::flash('ok', 'Comentario enviado.');
@@ -250,30 +251,30 @@ class SolicitudPublicController extends PortalPublicController
             if (!headers_sent()) {
                 http_response_code(403);
             }
-            echo json_encode(['error' => 'Tu sesión expiró. Recarga la página.'], JSON_UNESCAPED_UNICODE);
+            echo json_encode(['error' => Idioma::t('Tu sesión expiró. Recarga la página.')], JSON_UNESCAPED_UNICODE);
             $this->terminate();
             return;
         }
         $ia = $this->ia();
         if (!$ia->activa()) {
-            echo json_encode(['error' => 'Esta opción no está disponible.'], JSON_UNESCAPED_UNICODE);
+            echo json_encode(['error' => Idioma::t('Esta opción no está disponible.')], JSON_UNESCAPED_UNICODE);
             $this->terminate();
             return;
         }
         $hace = time() - 3600;
         $usos = array_values(array_filter((array) ($_SESSION['portal_ia_dictado'] ?? []), fn($t): bool => (int) $t > $hace));
         if (count($usos) >= 10) {
-            echo json_encode(['error' => 'Ya ordenaste varios textos en la última hora. Puedes enviarlo tal como está.'], JSON_UNESCAPED_UNICODE);
+            echo json_encode(['error' => Idioma::t('Ya ordenaste varios textos en la última hora. Puedes enviarlo tal como está.')], JSON_UNESCAPED_UNICODE);
             $this->terminate();
             return;
         }
         $usos[] = time();
         $_SESSION['portal_ia_dictado'] = $usos;
-        $tipo = SolicitudService::TIPOS[(string) ($_POST['tipo'] ?? '')][0] ?? 'Un pedido';
+        $tipo = Idioma::lista(SolicitudService::TIPOS)[(string) ($_POST['tipo'] ?? '')][0] ?? 'Un pedido';
         try {
             echo json_encode(['texto' => $ia->ordenar((string) ($_POST['texto'] ?? ''), $tipo, $this->tomarString('titulo', 255))], JSON_UNESCAPED_UNICODE);
         } catch (\RuntimeException $e) {
-            echo json_encode(['error' => 'No pudimos ordenarlo ahora. Puedes enviarlo tal como está.'], JSON_UNESCAPED_UNICODE);
+            echo json_encode(['error' => Idioma::t('No pudimos ordenarlo ahora. Puedes enviarlo tal como está.')], JSON_UNESCAPED_UNICODE);
         }
         $this->terminate();
     }
@@ -296,13 +297,14 @@ class SolicitudPublicController extends PortalPublicController
         }
         $nombre = (string) $c['nombre'];
         $this->actividad()->registrar((string) $c['cliente_id'], ((string) $s['proyecto_id']) ?: null, 'contacto', $nombre, 'decidio', 'solicitud', $id, (string) $s['titulo'], $aprueba ? 'Aprobada' : 'No aprobada');
-        $asunto = $aprueba ? "{$nombre} aprobó el presupuesto «{$s['titulo']}»" : "{$nombre} no aprobó el presupuesto «{$s['titulo']}»";
+        $asunto = $aprueba ? Idioma::f('%s aprobó el presupuesto «%s»', $nombre, (string) $s['titulo']) : Idioma::f('%s no aprobó el presupuesto «%s»', $nombre, (string) $s['titulo']);
         $bloques = [['tarjetas' => [['titulo' => (string) $s['titulo'], 'detalle' => 'Presupuesto · ' . $s['monto']]]]];
         if ($comentario !== '') {
             $bloques[] = ['cita' => mb_substr($comentario, 0, 800)];
         }
         $bloques[] = ['p' => $aprueba ? 'Ya puedes convertirla en tarea desde la bandeja de solicitudes.' : 'Queda cerrada. Si quieres, escríbele para ajustar la propuesta.'];
         $this->notificador()->alEquipo($asunto, '', 'solicitudes/' . $id, [
+            'detalle' => Idioma::f('Presupuesto · %s', (string) $s['monto']),
             'etiqueta' => 'Del cliente', 'titulo' => $asunto, 'resaltado' => $nombre, 'proyecto_id' => (string) $s['proyecto_id'], 'cliente_id' => (string) $s['cliente_id'],
             'bloques' => $bloques, 'preheader' => $asunto, 'boton' => 'Abrir la solicitud',
         ]);
@@ -313,15 +315,15 @@ class SolicitudPublicController extends PortalPublicController
     /** @param array<string, mixed> $s */
     private function avisarSolicitud(array $s, string $quien, int $nArchivos): void
     {
-        $tipo = SolicitudService::TIPOS[$s['tipo']][0];
+        $tipo = Idioma::lista(SolicitudService::TIPOS)[$s['tipo']][0];
         $urgente = $s['urgencia'] === 'urgente';
-        $asunto = ($urgente ? '[URGENTE] ' : '') . match ($s['tipo']) {
-            'presupuesto' => "{$quien} pide un presupuesto: «{$s['titulo']}»",
-            'reunion'     => "{$quien} propone una reunión: «{$s['titulo']}»",
-            'problema'    => "{$quien} reporta un problema: «{$s['titulo']}»",
-            default       => "{$quien} pide: «{$s['titulo']}»",
-        };
-        $detalle = $tipo . ' · ' . SolicitudService::URGENCIAS[$s['urgencia']] . ($s['proyecto_id'] === '' ? ' · Proyecto nuevo' : '');
+        $asunto = Idioma::perezoso(fn(): string => ($urgente ? Idioma::t('[URGENTE]') . ' ' : '') . match ($s['tipo']) {
+            'presupuesto' => Idioma::t('%s pide un presupuesto: «%s»', $quien, (string) $s['titulo']),
+            'reunion'     => Idioma::t('%s propone una reunión: «%s»', $quien, (string) $s['titulo']),
+            'problema'    => Idioma::t('%s reporta un problema: «%s»', $quien, (string) $s['titulo']),
+            default       => Idioma::t('%s pide: «%s»', $quien, (string) $s['titulo']),
+        });
+        $detalle = Idioma::perezoso(fn(): string => Idioma::lista(SolicitudService::TIPOS)[$s['tipo']][0] . ' · ' . Idioma::lista(SolicitudService::URGENCIAS)[$s['urgencia']] . ($s['proyecto_id'] === '' ? ' · ' . Idioma::t('Proyecto nuevo') : ''));
         $bloques = [['tarjetas' => [['titulo' => (string) $s['titulo'], 'detalle' => $detalle]]]];
         if (trim((string) $s['detalle']) !== '') {
             $bloques[] = ['cita' => mb_substr((string) $s['detalle'], 0, 800)];
@@ -341,7 +343,7 @@ class SolicitudPublicController extends PortalPublicController
                 }
                 return $txt;
             }, $hz['lista']);
-            $bloques[] = ['p' => 'Horarios propuestos, en hora de ' . HorarioHabil::nombreDe($hz['pais']) . ': ' . implode(' · ', $hs) . '. ' . (SolicitudService::MODALIDADES[$s['modalidad']] ?? 'Videollamada') . '.'];
+            $bloques[] = ['p' => 'Horarios propuestos, en hora de ' . HorarioHabil::nombreDe($hz['pais']) . ': ' . implode(' · ', $hs) . '. ' . (Idioma::lista(SolicitudService::MODALIDADES)[$s['modalidad']] ?? 'Videollamada') . '.'];
         }
         if ($nArchivos > 0) {
             $bloques[] = ['p' => $nArchivos === 1 ? 'Adjuntó 1 archivo.' : "Adjuntó {$nArchivos} archivos."];
@@ -349,9 +351,10 @@ class SolicitudPublicController extends PortalPublicController
         $this->notificador()->alEquipo($asunto, '', 'solicitudes/' . $s['id'], [
             'etiqueta' => $urgente ? 'Urgente' : 'Solicitud nueva', 'titulo' => $asunto, 'resaltado' => $quien,
             'proyecto_id' => (string) $s['proyecto_id'], 'cliente_id' => (string) $s['cliente_id'], 'bloques' => $bloques,
-            'preheader' => mb_substr(trim((string) $s['detalle']) ?: $asunto, 0, 110), 'boton' => 'Revisar la solicitud',
-            // Urgente o «algo dejó de funcionar»: no espera al correo agrupado.
-            'urgente' => $urgente || $s['tipo'] === 'problema', 'detalle' => $detalle,
+            'preheader' => mb_substr(trim((string) $s['detalle']) ?: (string) $asunto, 0, 110), 'boton' => 'Revisar la solicitud',
+            // Urgente o «algo dejó de funcionar»: no espera la próxima hora fija (sale en la siguiente pasada del cron).
+            'urgente' => $urgente || $s['tipo'] === 'problema',
+            'detalle' => Idioma::perezoso(fn(): string => $detalle . ($urgente && trim((string) $s['motivo_urgencia']) !== '' ? ' · ' . Idioma::t('Motivo: %s', mb_substr(trim((string) $s['motivo_urgencia']), 0, 300)) : '')),
         ]);
     }
 }

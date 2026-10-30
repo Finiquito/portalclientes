@@ -52,7 +52,7 @@
 {if $conNovedad}
     <div class="reveal mt-5 flex items-center gap-3 rounded-2xl border border-brand/30 bg-brand-soft px-4 py-3 text-sm font-semibold text-brand-ink">
         <svg class="size-5 flex-none"><use href="#i-sparkles"/></svg>
-        <span>{count($conNovedad) === 1 ? 'Hay 1 pieza con cambios nuevos para revisar' : 'Hay ' . count($conNovedad) . ' piezas con cambios nuevos para revisar'}: están marcadas abajo.</span>
+        <span>{count($conNovedad) === 1 ? t('Hay 1 pieza con cambios nuevos para revisar') : t('Hay %d piezas con cambios nuevos para revisar', count($conNovedad))}: están marcadas abajo.</span>
     </div>
 {/if}
 <section class="mt-5" aria-label="Contenidos">

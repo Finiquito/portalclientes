@@ -1,7 +1,7 @@
 {* Paginación de las listas del admin y del panel. Parámetro: pag (Paginacion). *}
 {if $pag->total > 0}
 <div class="pa-paginacion">
-    <span class="pa-muted">{if $pag->paginas > 1}Mostrando <strong>{$pag->desde}–{$pag->hasta}</strong> de <strong>{$pag->total}</strong>{else}{$pag->total === 1 ? '1 en total' : $pag->total . ' en total'}{/if}</span>
+    <span class="pa-muted">{if $pag->paginas > 1}Mostrando <strong>{$pag->desde}–{$pag->hasta}</strong> de <strong>{$pag->total}</strong>{else}{$pag->total === 1 ? t('1 en total') : t('%d en total', $pag->total)}{/if}</span>
     <form method="get" class="pa-selects">
         {foreach $pag->ocultos() as $k => $v}<input type="hidden" name="{$k}" value="{$v}">{/foreach}
         {if $pag->total > \TypeDock\Plugin\Portal\Paginacion::TAMANOS[0]}

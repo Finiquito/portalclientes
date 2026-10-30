@@ -63,7 +63,7 @@ final class TiposContenido
 
     public static function nombre(string $tipo): string
     {
-        return self::TIPOS[$tipo][0] ?? 'Contenido';
+        return Idioma::t(self::TIPOS[$tipo][0] ?? 'Contenido');
     }
 
     /**
@@ -80,9 +80,9 @@ final class TiposContenido
         $tipo = (string) ($c['tipo'] ?? '');
         if ($tipo === 'post') {
             $n = $nImagenes > 0 ? $nImagenes : count(self::laminas($c['laminas'] ?? null));
-            return $n > 1 ? 'Carrusel · ' . $n . ' láminas' : 'Post';
+            return $n > 1 ? Idioma::t('Carrusel · %d láminas', $n) : Idioma::t('Post');
         }
-        return self::PARA_CLIENTE[$tipo] ?? '';
+        return Idioma::t(self::PARA_CLIENTE[$tipo] ?? '');
     }
 
     /**
@@ -174,29 +174,29 @@ final class TiposContenido
         switch ($modo) {
             case 'ig':
                 if ($img === 0) {
-                    $out[] = ['Sin imágenes', 'danger'];
+                    $out[] = [Idioma::t('Sin imágenes'), 'danger'];
                 } elseif ($lam > $img) {
-                    $out[] = ['Faltan ' . ($lam - $img) . ' de ' . $lam . ' láminas', 'warn'];
+                    $out[] = [Idioma::t('Faltan %d de %d láminas', $lam - $img, $lam), 'warn'];
                 } else {
-                    $out[] = [$img === 1 ? '1 imagen' : $img . ' láminas', 'ok'];
+                    $out[] = [$img === 1 ? Idioma::t('1 imagen') : Idioma::t('%d láminas', $img), 'ok'];
                 }
-                $out[] = $copy ? ['Copy ✓', ''] : ['Sin copy', 'warn'];
+                $out[] = $copy ? [Idioma::t('Copy ✓'), ''] : [Idioma::t('Sin copy'), 'warn'];
                 break;
             case 'reel':
-                $out[] = ($info['videos'] > 0 || $enlace) ? ['Video ✓', 'ok'] : ['Sin video', $lam > 0 ? 'warn' : 'danger'];
-                $out[] = $copy ? ['Copy ✓', ''] : ['Sin copy', 'warn'];
+                $out[] = ($info['videos'] > 0 || $enlace) ? [Idioma::t('Video ✓'), 'ok'] : [Idioma::t('Sin video'), $lam > 0 ? 'warn' : 'danger'];
+                $out[] = $copy ? [Idioma::t('Copy ✓'), ''] : [Idioma::t('Sin copy'), 'warn'];
                 break;
             case 'documento':
-                $out[] = ($info['pdfs'] > 0 || $enlace) ? [$info['pdfs'] > 0 ? 'PDF ✓' : 'Link ✓', 'ok'] : ['Sin archivo', 'danger'];
+                $out[] = ($info['pdfs'] > 0 || $enlace) ? [$info['pdfs'] > 0 ? Idioma::t('PDF ✓') : Idioma::t('Link ✓'), 'ok'] : [Idioma::t('Sin archivo'), 'danger'];
                 break;
             case 'sitio':
-                $out[] = $enlace ? ['Link ✓', 'ok'] : ['Sin link', 'danger'];
+                $out[] = $enlace ? [Idioma::t('Link ✓'), 'ok'] : [Idioma::t('Sin link'), 'danger'];
                 break;
             case 'generico':
-                $out[] = ($info['archivos'] > 0 || $enlace) ? ['Con archivo', 'ok'] : ['Sin archivo', 'danger'];
+                $out[] = ($info['archivos'] > 0 || $enlace) ? [Idioma::t('Con archivo'), 'ok'] : [Idioma::t('Sin archivo'), 'danger'];
                 break;
             default:   // story, imagen, identidad, galería
-                $out[] = ($img + $info['videos']) > 0 ? [($img + $info['videos']) === 1 ? '1 archivo' : ($img + $info['videos']) . ' archivos', 'ok'] : ['Sin imágenes', 'danger'];
+                $out[] = ($img + $info['videos']) > 0 ? [($img + $info['videos']) === 1 ? Idioma::t('1 archivo') : Idioma::t('%d archivos', $img + $info['videos']), 'ok'] : [Idioma::t('Sin imágenes'), 'danger'];
         }
         return $out;
     }

@@ -3,7 +3,7 @@
 {block page_title}{if $cliente}Editar cliente{else}Nuevo cliente{/if}{/block}
 
 {block content}
-<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=16">
+<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=17">
 
 <div class="page-header">
     <h1>{if $cliente}Editar cliente{else}Nuevo cliente{/if}</h1>
@@ -44,7 +44,7 @@
         <label class="form-label mt-3">País del cliente</label>
         <select name="pais" class="form-input" style="max-width:26rem">
             {foreach \TypeDock\Plugin\Portal\HorarioHabil::PAISES as $codigo => $pp}
-                <option value="{$codigo}" {if ($cliente['pais'] ?? 'CL') === $codigo}selected{/if}>{$pp[0]}</option>
+                <option value="{$codigo}" {if ($cliente['pais'] ?? 'CL') === $codigo}selected{/if}>{t($pp[0])}</option>
             {/foreach}
         </select>
         <p class="form-hint mt-1">Define su huso horario: los correos del sistema sólo le llegan de lunes a viernes en horario hábil de su país (por defecto 07:00–19:00). Lo que se genere fuera de ese horario queda en cola y sale en la próxima apertura.</p>
@@ -106,16 +106,13 @@
         <input type="text" name="titulo" class="form-input" value="{$cfg['titulo']}" maxlength="60" placeholder="{$cliente['empresa'] ?: $cliente['nombre']}">
         <p class="form-hint mt-1">Si lo dejas vacío se usa el nombre de la empresa.</p>
 
-        <label class="form-label mt-3" for="color">Color de marca</label>
-        <div class="pa-row">
-            <input type="color" id="color" name="color" value="{$cfg['color']}" style="width:3.5rem;height:2.5rem;padding:0;border:0;background:none">
-            <div class="pa-swatches">
-                {foreach ['#6d5df6', '#2563eb', '#0891b2', '#059669', '#d97706', '#e11d48', '#c026d3', '#0f172a'] as $c}
-                    <button type="button" style="background:{$c|noescape}" data-color="{$c}" aria-label="Usar color {$c}" onclick="document.getElementById('color').value=this.dataset.color"></button>
-                {/foreach}
-            </div>
-        </div>
-        <p class="form-hint mt-1">Tiñe botones, avances y acentos. El texto sobre el color se ajusta solo para que se lea.</p>
+        <label class="form-label mt-3">Idioma de su portal y de sus correos</label>
+        {include '../_idioma.latte', actual: $cfg['idioma'], heredado: 'El de la agencia'}
+        <p class="form-hint mt-1">Es el que usan sus contactos mientras no elijan uno propio. Cada contacto puede tener el suyo (en su ficha o en «Ajustes» del portal).</p>
+
+        <label class="form-label mt-3">Color de marca</label>
+        {include '../_paleta.latte', nombre: 'color', actual: $cfg['color']}
+        <p class="form-hint mt-1">Tiñe botones, avances y acentos. Cada color cumple los mínimos de contraste: el texto sobre el botón y el aro de foco se ajustan solos para que se lean, en claro y en oscuro.</p>
 
         <label class="form-label mt-3">Logo</label>
         {if $cfg['logo_id']}

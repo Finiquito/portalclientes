@@ -26,7 +26,7 @@
 (() => {
     const aviso = document.currentScript.previousElementSibling;
     window.portalGuardando = (si, texto) => {
-        aviso.querySelector('[data-texto]').textContent = texto || 'Guardando…';
+        aviso.querySelector('[data-texto]').textContent = texto || {t('Guardando…')};
         aviso.hidden = !si;
     };
     document.addEventListener('submit', (e) => {
@@ -34,13 +34,13 @@
         if (e.defaultPrevented || f.hasAttribute('data-sin-aviso') || f.target === '_blank' || (f.method || '').toLowerCase() !== 'post') return;
         const b = e.submitter;
         const sube = f.enctype === 'multipart/form-data' && [...f.querySelectorAll('input[type=file]')].some((i) => i.files && i.files.length);
-        window.portalGuardando(true, sube ? 'Subiendo archivos…' : 'Guardando…');
+        window.portalGuardando(true, sube ? {t('Subiendo archivos…')} : {t('Guardando…')});
         // Se deshabilita después: si no, el botón no viajaría con el formulario (name/value).
         setTimeout(() => {
             if (b && !b.disabled) {
                 b.dataset.textoOriginal = b.innerHTML;
                 b.disabled = true;
-                if (b.tagName === 'BUTTON' && b.textContent.trim() !== '' && b.textContent.trim().length < 40) b.textContent = sube ? 'Subiendo…' : 'Guardando…';
+                if (b.tagName === 'BUTTON' && b.textContent.trim() !== '' && b.textContent.trim().length < 40) b.textContent = sube ? {t('Subiendo…')} : {t('Guardando…')};
             }
         }, 0);
     });

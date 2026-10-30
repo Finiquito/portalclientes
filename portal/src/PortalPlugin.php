@@ -20,6 +20,8 @@ class PortalPlugin implements PluginInterface
 {
     public function register(PluginContext $ctx): void
     {
+        require_once __DIR__ . '/funciones.php';   // t() para las plantillas que dibuja el admin de TypeDock
+
         $ctx->migrate(__DIR__ . '/../migrations');
 
         // Columnas nuevas de portal_tareas (tipo, visible_cliente, completada_en), idempotente.
@@ -102,6 +104,8 @@ class PortalPlugin implements PluginInterface
         $ctx->registerAdminRoute('POST', 'proyectos/@id/importar/confirmar', fn(string $id) => $leads->importarConfirmar($id));
         $ctx->registerAdminRoute('POST', 'leads/@id/anonimizar',  fn(string $id) => $leads->anonimizar($id));
         $ctx->registerAdminRoute('POST', 'leads/@id/eliminar',    fn(string $id) => $leads->eliminar($id));
+        $ctx->registerAdminRoute('POST', 'leads/@id/linea',       fn(string $id) => $leads->linea($id));
+        $ctx->registerAdminRoute('POST', 'leads/@id/linea/@eid/fecha', fn(string $id, string $eid) => $leads->lineaFecha($id, $eid));
         $ctx->registerAdminRoute('POST', 'leads/@id/mailchimp',   fn(string $id) => $leads->mcRevisar($id));
         $ctx->registerAdminRoute('POST', 'proyectos/@id/mailchimp/clave',     fn(string $id) => $leads->mcClave($id));
         $ctx->registerAdminRoute('POST', 'proyectos/@id/mailchimp/quitar',    fn(string $id) => $leads->mcQuitar($id));
@@ -231,6 +235,8 @@ class PortalPlugin implements PluginInterface
         \Flight::route('GET /portal/reuniones/@id/invitacion.ics', fn(string $id) => $publico->reunionIcsFirmado($id));
         $msj = new MensajePublicController($ctx);
         \Flight::route('GET /portal/mensajes',                    [$msj, 'lista']);
+        \Flight::route('POST /portal/mensajes/destacar',          [$msj, 'destacar']);
+        \Flight::route('POST /portal/mensajes/reaccion',          [$msj, 'reaccionar']);
         $sol = new SolicitudPublicController($ctx);
         \Flight::route('GET /portal/solicitudes',                 [$sol, 'lista']);
         \Flight::route('GET /portal/solicitudes/nueva',           [$sol, 'nueva']);
@@ -249,6 +255,8 @@ class PortalPlugin implements PluginInterface
         \Flight::route('GET /portal/contactos-ganados/exportar',  [$leadsPub, 'exportar']);
         \Flight::route('POST /portal/contactos-ganados/@id/anonimizar', fn(string $id) => $leadsPub->anonimizar($id));
         \Flight::route('POST /portal/contactos-ganados/@id/eliminar',   fn(string $id) => $leadsPub->eliminar($id));
+        \Flight::route('POST /portal/contactos-ganados/@id/linea',       fn(string $id) => $leadsPub->linea($id));
+        \Flight::route('POST /portal/contactos-ganados/@id/linea/@eid/fecha', fn(string $id, string $eid) => $leadsPub->lineaFecha($id, $eid));
         \Flight::route('POST /portal/contactos-ganados/@id/mailchimp',  fn(string $id) => $leadsPub->revisarMc($id));
         \Flight::route('POST /portal/contactos-ganados',          [$leadsPub, 'crear']);
         \Flight::route('GET /portal/contactos-ganados/@id',       fn(string $id) => $leadsPub->ver($id));
@@ -283,6 +291,8 @@ class PortalPlugin implements PluginInterface
         \Flight::route('POST /equipo/ver-como/@id',   fn(string $id) => $eq->verComo($id));
         \Flight::route('GET /equipo/proyectos',       [$eq, 'proyectos']);
         \Flight::route('GET /equipo/mensajes',        [$eq, 'mensajes']);
+        \Flight::route('POST /equipo/mensajes/destacar', [$eq, 'destacarMensaje']);
+        \Flight::route('POST /equipo/mensajes/reaccion', [$eq, 'reaccionarMensaje']);
         \Flight::route('POST /equipo/clientes/@id/equipo',  fn(string $id) => $eq->asignarCliente($id));
         \Flight::route('POST /equipo/clientes/@id/equipo/@pid/quitar',  fn(string $id, string $pid) => $eq->quitarCliente($id, $pid));
         \Flight::route('POST /equipo/proyectos/@id/equipo', fn(string $id) => $eq->asignarProyecto($id));
@@ -310,7 +320,7 @@ class PortalPlugin implements PluginInterface
 
     public function getVersion(): string
     {
-        return '0.11.0-beta';
+        return '0.12.0-beta';
     }
 
     public function provides(): array

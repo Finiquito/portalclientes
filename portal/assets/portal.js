@@ -5,6 +5,10 @@
 
   function $(sel, ctx) { return (ctx || document).querySelector(sel); }
   function $$(sel, ctx) { return Array.prototype.slice.call((ctx || document).querySelectorAll(sel)); }
+  /* Textos de pantalla: window.PORTAL_T trae las traducciones (si no hay, queda el español). */
+  function T(s) { return (window.PORTAL_T && window.PORTAL_T[s]) || s; }
+  var IDIOMA = (document.documentElement.getAttribute('lang') || 'es').toLowerCase();
+
   function csrf() { var m = $('meta[name="csrf"]'); return m ? m.getAttribute('content') : ''; }
 
   function tamano(b) {
@@ -85,22 +89,22 @@
       var fin = function () {
         rec = null;
         clearInterval(reloj);
-        txtDict.textContent = 'Dictar en vez de escribir';
+        txtDict.textContent = T('Dictar en vez de escribir');
         bDict.classList.remove('btn-primary');
         tiempo.hidden = true;
         revisar();
       };
       var politica = document.permissionsPolicy || document.featurePolicy;
       var errores = {
-        'not-allowed': 'Chrome no tiene permiso para usar el micrófono en este sitio. Haz clic en el candado de la barra de direcciones → Micrófono → Permitir, y recarga.',
-        'service-not-allowed': 'El dictado no está disponible en este navegador o ventana. Puedes escribirlo a mano.',
-        'audio-capture': 'No encontramos un micrófono. Revisa que esté conectado y elegido en Chrome.',
-        'network': 'El servicio de dictado de Chrome no responde (usa los servidores de Google). Prueba de nuevo en un momento.',
-        'language-not-supported': 'El dictado no está disponible en tu idioma en este navegador.'
+        'not-allowed': T('Chrome no tiene permiso para usar el micrófono en este sitio. Haz clic en el candado de la barra de direcciones → Micrófono → Permitir, y recarga.'),
+        'service-not-allowed': T('El dictado no está disponible en este navegador o ventana. Puedes escribirlo a mano.'),
+        'audio-capture': T('No encontramos un micrófono. Revisa que esté conectado y elegido en Chrome.'),
+        'network': T('El servicio de dictado de Chrome no responde (usa los servidores de Google). Prueba de nuevo en un momento.'),
+        'language-not-supported': T('El dictado no está disponible en tu idioma en este navegador.')
       };
       var empezar = function () {
         rec = new SR();
-        var idioma = (navigator.language || '').toLowerCase().indexOf('es') === 0 ? navigator.language : 'es-419';
+        var idioma = IDIOMA === 'en' ? 'en-US' : IDIOMA === 'fr' ? 'fr-FR' : ((navigator.language || '').toLowerCase().indexOf('es') === 0 ? navigator.language : 'es-419');
         rec.lang = idioma;
         rec.continuous = true;
         rec.interimResults = true;
@@ -118,22 +122,22 @@
           cambio();
         };
         rec.onerror = function (e) {
-          if (e.error === 'no-speech') { aviso('No escuchamos nada. Revisa qué micrófono usa Chrome e inténtalo de nuevo.'); return; }
+          if (e.error === 'no-speech') { aviso(T('No escuchamos nada. Revisa qué micrófono usa Chrome e inténtalo de nuevo.')); return; }
           if (e.error === 'aborted') return;
-          aviso((errores[e.error] || 'Se cortó el dictado.') + ' (código: ' + e.error + ')');
+          aviso((errores[e.error] || T('Se cortó el dictado.')) + T(' (código: ') + e.error + ')');
         };
-        rec.onstart = function () { aviso('Escuchando… habla con naturalidad. Cuando termines, aprieta «Detener».'); };
+        rec.onstart = function () { aviso(T('Escuchando… habla con naturalidad. Cuando termines, aprieta «Detener».')); };
         rec.onend = fin;
-        try { rec.start(); } catch (err) { aviso('No se pudo iniciar el dictado (' + err.message + ').'); fin(); return; }
+        try { rec.start(); } catch (err) { aviso(T('No se pudo iniciar el dictado (') + err.message + ').'); fin(); return; }
         t0 = Date.now();
-        txtDict.textContent = 'Detener';
+        txtDict.textContent = T('Detener');
         bDict.classList.add('btn-primary');
         tiempo.hidden = false;
         tiempo.textContent = '0:00 / 2:00';
         reloj = setInterval(function () {
           var seg = Math.floor((Date.now() - t0) / 1000);
           tiempo.textContent = mmss(Math.min(seg, 120)) + ' / 2:00';
-          if (seg === 8 && !oyo) aviso('Todavía no llega tu voz. Si no aparece texto, revisa qué micrófono está elegido en Chrome.');
+          if (seg === 8 && !oyo) aviso(T('Todavía no llega tu voz. Si no aparece texto, revisa qué micrófono está elegido en Chrome.'));
           if (seg >= 120 && rec) rec.stop();
         }, 500);
       };
@@ -141,15 +145,15 @@
         if (rec) { rec.stop(); return; }
         // Un servidor puede prohibir el micrófono con la cabecera Permissions-Policy: Chrome lo bloquea sin preguntar.
         if (politica && politica.allowsFeature && !politica.allowsFeature('microphone')) {
-          aviso('Este sitio tiene el micrófono bloqueado por su configuración (cabecera «Permissions-Policy» del servidor). Hay que permitirlo en el hosting.');
+          aviso(T('Este sitio tiene el micrófono bloqueado por su configuración (cabecera «Permissions-Policy» del servidor). Hay que permitirlo en el hosting.'));
           return;
         }
-        aviso('Pidiendo acceso al micrófono…');
+        aviso(T('Pidiendo acceso al micrófono…'));
         // Pedir el micrófono primero hace aparecer el aviso de permiso de forma confiable.
         if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
           // Si Chrome muestra el permiso «silencioso» (sólo un ícono en la barra de direcciones), la promesa queda esperando.
           var espera = setTimeout(function () {
-            aviso('Chrome está esperando tu permiso: busca el ícono del micrófono en la barra de direcciones (a la derecha) y elige «Permitir».');
+            aviso(T('Chrome está esperando tu permiso: busca el ícono del micrófono en la barra de direcciones (a la derecha) y elige «Permitir».'));
           }, 4000);
           navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
             clearTimeout(espera);
@@ -160,7 +164,7 @@
             var n = err && err.name;
             aviso(n === 'NotAllowedError' ? errores['not-allowed']
               : n === 'NotFoundError' ? errores['audio-capture']
-              : 'No pudimos usar el micrófono (' + (n || 'error') + ').');
+              : T('No pudimos usar el micrófono (') + (n || 'error') + ').');
           });
         } else {
           empezar();
@@ -177,7 +181,7 @@
         fd.append('tipo', ($('input[name="tipo"]', form) || {}).value || '');
         fd.append('titulo', ($('input[name="titulo"]', form) || {}).value || '');
         bOrd.disabled = true;
-        txtOrd.textContent = 'Ordenando…';
+        txtOrd.textContent = T('Ordenando…');
         aviso('');
         fetch('/portal/solicitudes/ordenar', { method: 'POST', body: fd, credentials: 'same-origin' })
           .then(function (r) { return r.json(); })
@@ -189,13 +193,13 @@
                 bUndo.hidden = false;
                 bUndo.onclick = function () { ta.value = antes; cambio(); bUndo.hidden = true; aviso(''); };
               }
-              aviso('Revísalo y corrige lo que haga falta antes de enviar.');
+              aviso(T('Revísalo y corrige lo que haga falta antes de enviar.'));
             } else {
-              aviso((j && j.error) || 'No pudimos ordenarlo. Puedes enviarlo tal como está.');
+              aviso((j && j.error) || T('No pudimos ordenarlo. Puedes enviarlo tal como está.'));
             }
           })
-          .catch(function () { aviso('No pudimos conectarnos. Intenta de nuevo.'); })
-          .then(function () { txtOrd.textContent = 'Ordenar con IA'; revisar(); });
+          .catch(function () { aviso(T('No pudimos conectarnos. Intenta de nuevo.')); })
+          .then(function () { txtOrd.textContent = T('Ordenar con IA'); revisar(); });
       });
     }
   });
@@ -207,7 +211,7 @@
     function tic() {
       relojes.forEach(function (r) {
         try {
-          r.textContent = new Intl.DateTimeFormat('es', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: r.getAttribute('data-reloj') }).format(new Date());
+          r.textContent = new Intl.DateTimeFormat(IDIOMA, { hour: '2-digit', minute: '2-digit', hour12: IDIOMA === 'en', timeZone: r.getAttribute('data-reloj') }).format(new Date());
         } catch (e) { /* zona desconocida: queda la hora del servidor */ }
       });
     }
@@ -300,8 +304,8 @@
         s.className = 'text-xs text-muted flex-none';
         s.textContent = tamano(f.size);
         var x = document.createElement('button');
-        x.type = 'button'; x.className = 'btn btn-danger-ghost btn-sm flex-none'; x.setAttribute('aria-label', 'Quitar ' + f.name);
-        x.textContent = 'Quitar';
+        x.type = 'button'; x.className = 'btn btn-danger-ghost btn-sm flex-none'; x.setAttribute('aria-label', T('Quitar ') + f.name);
+        x.textContent = T('Quitar');
         x.addEventListener('click', function () { seleccion.splice(i, 1); sync(); });
         li.appendChild(n); li.appendChild(s); li.appendChild(x);
         list.appendChild(li);
@@ -313,11 +317,11 @@
       aviso('');
       var rechazados = [];
       Array.prototype.forEach.call(files, function (f) {
-        if (maxArchivo && f.size > maxArchivo) { rechazados.push(f.name + ' (pesa ' + tamano(f.size) + ')'); return; }
+        if (maxArchivo && f.size > maxArchivo) { rechazados.push(f.name + T(' (pesa ') + tamano(f.size) + ')'); return; }
         if (seleccion.length >= maxTotal) return;
         seleccion.push(f);
       });
-      if (rechazados.length) aviso('No se agregaron por superar el máximo de ' + tamano(maxArchivo) + ': ' + rechazados.join(', '));
+      if (rechazados.length) aviso(T('No se agregaron por superar el máximo de ') + tamano(maxArchivo) + ': ' + rechazados.join(', '));
       sync();
     }
 
@@ -341,12 +345,12 @@
     form.addEventListener('submit', function (e) {
       if (e.defaultPrevented) return;
       if (!window.XMLHttpRequest || !window.FormData || seleccion.length === 0 && canDT) {
-        if (seleccion.length === 0 && canDT && !opcional) { e.preventDefault(); aviso('Elige al menos un archivo.'); }
+        if (seleccion.length === 0 && canDT && !opcional) { e.preventDefault(); aviso(T('Elige al menos un archivo.')); }
         return;
       }
       e.preventDefault();
       aviso('');
-      if (btn) { btn.disabled = true; btn.setAttribute('data-txt', btn.textContent); btn.textContent = 'Subiendo…'; }
+      if (btn) { btn.disabled = true; btn.setAttribute('data-txt', btn.textContent); btn.textContent = T('Subiendo…'); }
       if (bar) bar.hidden = false;
 
       var xhr = new XMLHttpRequest();
@@ -367,16 +371,16 @@
           history.replaceState(null, '', destino);
           location.reload();
         } else {
-          fallo('El servidor respondió algo inesperado. Recarga la página y revisa si se subió.');
+          fallo(T('El servidor respondió algo inesperado. Recarga la página y revisa si se subió.'));
         }
       });
-      xhr.addEventListener('error', function () { fallo('Se cortó la conexión. Inténtalo de nuevo.'); });
+      xhr.addEventListener('error', function () { fallo(T('Se cortó la conexión. Inténtalo de nuevo.')); });
       xhr.send(new FormData(form));
 
       function fallo(t) {
         aviso(t);
         if (bar) bar.hidden = true;
-        if (btn) { btn.disabled = false; btn.textContent = btn.getAttribute('data-txt') || 'Subir'; }
+        if (btn) { btn.disabled = false; btn.textContent = btn.getAttribute('data-txt') || T('Subir'); }
       }
     });
 
@@ -471,7 +475,7 @@
       activo = on;
       document.body.classList.toggle('modo-pin', on);
       if (btn) btn.setAttribute('aria-pressed', on ? 'true' : 'false');
-      if (txt) txt.textContent = on ? 'Toca el punto en la imagen · cancelar' : 'Marcar un punto en la imagen';
+      if (txt) txt.textContent = on ? T('Toca el punto en la imagen · cancelar') : T('Marcar un punto en la imagen');
       // Que la imagen quede a la vista para poder tocarla.
       var visor = on ? $('section[aria-label="Vista previa"]') : null;
       if (visor && visor.getBoundingClientRect().top < 0) visor.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -499,7 +503,7 @@
       caja.appendChild(p);
       ubicar(caja);
       modo(false);
-      window.portalMarcar('i' + caja.dataset.archivo + '@' + x + ',' + y, 'Punto en la imagen ' + caja.dataset.imgN);
+      window.portalMarcar('i' + caja.dataset.archivo + '@' + x + ',' + y, T('Punto en la imagen ') + caja.dataset.imgN);
     }, true);
 
     // Desde la conversación: ir al pin (pasa a su lámina del carrusel) y hacerlo saltar.

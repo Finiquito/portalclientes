@@ -52,7 +52,7 @@ final class HorarioHabil
 
     public static function nombreDe(string $codigo): string
     {
-        return self::PAISES[self::paisValido($codigo)][0];
+        return Idioma::t(self::PAISES[self::paisValido($codigo)][0]);
     }
 
     /** Ajusta un rango de horas a algo coherente (0–23, con inicio < fin). @return array{0:int,1:int} */

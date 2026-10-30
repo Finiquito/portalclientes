@@ -163,12 +163,15 @@ class PortalPublicController
         $esperada = (string) $this->ajustes()->get('global', 'portal', 'cron_token');
         $k = (string) ($_GET['k'] ?? '');
         header('Content-Type: text/plain; charset=utf-8');
+        $aj = $this->ajustes();
+        $ahoraUtc = (new \DateTimeImmutable('now', new \DateTimeZone('UTC')))->format('Y-m-d H:i:s');
         if ($esperada === '' || !hash_equals($esperada, $k)) {
+            // Se anota para que Ajustes avise «llegó una llamada, pero con la clave mala».
+            $aj->set('global', 'portal', 'cron_clave_mala', $ahoraUtc);
             http_response_code(403);
             echo 'Clave incorrecta.';
         } else {
-            $aj = $this->ajustes();
-            $aj->set('global', 'portal', 'cron_ultimo', (new \DateTimeImmutable('now', new \DateTimeZone('UTC')))->format('Y-m-d H:i:s'));
+            $aj->set('global', 'portal', 'cron_ultimo', $ahoraUtc);
             $r = (new Avisos($this->ctx, $this->pdo(), $this->notificador()))->correr();
             echo 'ok ' . $this->notificador()->vaciarCola(50)
                 . ' · agrupados ' . $r['barrer'] . ' · resúmenes ' . $r['resumenes'] . ' · vencimientos ' . $r['vencimientos'] . ' · recordatorios ' . $r['recordatorios'];
@@ -229,7 +232,14 @@ class PortalPublicController
     {
         PortalSession::iniciar();
         $id = $_SESSION[PortalSession::CONTACTO] ?? null;
-        return is_string($id) ? $this->contactos()->find($id) : null;
+        $c = is_string($id) ? $this->contactos()->find($id) : null;
+        Idioma::fijar($c !== null
+            ? Idioma::de($this->ajustes(), 'contacto', (string) $c['id'], (string) $c['cliente_id'], true)
+            : Idioma::visitante($this->ajustes()->get('global', 'portal', 'idioma')));
+        if ($c !== null) {
+            Idioma::recordar(Idioma::actual());   // el próximo ingreso desde este equipo sale en su idioma
+        }
+        return $c;
     }
 
     /** @return array<string, mixed> */
@@ -298,6 +308,7 @@ class PortalPublicController
         $pref      = $this->ajustes()->todos('contacto', (string) $contacto['id']);
 
         $color = AjustesService::colorValido($cfg['color'] ?? '');
+        $pal   = Paleta::marca($color);
         $tema  = in_array($pref['tema'] ?? '', ['claro', 'oscuro'], true) ? $pref['tema'] : 'auto';
 
         $pendientes = (int) ($this->fetchOne(
@@ -317,10 +328,9 @@ class PortalPublicController
             'contacto'      => $contacto,
             'cliente'       => $cliente,
             'marca'         => [
-                'color'  => $color,
-                'texto'  => AjustesService::colorTexto($color),
-                'tintaL' => ColorMarca::tinta((string) $color, false),
-                'tintaD' => ColorMarca::tinta((string) $color, true),
+                'color'  => $pal['color'],
+                'texto'  => $pal['texto'],
+                'tinta'  => $pal['tinta'],
                 'titulo' => $titulo,
                 'logo'   => !empty($cfg['logo_id']) ? '/portal/archivo/' . $cfg['logo_id'] . '?i=1' : null,
             ],
@@ -363,7 +373,7 @@ class PortalPublicController
             $f = dirname(__DIR__) . '/assets/' . $nombre;
             self::$assets[$nombre] = is_file($f) ? (string) file_get_contents($f) : '';
         }
-        return self::$assets[$nombre];
+        return $nombre === 'portal.js' ? Idioma::conTraducciones(self::$assets[$nombre], $this->asset('pdfviewer.js')) : self::$assets[$nombre];
     }
 
     // ---------------------------------------------------------------------
@@ -376,6 +386,7 @@ class PortalPublicController
     /** Lo común de las pantallas de ingreso: la pieza de la agencia y el favicon. */
     protected function datosIngreso(): array
     {
+        Idioma::fijar(Idioma::visitante($this->ajustes()->get('global', 'portal', 'idioma')));
         $m = $this->marca();
         return [
             'agencia' => ['nombre' => $m->nombreEquipo(), 'logo' => $m->urlLogoAgencia('') ?: null],
@@ -417,7 +428,7 @@ class PortalPublicController
     public function loginForm(): void
     {
         $email = trim((string) ($_GET['email'] ?? ''));
-        $this->ctx->view('templates/public/login.latte', $this->datosIngreso() + [
+        Vista::mostrar($this->pdo(), 'templates/public/login.latte', $this->datosIngreso() + [
             'email' => filter_var($email, FILTER_VALIDATE_EMAIL) ? $email : '',
             'error' => $_GET['error'] ?? null,
             'csrf'  => PortalSession::csrf(),
@@ -464,7 +475,7 @@ class PortalPublicController
         $animar = !empty($_SESSION['portal_login_anima']);
         unset($_SESSION['portal_login_anima']);
         $contacto = $this->contactos()->findByEmail((string) $email);
-        $this->ctx->view('templates/public/verificar.latte', $this->datosIngreso() + [
+        Vista::mostrar($this->pdo(), 'templates/public/verificar.latte', $this->datosIngreso() + [
             'cliente' => $contacto !== null ? $this->piezaCliente($contacto) : null,
             'animar' => $animar,
             'expresion' => self::EXPRESIONES[array_rand(self::EXPRESIONES)],
@@ -511,6 +522,11 @@ class PortalPublicController
             $this->contactos()->marcarAcceso((string) $contacto['id']);
         } catch (\Throwable) {
             // sin las columnas nuevas todavía: no impide entrar
+        }
+        // Si eligió idioma en la pantalla de ingreso y aún no tenía uno, queda guardado en su cuenta.
+        $elegido = (string) ($_COOKIE[Idioma::COOKIE] ?? '');
+        if (Idioma::valido($elegido) && !Idioma::valido($this->ajustes()->get('contacto', (string) $contacto['id'], 'idioma'))) {
+            $this->ajustes()->set('contacto', (string) $contacto['id'], 'idioma', $elegido);
         }
 
         $this->redirectTo('');
@@ -570,6 +586,12 @@ class PortalPublicController
         }
 
         $meTocan    = array_values(array_filter($tareas, fn($t) => $this->turno($t) === 'cliente'));
+        // «Tus proyectos»: el avance de cada uno, con lo que le toca a esta persona.
+        $panel = new ProyectoPanel($this->pdo());
+        $marcadas = array_map(fn(array $t): array => $t + ['le_toca' => $this->turno($t) === 'cliente'], $tareas);
+        $tusProyectos = $panel->paraCliente($proyectos, $fases, $marcadas, $clienteId, (string) $c['id']);
+        $conLeads = array_values(array_filter($proyectos, fn(array $p): bool => (int) ($p['con_leads'] ?? 0) === 1));
+        $contactos = $conLeads !== [] && $this->veLeads($c) ? $panel->contactos($clienteId, array_column($conLeads, 'id')) : null;
         $enRevision = array_values(array_filter($tareas, fn($t) => $t['responsable_tipo'] === 'cliente' && $this->turno($t) === 'equipo'));
 
         $hoy = (new \DateTimeImmutable())->format('Y-m-d');
@@ -589,21 +611,60 @@ class PortalPublicController
         $pref   = $this->ajustes()->todos('contacto', (string) $c['id']);
         $nombre = trim($pref['apodo'] ?? '') !== '' ? trim($pref['apodo']) : $fmt->primerNombre((string) $c['nombre']);
 
-        $this->ctx->view('templates/public/inicio.latte', $this->contexto($c, 'inicio', [
+        Vista::mostrar($this->pdo(), 'templates/public/inicio.latte', $this->contexto($c, 'inicio', [
+            'campanas'    => $this->campanasConGrafico($c, $proyectos),
             'nombre'      => $nombre,
             'frase'       => $this->frase($pref, $clienteId, $nombre, $fmt),
             'proyectos'   => $proyectos,
             'seleccion'   => $sel,
             'progreso'    => $progreso,
+            'tusProyectos' => $tusProyectos,
+            'contactosSemanal' => $contactos === null ? null : ['datos' => $contactos, 'nombre' => count($conLeads) === 1 ? (string) $conLeads[0]['nombre'] : ''],
             'meTocan'     => $meTocan,
             'enRevision'  => $enRevision,
             'nArchivos'   => $nArchivos,
             'reuniones'   => $reuniones,
             'novedades'   => (new NovedadesService($this->pdo()))->cuadro($clienteId, (string) $c['id']),
-            'seccionesN'  => NovedadesService::SECCIONES,
+            'seccionesN'  => Idioma::lista(NovedadesService::SECCIONES),
             'multiples'   => count($proyectos) > 1,
             'pasos'       => $this->primerosPasos($c, $pref, $meTocan),
         ]));
+    }
+
+    /**
+     * Campañas (proyectos con contactos ganados) activas que ya llevan al menos 14 días recibiendo contactos:
+     * cada una muestra su evolución en Inicio. Sólo para quien ve contactos ganados, y sólo números (sin personas).
+     *
+     * @param array<int, array<string, mixed>> $proyectos
+     * @return array<int, array<string, mixed>>
+     */
+    private function campanasConGrafico(array $contacto, array $proyectos): array
+    {
+        if (!$this->veLeads($contacto)) {
+            return [];
+        }
+        $clienteId = (string) $contacto['cliente_id'];
+        $svc = new LeadService($this->pdo());
+        $linea = new LeadLinea($this->pdo());
+        $out = [];
+        foreach ($svc->proyectosDe($clienteId) as $p) {
+            if ((string) $p['estado'] !== 'activo') {
+                continue;
+            }
+            $ls = $svc->lista(['cliente_id' => $clienteId, 'proyecto_id' => (string) $p['id']]);
+            if (!LeadStats::conGrafico($ls)) {
+                continue;
+            }
+            $ev = $linea->deEstado($clienteId, [(string) $p['id']]);
+            $acum = LeadStats::evolucion($ls, $ev);
+            $emb = LeadStats::embudo($ls, $ev);
+            $out[] = [
+                'id' => (string) $p['id'], 'nombre' => (string) $p['nombre'], 'etiquetas' => LeadService::publicoEtiquetas((string) $p['publico']),
+                'dias' => $acum['dias'], 'total' => count($ls), 'nuevosSemana' => LeadStats::nuevosSemana($ls),
+                'contactados' => $emb['contactados'], 'ganados' => $emb['ganados'], 'grafico' => LeadStats::datosGrafico($acum),
+            ];
+        }
+        return $out;
     }
 
     /** @param array<string, string> $pref */
@@ -613,7 +674,7 @@ class PortalPublicController
         if ($propia !== '') {
             $f = $propia;
         } else {
-            $lista = $this->ajustes()->frasesDeCliente($clienteId) ?: self::FRASES_BASE;
+            $lista = $this->ajustes()->frasesDeCliente($clienteId) ?: array_map(Idioma::t(...), self::FRASES_BASE);
             $f = $lista[$fmt->diaDelAnio() % count($lista)];
         }
         return str_replace('{nombre}', $nombre, $f);
@@ -693,7 +754,7 @@ class PortalPublicController
             'recientes' => fn($a, $b) => strcmp((string) $b['created_at'], (string) $a['created_at']),
             'antiguas'  => fn($a, $b) => strcmp((string) $a['created_at'], (string) $b['created_at']),
         ]);
-        $this->ctx->view('templates/public/tareas.latte', $ctx + [
+        Vista::mostrar($this->pdo(), 'templates/public/tareas.latte', $ctx + [
             'filtro'   => $filtro,
             'grupos'   => $grupos,
             'pag'      => $pag,
@@ -722,7 +783,7 @@ class PortalPublicController
         $abierta  = in_array($t['estado'], ['pendiente', 'en_progreso'], true);
         $suya     = $t['responsable_tipo'] === 'cliente';
 
-        $this->ctx->view('templates/public/tarea.latte', $this->contexto($c, 'tareas') + [
+        Vista::mostrar($this->pdo(), 'templates/public/tarea.latte', $this->contexto($c, 'tareas') + [
             't'           => $t,
             'turno'       => $this->turno($t),
             'comentarios' => $this->comentarios()->listar('tarea', $id),
@@ -770,7 +831,7 @@ class PortalPublicController
                 }
                 $tareas->cambiarEstado($id, 'hecha');
                 $this->actividad()->registrar($clienteId, $t['proyecto_id'], 'contacto', $nombre, 'completo', 'tarea', $id, $t['titulo']);
-                $this->avisarEquipo("{$nombre} completó «{$t['titulo']}»", $t, 'Marcó la tarea como lista.', $nombre);
+                $this->avisarEquipo(Idioma::f('%s completó «%s»', $nombre, (string) $t['titulo']), $t, Idioma::f('Marcó la tarea como lista.'), $nombre);
                 PortalSession::flash('ok', '¡Listo! Marcamos la tarea como completada.');
                 break;
 
@@ -782,7 +843,7 @@ class PortalPublicController
                 }
                 $tareas->cambiarEstado($id, 'entregada');
                 $this->actividad()->registrar($clienteId, $t['proyecto_id'], 'contacto', $nombre, 'entrego', 'tarea', $id, $t['titulo'], count($tuyos) . ' archivo(s)');
-                $this->avisarEquipo("{$nombre} entregó archivos: «{$t['titulo']}»", $t, count($tuyos) . ' archivo(s) subido(s).', $nombre);
+                $this->avisarEquipo(Idioma::f('%s entregó archivos: «%s»', $nombre, (string) $t['titulo']), $t, Idioma::f('%d archivo(s) subido(s).', count($tuyos)), $nombre);
                 PortalSession::flash('ok', 'Entregado. Te avisaremos si necesitamos algo más.');
                 break;
 
@@ -792,7 +853,7 @@ class PortalPublicController
                 }
                 $tareas->cambiarEstado($id, 'hecha');
                 $this->actividad()->registrar($clienteId, $t['proyecto_id'], 'contacto', $nombre, 'aprobo', 'tarea', $id, $t['titulo']);
-                $this->avisarEquipo("{$nombre} aprobó «{$t['titulo']}»", $t, 'Aprobado por el cliente.', $nombre);
+                $this->avisarEquipo(Idioma::f('%s aprobó «%s»', $nombre, (string) $t['titulo']), $t, Idioma::f('Aprobado por el cliente.'), $nombre);
                 PortalSession::flash('ok', 'Aprobado. ¡Gracias!');
                 break;
 
@@ -808,7 +869,7 @@ class PortalPublicController
                 $this->comentarios()->crear($clienteId, 'tarea', $id, 'contacto', (string) $c['id'], $nombre, $texto);
                 $tareas->cambiarEstado($id, 'cambios');
                 $this->actividad()->registrar($clienteId, $t['proyecto_id'], 'contacto', $nombre, 'pidio_cambios', 'tarea', $id, $t['titulo'], mb_substr($texto, 0, 200));
-                $this->avisarEquipo("{$nombre} pidió cambios: «{$t['titulo']}»", $t, $texto, $nombre);
+                $this->avisarEquipo(Idioma::f('%s pidió cambios: «%s»', $nombre, (string) $t['titulo']), $t, $texto, $nombre);
                 PortalSession::flash('ok', 'Enviamos tus comentarios al equipo.');
                 break;
         }
@@ -837,7 +898,7 @@ class PortalPublicController
 
         $this->comentarios()->crear((string) $c['cliente_id'], 'tarea', $id, 'contacto', (string) $c['id'], (string) $c['nombre'], $texto);
         $this->actividad()->registrar((string) $c['cliente_id'], $t['proyecto_id'], 'contacto', (string) $c['nombre'], 'comento', 'tarea', $id, $t['titulo'], mb_substr($texto, 0, 200));
-        $this->avisarEquipo("{$c['nombre']} comentó en «{$t['titulo']}»", $t, $texto, (string) $c['nombre']);
+        $this->avisarEquipo(Idioma::f('%s comentó en «%s»', (string) $c['nombre'], (string) $t['titulo']), $t, $texto, (string) $c['nombre']);
 
         PortalSession::flash('ok', 'Comentario enviado.');
         $this->redirectTo(MensajeService::destino('/portal/mensajes', '/' . $vol . '#conversacion'));
@@ -849,7 +910,7 @@ class PortalPublicController
         $vol = 'portal/tareas/' . $id;
 
         if (ArchivoService::postExcedido()) {
-            PortalSession::flash('error', 'Los archivos superan el máximo permitido (' . (int) round($this->archivos()->limiteBytes($this->maxMb()) / 1048576) . ' MB en total).');
+            PortalSession::flash('error', Idioma::t('Los archivos superan el máximo permitido (%d MB en total).', (int) round($this->archivos()->limiteBytes($this->maxMb()) / 1048576)));
             $this->redirectTo($vol);
             return;
         }
@@ -886,14 +947,14 @@ class PortalPublicController
             }
             $this->actividad()->registrar((string) $c['cliente_id'], $t['proyecto_id'], 'contacto', (string) $c['nombre'], 'subio_archivo', 'tarea', $id, $t['titulo'], $n . ' archivo(s)');
             if ($t['tipo'] !== 'archivo') {
-                $this->avisarEquipo("{$c['nombre']} subió archivos en «{$t['titulo']}»", $t, $n . ' archivo(s).', (string) $c['nombre']);
+                $this->avisarEquipo(Idioma::f('%s subió archivos en «%s»', (string) $c['nombre'], (string) $t['titulo']), $t, Idioma::f('%d archivo(s).', $n), (string) $c['nombre']);
             }
         }
 
         if ($r['errores'] !== []) {
-            PortalSession::flash('error', ($n > 0 ? "Se subieron {$n}, pero: " : 'No se pudo subir: ') . implode(' · ', $r['errores']));
+            PortalSession::flash('error', ($n > 0 ? Idioma::t('Se subieron %d, pero: ', $n) : Idioma::t('No se pudo subir: ')) . implode(' · ', array_map(Idioma::t(...), $r['errores'])));
         } else {
-            PortalSession::flash('ok', $n === 1 ? 'Archivo subido.' : "{$n} archivos subidos.");
+            PortalSession::flash('ok', $n === 1 ? 'Archivo subido.' : Idioma::t('%d archivos subidos.', $n));
         }
         $this->redirectTo($vol . '#archivos');
     }
@@ -969,7 +1030,7 @@ class PortalPublicController
             [$c['cliente_id']]
         );
 
-        $this->ctx->view('templates/public/archivos.latte', $this->contexto($c, 'archivos') + [
+        Vista::mostrar($this->pdo(), 'templates/public/archivos.latte', $this->contexto($c, 'archivos') + [
             'delEquipo' => array_values(array_filter($filas, fn($a) => $a['subido_por_tipo'] === 'equipo')),
             'tuyos'     => array_values(array_filter($filas, fn($a) => $a['subido_por_tipo'] !== 'equipo')),
         ]);
@@ -994,7 +1055,7 @@ class PortalPublicController
         $cid = (string) $c['cliente_id'];
         $pag = Paginacion::delContacto($this->pdo(), (string) $c['id'], '/portal/reuniones', count($grupos['pasada']));
         $pasadas = $pag->orden === 'antiguos' ? array_reverse($grupos['pasada']) : $grupos['pasada'];
-        $this->ctx->view('templates/public/reuniones.latte', $this->contexto($c, 'reuniones') + [
+        Vista::mostrar($this->pdo(), 'templates/public/reuniones.latte', $this->contexto($c, 'reuniones') + [
             'pag'        => $pag,
             'proximas'   => $this->enHoraDelCliente(array_reverse($grupos['proxima']), $cid),   // la más cercana primero
             'anteriores' => $this->enHoraDelCliente($pag->cortar($pasadas), $cid),              // la más reciente primero (o al revés)
@@ -1020,9 +1081,26 @@ class PortalPublicController
             $pid = (string) (($activos[0] ?? $proyectos[0] ?? ['id' => ''])['id']);
         }
         $d = $pid !== '' ? (new Cronograma($this->pdo()))->datos($pid, true) : null;
-        $this->ctx->view('templates/public/calendario.latte', $this->contexto($c, 'calendario') + [
+
+        // Tres vistas: Resumen (la inicial), Calendario del mes y Línea de tiempo.
+        $vista = in_array($_GET['vista'] ?? '', ['resumen', 'calendario', 'linea'], true) ? (string) $_GET['vista'] : 'resumen';
+        $panel = new ProyectoPanel($this->pdo());
+        $resumen = null;
+        $mes = null;
+        $semana = null;
+        if ($d !== null && $vista === 'resumen') {
+            $resumen = $this->resumenProyecto($c, $pid, $panel);
+        } elseif ($d !== null && $vista === 'calendario') {
+            $mes = $panel->mes($d, (string) ($_GET['mes'] ?? ''));
+            $semana = $panel->semana($d, (string) ($_GET['semana'] ?? ''));
+        }
+        Vista::mostrar($this->pdo(), 'templates/public/calendario.latte', $this->contexto($c, 'calendario') + [
             'proyectos' => $proyectos,
             'proyectoId' => $pid,
+            'vista' => $vista,
+            'resumen' => $resumen,
+            'calMes' => $mes,
+            'calSemana' => $semana,
             'd' => $d,
             'eje' => $d !== null ? Cronograma::eje($d['desde'], $d['dias']) : null,
             'x' => $d !== null ? Cronograma::columna($d['desde']) : null,
@@ -1034,6 +1112,38 @@ class PortalPublicController
             },
             'momentos' => $d !== null ? self::momentos($d) : [],
         ]);
+    }
+
+    /**
+     * La vista «Resumen» de un proyecto para el cliente: avance, etapas, lo que le toca, contenidos y reuniones.
+     *
+     * @param array<string, mixed> $c contacto
+     * @return array<string, mixed>
+     */
+    private function resumenProyecto(array $c, string $pid, ProyectoPanel $panel): array
+    {
+        $cid = (string) $c['cliente_id'];
+        $proyecto = $this->fetchOne('SELECT * FROM portal_proyectos WHERE id = ? AND cliente_id = ?', [$pid, $cid]) ?? ['id' => $pid, 'nombre' => '', 'estado' => 'activo'];
+        $fases = $this->fetchAll('SELECT * FROM portal_fases WHERE proyecto_id = ? ORDER BY orden, nombre', [$pid]);
+        $tareas = array_values(array_filter($this->tareasDelCliente($cid), fn(array $t): bool => $t['proyecto_id'] === $pid));
+        $marcadas = array_map(fn(array $t): array => $t + ['le_toca' => $this->turno($t) === 'cliente'], $tareas);
+        $tp = $panel->paraCliente([$proyecto], $fases, $marcadas, $cid, (string) $c['id'])[0];
+        $meTocan = array_values(array_filter($marcadas, fn(array $t): bool => $t['le_toca']));
+        usort($meTocan, fn(array $a, array $b): int => strcmp((string) ($a['fecha_vencimiento'] ?? '9999'), (string) ($b['fecha_vencimiento'] ?? '9999')));
+        $cont = $panel->contenidos($pid);
+        $reun = $panel->reuniones($pid, true);
+        foreach (['proxima', 'ultima'] as $k) {
+            if ($reun[$k] !== null) {
+                $reun[$k] = $this->enHoraDelCliente([$reun[$k]], $cid)[0];
+            }
+        }
+        $acuerdos = [];
+        if ($reun['ultima'] !== null && (int) $reun['ultima']['resumen_publicado'] === 1) {
+            $acuerdos = array_slice(array_values(array_filter(array_map('trim', preg_split('/\R/', (string) $reun['ultima']['acuerdos']) ?: []))), 0, 5);
+        }
+        // Contactos ganados: si este proyecto los tiene activos y la persona los ve.
+        $contactos = (int) ($proyecto['con_leads'] ?? 0) === 1 && $this->veLeads($c) ? $panel->contactos($cid, [$pid]) : null;
+        return ['proyecto' => $tp, 'meTocan' => array_slice($meTocan, 0, 5), 'nMeTocan' => count($meTocan), 'contenidos' => $cont, 'reuniones' => $reun, 'acuerdos' => $acuerdos, 'contactos' => $contactos];
     }
 
     /**
@@ -1059,8 +1169,8 @@ class PortalPublicController
         }
         foreach ($d['fases'] as $f) {
             if ($f['ini'] !== null) {
-                $m[] = ['fecha' => $f['ini'], 'tipo' => 'fase', 'titulo' => 'Empieza ' . $f['nombre'], 'url' => null, 'estimada' => false];
-                $m[] = ['fecha' => $f['fin'] ?? $f['ini'], 'tipo' => 'fase', 'titulo' => 'Termina ' . $f['nombre'], 'url' => null,
+                $m[] = ['fecha' => $f['ini'], 'tipo' => 'fase', 'titulo' => Idioma::t('Empieza %s', $f['nombre']), 'url' => null, 'estimada' => false];
+                $m[] = ['fecha' => $f['fin'] ?? $f['ini'], 'tipo' => 'fase', 'titulo' => Idioma::t('Termina %s', $f['nombre']), 'url' => null,
                     'estimada' => count(array_filter($f['tareas'], fn($t) => $t['estimada'])) > 0];
             }
         }
@@ -1092,7 +1202,7 @@ class PortalPublicController
         $proximaR = ReunionService::estado($r) === 'proxima';
         $r = $this->enHoraDelCliente([$r], (string) $c['cliente_id'])[0];
         $verResumen = (int) $r['resumen_publicado'] === 1;
-        $this->ctx->view('templates/public/reunion.latte', $this->contexto($c, 'reuniones') + [
+        Vista::mostrar($this->pdo(), 'templates/public/reunion.latte', $this->contexto($c, 'reuniones') + [
             'r'          => $r,
             'proxima'    => $proximaR,
             'verResumen' => $verResumen,
@@ -1189,11 +1299,11 @@ class PortalPublicController
         $tarea = $meTocan[0] ?? null;
         $pasos = [
             // Se marca con el primer acceso real (en «Ver como cliente» puede que la persona aún no haya entrado).
-            ['Entraste a tu portal', '/portal', !empty($c['primer_acceso'])],
-            [$tarea ? 'Revisa tu primera tarea: «' . $tarea['titulo'] . '»' : 'Mira en qué va tu proyecto', $tarea ? '/portal/tareas/' . $tarea['id'] : '/portal/tareas', !empty($pref['paso_tarea'])],
-            ['Lee cómo funciona el portal (dos minutos)', '/portal/ayuda', !empty($pref['paso_ayuda'])],
-            ['Conoce cómo pedirnos algo', '/portal/solicitudes', !empty($pref['paso_solicitudes'])],
-            ['Elige qué avisos quieres recibir', '/portal/ajustes', !empty($pref['paso_avisos'])],
+            [Idioma::t('Entraste a tu portal'), '/portal', !empty($c['primer_acceso'])],
+            [$tarea ? Idioma::t('Revisa tu primera tarea: «%s»', $tarea['titulo']) : Idioma::t('Mira en qué va tu proyecto'), $tarea ? '/portal/tareas/' . $tarea['id'] : '/portal/tareas', !empty($pref['paso_tarea'])],
+            [Idioma::t('Lee cómo funciona el portal (dos minutos)'), '/portal/ayuda', !empty($pref['paso_ayuda'])],
+            [Idioma::t('Conoce cómo pedirnos algo'), '/portal/solicitudes', !empty($pref['paso_solicitudes'])],
+            [Idioma::t('Elige qué avisos quieres recibir'), '/portal/ajustes', !empty($pref['paso_avisos'])],
         ];
         foreach ($pasos as $p) {
             if (!$p[2]) {
@@ -1207,8 +1317,8 @@ class PortalPublicController
     {
         $c = $this->requerirContacto();
         $this->marcarPaso($c, 'ayuda');
-        $this->ctx->view('templates/public/ayuda.latte', $this->contexto($c, 'ayuda') + [
-            'estados'  => Fmt::ESTADOS,
+        Vista::mostrar($this->pdo(), 'templates/public/ayuda.latte', $this->contexto($c, 'ayuda') + [
+            'estados'  => Idioma::lista(Fmt::ESTADOS),
             'agencia'  => (new MarcaService($this->pdo()))->nombreEquipo(),
             'maxUrgentes' => (new SolicitudService($this->pdo()))->maxUrgentes(),
         ]);
@@ -1231,9 +1341,10 @@ class PortalPublicController
         $c = $this->requerirContacto();
         $pref = $this->ajustes()->todos('contacto', (string) $c['id']);
 
-        $this->ctx->view('templates/public/ajustes.latte', $this->contexto($c, 'ajustes') + [
+        Vista::mostrar($this->pdo(), 'templates/public/ajustes.latte', $this->contexto($c, 'ajustes') + [
             'pref' => [
                 'tema'         => in_array($pref['tema'] ?? '', ['claro', 'oscuro'], true) ? $pref['tema'] : 'auto',
+                'idioma'       => Idioma::actual(),
                 'apodo'        => $pref['apodo'] ?? '',
                 'frase_propia' => $pref['frase_propia'] ?? '',
                 'avisos_email' => ($pref['avisos_email'] ?? '1') !== '0',
@@ -1249,7 +1360,12 @@ class PortalPublicController
         $this->exigirCsrf('portal/ajustes');
 
         $tema = (string) ($_POST['tema'] ?? 'auto');
-        $this->ajustes()->setMuchos('contacto', (string) $c['id'], [
+        $idioma = (string) ($_POST['idioma'] ?? '');
+        if (Idioma::valido($idioma)) {
+            Idioma::fijar($idioma);
+            Idioma::recordar($idioma);
+        }
+        $this->ajustes()->setMuchos('contacto', (string) $c['id'], (Idioma::valido($idioma) ? ['idioma' => $idioma] : []) + [
             'tema'         => in_array($tema, ['claro', 'oscuro'], true) ? $tema : 'auto',
             'apodo'        => $this->tomarString('apodo', 40),
             'frase_propia' => $this->tomarString('frase_propia', 140),
@@ -1279,19 +1395,15 @@ class PortalPublicController
     // ---------------------------------------------------------------------
 
     /** @param array<string, mixed> $t */
-    private function avisarEquipo(string $asunto, array $t, string $detalle, string $quien = ''): void
+    private function avisarEquipo(string|\Stringable $asunto, array $t, string|\Stringable $detalle, string $quien = ''): void
     {
-        $detalle = mb_substr(trim($detalle), 0, 800);
-        $bloques = [['tarjetas' => [['titulo' => (string) $t['titulo'], 'detalle' => 'Tarea']]]];
-        if ($detalle !== '') {
-            $bloques[] = mb_strlen($detalle) > 60 ? ['cita' => $detalle] : ['p' => $detalle];
-        }
+        // El aviso se escribe en el idioma de cada persona del equipo que lo recibe (Avisos::guardar).
         $this->notificador()->alEquipo($asunto, '', 'tareas/' . $t['id'], [
-            'etiqueta' => 'Del cliente', 'titulo' => $asunto, 'resaltado' => $quien, 'proyecto_id' => (string) $t['proyecto_id'],
-            'bloques' => $bloques, 'preheader' => $detalle !== '' ? mb_substr($detalle, 0, 110) : $asunto, 'boton' => 'Abrir la tarea',
+            'proyecto_id' => (string) $t['proyecto_id'],
             // A quien es responsable de la tarea; si no tiene, a quienes tienen asignado el proyecto.
             'responsable' => ($t['responsable_tipo'] ?? '') === 'equipo' ? ($t['responsable_usuario_id'] ?? null) : null,
-            'clave' => 'tareas/' . $t['id'], 'detalle' => $detalle !== '' ? mb_substr($detalle, 0, 160) : (string) $t['titulo'],
+            'clave' => 'tareas/' . $t['id'],
+            'detalle' => Idioma::perezoso(fn(): string => ($d = mb_substr(trim((string) $detalle), 0, 160)) !== '' ? $d : (string) $t['titulo']),
         ]);
     }
 }

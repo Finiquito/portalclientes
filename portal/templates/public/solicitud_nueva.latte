@@ -130,7 +130,7 @@
                     </label>
                 </div>
                 {if !$puedeUrgente && $tipo !== 'presupuesto'}
-                    <p class="mt-2 text-sm text-muted">Ya tienes {$maxUrgentes === 1 ? 'una solicitud urgente abierta' : $maxUrgentes . ' solicitudes urgentes abiertas'}. Mientras la resolvemos, las nuevas entran como «Prioritario» o «Sin apuro». Si esta es más importante, escríbenos en la urgente y reordenamos.</p>
+                    <p class="mt-2 text-sm text-muted">{$maxUrgentes === 1 ? t('Ya tienes una solicitud urgente abierta') : t('Ya tienes %d solicitudes urgentes abiertas', $maxUrgentes)}. Mientras la resolvemos, las nuevas entran como «Prioritario» o «Sin apuro». Si esta es más importante, escríbenos en la urgente y reordenamos.</p>
                 {/if}
             </fieldset>
             <div data-mostrar-si="urgencia=urgente" {if $urg !== 'urgente'}hidden{/if} class="rounded-2xl border border-warn/40 bg-warn/10 p-4">

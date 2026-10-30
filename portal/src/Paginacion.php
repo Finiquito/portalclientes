@@ -93,7 +93,7 @@ final class Paginacion
         if ($ordenes !== [] && !isset($ordenes[$orden])) {
             $orden = (string) array_key_first($ordenes);
         }
-        return new self($total, $por, (int) ($_GET['p'] ?? 1), $orden, $ordenes, $base);
+        return new self($total, $por, (int) ($_GET['p'] ?? 1), $orden, array_map(Idioma::t(...), $ordenes), $base);
     }
 
     /** Si la persona eligió otro tamaño en esta visita, lo devuelve para guardarlo. */
@@ -152,6 +152,14 @@ final class Paginacion
     public function pag(int $n): string
     {
         return $this->url(['p' => $n]);
+    }
+
+    /** Enlace para dar vuelta el orden de la columna elegida (asc ↔ desc), sin cambiar de columna. */
+    public function urlInvertirColumna(): string
+    {
+        $o = $this->orden;
+        $nuevo = str_ends_with($o, '_asc') ? substr($o, 0, -4) . '_desc' : (str_ends_with($o, '_desc') ? substr($o, 0, -5) . '_asc' : $o);
+        return $this->url(['orden' => $nuevo]);
     }
 
     /** Orden de una columna: si ya está en «asc», el clic la pasa a «desc» y viceversa. */

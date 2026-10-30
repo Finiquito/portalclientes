@@ -1,0 +1,26 @@
+<?php
+// Frases de actividad («Ana comentó en «Logo»»).
+return [
+    'comentó en' => 'commented on',
+    'subió un archivo en' => 'uploaded a file to',
+    'entregó' => 'delivered',
+    'completó' => 'completed',
+    'aprobó' => 'approved',
+    'pidió cambios en' => 'requested changes on',
+    'asignó al cliente' => 'assigned to the client',
+    'te pidió' => 'asked you for',
+    'publicó para el cliente' => 'published for the client',
+    'te compartió' => 'shared with you',
+    'subió una versión nueva de' => 'uploaded a new version of',
+    'terminó la revisión de' => 'finished reviewing',
+    'compartió novedades de la reunión' => 'shared meeting updates',
+    'hizo una solicitud:' => 'made a request:',
+    'atendió la solicitud' => 'handled the request',
+    'respondió tu solicitud' => 'replied to your request',
+    'envió la cotización' => 'sent the quote',
+    'te envió la cotización de' => 'sent you the quote for',
+    'respondió la cotización de' => 'replied to the quote for',
+    'cambió el estado de' => 'changed the status of',
+    'actualizó' => 'updated',
+    'Urgente · ' => 'Urgent · ',
+];

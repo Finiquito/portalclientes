@@ -83,7 +83,7 @@ class ClienteAdminController
         $proyecto = trim((string) ($_POST['proyecto_nombre'] ?? ''));
         if ($proyecto !== '') {
             (new ProyectoService($this->pdo()))->create(['cliente_id' => $id, 'nombre' => $proyecto, 'estado' => 'activo']);
-            $hechos[] = 'el proyecto «' . $proyecto . '»';
+            $hechos[] = Idioma::t('el proyecto «%s»', $proyecto);
         }
 
         $aviso = '';
@@ -95,7 +95,7 @@ class ClienteAdminController
                 'email'      => $contactoEmail,
                 'rol'        => ($_POST['contacto_rol'] ?? '') === 'viewer' ? 'viewer' : 'aprobador',
             ]);
-            $hechos[] = 'el contacto ' . $contactoEmail;
+            $hechos[] = Idioma::t('el contacto %s', $contactoEmail);
             if (($_POST['invitar'] ?? '') === 'ahora') {
                 try {
                     $ok = (new Notifier($this->ctx, $this->pdo()))->invitacionCliente((array) $cs->find($cid), '', $this->ui->firma());
@@ -104,9 +104,9 @@ class ClienteAdminController
                 }
                 if ($ok) {
                     $cs->marcarInvitado($cid);
-                    $hechos[] = 'la invitación ya va en camino';
+                    $hechos[] = Idioma::t('la invitación ya va en camino');
                 } else {
-                    $aviso = ' La invitación no salió: revisa el correo en los ajustes.';
+                    $aviso = ' ' . Idioma::t('La invitación no salió: revisa el correo en los ajustes.');
                 }
             }
         }
@@ -121,10 +121,10 @@ class ClienteAdminController
             }
         }
         if ($nombres !== []) {
-            $hechos[] = 'a cargo de ' . implode(' y ', $nombres);
+            $hechos[] = Idioma::t('a cargo de %s', implode(' ' . Idioma::t('y') . ' ', $nombres));
         }
 
-        $msg = 'Cliente creado' . ($hechos !== [] ? ' con ' . implode(', ', $hechos) : '') . '.' . $aviso;
+        $msg = Idioma::t('Cliente creado') . ($hechos !== [] ? ' ' . Idioma::t('con') . ' ' . implode(', ', $hechos) : '') . '.' . $aviso;
         // En el panel se va a la ficha del cliente; en el admin, a su edición (ahí se personaliza el portal).
         $this->ui->redirect($this->ui->url('clientes') . '/' . $id, $msg, $aviso === '' ? 'success' : 'error');
     }
@@ -144,6 +144,7 @@ class ClienteAdminController
             'eligeResponsable' => $this->ui->esGeneral(),
             'cfg'           => [
                 'titulo' => $cfg['titulo'] ?? '',
+                'idioma' => $cfg['idioma'] ?? '',
                 'color'  => AjustesService::colorValido($cfg['color'] ?? ''),
                 'frases' => implode("\n", $this->ajustes()->frasesDeCliente($id)),
                 'logo_id' => $cfg['logo_id'] ?? '',
@@ -175,9 +176,11 @@ class ClienteAdminController
 
         $aj->setMuchos('cliente', $id, [
             'titulo' => mb_substr(trim((string) ($_POST['titulo'] ?? '')), 0, 60),
-            'color'  => AjustesService::colorValido((string) ($_POST['color'] ?? '')),
+            'color'  => AjustesService::colorValido(Paleta::elegir((string) ($_POST['color'] ?? ''), (string) ($aj->todos('cliente', $id)['color'] ?? ''))),
             'frases' => json_encode(AjustesService::frasesDesdeTexto((string) ($_POST['frases'] ?? '')), JSON_UNESCAPED_UNICODE),
         ]);
+
+        Idioma::guardarDePost($aj, 'cliente', $id);
 
         $avisoLogo = '';
         $archivos  = new ArchivoService($this->pdo());

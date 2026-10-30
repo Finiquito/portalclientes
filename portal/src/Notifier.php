@@ -109,8 +109,10 @@ class Notifier
      * @param array<string, mixed> $op etiqueta, titulo, resaltado, boton, bloques (extra), preheader, compacto, cliente_id, proyecto_id
      * @return array{0: string, 1: string} [html, texto]
      */
-    public function componer(string $asunto, string $cuerpo, array $op, ?string $saludo, string $url, ?string $clienteId, array $pie, ?array $contexto = null): array
+    public function componer(string|\Stringable $asunto, string|\Stringable $cuerpo, array $op, string|\Stringable|null $saludo, string $url, ?string $clienteId, array $pie, ?array $contexto = null): array
     {
+        // Las frases (Idioma::f) se escriben aquí, en el idioma que dejó puesto quien llama (el de quien recibe el correo).
+        [$asunto, $cuerpo, $op, $saludo, $pie] = [Idioma::resolver($asunto), Idioma::resolver($cuerpo), Idioma::resolver($op), Idioma::resolver($saludo), Idioma::resolver($pie)];
         $d = $this->datosMarca($clienteId) + [
             'etiqueta'  => (string) ($op['etiqueta'] ?? ''),
             'titulo'    => (string) ($op['titulo'] ?? $asunto),
@@ -118,7 +120,7 @@ class Notifier
             'preheader' => (string) ($op['preheader'] ?? mb_substr(trim(preg_replace('/\s+/u', ' ', $cuerpo) ?? ''), 0, 110)),
             'saludo'    => $saludo,
             'bloques'   => array_merge(self::bloquesDesdeTexto($cuerpo), (array) ($op['bloques'] ?? [])),
-            'boton'     => $url !== '' ? ['texto' => (string) ($op['boton'] ?? 'Abrir el portal'), 'url' => $url] : null,
+            'boton'     => $url !== '' ? ['texto' => (string) ($op['boton'] ?? Idioma::t('Abrir el portal')), 'url' => $url] : null,
             'contexto'  => $contexto,
             'pie'       => $pie,
             'compacto'  => (bool) ($op['compacto'] ?? mb_strlen($cuerpo) < 220 && empty($op['bloques'])),
@@ -131,56 +133,51 @@ class Notifier
     /**
      * Aviso al equipo por algo que pasó en un cliente o proyecto.
      *
-     *  - El correo de copia de Ajustes (opcional) recibe todo, al tiro, con enlace al admin.
-     *  - Cada persona del equipo recibe lo que le toca según sus preferencias (Avisos::leToca):
-     *    al instante o agrupado (Avisos::BUZON). Las urgencias salen siempre al tiro.
+     *  - El correo de copia de Ajustes (opcional) recibe todo, también agrupado, con enlace al admin.
+     *  - Cada persona del equipo recibe lo que le toca según sus preferencias (Avisos::leToca), siempre
+     *    agrupado (Avisos::BUZON): a horas fijas o cuando se juntan 10. Una urgencia adelanta el envío
+     *    a la próxima pasada del cron, junto con lo demás que esté pendiente.
      *
      * $op además de lo de componer():
      *   proyecto_id / cliente_id   de qué cliente es (arma el encabezado y define a quién le toca)
      *   responsable                id del equipo de quien es el asunto (p. ej. responsable de la tarea)
      *   solo_responsable           true: sólo a esa persona (p. ej. «te asignaron una tarea»)
      *   actor                      id del equipo que lo hizo (no se le avisa a sí mismo)
-     *   urgente                    true: no espera al agrupado
+     *   urgente                    true: no espera la próxima hora fija (sale en la siguiente pasada del cron)
      *   clave                      para agrupar varias novedades de lo mismo (por defecto, la ruta)
      *   detalle                    una línea para el correo agrupado
      *   vigencia                   marca de Vigencia: si mientras espera deja de aplicar, no sale
      *
      * @param array<string, mixed> $op
      */
-    public function alEquipo(string $asunto, string $cuerpo, ?string $rutaAdmin = null, array $op = []): void
+    public function alEquipo(string|\Stringable $asunto, string|\Stringable $cuerpo, ?string $rutaAdmin = null, array $op = []): void
     {
         [$cid, $pid, $contexto] = $this->contextoAviso($op);
-        $pie = ['Aviso interno: el cliente no ve este correo.'];
+        // El texto de cada aviso se escribe en el idioma de quien lo recibe (Avisos::guardar).
+        $detalle = $op['detalle'] ?? Idioma::perezoso(fn() => mb_substr(trim(preg_replace('/\s+/u', ' ', (string) $cuerpo) ?? ''), 0, 160));
 
-        // Copia de todos los avisos (Ajustes): enlace al admin de TypeDock.
+        // Copia de todos los avisos (Ajustes): también agrupada, con enlace al admin de TypeDock.
         $to = trim($this->ajustes()->get('global', 'portal', 'email_avisos'));
+        $avisos = new Avisos($this->ctx, $this->pdo, $this);
         if (filter_var($to, FILTER_VALIDATE_EMAIL)) {
-            $url = $rutaAdmin !== null ? $this->absoluta($this->ctx->adminUrl($rutaAdmin)) : '';
-            [$html, $texto] = $this->componer($asunto, $cuerpo, $op + ['boton' => 'Abrir en el admin'], null, $url, $cid, $pie, $contexto);
-            $this->enviarCorreo($to, $asunto, $html, $texto);
+            $avisos->guardar(Avisos::DESTINO_COPIA, $cid, $pid, (string) ($op['clave'] ?? $rutaAdmin ?? (string) $asunto), $asunto,
+                $detalle, $rutaAdmin,
+                isset($op['vigencia']) ? (string) $op['vigencia'] : null, !empty($op['urgente']), 'copia');
         } else {
             $to = '';
         }
 
-        // Personas del equipo: a cada una lo suyo.
-        $avisos = new Avisos($this->ctx, $this->pdo, $this);
+        // Personas del equipo: a cada una lo suyo, al buzón (sale agrupado).
         $enviados = [strtolower($to)];
-        $url = $this->absoluta('/equipo' . ($rutaAdmin !== null ? '/' . ltrim($rutaAdmin, '/') : ''));
         foreach ($avisos->destinatarios($pid, $cid, $op) as $u) {
             $mail = strtolower((string) $u['email']);
             if (in_array($mail, $enviados, true)) {
                 continue;
             }
             $enviados[] = $mail;
-            if ($u['como'] === 'agrupado' && empty($op['urgente'])) {
-                $avisos->guardar((string) $u['id'], $cid, $pid, (string) ($op['clave'] ?? $rutaAdmin ?? $asunto), $asunto,
-                    (string) ($op['detalle'] ?? mb_substr(trim(preg_replace('/\s+/u', ' ', $cuerpo) ?? ''), 0, 160)), $rutaAdmin,
-                    isset($op['vigencia']) ? (string) $op['vigencia'] : null);
-                continue;
-            }
-            $pieEq = array_merge($pie, [Avisos::pieMotivo($u)]);
-            [$html, $texto] = $this->componer($asunto, $cuerpo, $op + ['boton' => 'Abrir en el panel'], null, $url, $cid, $pieEq, $contexto);
-            $this->enviarCorreo($mail, $asunto, $html, $texto);
+            $avisos->guardar((string) $u['id'], $cid, $pid, (string) ($op['clave'] ?? $rutaAdmin ?? (string) $asunto), $asunto,
+                $detalle, $rutaAdmin,
+                isset($op['vigencia']) ? (string) $op['vigencia'] : null, !empty($op['urgente']));
         }
     }
 
@@ -222,11 +219,15 @@ class Notifier
 
     /**
      * Aviso a los contactos de un cliente (o a uno solo) que no hayan desactivado los avisos.
-     * Respeta el horario hábil del país del cliente: fuera de él, queda en cola.
+     * Va al buzón y sale agrupado, a horas fijas en el horario hábil de la persona (Avisos::barrer).
+     * Con $op['inmediato'] sale ya (respetando el horario hábil): sólo para lo que la persona está esperando.
+     *
+     * $op además de lo de componer(): proyecto_id, clave (agrupa novedades de lo mismo; por defecto la ruta),
+     * detalle (una línea para el correo agrupado), vigencia (si deja de aplicar, no sale), contactos, inmediato.
      *
      * @param array<string, mixed> $op
      */
-    public function alCliente(string $clienteId, ?string $contactoId, string $asunto, string $cuerpo, string $ruta = '/portal', array $op = []): void
+    public function alCliente(string $clienteId, ?string $contactoId, string|\Stringable $asunto, string|\Stringable $cuerpo, string $ruta = '/portal', array $op = []): void
     {
         $sql    = 'SELECT id, nombre, email FROM portal_contactos WHERE cliente_id = ?';
         $params = [$clienteId];
@@ -249,28 +250,50 @@ class Notifier
             if ($this->ajustes()->get('contacto', (string) $c['id'], 'avisos_email', '1') === '0') {
                 continue;
             }
-            [$html, $texto] = $this->componer(
-                $asunto, $cuerpo, $op, 'Hola ' . $this->primerNombre((string) $c['nombre']) . ',', $this->absoluta($ruta), $clienteId,
-                ['Puedes desactivar estos avisos en Ajustes dentro del portal.']
-            );
-            $this->aContacto($c, $clienteId, $asunto, $html, $texto, !empty($op['inmediato']), null, isset($op['vigencia']) ? (string) $op['vigencia'] : null);
+            if (empty($op['inmediato'])) {
+                $detalle = $op['detalle'] ?? Idioma::perezoso(fn() => mb_substr(trim(preg_replace('/\s+/u', ' ', (string) $cuerpo) ?: (string) ($op['preheader'] ?? '')), 0, 160));
+                $this->alBuzonCliente($c, $clienteId, $asunto, $detalle, $ruta, (string) ($op['clave'] ?? $ruta), isset($op['proyecto_id']) ? (string) $op['proyecto_id'] : null,
+                    isset($op['vigencia']) ? (string) $op['vigencia'] : null);
+                continue;
+            }
+            Idioma::con(Idioma::de($this->ajustes(), 'contacto', (string) $c['id'], $clienteId), function () use ($c, $asunto, $cuerpo, $op, $ruta, $clienteId): void {
+                [$html, $texto] = $this->componer(
+                    $asunto, $cuerpo, $op, Idioma::t('Hola %s,', $this->primerNombre((string) $c['nombre'])), $this->absoluta($ruta), $clienteId,
+                    [Idioma::t('Puedes desactivar estos avisos en Ajustes dentro del portal.')]
+                );
+                $this->aContacto($c, $clienteId, (string) $asunto, $html, $texto, true, null, isset($op['vigencia']) ? (string) $op['vigencia'] : null);
+            });
         }
+    }
+
+    /**
+     * Deja un aviso para un contacto del cliente en el buzón: sale agrupado, a horas fijas (Avisos::barrer).
+     *
+     * @param array<string, mixed> $contacto id
+     * @param bool $reemplaza el aviso nuevo reemplaza al que seguía esperando con la misma clave
+     */
+    public function alBuzonCliente(array $contacto, string $clienteId, string|\Stringable $asunto, string|\Stringable $detalle, string $ruta, string $clave, ?string $proyectoId = null, ?string $vigencia = null, bool $reemplaza = false): void
+    {
+        (new Avisos($this->ctx, $this->pdo, $this))->guardar((string) $contacto['id'], $clienteId, $proyectoId, $clave, $asunto, $detalle, $ruta, $vigencia, false, 'cliente', $reemplaza);
     }
 
     /** Código de acceso (siempre al tiro), con la marca del cliente del contacto. */
     public function codigoAcceso(array $contacto, string $codigo): void
     {
         $clienteId = (string) ($contacto['cliente_id'] ?? '');
-        [$html, $texto] = $this->componer(
-            'Tu código de acceso: ' . $codigo,
-            '',
-            ['etiqueta' => 'Acceso', 'titulo' => 'Tu código de acceso', 'resaltado' => 'código', 'compacto' => true,
-             'preheader' => 'Tu código es ' . $codigo . '. Vence en 10 minutos.',
-             'bloques' => [['p' => 'Usa este código para entrar al portal. Vence en 10 minutos.'], ['codigo' => $codigo]]],
-            'Hola ' . $this->primerNombre((string) $contacto['nombre']) . ',', '', $clienteId !== '' ? $clienteId : null,
-            ['Si no pediste este código, puedes ignorar este correo.']
-        );
-        $this->enviarCorreo((string) $contacto['email'], 'Tu código de acceso: ' . $codigo, $html, $texto, true);
+        Idioma::con($this->idiomaContacto($contacto), function () use ($contacto, $codigo, $clienteId): void {
+            $asunto = Idioma::t('Tu código de acceso: %s', $codigo);
+            [$html, $texto] = $this->componer(
+                $asunto,
+                '',
+                ['etiqueta' => Idioma::t('Acceso'), 'titulo' => Idioma::t('Tu código de acceso'), 'resaltado' => Idioma::t('código'), 'compacto' => true,
+                 'preheader' => Idioma::t('Tu código es %s. Vence en 10 minutos.', $codigo),
+                 'bloques' => [['p' => Idioma::t('Usa este código para entrar al portal. Vence en 10 minutos.')], ['codigo' => $codigo]]],
+                Idioma::t('Hola %s,', $this->primerNombre((string) $contacto['nombre'])), '', $clienteId !== '' ? $clienteId : null,
+                [Idioma::t('Si no pediste este código, puedes ignorar este correo.')]
+            );
+            $this->enviarCorreo((string) $contacto['email'], $asunto, $html, $texto, true);
+        });
     }
 
     /**
@@ -281,7 +304,8 @@ class Notifier
      */
     public function invitacionCliente(array $contacto, string $mensaje = '', string $firma = ''): bool
     {
-        [$asunto, $html, $texto] = $this->armarInvitacionCliente($contacto, $mensaje, $firma);
+        // La invitación se arma en el idioma del contacto (el suyo, si no el de su cliente, si no el de la agencia).
+        [$asunto, $html, $texto] = Idioma::con($this->idiomaContacto($contacto), fn(): array => $this->armarInvitacionCliente($contacto, $mensaje, $firma));
         return $this->enviarCorreo((string) $contacto['email'], $asunto, $html, $texto, false);
     }
 
@@ -293,7 +317,7 @@ class Notifier
      */
     public function programarInvitacionCliente(array $contacto, int $horas): string
     {
-        [$asunto, $html, $texto] = $this->armarInvitacionCliente($contacto, '', '');
+        [$asunto, $html, $texto] = Idioma::con($this->idiomaContacto($contacto), fn(): array => $this->armarInvitacionCliente($contacto, '', ''));
         $clienteId = (string) $contacto['cliente_id'];
         $cuando = $this->cuandoEnviar($clienteId, false, (string) $contacto['id'], $this->ahoraUtc()->modify('+' . max(0, $horas) . ' hours'));
         $this->encolar($clienteId, (string) $contacto['id'], (string) $contacto['email'], $asunto, $texto, $html, $cuando, null, Vigencia::invitacion((string) $contacto['id']));
@@ -344,29 +368,29 @@ class Notifier
         if (trim($mensaje) !== '') {
             $bloques[] = ['cita' => mb_substr(trim($mensaje), 0, 1500) . ($firma !== '' ? "\n— " . $firma : '')];
         }
-        $bloques[] = ['p' => 'Te abrimos un portal para trabajar juntos: ahí ves en qué va tu proyecto, lo que necesitamos de ti y lo que tenemos listo para que revises. Todo en un solo lugar, sin perseguir correos.'];
+        $bloques[] = ['p' => Idioma::t('Te abrimos un portal para trabajar juntos: ahí ves en qué va tu proyecto, lo que necesitamos de ti y lo que tenemos listo para que revises. Todo en un solo lugar, sin perseguir correos.')];
         if ($tarea) {
             $fmt = new Fmt();
-            $bloques[] = ['p' => 'Ya tienes algo esperándote:'];
-            $bloques[] = ['tarjetas' => [['titulo' => (string) $tarea['titulo'], 'detalle' => $fmt->tipo((string) $tarea['tipo']) . ($tarea['fecha_vencimiento'] ? ' · para el ' . $fmt->fecha((string) $tarea['fecha_vencimiento']) : '')]]];
+            $bloques[] = ['p' => Idioma::t('Ya tienes algo esperándote:')];
+            $bloques[] = ['tarjetas' => [['titulo' => (string) $tarea['titulo'], 'detalle' => $fmt->tipo((string) $tarea['tipo']) . ($tarea['fecha_vencimiento'] ? ' · ' . Idioma::t('para el %s', $fmt->fecha((string) $tarea['fecha_vencimiento'])) : '')]]];
         }
-        $bloques[] = ['p' => 'Lo que vas a encontrar:'];
+        $bloques[] = ['p' => Idioma::t('Lo que vas a encontrar:')];
         $bloques[] = ['lista' => [
-            'Tareas: lo que te toca a ti (enviar un archivo, revisar algo) y lo que está haciendo el equipo.',
-            'Revisiones: piezas y contenidos para aprobar o pedir cambios con un clic.',
-            'Reuniones: la próxima, con su enlace, y el resumen de las anteriores.',
-            'Solicitudes: para pedirnos algo nuevo, un presupuesto, una reunión o avisarnos de un problema.',
+            Idioma::t('Tareas: lo que te toca a ti (enviar un archivo, revisar algo) y lo que está haciendo el equipo.'),
+            Idioma::t('Revisiones: piezas y contenidos para aprobar o pedir cambios con un clic.'),
+            Idioma::t('Reuniones: la próxima, con su enlace, y el resumen de las anteriores.'),
+            Idioma::t('Solicitudes: para pedirnos algo nuevo, un presupuesto, una reunión o avisarnos de un problema.'),
         ]];
-        $bloques[] = ['p' => 'Para entrar no necesitas contraseña: escribe tu correo y te llega un código de 6 dígitos. Dentro del portal, en «¿Cómo funciona?», está todo explicado en dos minutos.'];
+        $bloques[] = ['p' => Idioma::t('Para entrar no necesitas contraseña: escribe tu correo y te llega un código de 6 dígitos. Dentro del portal, en «¿Cómo funciona?», está todo explicado en dos minutos.')];
 
-        $asunto = $agencia . ' te invita a tu portal de proyecto';
+        $asunto = Idioma::t('%s te invita a tu portal de proyecto', $agencia);
         [$html, $texto] = $this->componer(
             $asunto, '',
-            ['etiqueta' => 'Invitación', 'titulo' => 'Tu portal con ' . $agencia, 'resaltado' => 'portal', 'boton' => 'Entrar a mi portal',
-                'bloques' => $bloques, 'preheader' => 'Aquí vas a ver tu proyecto, lo que te toca y lo que está listo para revisar.'],
-            'Hola ' . $this->primerNombre((string) $contacto['nombre']) . ',',
+            ['etiqueta' => Idioma::t('Invitación'), 'titulo' => Idioma::t('Tu portal con %s', $agencia), 'resaltado' => Idioma::t('portal'), 'boton' => Idioma::t('Entrar a mi portal'),
+                'bloques' => $bloques, 'preheader' => Idioma::t('Aquí vas a ver tu proyecto, lo que te toca y lo que está listo para revisar.')],
+            Idioma::t('Hola %s,', $this->primerNombre((string) $contacto['nombre'])),
             $this->absoluta('/login?email=' . rawurlencode($email)), $clienteId,
-            ['Entras siempre con este correo: ' . $email, 'Puedes elegir qué avisos recibir en Ajustes, dentro del portal.']
+            [Idioma::t('Entras siempre con este correo: %s', $email), Idioma::t('Puedes elegir qué avisos recibir en Ajustes, dentro del portal.')]
         );
         return [$asunto, $html, $texto];
     }
@@ -374,31 +398,49 @@ class Notifier
     /** Invitación a un usuario de agencia: cómo entrar al panel de equipo. */
     public function invitacionEquipo(array $usuario): bool
     {
-        $url = $this->absoluta('/equipo/entrar');
-        [$html, $texto] = $this->componer(
-            'Te dimos acceso al panel de equipo',
-            'Desde el panel verás los clientes y proyectos que tienes asignados: tareas, contenidos para revisión y reuniones.' . "\n\n"
-                . 'Para entrar no necesitas contraseña: escribe tu correo y te enviaremos un código.',
-            ['etiqueta' => 'Equipo', 'titulo' => 'Bienvenido al panel de equipo', 'resaltado' => 'equipo', 'boton' => 'Entrar al panel'],
-            'Hola ' . $this->primerNombre((string) $usuario['nombre']) . ',', $url, null,
-            ['Entras siempre con este correo: ' . $usuario['email']]
-        );
-        return $this->enviarCorreo((string) $usuario['email'], 'Te dimos acceso al panel de equipo', $html, $texto, false);
+        return (bool) Idioma::con($this->idiomaEquipo($usuario), function () use ($usuario): bool {
+            $url = $this->absoluta('/equipo/entrar');
+            $asunto = Idioma::t('Te dimos acceso al panel de equipo');
+            [$html, $texto] = $this->componer(
+                $asunto,
+                Idioma::t('Desde el panel verás los clientes y proyectos que tienes asignados: tareas, contenidos para revisión y reuniones.') . "\n\n"
+                    . Idioma::t('Para entrar no necesitas contraseña: escribe tu correo y te enviaremos un código.'),
+                ['etiqueta' => Idioma::t('Equipo'), 'titulo' => Idioma::t('Bienvenido al panel de equipo'), 'resaltado' => Idioma::t('equipo'), 'boton' => Idioma::t('Entrar al panel')],
+                Idioma::t('Hola %s,', $this->primerNombre((string) $usuario['nombre'])), $url, null,
+                [Idioma::t('Entras siempre con este correo: %s', (string) $usuario['email'])]
+            );
+            return $this->enviarCorreo((string) $usuario['email'], $asunto, $html, $texto, false);
+        });
     }
 
     /** Código de acceso de un usuario de agencia (front /equipo). Sale al tiro, con la marca de la agencia. */
     public function codigoAccesoEquipo(array $usuario, string $codigo): void
     {
-        [$html, $texto] = $this->componer(
-            'Tu código para el panel de equipo: ' . $codigo,
-            '',
-            ['etiqueta' => 'Equipo', 'titulo' => 'Tu código de acceso', 'resaltado' => 'código', 'compacto' => true,
-             'preheader' => 'Tu código es ' . $codigo . '. Vence en 10 minutos.',
-             'bloques' => [['p' => 'Usa este código para entrar al panel de equipo. Vence en 10 minutos.'], ['codigo' => $codigo]]],
-            'Hola ' . $this->primerNombre((string) $usuario['nombre']) . ',', '', null,
-            ['Si no pediste este código, puedes ignorar este correo.']
-        );
-        $this->enviarCorreo((string) $usuario['email'], 'Tu código para el panel de equipo: ' . $codigo, $html, $texto, true);
+        Idioma::con($this->idiomaEquipo($usuario), function () use ($usuario, $codigo): void {
+            $asunto = Idioma::t('Tu código para el panel de equipo: %s', $codigo);
+            [$html, $texto] = $this->componer(
+                $asunto,
+                '',
+                ['etiqueta' => Idioma::t('Equipo'), 'titulo' => Idioma::t('Tu código de acceso'), 'resaltado' => Idioma::t('código'), 'compacto' => true,
+                 'preheader' => Idioma::t('Tu código es %s. Vence en 10 minutos.', $codigo),
+                 'bloques' => [['p' => Idioma::t('Usa este código para entrar al panel de equipo. Vence en 10 minutos.')], ['codigo' => $codigo]]],
+                Idioma::t('Hola %s,', $this->primerNombre((string) $usuario['nombre'])), '', null,
+                [Idioma::t('Si no pediste este código, puedes ignorar este correo.')]
+            );
+            $this->enviarCorreo((string) $usuario['email'], $asunto, $html, $texto, true);
+        });
+    }
+
+    /** Idioma en que se escribe un correo para este contacto (el suyo, el de su cliente o el de la agencia). @param array<string, mixed> $contacto */
+    public function idiomaContacto(array $contacto): string
+    {
+        return Idioma::de($this->ajustes(), 'contacto', (string) ($contacto['id'] ?? ''), (string) ($contacto['cliente_id'] ?? ''));
+    }
+
+    /** Idioma de una persona del equipo. @param array<string, mixed> $usuario */
+    public function idiomaEquipo(array $usuario): string
+    {
+        return Idioma::de($this->ajustes(), 'equipo', (string) ($usuario['id'] ?? ''));
     }
 
     public function primerNombre(string $n): string
@@ -472,47 +514,6 @@ class Notifier
         } else {
             $this->encolar($clienteId, (string) $contacto['id'], (string) $contacto['email'], $asunto, $texto, $html, $cuando, $ics, $vigencia);
         }
-    }
-
-    /**
-     * Aviso que se agrupa: si ya hay uno igual esperando en la cola para ese contacto (misma
-     * marca de vigencia), se reemplaza su contenido en vez de sumar otro correo; y entre dos
-     * envíos pasan al menos $minutosEntre minutos (los que lleguen entremedio salen juntos).
-     * Respeta el horario hábil de la persona.
-     *
-     * @param array<string, mixed> $contacto id, email
-     */
-    public function agrupado(array $contacto, string $clienteId, string $marca, string $asunto, string $html, string $texto, int $minutosEntre = 60): void
-    {
-        Schema::asegurar($this->pdo);
-        $cid = (string) $contacto['id'];
-        $st = $this->pdo->prepare('SELECT id FROM ' . self::COLA . " WHERE contacto_id = ? AND vigencia = ? AND estado = 'pendiente'");
-        $st->execute([$cid, $marca]);
-        $pend = $st->fetchColumn();
-        if ($pend !== false) {
-            $this->pdo->prepare('UPDATE ' . self::COLA . ' SET asunto = ?, texto = ?, html = ? WHERE id = ?')
-                ->execute([mb_substr($asunto, 0, 500), $texto, $html, (string) $pend]);
-            return;
-        }
-        $clave = 'ultimo_aviso:' . $marca;
-        $cuando = $this->cuandoEnviar($clienteId, false, $cid);
-        $ultimo = $this->ajustes()->get('contacto', $cid, $clave);
-        if ($ultimo !== '') {
-            try {
-                $siguiente = (new \DateTimeImmutable($ultimo, new \DateTimeZone('UTC')))->modify('+' . $minutosEntre . ' minutes');
-                if ($siguiente > $cuando) {
-                    $cuando = $siguiente;
-                }
-            } catch (\Throwable) {
-            }
-        }
-        if ($cuando <= $this->ahoraUtc()) {
-            $this->enviarCorreo((string) $contacto['email'], $asunto, $html, $texto, true);
-        } else {
-            $this->encolar($clienteId, $cid, (string) $contacto['email'], $asunto, $texto, $html, $cuando, null, $marca);
-        }
-        // Se anota cuándo sale (ahora o cuando le toque en la cola) para espaciar el siguiente.
-        $this->ajustes()->set('contacto', $cid, $clave, max($cuando, $this->ahoraUtc())->format('Y-m-d H:i:s'));
     }
 
     /**

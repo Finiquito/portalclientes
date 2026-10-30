@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es" class="{if $tema === 'oscuro'}dark{/if}" data-tema="{$tema}" style="--brand: {$marca['color']|noescape}; --brand-fg: {$marca['texto']|noescape}; --ink-l: {$marca['tintaL']|noescape}%; --ink-d: {$marca['tintaD']|noescape}%">
+<html lang="{\TypeDock\Plugin\Portal\Idioma::actual()}" class="{if $tema === 'oscuro'}dark{/if}" data-tema="{$tema}" style="--brand: {$marca['color']|noescape}; --brand-fg: {$marca['texto']|noescape}; --brand-ink-claro: {$marca['tinta']|noescape}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
-    <link rel="stylesheet" href="/plugins/portal/assets/portal.css?v=34">
+    <link rel="stylesheet" href="/plugins/portal/assets/portal.css?v=42">
     <script>{$portalBoot|noescape}</script>
 </head>
 <body class="min-h-dvh bg-bg font-sans text-ink antialiased">

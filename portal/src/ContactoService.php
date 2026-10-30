@@ -13,7 +13,7 @@ class ContactoService
     public function listAll(): array
     {
         $stmt = $this->pdo->query(
-            'SELECT ct.*, cl.nombre AS cliente_nombre
+            'SELECT ct.*, cl.nombre AS cliente_nombre, cl.pais AS cliente_pais
              FROM ' . self::TABLE . ' ct
              JOIN portal_clientes cl ON cl.id = ct.cliente_id
              ORDER BY cl.nombre, ct.nombre'

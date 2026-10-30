@@ -3,7 +3,8 @@
 {block page_title}{if $l}{$l['nombre']}{else}Agregar contacto{/if}{/block}
 
 {block content}
-<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=16">
+<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=17">
+<link rel="stylesheet" href="/plugins/portal/assets/leads.css?v=7">
 {var $anonimo = $l && !empty($l['anonimizado_en'])}
 <div class="page-header">
     <h1>{if $l}{$l['nombre']}{else}Agregar contacto{/if}</h1>
@@ -21,7 +22,7 @@
         {if $l['campana']}<span class="pa-chip gris">{$l['campana']}</span>{/if}
     </p>
     <p class="pa-muted" style="margin:0">
-        {$l['cliente_nombre']} · {$l['proyecto_nombre']} · llegó {$fmt->rel($l['created_at'])}
+        {$l['cliente_nombre']} · {$l['proyecto_nombre']}<span class="ll">{foreach \TypeDock\Plugin\Portal\LeadService::publicoEtiquetas($l['proyecto_publico'] ?? '') as $t} <span class="ll-pub" data-p="{$t}">{$t}</span>{/foreach}</span> · llegó {$fmt->rel($l['created_at'])}
         {if $l['creado_por'] && $l['origen'] === 'manual'} · lo agregó {$l['creado_por']}{/if}
         {if $l['utm_source'] || $l['utm_medium']} · {$l['utm_source'] ?: '—'} / {$l['utm_medium'] ?: '—'}{/if}
     </p>
@@ -30,7 +31,7 @@
 </div>
 {/if}
 
-{if !$anonimo}
+{if !$l}
 <div class="card">
     <form method="post" action="{if $l}{$admin_url('leads/' . $l['id'])}{else}{$admin_url('leads')}{/if}">
         <input type="hidden" name="_csrf_token" value="{$csrf_token}">
@@ -77,6 +78,30 @@
 </div>
 {/if}
 
+{if $l}
+<div class="ll ll-ficha">
+    <div>
+        {include '../../_lead_linea.latte', l: $l, eventos: $eventos, estados: $estados, base: $admin_url('leads/' . $l['id']), csrfCampo: '_csrf_token', csrfValor: $csrf_token, ahora: $ahora, fmt: $fmt, origenes: $origenes, puedeEditar: true}
+    </div>
+    <div>
+        {if !$anonimo}
+        <form method="post" action="{$admin_url('leads/' . $l['id'])}" class="card" style="margin:0 0 1rem">
+            <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+            <h2 class="pa-h2" style="margin-top:0">Datos y próximo paso</h2>
+            <label class="form-label">Nombre</label><input type="text" name="nombre" maxlength="255" class="form-input" value="{$l['nombre']}">
+            <label class="form-label mt-3">Empresa</label><input type="text" name="empresa" maxlength="255" class="form-input" value="{$l['empresa']}">
+            <label class="form-label mt-3">Correo</label><input type="email" name="correo" maxlength="255" class="form-input" value="{$l['correo']}">
+            <label class="form-label mt-3">Teléfono</label><input type="tel" name="telefono" maxlength="64" class="form-input" value="{$l['telefono']}">
+            <p class="form-hint mt-1">Basta con un correo o un teléfono.</p>
+            <label class="form-label mt-3">Próximo paso</label><input type="text" name="proximo_paso" maxlength="255" class="form-input" value="{$l['proximo_paso']}">
+            <label class="form-label mt-3">¿Cuándo?</label><input type="date" name="proximo_paso_fecha" class="form-input" value="{$l['proximo_paso_fecha']}">
+            <p class="mt-4"><button type="submit" class="btn btn-primary">Guardar</button></p>
+        </form>
+        {/if}
+    </div>
+</div>
+{/if}
+
 {if $l && !empty($conMc)}
 <div class="card">
     <h2 class="pa-h2">En Mailchimp <span class="pa-muted">· audiencia «{$l['mc_audiencia_nombre']}»</span></h2>
@@ -86,13 +111,13 @@
     {elseif !$mc}
         <p class="pa-muted" style="margin:0">Todavía no se revisa.</p>
     {else}
-        <p style="margin:0 0 .5rem"><span class="pa-chip {$mc['etiqueta'][1]}">{$mc['etiqueta'][0]}</span>
+        <p style="margin:0 0 .5rem"><span class="pa-chip {$mc['etiqueta'][1]}">{t($mc['etiqueta'][0])}</span>
             {if !empty($mc['rating'])} <span title="Calificación de Mailchimp" style="color:#d97706;letter-spacing:.1em">{str_repeat('★', $mc['rating'])}</span><span class="pa-muted" style="letter-spacing:.1em">{str_repeat('★', 5 - $mc['rating'])}</span>{/if}</p>
         {if $mc['estado'] !== 'no_esta' && $mc['estado'] !== 'error'}
         <p class="pa-muted" style="margin:0">
             {if !empty($mc['alta'])}Se inscribió el {$fmt->fecha($mc['alta'])}{/if}
             {if $mc['estado'] === 'unsubscribed' && !empty($mc['cambio'])} · se dio de baja el {$fmt->fecha($mc['cambio'])}{if !empty($mc['motivo'])} («{$mc['motivo']}»){/if}{/if}
-            {if !empty($mc['conteo'])}{var $c = $mc['conteo']} · {if $c['enviados'] === 0}todavía no recibe correos{else}{if !$c['completo']}al menos {/if}{$c['enviados']} {$c['enviados'] === 1 ? 'correo recibido' : 'correos recibidos'}, abrió {$c['abiertos']}{if $c['clics'] > 0} e hizo clic en {$c['clics']}{/if}{/if}{/if}
+            {if !empty($mc['conteo'])}{var $c = $mc['conteo']} · {if $c['enviados'] === 0}todavía no recibe correos{else}{if !$c['completo']}al menos {/if}{$c['enviados']} {$c['enviados'] === 1 ? t('correo recibido') : t('correos recibidos')}, abrió {$c['abiertos']}{if $c['clics'] > 0} e hizo clic en {$c['clics']}{/if}{/if}{/if}
             {if isset($mc['aperturas']) && $mc['aperturas'] !== null} · abre el {$mc['aperturas']}% y hace clic en el {$mc['clics'] ?? 0}% de los correos{/if}
             {if !empty($mc['origen'])} · origen en Mailchimp: {$mc['origen']}{/if}
         </p>
@@ -100,11 +125,11 @@
         {if !empty($mc['actividad'])}
             <table class="table" style="margin-top:.75rem">
                 <thead><tr><th>Últimos correos</th><th></th></tr></thead>
-                <tbody>{foreach $mc['actividad'] as $a}<tr><td><strong>{$mcEventos[$a['tipo']] ?? $a['tipo']}</strong>{if $a['titulo']} «{$a['titulo']}»{/if}</td><td class="pa-muted">{$fmt->rel($a['fecha'])}</td></tr>{/foreach}</tbody>
+                <tbody>{foreach $mc['actividad'] as $a}<tr><td><strong>{t($mcEventos[$a['tipo']] ?? $a['tipo'])}</strong>{if $a['titulo']} «{$a['titulo']}»{/if}</td><td class="pa-muted">{$fmt->rel($a['fecha'])}</td></tr>{/foreach}</tbody>
             </table>
         {/if}
         {/if}
-        {if $mc['estado'] === 'error' && !empty($mc['error'])}<p class="pa-muted" style="margin:.5rem 0 0">{$mc['error']}</p>{/if}
+        {if $mc['estado'] === 'error' && !empty($mc['error'])}<p class="pa-muted" style="margin:.5rem 0 0">{t($mc['error'])}</p>{/if}
         <p class="pa-muted" style="margin:.5rem 0 0">Revisado {$fmt->rel($mc['revisado'])}. Sólo consultamos: no se cambia nada en Mailchimp.</p>
     {/if}
     {if $l['correo'] && !$l['anonimizado_en']}

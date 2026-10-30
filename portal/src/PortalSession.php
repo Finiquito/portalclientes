@@ -59,6 +59,10 @@ final class PortalSession
         self::iniciar();
         $f = $_SESSION['portal_flash'] ?? null;
         unset($_SESSION['portal_flash']);
-        return is_array($f) ? $f : null;
+        if (!is_array($f)) {
+            return null;
+        }
+        $f['mensaje'] = Idioma::t((string) ($f['mensaje'] ?? ''));   // los avisos se guardan en español y se traducen al mostrarse
+        return $f;
     }
 }

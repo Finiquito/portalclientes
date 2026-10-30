@@ -23,7 +23,7 @@
             <div class="flex items-start justify-between gap-3">
                 <div>
                     <h2 id="h-pasos" class="text-lg font-extrabold tracking-tight">Primeros pasos</h2>
-                    <p class="mt-0.5 text-sm text-muted">{$hechos} de {count($pasos)} listos. Te toma unos minutos.</p>
+                    <p class="mt-0.5 text-sm text-muted">{t('%d de %d listos. Te toma unos minutos.', $hechos, count($pasos))}</p>
                 </div>
                 <form method="post" action="/portal/primeros-pasos/ocultar">
                     <input type="hidden" name="_csrf" value="{$csrf}">
@@ -47,7 +47,7 @@
 
     {* Accesos rápidos *}
     <section class="grid grid-cols-3 gap-3 sm:gap-4" aria-label="Resumen">
-        <a href="/portal/tareas?f=mias" class="card reveal group p-3.5 transition hover:-translate-y-0.5 hover:shadow-pop sm:p-5" style="--i:1">
+        <a href="/portal/tareas?f=mias" class="card reveal group p-3.5 transition hover:-translate-y-0.5 hover:shadow-pop sm:p-5{if count($meTocan) > 0} kpi-alerta{/if}" style="--i:1">
             <span class="flex size-10 items-center justify-center rounded-xl bg-brand-soft text-brand-ink sm:size-11"><svg class="size-5"><use href="#i-tasks"/></svg></span>
             <span class="mt-3 block text-3xl font-extrabold tracking-tight">{count($meTocan)}</span>
             <span class="block text-xs font-semibold text-muted sm:text-sm">Te toca a ti</span>
@@ -63,6 +63,29 @@
             <span class="block text-xs font-semibold text-muted sm:text-sm">Archivos</span>
         </a>
     </section>
+
+    {* Evolución de la campaña: aparece cuando lleva 14 días o más recibiendo contactos *}
+    {if !empty($campanas)}
+        <link rel="stylesheet" href="/plugins/portal/assets/leads.css?v=7">
+        {foreach $campanas as $camp}
+        <section class="ll ll-graf reveal mt-5" style="--i:4" aria-labelledby="h-camp-{$iterator->counter}">
+            <div class="ll-graf-cab">
+                <div>
+                    <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap"><h2 id="h-camp-{$iterator->counter}">{$camp['nombre']}</h2>{foreach $camp['etiquetas'] as $t}<span class="ll-pub" data-p="{$t}">{$t}</span>{/foreach}</div>
+                    <p class="ll-sub">{t('Así van llegando tus contactos')} · {t('%d días de campaña', $camp['dias'])}</p>
+                </div>
+                <a href="/portal/contactos-ganados?proyecto={$camp['id']}" class="text-sm font-semibold text-brand-ink hover:underline">Ver contactos →</a>
+            </div>
+            {include '../_lead_grafico.latte', grafico: $camp['grafico'], corto: true, botones: false}
+            <div class="ll-cifras">
+                <div><b>{$camp['total']}</b><span>han llegado{if $camp['nuevosSemana'] > 0} · <em>{t('+%d esta semana', $camp['nuevosSemana'])}</em>{/if}</span></div>
+                <div><b>{$camp['contactados']}</b><span>ya fueron contactados</span></div>
+                <div><b>{$camp['ganados']}</b><span>terminaron en ganado</span></div>
+            </div>
+        </section>
+        {/foreach}
+        {include '../_lead_scripts.latte'}
+    {/if}
 
     {* Pedir algo *}
     <section class="card reveal mt-5 flex flex-wrap items-center gap-x-4 gap-y-3 p-4 sm:p-5" style="--i:4" aria-labelledby="h-pedir">
@@ -83,7 +106,7 @@
         <span class="flex size-11 flex-none items-center justify-center rounded-xl bg-brand-soft text-brand-ink"><svg class="size-5"><use href="#i-users"/></svg></span>
         <div class="min-w-0 flex-1">
             <h2 id="h-leads" class="font-extrabold leading-tight">Contactos ganados</h2>
-            <p class="mt-0.5 text-sm text-muted">{if $leadsNuevos > 0}Tienes <strong class="text-ink">{$leadsNuevos} {$leadsNuevos === 1 ? 'contacto nuevo' : 'contactos nuevos'}</strong> por atender.{else}Las personas que llegan por tus campañas, con su seguimiento.{/if}</p>
+            <p class="mt-0.5 text-sm text-muted">{if $leadsNuevos > 0}{t('Tienes <strong class="text-ink">%d %s</strong> por atender.', $leadsNuevos, $leadsNuevos === 1 ? t('contacto nuevo') : t('contactos nuevos'))|noescape}{else}Las personas que llegan por tus campañas, con su seguimiento.{/if}</p>
         </div>
         <a href="/portal/contactos-ganados" class="btn {$leadsNuevos > 0 ? 'btn-primary' : 'btn-ghost'} btn-sm w-full sm:w-auto">Ver contactos</a>
     </section>
@@ -93,7 +116,7 @@
     <section class="card reveal mt-5 overflow-hidden" style="--i:4" aria-labelledby="h-toca">
         <div class="flex items-center justify-between gap-3 px-5 pb-2 pt-5 sm:px-6 sm:pt-6">
             <h2 id="h-toca" class="text-lg font-extrabold tracking-tight">Te toca a ti</h2>
-            {if count($meTocan) > 0}<span class="chip chip-brand">{count($meTocan)} {count($meTocan) === 1 ? 'pendiente' : 'pendientes'}</span>{/if}
+            {if count($meTocan) > 0}<span class="chip chip-brand">{count($meTocan)} {count($meTocan) === 1 ? t('pendiente') : t('pendientes')}</span>{/if}
         </div>
 
         {if empty($meTocan)}
@@ -125,73 +148,64 @@
         {/if}
     </section>
 
-    {* Avance del proyecto *}
-    {if $seleccion && $progreso}
+    {* Avance de cada proyecto *}
+    {if $tusProyectos}
+    <link rel="stylesheet" href="/plugins/portal/assets/panel.css?v=5">
     <section class="card card-pad reveal mt-5" style="--i:5" aria-labelledby="h-avance">
-        <div class="flex flex-wrap items-start justify-between gap-3">
-            <div class="min-w-0">
-                <h2 id="h-avance" class="text-lg font-extrabold tracking-tight">Avance del proyecto</h2>
-                <p class="mt-0.5 truncate text-sm text-muted">{$seleccion['nombre']}</p>
-            </div>
-            <span class="text-3xl font-extrabold tracking-tight text-brand-ink">{$progreso['pct']}<span class="text-lg">%</span></span>
+        <h2 id="h-avance" class="text-lg font-extrabold tracking-tight">{count($tusProyectos) === 1 ? 'Tu proyecto' : 'Tus proyectos'}</h2>
+        <p class="mt-0.5 text-sm text-muted">{count($tusProyectos) === 1 ? t('Cómo va, de un vistazo') : t('Cómo va cada uno, de un vistazo')}</p>
+        <div class="pc-g">
+            {foreach $tusProyectos as $i => $tp}
+                {var $destaca = $i === 0 && ($tp['me_tocan'] + $tp['revisar']) > 0}
+                <article class="pc{if $destaca} bloque-azul{/if}">
+                    <div class="flex items-start justify-between gap-3">
+                        <h3><i style="background: {($colorProy[$tp['id']] ?? '#94a3b8')|noescape}" aria-hidden="true"></i><span class="min-w-0">{$tp['nombre']}</span></h3>
+                        <span class="pc-pct">{$tp['pct']}<small>%</small></span>
+                    </div>
+                    {if $tp['fases']}
+                        <div class="pc-seg" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{$tp['pct']}" aria-label="Avance">
+                            {foreach $tp['fases'] as $f}<i class="{$f['estado'] === 'hecha' ? 'h' : ($f['estado'] === 'actual' ? 'a' : '')}" title="{$f['nombre']}"></i>{/foreach}
+                        </div>
+                    {else}
+                        <div class="progress mt-3" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{$tp['pct']}" aria-label="Avance"><span style="width: {$tp['pct']}%"></span></div>
+                    {/if}
+                    <p class="pc-fase mt-2">
+                        {if $tp['completo']}<b>Proyecto completo</b>
+                        {elseif $tp['actual']}{t('Etapa')} <b>{t('%d de %d', $tp['actual']['n'], count($tp['fases']))} · {$tp['actual']['nombre']}</b>{if $tp['sigue']} · {if $tp['sigue']['inicio']}{t('sigue %s el %s', $tp['sigue']['nombre'], $fmt->fechaCorta($tp['sigue']['inicio']))}{else}{t('sigue %s', $tp['sigue']['nombre'])}{/if}{/if}
+                        {else}{$tp['pct'] === 0 ? t('Todavía no empieza') : t('En marcha')}{/if}
+                    </p>
+                    <div class="pc-tips">
+                        {if $tp['me_tocan'] > 0}<span class="pc-tip t1" style="{$destaca ? '' : 'color: var(--warn)'}">{$tp['me_tocan'] === 1 ? t('1 cosa te toca a ti') : t('%d cosas te tocan a ti', $tp['me_tocan'])}</span>{/if}
+                        {if $tp['revisar'] > 0}<span class="pc-tip" style="{$destaca ? '' : 'color: var(--brand-ink)'}">{$tp['revisar'] === 1 ? t('1 pieza para revisar') : t('%d piezas para revisar', $tp['revisar'])}</span>{/if}
+                        {if $tp['me_tocan'] === 0 && $tp['revisar'] === 0}<span class="pc-tip" style="color: var(--muted)">Nada te toca por ahora</span>{/if}
+                    </div>
+                    <div class="pc-pie">
+                        <span>{if $tp['fechas']['fin']}Entrega estimada <b>{$fmt->fechaCorta($tp['fechas']['fin'])}</b>{/if}{if $tp['reunion']}{if $tp['fechas']['fin']} · {/if}próxima reunión <b>{$fmt->fechaCorta($tp['reunion']['fecha'])}</b>{/if}</span>
+                        <a href="/portal/calendario?proyecto={$tp['id']}">Ver proyecto →</a>
+                    </div>
+                </article>
+            {/foreach}
+
+            {if $contactosSemanal}
+                {var $cg = $contactosSemanal['datos']}
+                {var $mx = max(1, ...array_column($cg['semanas'], 'llegaron'))}
+                <article class="pc" style="grid-column: 1 / -1; background: var(--surface-2)">
+                    <h3>Contactos ganados{if $contactosSemanal['nombre'] !== ''} · <span class="min-w-0 font-semibold text-muted">{$contactosSemanal['nombre']}</span>{/if}</h3>
+                    <p class="pc-fase" style="margin:.35rem 0 1rem"><b>{$cg['total']['llegaron']}</b> {$cg['total']['llegaron'] === 1 ? t('contacto') : t('contactos')} · <b>{$cg['total']['contactados']}</b> {$cg['total']['contactados'] === 1 ? t('contactado') : t('contactados')} · <b>{$cg['total']['ganado']}</b> {$cg['total']['ganado'] === 1 ? t('ganado') : t('ganados')}</p>
+                    {include '../_lead_semanal.latte', cg: $cg, mx: $mx, fmt: $fmt}
+                    <div class="pc-pie"><span></span><a href="/portal/contactos-ganados">Ver contactos →</a></div>
+                </article>
+            {/if}
         </div>
-
-        {if $multiples}
-            <div class="scroll-x -mx-1 mt-4 flex gap-2 px-1" role="tablist" aria-label="Proyectos">
-                {foreach $proyectos as $p}
-                    <a href="/portal?p={$p['id']}" class="btn btn-sm {$p['id'] === $seleccion['id'] ? 'btn-primary' : 'btn-ghost'}" {if $p['id'] === $seleccion['id']}aria-current="true"{/if}>{$p['nombre']}</a>
-                {/foreach}
-            </div>
-        {/if}
-
-        <div class="progress mt-5" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{$progreso['pct']}" aria-label="Avance">
-            <span style="width: {$progreso['pct']}%"></span>
-        </div>
-        <p class="mt-2 text-xs text-muted">{$progreso['hechas']} de {$progreso['total']} {$progreso['total'] === 1 ? 'tarea lista' : 'tareas listas'}</p>
-
-        {if $progreso['fases']}
-            <div class="mt-6">{include '_etapas.latte', etapas: $progreso['fases'], conFechas: false}</div>
-            <a href="/portal/calendario?proyecto={$seleccion['id']}" class="mt-4 inline-flex items-center gap-1 text-xs font-bold text-brand-ink hover:underline">Ver etapas y fechas del proyecto <svg class="size-3.5"><use href="#i-chevron"/></svg></a>
-        {/if}
     </section>
     {/if}
 
 </div>
 
 {* Columna lateral *}
-<aside class="mt-5 min-w-0 space-y-5 xl:mt-0" aria-label="Novedades">
+<aside class="mt-5 min-w-0 space-y-5 xl:mt-0 aside-nivelada" aria-label="Novedades">
 
     <section class="card card-pad reveal" style="--i:4">
-        <h2 class="text-base font-extrabold tracking-tight">Novedades</h2>
-        {if empty($novedades)}
-            <p class="mt-3 text-sm text-muted">Aquí verás lo que vaya pasando en tu proyecto: comentarios, archivos y aprobaciones.</p>
-        {else}
-            {foreach $novedades as $sec => $items}
-                <h3 class="{$iterator->first ? 'mt-3' : 'mt-5'} text-xs font-bold uppercase tracking-wide text-muted">{$seccionesN[$sec]}</h3>
-                <ul class="mt-1.5 space-y-0.5">
-                    {foreach $items as $n}
-                        <li>
-                            <a {if $n['url']}href="{$n['url']}"{/if} class="group -mx-2 block rounded-xl px-2 py-2 transition {$n['url'] ? 'hover:bg-surface2' : ''}">
-                                <span class="flex items-start gap-2">
-                                    <span class="mt-[0.4rem] size-2 flex-none rounded-full {$n['nueva'] ? 'bg-brand' : 'bg-transparent'}" {if $n['nueva']}title="Nuevo desde tu última visita"{/if} aria-hidden="true"></span>
-                                    <span class="min-w-0 flex-1">
-                                        <span class="block text-sm font-semibold leading-snug">{$n['titulo'] ?: 'Sin título'}{if $n['nueva']}<span class="sr-only"> (nuevo)</span>{/if}</span>
-                                        <span class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
-                                            {if $n['estado']}<span class="chip chip-{$n['estado'][1]}">{$n['estado'][0]}</span>{/if}
-                                            {if $n['resumen']}<span>{$n['resumen']}</span>{/if}
-                                            <span>{$fmt->rel($n['fecha'])}</span>
-                                        </span>
-                                    </span>
-                                </span>
-                            </a>
-                        </li>
-                    {/foreach}
-                </ul>
-            {/foreach}
-        {/if}
-    </section>
-
-    <section class="card card-pad reveal" style="--i:5">
         <div class="flex items-center justify-between">
             <h2 class="text-base font-extrabold tracking-tight">Próximas reuniones</h2>
             <a href="/portal/reuniones" class="text-xs font-semibold text-brand-ink hover:underline">Ver todas</a>
@@ -214,6 +228,36 @@
                     </a></li>
                 {/foreach}
             </ul>
+        {/if}
+    </section>
+
+    <section class="card card-pad reveal bloque-azul" style="--i:5">
+        <h2 class="text-base font-extrabold tracking-tight">Novedades</h2>
+        {if empty($novedades)}
+            <p class="mt-3 text-sm text-muted">Aquí verás lo que vaya pasando en tu proyecto: comentarios, archivos y aprobaciones.</p>
+        {else}
+            {foreach $novedades as $sec => $items}
+                <h3 class="{$iterator->first ? 'mt-3' : 'mt-5'} text-xs font-bold uppercase tracking-wide text-muted">{$seccionesN[$sec]}</h3>
+                <ul class="mt-1.5 space-y-0.5">
+                    {foreach $items as $n}
+                        <li>
+                            <a {if $n['url']}href="{$n['url']}"{/if} class="group -mx-2 block rounded-xl px-2 py-2 transition {$n['url'] ? 'hover:bg-surface2' : ''}">
+                                <span class="flex items-start gap-2">
+                                    <span class="mt-[0.4rem] size-2 flex-none rounded-full {$n['nueva'] ? 'bg-brand' : 'bg-transparent'}" {if $n['nueva']}title="Nuevo desde tu última visita"{/if} aria-hidden="true"></span>
+                                    <span class="min-w-0 flex-1">
+                                        <span class="block text-sm font-semibold leading-snug">{$n['titulo'] ?: t('Sin título')}{if $n['nueva']}<span class="sr-only"> (nuevo)</span>{/if}</span>
+                                        <span class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
+                                            {if $n['estado']}<span class="chip chip-{$n['estado'][1]}">{$n['estado'][0]}</span>{/if}
+                                            {if $n['resumen']}<span>{$n['resumen']}</span>{/if}
+                                            <span>{$fmt->rel($n['fecha'])}</span>
+                                        </span>
+                                    </span>
+                                </span>
+                            </a>
+                        </li>
+                    {/foreach}
+                </ul>
+            {/foreach}
         {/if}
     </section>
 </aside>

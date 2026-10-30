@@ -70,6 +70,36 @@ final class Zona
     }
 
     /**
+     * Lo que el sistema registra solo (llegada de un contacto, notas, comentarios…) se guarda con el reloj del
+     * servidor (la zona de PHP). Esto lo pasa a la zona de quien mira, para mostrarlo en su hora; si la persona
+     * está en otro país que el servidor, ve su hora y no la de la agencia. Admite 'Y-m-d H:i[:s]' y 'Y-m-d\TH:i'.
+     */
+    public static function registroAVista(?string $fecha, string $zonaVista): string
+    {
+        return self::entreZonas((string) $fecha, date_default_timezone_get(), $zonaVista);
+    }
+
+    /** Lo contrario: una hora escrita por la persona (en su zona) a la del servidor, para guardarla. */
+    public static function vistaARegistro(?string $fecha, string $zonaVista): string
+    {
+        return self::entreZonas((string) $fecha, $zonaVista, date_default_timezone_get());
+    }
+
+    private static function entreZonas(string $fecha, string $desde, string $hasta): string
+    {
+        $fecha = trim($fecha);
+        if ($desde === $hasta || !str_contains($fecha, ':')) {
+            return $fecha;
+        }
+        try {
+            $d = (new \DateTimeImmutable($fecha, new \DateTimeZone($desde)))->setTimezone(new \DateTimeZone($hasta));
+        } catch (\Throwable) {
+            return $fecha;
+        }
+        return $d->format(str_contains($fecha, 'T') ? 'Y-m-d\TH:i' : (substr_count($fecha, ':') >= 2 ? 'Y-m-d H:i:s' : 'Y-m-d H:i'));
+    }
+
+    /**
      * País (para la hora) de una persona del cliente: el suyo si vive en otro país que su empresa;
      * si no, el del cliente. Sin contacto, el del cliente.
      */

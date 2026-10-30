@@ -293,7 +293,7 @@ class ContenidoService
     {
         $stmt = $this->pdo->prepare('SELECT contacto_id, valor FROM portal_reacciones WHERE version_id = ?');
         $stmt->execute([$versionId]);
-        $conteo = array_fill_keys(array_keys(TiposContenido::REACCIONES), 0);
+        $conteo = array_fill_keys(array_keys(Idioma::lista(TiposContenido::REACCIONES)), 0);
         $mia = '';
         foreach ($stmt->fetchAll() as $r) {
             if (isset($conteo[$r['valor']])) {

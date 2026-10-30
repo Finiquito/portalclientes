@@ -24,7 +24,10 @@ class EquipoController
     /** @var array<string, string> */
     private static array $assets = [];
 
-    public function __construct(protected readonly PluginContext $ctx) {}
+    public function __construct(protected readonly PluginContext $ctx)
+    {
+        Idioma::cookieDelEquipo();
+    }
 
     // ---------------------------------------------------------------------
     // Infraestructura
@@ -80,7 +83,7 @@ class EquipoController
             $f = dirname(__DIR__) . '/assets/' . $nombre;
             self::$assets[$nombre] = is_file($f) ? (string) file_get_contents($f) : '';
         }
-        return self::$assets[$nombre];
+        return $nombre === 'portal.js' ? Idioma::conTraducciones(self::$assets[$nombre], $this->asset('pdfviewer.js')) : self::$assets[$nombre];
     }
 
     protected function onboarding(): OnboardingService
@@ -100,14 +103,14 @@ class EquipoController
     {
         PortalSession::iniciar();
         $id = $_SESSION[self::SESION] ?? null;
-        if (!is_string($id)) {
-            return null;
-        }
-        $u = $this->equipo()->find($id);
+        $u = is_string($id) ? $this->equipo()->find($id) : null;
         if ($u === null || (int) $u['activo'] !== 1) {
             unset($_SESSION[self::SESION]);
+            Idioma::fijar(Idioma::visitante($this->ajustes()->get('global', 'portal', 'idioma'), false));
             return null;
         }
+        Idioma::fijar(Idioma::de($this->ajustes(), 'equipo', (string) $u['id'], '', true));
+        Idioma::recordar(Idioma::actual());   // así el próximo ingreso desde este equipo sale en su idioma
         return $u;
     }
 
@@ -127,17 +130,16 @@ class EquipoController
         return new EquipoAcceso($this->pdo(), $u);
     }
 
-    /** @return array{color: string, texto: string, titulo: string, logo: ?string} */
+    /** @return array{color: string, texto: string, tinta: string, titulo: string, logo: ?string} */
     protected function marca(): array
     {
         $cfg   = $this->ajustes()->todos('global', 'portal');
-        $color = AjustesService::colorValido($cfg['color_agencia'] ?? '');
+        $pal   = Paleta::marca(AjustesService::colorValido($cfg['color_agencia'] ?? ''));
         $m     = new MarcaService($this->pdo());
         return [
-            'color'  => $color,
-            'texto'  => AjustesService::colorTexto($color),
-            'tintaL' => ColorMarca::tinta($color, false),
-            'tintaD' => ColorMarca::tinta($color, true),
+            'color'  => $pal['color'],
+            'texto'  => $pal['texto'],
+            'tinta'  => $pal['tinta'],
             'titulo' => $m->nombreEquipo(),
             'logo'   => ($r = $m->rutaLogoAgencia()) !== null ? '/portal/marca/agencia?v=' . (int) filemtime($r) : null,
         ];
@@ -146,6 +148,7 @@ class EquipoController
     /** Variables de las páginas sin sesión (entrar, verificar). @return array<string, mixed> */
     protected function contextoPublico(array $extra = []): array
     {
+        Idioma::fijar(Idioma::visitante($this->ajustes()->get('global', 'portal', 'idioma'), false));
         return [
             'marca'      => $this->marca(),
             'favicon'    => (new MarcaService($this->pdo()))->urlIcono(),
@@ -315,12 +318,12 @@ class EquipoController
         $gente = [];
         foreach ($svc->delCliente($clienteId) as $g) {
             if ($proyectoId === null) {
-                $nota = $g['completo'] ? 'Todo el cliente' : 'Solo ' . implode(', ', $g['proyectos']);
+                $nota = $g['completo'] ? Idioma::t('Todo el cliente') : Idioma::t('Solo %s', implode(', ', $g['proyectos']));
                 $gente[] = ['id' => $g['id'], 'nombre' => $g['nombre'], 'cargo' => $g['cargo'], 'nota' => $nota, 'quitable' => true];
             } elseif ($g['completo']) {
-                $gente[] = ['id' => $g['id'], 'nombre' => $g['nombre'], 'cargo' => $g['cargo'], 'nota' => 'Por todo el cliente', 'quitable' => false];
+                $gente[] = ['id' => $g['id'], 'nombre' => $g['nombre'], 'cargo' => $g['cargo'], 'nota' => Idioma::t('Por todo el cliente'), 'quitable' => false];
             } elseif (in_array($proyectoId, $g['proyecto_ids'], true)) {
-                $gente[] = ['id' => $g['id'], 'nombre' => $g['nombre'], 'cargo' => $g['cargo'], 'nota' => 'Este proyecto', 'quitable' => true];
+                $gente[] = ['id' => $g['id'], 'nombre' => $g['nombre'], 'cargo' => $g['cargo'], 'nota' => Idioma::t('Este proyecto'), 'quitable' => true];
             }
         }
         $ids = array_column($gente, 'id');
@@ -416,7 +419,7 @@ class EquipoController
 
     protected function view(string $plantilla, array $datos): void
     {
-        $this->ctx->view('templates/equipo/' . $plantilla, $datos);
+        Vista::mostrar($this->pdo(), 'templates/equipo/' . $plantilla, $datos);
     }
 
     // ---------------------------------------------------------------------
@@ -496,7 +499,11 @@ class EquipoController
             @session_regenerate_id(true);
         }
         unset($_SESSION['portal_equipo_email']);
-        $_SESSION[self::SESION] = (string) $u['id'];
+        $_SESSION[self::SESION] = (string) $u["id"];
+        $elegido = (string) ($_COOKIE[Idioma::COOKIE] ?? "");
+        if (Idioma::valido($elegido) && !Idioma::valido($this->ajustes()->get("equipo", (string) $u["id"], "idioma"))) {
+            $this->ajustes()->set("equipo", (string) $u["id"], "idioma", $elegido);
+        }
         $this->equipo()->marcarAcceso((string) $u['id']);
         $this->redirectTo('/equipo');
     }
@@ -532,6 +539,7 @@ class EquipoController
         $this->view('ajustes.latte', $this->contexto($u, 'ajustes', [
             'prefAvisos' => Avisos::preferencias($this->ajustes(), (string) $u['id']),
             'temaPref' => in_array($pref['tema'] ?? '', ['claro', 'oscuro'], true) ? $pref['tema'] : 'auto',
+            'idiomaPref' => Idioma::actual(),
             'asignados' => $this->acceso($u)->todo() ? null : $this->fetchAll(
                 'SELECT a.proyecto_id, c.nombre AS cliente_nombre, p.nombre AS proyecto_nombre
                  FROM portal_equipo_asignaciones a JOIN portal_clientes c ON c.id = a.cliente_id
@@ -552,10 +560,12 @@ class EquipoController
         }
         $tema = (string) ($_POST['tema'] ?? 'auto');
         $que = (string) ($_POST['avisos_que'] ?? 'mio');
-        $como = (string) ($_POST['avisos_como'] ?? 'agrupado');
-        $this->ajustes()->setMuchos('equipo', (string) $u['id'], [
+        $idioma = (string) ($_POST['idioma'] ?? '');
+        if (Idioma::valido($idioma)) {
+            Idioma::fijar($idioma);
+        }
+        $this->ajustes()->setMuchos('equipo', (string) $u['id'], (Idioma::valido($idioma) ? ['idioma' => $idioma] : []) + [
             'avisos_que'     => in_array($que, ['mio', 'todo', 'nada'], true) ? $que : 'mio',
-            'avisos_como'    => in_array($como, ['agrupado', 'instante'], true) ? $como : 'agrupado',
             'resumen_diario' => !empty($_POST['resumen_diario']) ? '1' : '0',
             'tema'           => in_array($tema, ['claro', 'oscuro'], true) ? $tema : 'auto',
         ]);
@@ -733,10 +743,10 @@ class EquipoController
         $out = [];
         foreach (array_unique($clienteIds) as $cid) {
             $cfg = $this->ajustes()->todos('cliente', (string) $cid);
-            $color = AjustesService::colorValido($cfg['color'] ?? '');
+            $pal = Paleta::marca(AjustesService::colorValido($cfg['color'] ?? ''));
             $out[$cid] = [
-                'color' => $color,
-                'texto' => AjustesService::colorTexto($color),
+                'color' => $pal['color'],
+                'texto' => $pal['texto'],
                 'logo'  => !empty($cfg['logo_id']) ? '/portal/marca/cliente/' . $cid : null,
             ];
         }
@@ -804,7 +814,7 @@ class EquipoController
         foreach ($lista as $c) {
             $resp = (string) ($c['responsable_id'] ?? '');
             $k = isset($personas[$resp]) ? $resp : '';
-            $grupos[$k] ??= ['id' => $k, 'nombre' => $k === '' ? 'Sin responsable de cuenta' : $personas[$k], 'mio' => $k === $yo, 'clientes' => []];
+            $grupos[$k] ??= ['id' => $k, 'nombre' => $k === '' ? Idioma::t('Sin responsable de cuenta') : $personas[$k], 'mio' => $k === $yo, 'clientes' => []];
             $grupos[$k]['clientes'][] = $c;
         }
         // Las mías primero, después por nombre; «sin responsable» al final.
@@ -845,8 +855,14 @@ class EquipoController
         }
         $svc = new MensajeService($this->pdo());
         $todas = $this->conversaciones($u);
-        $pestana = ($_GET['t'] ?? '') === 'archivadas' ? 'archivadas' : 'activas';
-        $grupo = array_values(array_filter($todas, fn(array $x): bool => $x['archivada'] === ($pestana === 'archivadas')));
+        $pestana = in_array($_GET['t'] ?? '', ['archivadas', 'destacadas'], true) ? (string) $_GET['t'] : 'activas';
+        $tipoF = isset(MensajeService::TIPOS[$_GET['tipo'] ?? '']) ? (string) $_GET['tipo'] : '';
+        $cliF = (string) ($_GET['cliente'] ?? '');
+        if ($cliF !== '' && !in_array($cliF, array_column($todas, 'cliente_id'), true)) {
+            $cliF = '';
+        }
+        $grupo = MensajeService::filtrar($todas, $pestana, 'cliente_id', $cliF, $tipoF);
+        $cuenta = fn(string $t): int => count(MensajeService::filtrar($todas, $t, 'cliente_id', $cliF, $tipoF));
         $pref = $this->ajustes()->todos('equipo', (string) $u['id']);
         $pag = Paginacion::desdeGet('/equipo/mensajes', count($grupo), (int) ($pref['por_pagina'] ?? 0), ['recientes' => 'Más nuevos primero']);
         if (($por = Paginacion::elegido()) !== null) {
@@ -864,15 +880,27 @@ class EquipoController
             $sel['sin_leer'] = 0;
         }
         $urls = ['tarea' => '/equipo/tareas/', 'contenido' => '/equipo/contenidos/', 'solicitud' => '/equipo/solicitudes/'];
-        $this->ctx->view('templates/equipo/mensajes.latte', $this->contexto($u, 'mensajes', [
+        $hilo = $sel !== null ? $svc->hilo($sel['tipo'], $sel['id']) : [];
+        // La conversación abierta nunca sale de la lista: si por la pestaña o los filtros no le tocaría estar, va fijada arriba.
+        $lista = $svc->conUltimo($pag->cortar($grupo));
+        if ($sel !== null && !in_array($sel['clave'], array_column($lista, 'clave'), true)) {
+            array_unshift($lista, ['fuera' => true] + $svc->conUltimo([$sel])[0]);
+        }
+        Vista::mostrar($this->pdo(), 'templates/equipo/mensajes.latte', $this->contexto($u, 'mensajes', [
             'base'        => '/equipo/mensajes',
             'pestana'     => $pestana,
-            'nActivas'    => count(array_filter($todas, fn(array $x): bool => !$x['archivada'])),
-            'nArchivadas' => count(array_filter($todas, fn(array $x): bool => $x['archivada'])),
-            'conv'        => $svc->conUltimo($pag->cortar($grupo)),
+            'nActivas'    => $cuenta('activas'),
+            'nArchivadas' => $cuenta('archivadas'),
+            'nDestacadas' => $cuenta('destacadas'),
+            'filtros'     => ['campo' => 'cliente', 'valor' => $cliF, 'tipo' => $tipoF, 'etiqueta' => Idioma::t('Cliente'), 'todos' => Idioma::t('Todos los clientes')],
+            'opciones'    => MensajeService::opciones($todas, 'cliente_id', $cliF, $tipoF),
+            'reacciones'  => $svc->reacciones(array_column($hilo, 'id'), 'equipo', (string) $u['id']),
+            'puedeReaccionar' => true,
+            'accionesBase' => '/equipo/mensajes',
+            'conv'        => $lista,
             'pag'         => $pag,
             'sel'         => $sel,
-            'hilo'        => $sel !== null ? $svc->hilo($sel['tipo'], $sel['id']) : [],
+            'hilo'        => $hilo,
             'lado'        => 'equipo',
             'yoId'        => (string) $u['id'],
             'accion'      => $sel !== null ? $urls[$sel['tipo']] . $sel['id'] . '/comentarios' : null,
@@ -881,6 +909,38 @@ class EquipoController
             'equipo'      => true,
             'marcasCli'   => Fmt::marcasClientes($this->pdo()),
         ]));
+    }
+
+    /** Destaca (o quita la estrella de) una conversación: sale de Archivadas y queda en Destacados. */
+    public function destacarMensaje(): void
+    {
+        $u = $this->requerirUsuario();
+        if (PortalSession::csrfValido()) {
+            $svc = new MensajeService($this->pdo());
+            foreach ($this->conversaciones($u) as $x) {
+                if ($x['clave'] === (string) ($_POST['c'] ?? '')) {
+                    $svc->alternarDestacada('equipo', (string) $u['id'], $x['tipo'], $x['id']);
+                    break;
+                }
+            }
+        }
+        $this->redirectTo('/equipo/mensajes', MensajeService::consultaDeVuelta());
+    }
+
+    /** Reacciona a un mensaje (o quita la reacción): sin correo y sin marcarlo como no leído. */
+    public function reaccionarMensaje(): void
+    {
+        $u = $this->requerirUsuario();
+        if (PortalSession::csrfValido()) {
+            $svc = new MensajeService($this->pdo());
+            foreach ($this->conversaciones($u) as $x) {
+                if ($x['clave'] === (string) ($_POST['c'] ?? '') && $svc->esDe((string) ($_POST['comentario'] ?? ''), $x['tipo'], $x['id'])) {
+                    $svc->alternarReaccion((string) $_POST['comentario'], (string) ($_POST['clave'] ?? ''), 'equipo', (string) $u['id']);
+                    break;
+                }
+            }
+        }
+        $this->redirectTo('/equipo/mensajes', MensajeService::consultaDeVuelta());
     }
 
     public function proyectos(): void
@@ -925,7 +985,7 @@ class EquipoController
             if (($ver === 'mias' && $r !== $yo) || ($ver !== 'mias' && $ver !== 'todas' && $r !== $ver)) {
                 continue;
             }
-            $porCuenta[$r] ??= ['id' => $r, 'nombre' => $r === '' ? 'Sin responsable de cuenta' : $personas[$r], 'mio' => $r === $yo, 'proyectos' => []];
+            $porCuenta[$r] ??= ['id' => $r, 'nombre' => $r === '' ? Idioma::t('Sin responsable de cuenta') : $personas[$r], 'mio' => $r === $yo, 'proyectos' => []];
             $porCuenta[$r]['proyectos'][] = $pr;
         }
         uasort($porCuenta, fn($a, $b) => [!$a['mio'], $a['id'] === '', $a['nombre']] <=> [!$b['mio'], $b['id'] === '', $b['nombre']]);
@@ -976,7 +1036,7 @@ class EquipoController
             if ($f['clientes'] === 0 && $f['atrasadas'] === 0 && $f['respuestas'] === 0) {
                 continue;
             }
-            $out[] = ['id' => $k, 'nombre' => $nombres[$k] ?? 'Sin responsable de cuenta'] + $f;
+            $out[] = ['id' => $k, 'nombre' => $nombres[$k] ?? Idioma::t('Sin responsable de cuenta')] + $f;
         }
         usort($out, fn($a, $b) => [$a['id'] === '', -$a['atrasadas'], -$a['respuestas'], $a['nombre']] <=> [$b['id'] === '', -$b['atrasadas'], -$b['respuestas'], $b['nombre']]);
         return $out;
@@ -1029,7 +1089,9 @@ class EquipoController
             }
             $t = (new \DateTimeImmutable($p['cuando'], new \DateTimeZone('UTC')))->setTimezone($zona);
             $dias = (int) $hoy->diff($t->setTime(0, 0))->format('%r%a');
-            $out[(string) $c['id']] = ($dias <= 0 ? 'hoy' : ($dias === 1 ? 'mañana' : 'el ' . $t->format('d/m'))) . ' a las ' . $t->format('H:i');
+            $hora = $t->format('H:i');
+            $out[(string) $c['id']] = $dias <= 0 ? Idioma::t('hoy a las %s', $hora)
+                : ($dias === 1 ? Idioma::t('mañana a las %s', $hora) : Idioma::t('el %s a las %s', $t->format(Idioma::actual() === 'en' ? 'm/d' : 'd/m'), $hora));
         }
         return $out;
     }
@@ -1068,7 +1130,9 @@ class EquipoController
         $entregas = array_values(array_filter($entregas, fn($e) => $e['proyecto_id'] === $id));
         $reuniones = $this->fetchAll('SELECT * FROM portal_reuniones WHERE proyecto_id = ? ORDER BY fecha DESC LIMIT 8', [$id]);
 
+        $sinArchivadas = array_values(array_filter($tareas, fn(array $t): bool => (int) ($t['archivada'] ?? 0) === 0));
         $this->view('proyecto.latte', $this->contexto($u, 'proyectos', [
+            'panel'     => (new ProyectoPanel($this->pdo()))->paraEquipo($pr, $sinArchivadas),
             'proyecto'  => $pr,
             'quien'     => $acc->gestionaCliente((string) $pr['cliente_id']) ? $this->quien((string) $pr['cliente_id'], $id) : null,
             'marcaCli'  => $this->marcasClientes([(string) $pr['cliente_id']])[(string) $pr['cliente_id']],

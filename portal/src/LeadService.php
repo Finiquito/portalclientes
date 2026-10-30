@@ -25,21 +25,24 @@ class LeadService
 
     /** Color del chip de cada estado (clases del portal y del admin). */
     public const CHIPS = [
-        'nuevo'      => 'chip-brand',
+        'nuevo'      => 'chip-muted',
         'contactado' => 'chip-info',
         'calificado' => 'chip-warn',
         'ganado'     => 'chip-ok',
-        'perdido'    => 'chip-muted',
+        'perdido'    => 'chip-danger',
     ];
 
     /** Lo mismo en el admin y el panel (clases de portal-admin.css). */
     public const CHIPS_ADMIN = [
-        'nuevo'      => 'brand',
+        'nuevo'      => 'gris',
         'contactado' => 'info',
         'calificado' => 'warn',
         'ganado'     => 'ok',
-        'perdido'    => 'gris',
+        'perdido'    => 'danger',
     ];
+
+    /** A quién le habla el proyecto (campaña): una etiqueta para filtrar y ver de qué se trata. */
+    public const PUBLICOS = ['b2c' => 'B2C', 'b2b' => 'B2B'];
 
     public const ORIGENES = [
         'manual'     => 'Ingreso manual',
@@ -62,6 +65,35 @@ class LeadService
 
     public function __construct(private readonly \PDO $pdo) {}
 
+    private function linea(): LeadLinea
+    {
+        return new LeadLinea($this->pdo);
+    }
+
+    /** «b2c», «b2b» o «b2c,b2b» a partir de las casillas del formulario del proyecto (publico_b2c, publico_b2b). */
+    public static function publicoDe(array $payload): string
+    {
+        $v = [];
+        foreach (array_keys(self::PUBLICOS) as $k) {
+            if (!empty($payload['publico_' . $k])) {
+                $v[] = $k;
+            }
+        }
+        return implode(',', $v);
+    }
+
+    /** @return array<int, string> etiquetas a mostrar («B2C», «B2B») para el valor guardado del proyecto */
+    public static function publicoEtiquetas(?string $publico): array
+    {
+        $o = [];
+        foreach (explode(',', (string) $publico) as $k) {
+            if (isset(self::PUBLICOS[$k])) {
+                $o[] = self::PUBLICOS[$k];
+            }
+        }
+        return $o;
+    }
+
     private static function ahora(): string
     {
         return (new \DateTimeImmutable())->format('Y-m-d H:i:s');
@@ -72,7 +104,7 @@ class LeadService
     /** @return array<int, array<string, mixed>> proyectos del cliente con el módulo activo */
     public function proyectosDe(string $clienteId): array
     {
-        $st = $this->pdo->prepare("SELECT id, nombre, estado, cliente_id FROM portal_proyectos WHERE cliente_id = ? AND con_leads = 1 ORDER BY (estado <> 'activo'), nombre");
+        $st = $this->pdo->prepare("SELECT id, nombre, estado, cliente_id, publico FROM portal_proyectos WHERE cliente_id = ? AND con_leads = 1 ORDER BY (estado <> 'activo'), nombre");
         $st->execute([$clienteId]);
         return $st->fetchAll();
     }
@@ -85,7 +117,7 @@ class LeadService
     /** @return array<string, mixed>|null el proyecto, sólo si tiene el módulo activo */
     public function proyecto(string $proyectoId): ?array
     {
-        $st = $this->pdo->prepare('SELECT p.id, p.nombre, p.cliente_id, c.nombre AS cliente_nombre FROM portal_proyectos p JOIN portal_clientes c ON c.id = p.cliente_id WHERE p.id = ? AND p.con_leads = 1');
+        $st = $this->pdo->prepare('SELECT p.id, p.nombre, p.cliente_id, p.publico, c.nombre AS cliente_nombre FROM portal_proyectos p JOIN portal_clientes c ON c.id = p.cliente_id WHERE p.id = ? AND p.con_leads = 1');
         $st->execute([$proyectoId]);
         $f = $st->fetch();
         return $f !== false ? $f : null;
@@ -94,7 +126,7 @@ class LeadService
     /** @return array<int, array<string, mixed>> todos los proyectos con el módulo activo (para el panel) */
     public function proyectosConLeads(): array
     {
-        $st = $this->pdo->query("SELECT p.id, p.nombre, p.estado, p.cliente_id, c.nombre AS cliente_nombre FROM portal_proyectos p JOIN portal_clientes c ON c.id = p.cliente_id WHERE p.con_leads = 1 ORDER BY c.nombre, p.nombre");
+        $st = $this->pdo->query("SELECT p.id, p.nombre, p.estado, p.cliente_id, p.publico, c.nombre AS cliente_nombre FROM portal_proyectos p JOIN portal_clientes c ON c.id = p.cliente_id WHERE p.con_leads = 1 ORDER BY c.nombre, p.nombre");
         return $st ? $st->fetchAll() : [];
     }
 
@@ -104,7 +136,7 @@ class LeadService
     public function find(string $id): ?array
     {
         $st = $this->pdo->prepare(
-            'SELECT l.*, p.nombre AS proyecto_nombre, p.mc_audiencia, p.mc_audiencia_nombre, c.nombre AS cliente_nombre
+            'SELECT l.*, p.nombre AS proyecto_nombre, p.publico AS proyecto_publico, p.mc_audiencia, p.mc_audiencia_nombre, c.nombre AS cliente_nombre
              FROM ' . self::TABLE . ' l JOIN portal_proyectos p ON p.id = l.proyecto_id JOIN portal_clientes c ON c.id = l.cliente_id
              WHERE l.id = ?'
         );
@@ -153,7 +185,7 @@ class LeadService
             array_push($args, $like, $like, $like, $like, $like);
         }
         $st = $this->pdo->prepare(
-            'SELECT l.*, p.nombre AS proyecto_nombre, c.nombre AS cliente_nombre
+            'SELECT l.*, p.nombre AS proyecto_nombre, p.publico AS proyecto_publico, c.nombre AS cliente_nombre
              FROM ' . self::TABLE . ' l JOIN portal_proyectos p ON p.id = l.proyecto_id JOIN portal_clientes c ON c.id = l.cliente_id
              WHERE ' . implode(' AND ', $where) . ' ORDER BY l.created_at DESC, l.id DESC'
         );
@@ -262,7 +294,7 @@ class LeadService
      * @param array<string, mixed> $datos
      * @return array{id?: string, duplicado?: bool, error?: string}
      */
-    public function crear(array $proyecto, array $datos, string $origen, string $creadoPor, ?string $fuenteId = null): array
+    public function crear(array $proyecto, array $datos, string $origen, string $creadoPor, ?string $fuenteId = null, string $autorTipo = ''): array
     {
         $d = self::limpiar($datos);
         if (($datos['correo'] ?? '') !== '' && $d['correo'] === '') {
@@ -300,6 +332,18 @@ class LeadService
             isset(self::ESTADOS[$estado]) ? $estado : 'nuevo', $d['notas'] ?: null, $d['proximo_paso'] ?: null,
             self::fecha((string) ($datos['proximo_paso_fecha'] ?? '')), null, null, mb_substr($creadoPor, 0, 255), $llego, $now,
         ]);
+        // La línea de tiempo arranca con la llegada; lo que traía (estado distinto de «nuevo» o una nota) va detrás.
+        $quien = $origen === 'manual' ? $creadoPor : ($creadoPor !== '' ? $creadoPor : 'Formulario');
+        $tipoAutor = $origen === 'manual' ? $autorTipo : 'sistema';
+        $ref = ['id' => $id, 'cliente_id' => (string) $proyecto['cliente_id'], 'proyecto_id' => (string) $proyecto['id']];
+        $linea = $this->linea();
+        $linea->llegada($ref, $llego, $quien, $tipoAutor);
+        if (isset(self::ESTADOS[$estado]) && $estado !== 'nuevo') {
+            $linea->registrar($ref, 'estado', ['de' => 'nuevo', 'a' => $estado, 'ocurrio' => $llego, 'autor' => $quien, 'autor_tipo' => $tipoAutor]);
+        }
+        if ($d['notas'] !== '') {
+            $linea->registrar($ref, 'nota', ['texto' => $d['notas'], 'ocurrio' => $llego, 'autor' => $quien, 'autor_tipo' => $tipoAutor]);
+        }
         return ['id' => $id];
     }
 
@@ -397,10 +441,10 @@ class LeadService
             $estado = 'nuevo';
             if (($f['correo'] ?? '') !== '' && $d['correo'] === '') {
                 $estado = 'error';
-                $out['errores'][] = 'Fila ' . ($f['_fila'] ?? '?') . ': el correo «' . mb_substr((string) $f['correo'], 0, 60) . '» no es válido.';
+                $out['errores'][] = Idioma::t('Fila %s: el correo «%s» no es válido.', (string) ($f['_fila'] ?? '?'), mb_substr((string) $f['correo'], 0, 60));
             } elseif ($d['correo'] === '' && $d['telefono'] === '') {
                 $estado = 'error';
-                $out['errores'][] = 'Fila ' . ($f['_fila'] ?? '?') . ': no tiene correo ni teléfono.';
+                $out['errores'][] = Idioma::t('Fila %s: no tiene correo ni teléfono.', (string) ($f['_fila'] ?? '?'));
             } else {
                 $claves = array_filter(['c:' . $d['correo'], 't:' . $d['telefono']], fn($k) => strlen($k) > 2);
                 if (array_intersect($claves, array_keys($vistos)) !== [] || $this->duplicado($proyectoId, $d['correo'], $d['telefono'], null) !== null) {
@@ -454,7 +498,7 @@ class LeadService
      * @param array<string, mixed> $datos
      * @return string|null error
      */
-    public function actualizar(array $lead, array $datos, string $quien): ?string
+    public function actualizar(array $lead, array $datos, string $quien, string $autorTipo = ''): ?string
     {
         if (!empty($lead['anonimizado_en'])) {
             return 'Este contacto fue anonimizado: ya no se puede editar.';
@@ -485,6 +529,22 @@ class LeadService
             array_key_exists('proximo_paso_fecha', $datos) ? self::fecha((string) $datos['proximo_paso_fecha']) : ($lead['proximo_paso_fecha'] ?? null),
             $cambia ? $now : $lead['estado_en'], $cambia ? mb_substr($quien, 0, 255) : $lead['estado_por'], $now, (string) $lead['id'],
         ]);
+
+        // Cada cambio deja su rastro en la línea de tiempo.
+        $linea = $this->linea();
+        $ref = ['id' => (string) $lead['id'], 'cliente_id' => (string) $lead['cliente_id'], 'proyecto_id' => (string) $lead['proyecto_id']];
+        if ($cambia) {
+            $linea->registrar($ref, 'estado', ['de' => (string) $lead['estado'], 'a' => $estado, 'ocurrio' => $now, 'autor' => $quien, 'autor_tipo' => $autorTipo]);
+        }
+        $pasoNuevo = $d['proximo_paso'];
+        $fechaNueva = array_key_exists('proximo_paso_fecha', $datos) ? self::fecha((string) $datos['proximo_paso_fecha']) : ($lead['proximo_paso_fecha'] ?? null);
+        if ($pasoNuevo !== (string) ($lead['proximo_paso'] ?? '') || (string) $fechaNueva !== (string) ($lead['proximo_paso_fecha'] ?? '')) {
+            $linea->proximoPaso($ref, $pasoNuevo, $fechaNueva, $quien, $autorTipo);
+        }
+        // Formularios antiguos que aún mandan «notas»: lo que cambió pasa a ser una nota con fecha.
+        if (array_key_exists('notas', $datos) && $d['notas'] !== '' && $d['notas'] !== (string) ($lead['notas'] ?? '')) {
+            $linea->registrar($ref, 'nota', ['texto' => $d['notas'], 'ocurrio' => $now, 'autor' => $quien, 'autor_tipo' => $autorTipo]);
+        }
         return null;
     }
 
@@ -504,19 +564,17 @@ class LeadService
         $st = $this->pdo->prepare("SELECT id, nombre, email FROM portal_contactos WHERE cliente_id = ? AND rol = 'aprobador' AND email IS NOT NULL AND email <> ''");
         $st->execute([$clienteId]);
         $aj = new AjustesService($this->pdo);
-        $asunto = $total === 1 ? 'Llegó un contacto nuevo · ' . $proyectoNombre : "Tienes {$total} contactos nuevos por atender";
+        $asunto = $total === 1 ? Idioma::f('Llegó un contacto nuevo · %s', $proyectoNombre) : Idioma::f('Tienes %d contactos nuevos por atender', $total);
         $cuerpo = $total === 1
-            ? "Llegó un contacto nuevo por tu campaña «{$proyectoNombre}». Revísalo en el portal y anota el próximo paso."
-            : "Tienes {$total} contactos nuevos por atender en tus campañas. Revísalos en el portal y anota el próximo paso de cada uno.";
+            ? Idioma::f('Llegó un contacto nuevo por tu campaña «%s». Revísalo en el portal y anota el próximo paso.', $proyectoNombre)
+            : Idioma::f('Tienes %d contactos nuevos por atender en tus campañas. Revísalos en el portal y anota el próximo paso de cada uno.', $total);
         $avisados = 0;
         foreach ($st->fetchAll() as $c) {
             $pref = $aj->todos('contacto', (string) $c['id']);
             if (($pref['avisos_email'] ?? '1') === '0' || ($pref['avisos_leads'] ?? '1') === '0') {
                 continue;
             }
-            [$html, $texto] = $n->componer($asunto, $cuerpo, ['etiqueta' => 'Contactos ganados', 'boton' => 'Ver contactos'], 'Hola ' . $n->primerNombre((string) $c['nombre']) . ',',
-                $n->absoluta('/portal/contactos-ganados'), $clienteId, ['Puedes desactivar este aviso en Ajustes dentro del portal.']);
-            $n->agrupado($c, $clienteId, Vigencia::leads($clienteId), $asunto, $html, $texto);
+            $n->alBuzonCliente($c, $clienteId, $asunto, $cuerpo, '/portal/contactos-ganados', 'leads', null, Vigencia::leads($clienteId), true);
             $avisados++;
         }
         return $avisados;
@@ -610,9 +668,12 @@ class LeadService
         }
         $n = (int) $c['enviados'];
         if ($n === 0) {
-            return 'Sin correos aún';
+            return Idioma::t('Sin correos aún');
         }
-        return (empty($c['completo']) ? 'Al menos ' : '') . $n . ($n === 1 ? ' correo' : ' correos') . ' · abrió ' . (int) $c['abiertos'];
+        $texto = empty($c['completo'])
+            ? ($n === 1 ? 'Al menos %d correo · abrió %d' : 'Al menos %d correos · abrió %d')
+            : ($n === 1 ? '%d correo · abrió %d' : '%d correos · abrió %d');
+        return Idioma::t($texto, $n, (int) $c['abiertos']);
     }
 
     /** Resumen guardado, listo para mostrar. */
@@ -636,11 +697,13 @@ class LeadService
             "UPDATE " . self::TABLE . " SET nombre = 'Contacto anonimizado', correo = NULL, telefono = NULL, empresa = NULL, notas = NULL,
                 proximo_paso = NULL, proximo_paso_fecha = NULL, mc_estado = NULL, mc_datos = NULL, mc_revisado_en = NULL, anonimizado_en = ?, updated_at = ? WHERE id = ?"
         )->execute([self::ahora(), self::ahora(), $id]);
+        $this->linea()->borrarNotas($id);
     }
 
     public function eliminar(string $id): void
     {
         $this->pdo->prepare('DELETE FROM ' . self::TABLE . ' WHERE id = ?')->execute([$id]);
+        $this->linea()->borrarDeLead($id);
     }
 
     /** Al borrar un proyecto o un cliente: sus leads y fuentes se van con él. */
@@ -648,11 +711,13 @@ class LeadService
     {
         $this->pdo->prepare('DELETE FROM ' . self::TABLE . ' WHERE proyecto_id = ?')->execute([$proyectoId]);
         $this->pdo->prepare('DELETE FROM portal_lead_fuentes WHERE proyecto_id = ?')->execute([$proyectoId]);
+        $this->linea()->borrarDeProyecto($proyectoId);
     }
 
     public function borrarDeCliente(string $clienteId): void
     {
         $this->pdo->prepare('DELETE FROM ' . self::TABLE . ' WHERE cliente_id = ?')->execute([$clienteId]);
         $this->pdo->prepare('DELETE FROM portal_lead_fuentes WHERE cliente_id = ?')->execute([$clienteId]);
+        $this->linea()->borrarDeCliente($clienteId);
     }
 }

@@ -3,7 +3,7 @@
 {block page_title}Línea de tiempo · {$proyecto['nombre']}{/block}
 
 {block content}
-<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=16">
+<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=17">
 {var $volver = ($enPanel ?? false) ? '/equipo/proyectos/' . $proyecto['id'] : $admin_url('proyectos/' . $proyecto['id'])}
 {var $q = '?proyecto_id=' . $proyecto['id'] . '&linea=1'}
 {var $conFecha = array_filter($d['tareas'], fn($t) => $t['ini'] !== null)}
@@ -169,7 +169,7 @@
         form.visible_cliente.checked = h ? h.visible : true;
         form.cumplido.checked = h ? h.manual : false;
         dlg.querySelector('[data-cumplido]').hidden = !h;
-        dlg.querySelector('[data-titulo]').textContent = h ? 'Editar hito' : 'Nuevo hito';
+        dlg.querySelector('[data-titulo]').textContent = h ? {t('Editar hito')} : {t('Nuevo hito')};
         const borrar = dlg.querySelector('[data-borrar]');
         borrar.hidden = !h;
         borrar.setAttribute('formaction', h ? base + '/' + h.id + '/borrar' : '');
@@ -265,8 +265,8 @@
         if (window.portalGuardando) window.portalGuardando(true);
         try {
             const r = await fetch(g.dataset.mover, { method: 'POST', body: datos, credentials: 'same-origin', headers: { 'Accept': 'application/json' } });
-            const j = await r.json().catch(() => ({ error: 'Respuesta inesperada (HTTP ' + r.status + ').' }));
-            if (!r.ok || !j.ok) throw new Error(j.error || 'No se pudo guardar.');
+            const j = await r.json().catch(() => ({ error: {t('Respuesta inesperada (HTTP ')} + r.status + ').' }));
+            if (!r.ok || !j.ok) throw new Error(j.error || {t('No se pudo guardar.')});
             location.reload();
         } catch (err) {
             alert(err.message);

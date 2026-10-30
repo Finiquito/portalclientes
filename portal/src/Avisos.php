@@ -13,14 +13,18 @@ use TypeDock\Core\PluginContext;
  *            «mio»: lo que es suyo (es responsable) y, de lo que no tiene responsable, lo de
  *            los clientes o proyectos que tiene asignados. Si nadie tiene asignado ese cliente,
  *            le llega a Coordinación para que no se pierda.
- *   cómo     agrupado (por defecto) | instante
- *            agrupado: se juntan en un buzón y salen en un solo correo cuando hay 5 o cuando
- *            el más antiguo cumple 3 horas, lo que pase antes; sólo en el horario de la agencia.
- *            Las urgencias salen siempre al tiro.
+ *   cómo     siempre agrupado: no hay avisos sueltos. Se juntan en un buzón y salen en un solo correo
+ *            a horas fijas (HORAS_ENVIO: 10:00, 13:00 y 16:00, hora de la agencia), o antes si se juntan
+ *            JUNTOS (10). Una urgencia adelanta el envío a la próxima pasada del cron (máx. 15 minutos).
+ *            Sólo de lunes a viernes dentro del horario hábil.
  *   resumen  1 (por defecto) | 0: resumen del día de lunes a viernes a las 8:30 (hora de la
  *            agencia), con lo que llegó en la noche. Si no hay nada, no se manda.
  *
- * Los contactos del cliente pueden pedir su propio resumen de la mañana (desactivado por defecto).
+ * Los contactos del cliente reciben sus avisos con la misma lógica (horas fijas en su zona, o antes si se
+ * juntan JUNTOS_CLIENTE = 6) y pueden pedir su propio resumen de la mañana (desactivado por defecto).
+ * Antes de salir, cada aviso se revisa (Vigencia): si ya se resolvió, se descarta.
+ * Quedan fuera del agrupado: los códigos de acceso y las invitaciones, cancelaciones y recordatorios de reunión
+ * (llevan el calendario y salen una vez).
  *
  * Todo lo programado (agrupados, resúmenes, vencimientos, recordatorios) lo corre correr():
  * la tarea programada del hosting cada 15 minutos y, de respaldo, las visitas al portal.
@@ -28,9 +32,13 @@ use TypeDock\Core\PluginContext;
 final class Avisos
 {
     public const BUZON  = 'portal_avisos_buzon';
+    /** «Persona» del buzón que representa el correo de copia de todos los avisos (Ajustes). */
+    public const DESTINO_COPIA = 'copia';
     public const MARCAS = 'portal_avisos_marcas';
-    public const JUNTOS = 5;
-    public const HORAS  = 3;
+    public const JUNTOS = 10;
+    public const JUNTOS_CLIENTE = 6;
+    /** Horas fijas de envío (hora local de quien recibe). */
+    public const HORAS_ENVIO = ['10:00', '13:00', '16:00'];
     public const HORA_RESUMEN  = '08:30';
     /** Si la tarea programada no corrió en la mañana, después de esta hora el resumen ya no se manda. */
     private const RESUMEN_HASTA = '12:00';
@@ -44,16 +52,14 @@ final class Avisos
 
     // ---- Preferencias ------------------------------------------------------------
 
-    /** @return array{que: string, como: string, resumen: bool} */
+    /** @return array{que: string, resumen: bool} */
     public static function preferencias(AjustesService $aj, string $usuarioId): array
     {
         $t = $aj->todos('equipo', $usuarioId);
         // Antes había un solo sí/no («avisos»): un «no» se respeta como «nada».
         $que = $t['avisos_que'] ?? (($t['avisos'] ?? '1') === '0' ? 'nada' : 'mio');
-        $como = $t['avisos_como'] ?? 'agrupado';
         return [
             'que'     => in_array($que, ['mio', 'todo', 'nada'], true) ? $que : 'mio',
-            'como'    => in_array($como, ['agrupado', 'instante'], true) ? $como : 'agrupado',
             'resumen' => ($t['resumen_diario'] ?? '1') !== '0',
         ];
     }
@@ -165,13 +171,26 @@ final class Avisos
     }
 
     /** @param ?string $vigencia marca de Vigencia: si deja de aplicar antes de salir, el aviso se descarta */
-    public function guardar(string $usuarioId, ?string $clienteId, ?string $proyectoId, string $clave, string $asunto, string $detalle, ?string $ruta, ?string $vigencia = null): void
+    public function guardar(string $usuarioId, ?string $clienteId, ?string $proyectoId, string $clave, string|\Stringable $asunto, string|\Stringable $detalle, ?string $ruta, ?string $vigencia = null, bool $urgente = false, string $para = 'equipo', bool $reemplaza = false): void
     {
         Schema::asegurar($this->pdo);
+        // El aviso se escribe en el idioma de quien lo va a leer, no en el de quien lo provocó.
+        $aj = new AjustesService($this->pdo);
+        $lang = match ($para) {
+            'cliente' => Idioma::de($aj, 'contacto', $usuarioId, (string) $clienteId),
+            'copia'   => Idioma::de($aj, 'global', 'portal'),
+            default   => Idioma::de($aj, 'equipo', $usuarioId),
+        };
+        [$asunto, $detalle] = Idioma::con($lang, fn(): array => [(string) $asunto, (string) $detalle]);
+        if ($reemplaza) {
+            // Un aviso que se va actualizando (p. ej. «tienes 3 contactos nuevos»): el nuevo reemplaza al que seguía esperando.
+            $this->pdo->prepare('DELETE FROM ' . self::BUZON . ' WHERE usuario_id = ? AND clave = ? AND enviado_en IS NULL')->execute([$usuarioId, mb_substr($clave, 0, 120)]);
+        }
         $this->pdo->prepare(
-            'INSERT INTO ' . self::BUZON . ' (id, usuario_id, cliente_id, proyecto_id, clave, asunto, detalle, ruta, vigencia, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+            'INSERT INTO ' . self::BUZON . ' (id, usuario_id, cliente_id, proyecto_id, clave, asunto, detalle, ruta, vigencia, urgente, para, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         )->execute([typedock_uuid7(), $usuarioId, $clienteId, $proyectoId, mb_substr($clave, 0, 120), mb_substr($asunto, 0, 500),
-            $detalle !== '' ? mb_substr($detalle, 0, 1000) : null, $ruta !== null ? mb_substr($ruta, 0, 255) : null, $vigencia, $this->ahora()->format('Y-m-d H:i:s')]);
+            $detalle !== '' ? mb_substr($detalle, 0, 1000) : null, $ruta !== null ? mb_substr($ruta, 0, 255) : null, $vigencia, $urgente ? 1 : 0,
+            in_array($para, ['cliente', 'copia'], true) ? $para : 'equipo', $this->ahora()->format('Y-m-d H:i:s')]);
     }
 
     /** Saca del buzón lo que ya no hace falta avisar (la tarea se completó, la reunión se borró…). */
@@ -215,40 +234,77 @@ final class Avisos
      * asunto; varias novedades de lo mismo (misma clave) se juntan en una.
      *
      * @param array<int, array<string, mixed>> $items
+     * @param string  $base '/equipo' (las rutas son del panel) o '' (ya vienen completas, como las del portal del cliente)
+     * @param ?int    $max  tarjetas a mostrar como mucho; el resto se resume en una línea («y N más»)
+     * @param ?string $zona zona horaria para la hora de cada tarjeta; null = sin hora (correo al cliente)
+     * @param ?bool $conCliente el título de cada sección lleva «cliente · proyecto» (por defecto sí, salvo en el correo al cliente)
      * @return array<int, array<string, mixed>>
      */
-    public function bloquesBuzon(array $items): array
+    public function bloquesBuzon(array $items, string $base = '/equipo', ?int $max = null, ?string $zona = '', ?bool $conCliente = null)
     {
+        $conCliente ??= $base !== '';
         $colores = Fmt::coloresTodos($this->pdo);
+        $zona = $zona === '' ? Zona::agencia() : $zona;
         $grupos = [];
+        $vistas = [];
+        $extra = 0;
         foreach ($items as $i) {
-            $g = (string) ($i['proyecto_id'] ?: $i['cliente_id'] ?: '-');
-            $grupos[$g]['titulo'] = trim(($i['cliente_nombre'] ?? '') . (($i['proyecto_nombre'] ?? '') !== '' ? ' · ' . $i['proyecto_nombre'] : '')) ?: 'General';
-            $grupos[$g]['color'] = $colores[(string) $i['proyecto_id']] ?? '';
             $k = (string) ($i['clave'] ?: $i['id']);
+            $g = (string) ($i['proyecto_id'] ?: $i['cliente_id'] ?: '-');
+            if (!isset($vistas[$g . '|' . $k])) {
+                if ($max !== null && count($vistas) >= $max) {
+                    $extra++;
+                    continue;
+                }
+                $vistas[$g . '|' . $k] = true;
+            }
+            $quien = !$conCliente ? (string) ($i['proyecto_nombre'] ?? '') : trim(($i['cliente_nombre'] ?? '') . (($i['proyecto_nombre'] ?? '') !== '' ? ' · ' . $i['proyecto_nombre'] : ''));
+            $grupos[$g]['titulo'] = $quien !== '' ? $quien : ($conCliente ? Idioma::t('General') : '');
+            $grupos[$g]['color'] = $colores[(string) $i['proyecto_id']] ?? '';
             $previo = $grupos[$g]['items'][$k] ?? null;
             $grupos[$g]['items'][$k] = $i + ['n' => ($previo['n'] ?? 0) + 1];
         }
         $bloques = [];
         foreach ($grupos as $g) {
-            $bloques[] = ['seccion' => ['titulo' => $g['titulo'], 'color' => $g['color']]];
+            if ($g['titulo'] !== '') {
+                $bloques[] = ['seccion' => ['titulo' => $g['titulo'], 'color' => $g['color']]];
+            }
             $tarjetas = [];
             foreach ($g['items'] as $i) {
-                $mas = $i['n'] > 1 ? ($i['n'] - 1 === 1 ? ' · y 1 novedad más' : ' · y ' . ($i['n'] - 1) . ' novedades más') : '';
+                $mas = $i['n'] > 1 ? ' · ' . ($i['n'] - 1 === 1 ? Idioma::t('y 1 novedad más') : Idioma::t('y %d novedades más', $i['n'] - 1)) : '';
+                $ruta = (string) $i['ruta'];
                 $tarjetas[] = [
                     'titulo'  => (string) $i['asunto'],
                     'detalle' => trim((string) ($i['detalle'] ?? '')) . $mas,
-                    'chip'    => $this->local(new \DateTimeImmutable((string) $i['created_at'], new \DateTimeZone('UTC')))->format('H:i'),
-                    'url'     => $this->n->absoluta('/equipo' . ((string) $i['ruta'] !== '' ? '/' . ltrim((string) $i['ruta'], '/') : '')),
+                    // Los avisos programados (vencen mañana, se atrasó, recordatorio) los genera el cron, no ocurrieron a esa hora: sin hora.
+                    'chip'    => $zona === null || str_starts_with((string) $i['clave'], 'venc/') || str_starts_with((string) $i['clave'], 'rec/') ? '' : $this->local(new \DateTimeImmutable((string) $i['created_at'], new \DateTimeZone('UTC')), $zona)->format('H:i'),
+                    'url'     => $this->n->absoluta($base === '' ? ($ruta !== '' ? $ruta : '/portal') : $base . ($ruta !== '' ? '/' . ltrim($ruta, '/') : '')),
                 ];
             }
             $bloques[] = ['tarjetas' => $tarjetas];
         }
+        if ($extra > 0) {
+            $bloques[] = ['p' => ($extra === 1 ? Idioma::t('Y 1 novedad más') : Idioma::t('Y %d novedades más', $extra)) . ': ' . ($base === '' ? Idioma::t('las ves al abrir tu portal.') : Idioma::t('las ves al abrir el panel.'))];
+        }
         return $bloques;
     }
 
-    /** Correo agrupado con lo pendiente de una persona. @param array<string, mixed> $u */
+    /** «10:00, 13:00 y 16:00» */
+    public static function horasTexto(): string
+    {
+        $h = self::HORAS_ENVIO;
+        $ultima = array_pop($h);
+        return $h === [] ? (string) $ultima : implode(', ', $h) . ' ' . Idioma::t('y') . ' ' . $ultima;
+    }
+
+    /** Correo agrupado con lo pendiente de una persona del equipo. @param array<string, mixed> $u */
     public function enviarAgrupado(array $u): bool
+    {
+        return (bool) Idioma::con(Idioma::de(new AjustesService($this->pdo), 'equipo', (string) $u['id']), fn(): bool => $this->armarAgrupado($u));
+    }
+
+    /** @param array<string, mixed> $u */
+    private function armarAgrupado(array $u): bool
     {
         $items = $this->pendientes((string) $u['id']);
         if ($items === []) {
@@ -258,22 +314,81 @@ final class Avisos
         $n = count($items);
         $proyectos = count(array_unique(array_map(fn($i) => (string) ($i['proyecto_id'] ?: $i['cliente_id']), $items)));
         $asunto = $n === 1 ? (string) $items[0]['asunto']
-            : $n . ' novedades' . ($proyectos > 1 ? ' de ' . $proyectos . ' proyectos' : ' en ' . ($items[0]['proyecto_nombre'] ?: $items[0]['cliente_nombre']));
+            : ($proyectos > 1 ? Idioma::t('%d novedades de %d proyectos', $n, $proyectos) : Idioma::t('%d novedades en %s', $n, (string) ($items[0]['proyecto_nombre'] ?: $items[0]['cliente_nombre'])));
         [$html, $texto] = $this->n->componer($asunto, '', [
-            'etiqueta' => 'Novedades', 'titulo' => 'Tus novedades', 'resaltado' => 'novedades', 'boton' => 'Abrir el panel',
-            'bloques' => $this->bloquesBuzon($items), 'compacto' => true,
+            'etiqueta' => Idioma::t('Novedades'), 'titulo' => Idioma::t('Tus novedades'), 'resaltado' => Idioma::t('novedades'), 'boton' => Idioma::t('Abrir el panel'),
+            'bloques' => $this->bloquesBuzon($items, '/equipo', self::JUNTOS), 'compacto' => true,
             'preheader' => implode(' · ', array_slice(array_map(fn($i) => (string) $i['asunto'], $items), 0, 3)),
-        ], 'Hola ' . $this->n->primerNombre((string) $u['nombre']) . ',', $this->n->absoluta('/equipo'), null, [
-            'Te llegan agrupadas: cuando se juntan ' . self::JUNTOS . ' o cada ' . self::HORAS . ' horas. Las urgencias llegan al tiro.',
-            'Puedes cambiarlo en «Mis ajustes» del panel.',
+        ], Idioma::t('Hola %s,', $this->n->primerNombre((string) $u['nombre'])), $this->n->absoluta('/equipo'), null, [
+            Idioma::t('Te llegan agrupadas: a las %s (hora de %s), o antes si se juntan %d.', self::horasTexto(), Zona::nombre(), self::JUNTOS),
+            Idioma::t('Puedes cambiar qué te llega en «Mis ajustes» del panel.'),
         ]);
         return $this->n->enviarCorreo((string) $u['email'], $asunto, $html, $texto);
     }
 
+    /** Correo agrupado para el correo de copia de todos los avisos (Ajustes), con enlaces al admin. */
+    public function enviarAgrupadoCopia(string $to): bool
+    {
+        return (bool) Idioma::con(Idioma::de(new AjustesService($this->pdo), 'global', 'portal'), fn(): bool => $this->armarAgrupadoCopia($to));
+    }
+
+    private function armarAgrupadoCopia(string $to): bool
+    {
+        $items = $this->pendientes(self::DESTINO_COPIA);
+        if ($items === []) {
+            return false;
+        }
+        $this->marcarEnviados($items);
+        $n = count($items);
+        foreach ($items as &$i) {
+            $i['ruta'] = $this->n->absoluta($this->ctx->adminUrl((string) ($i['ruta'] ?? '')));   // enlace completo al admin
+        }
+        unset($i);
+        $asunto = $n === 1 ? (string) $items[0]['asunto'] : Idioma::t('%d novedades del portal', $n);
+        [$html, $texto] = $this->n->componer($asunto, '', [
+            'etiqueta' => Idioma::t('Copia de avisos'), 'titulo' => Idioma::t('Novedades del portal'), 'resaltado' => Idioma::t('novedades'), 'boton' => Idioma::t('Abrir en el admin'),
+            'bloques' => $this->bloquesBuzon($items, '', self::JUNTOS, '', true), 'compacto' => true,
+            'preheader' => implode(' · ', array_slice(array_map(fn($i) => (string) $i['asunto'], $items), 0, 3)),
+        ], null, $this->n->absoluta($this->ctx->adminUrl('')), null, [
+            Idioma::t('Aviso interno: el cliente no ve este correo. Es la copia de todos los avisos (Ajustes) y sale agrupada: a las %s, o antes si se juntan %d.', self::horasTexto(), self::JUNTOS),
+        ]);
+        return $this->n->enviarCorreo($to, $asunto, $html, $texto);
+    }
+
+    /** Correo agrupado con lo pendiente de un contacto del cliente. @param array<string, mixed> $c contacto: id, nombre, email, cliente_id */
+    public function enviarAgrupadoCliente(array $c): bool
+    {
+        return (bool) Idioma::con($this->n->idiomaContacto($c), fn(): bool => $this->armarAgrupadoCliente($c));
+    }
+
+    /** @param array<string, mixed> $c */
+    private function armarAgrupadoCliente(array $c): bool
+    {
+        $items = $this->pendientes((string) $c['id']);
+        if ($items === []) {
+            return false;
+        }
+        $this->marcarEnviados($items);
+        if ((new AjustesService($this->pdo))->get('contacto', (string) $c['id'], 'avisos_email', '1') === '0' || trim((string) $c['email']) === '') {
+            return false;
+        }
+        $n = count($items);
+        $asunto = $n === 1 ? (string) $items[0]['asunto'] : Idioma::t('%d novedades en tu portal', $n);
+        [$html, $texto] = $this->n->componer($asunto, '', [
+            'etiqueta' => Idioma::t('Novedades'), 'titulo' => Idioma::t('Novedades en tu portal'), 'resaltado' => Idioma::t('novedades'), 'boton' => Idioma::t('Abrir mi portal'),
+            'bloques' => $this->bloquesBuzon($items, '', self::JUNTOS_CLIENTE, null), 'compacto' => true,
+            'preheader' => implode(' · ', array_slice(array_map(fn($i) => (string) $i['asunto'], $items), 0, 3)),
+        ], Idioma::t('Hola %s,', $this->n->primerNombre((string) $c['nombre'])), $this->n->absoluta('/portal'), (string) $c['cliente_id'] ?: null, [
+            Idioma::t('Te llegan agrupadas: a las %s (tu hora), o antes si se juntan %d.', self::horasTexto(), self::JUNTOS_CLIENTE),
+            Idioma::t('Puedes desactivar estos avisos en Ajustes dentro del portal.'),
+        ]);
+        return $this->n->enviarCorreo((string) $c['email'], $asunto, $html, $texto);
+    }
+
     private function enHorarioAgencia(): bool
     {
-        [, $ini, $fin] = $this->n->horario();
-        return HorarioHabil::dentro($this->ahora(), Zona::pais(), $ini, $fin);
+        [$respetar, $ini, $fin] = $this->n->horario();
+        return !$respetar || HorarioHabil::dentro($this->ahora(), Zona::pais(), $ini, $fin);
     }
 
     private function diaHabil(\DateTimeImmutable $local): bool
@@ -281,39 +396,114 @@ final class Avisos
         return (int) $local->format('N') <= 5;
     }
 
-    /** Antes de las 8:30 de un día hábil lo pendiente espera al resumen (si la persona lo recibe). */
-    private function esperaResumen(string $usuarioId, bool $quiereResumen): bool
+    /**
+     * Última hora fija de envío que ya pasó hoy en esa zona (en UTC), o null si no hay: fin de semana,
+     * antes de la primera hora, o horas que caen fuera del horario hábil.
+     */
+    private function ultimaHoraDeEnvio(string $zona): ?\DateTimeImmutable
     {
-        $l = $this->local();
-        return $quiereResumen && $this->diaHabil($l) && $l->format('H:i') < self::HORA_RESUMEN
-            && !$this->marcado('resumen:e:' . $usuarioId . ':' . $l->format('Y-m-d'));
+        $l = $this->local(null, $zona);
+        if (!$this->diaHabil($l)) {
+            return null;
+        }
+        [$respetar, $ini, $fin] = $this->n->horario();
+        $mejor = null;
+        foreach (self::HORAS_ENVIO as $h) {
+            [$hh, $mm] = array_map('intval', explode(':', $h));
+            if ($respetar && ($hh < $ini || $hh >= $fin)) {
+                continue;
+            }
+            $t = $l->setTime($hh, $mm);
+            if ($t <= $l) {
+                $mejor = $t;
+            }
+        }
+        return $mejor?->setTimezone(new \DateTimeZone('UTC'));
     }
 
-    /** Envía los agrupados que ya juntaron 5 o cumplieron 3 horas. @return int correos enviados */
+    /**
+     * ¿Toca enviarle ahora lo que tiene pendiente? Sí si se juntó el tope, si hay una urgencia, o si
+     * ya pasó una hora fija desde que llegó algo (lo que llegó después espera a la siguiente).
+     */
+    private function tocaEnviar(string $destinoId, int $pendientes, int $urgentes, int $tope, ?\DateTimeImmutable $corte): bool
+    {
+        if ($pendientes >= $tope || $urgentes > 0) {
+            return true;
+        }
+        if ($corte === null) {
+            return false;
+        }
+        $st = $this->pdo->prepare('SELECT COUNT(*) FROM ' . self::BUZON . ' WHERE usuario_id = ? AND enviado_en IS NULL AND created_at <= ?');
+        $st->execute([$destinoId, $corte->format('Y-m-d H:i:s')]);
+        return (int) $st->fetchColumn() > 0;
+    }
+
+    /** @return array<int, array<string, mixed>> destinatarios con avisos pendientes: usuario_id, n, urg */
+    private function conPendientes(string $para): array
+    {
+        $st = $this->pdo->prepare(
+            'SELECT usuario_id, COUNT(*) AS n, SUM(CASE WHEN urgente = 1 THEN 1 ELSE 0 END) AS urg FROM ' . self::BUZON
+            . " WHERE enviado_en IS NULL AND COALESCE(para, 'equipo') = ? GROUP BY usuario_id"
+        );
+        $st->execute([$para]);
+        return $st->fetchAll();
+    }
+
+    /** Envía los agrupados del equipo y del cliente que ya les toca. @return int correos enviados */
     public function barrer(): int
     {
         Schema::asegurar($this->pdo);
-        if (!$this->enHorarioAgencia()) {
-            return 0;   // de noche y fines de semana se junta; sale en el resumen o al abrir el día
-        }
         $this->depurar();
-        $limite = $this->ahora()->modify('-' . self::HORAS . ' hours')->format('Y-m-d H:i:s');
-        $filas = $this->pdo->query('SELECT usuario_id, COUNT(*) AS n, MIN(created_at) AS primero FROM ' . self::BUZON . ' WHERE enviado_en IS NULL GROUP BY usuario_id');
+        return $this->barrerEquipo() + $this->barrerClientes();
+    }
+
+    private function barrerEquipo(): int
+    {
+        if (!$this->enHorarioAgencia()) {
+            return 0;   // de noche y fines de semana se junta; sale en el resumen o a la primera hora del día
+        }
+        $corte = $this->ultimaHoraDeEnvio(Zona::agencia());
         $eq = new EquipoService($this->pdo);
-        $aj = new AjustesService($this->pdo);
         $enviados = 0;
-        foreach ($filas ? $filas->fetchAll() : [] as $f) {
+        $copia = trim((string) (new AjustesService($this->pdo))->get('global', 'portal', 'email_avisos'));
+        foreach ($this->conPendientes('copia') as $f) {
+            if (!filter_var($copia, FILTER_VALIDATE_EMAIL)) {
+                $this->marcarEnviados($this->pendientes(self::DESTINO_COPIA));   // ya no hay copia configurada: se descarta
+            } elseif ($this->tocaEnviar(self::DESTINO_COPIA, (int) $f['n'], (int) $f['urg'], self::JUNTOS, $corte)) {
+                $enviados += $this->enviarAgrupadoCopia($copia) ? 1 : 0;
+            }
+        }
+        foreach ($this->conPendientes('equipo') as $f) {
             $u = $eq->find((string) $f['usuario_id']);
             if ($u === null || (int) $u['activo'] !== 1) {
                 $this->marcarEnviados($this->pendientes((string) $f['usuario_id']));   // ya no está: se descarta
                 continue;
             }
-            $pref = self::preferencias($aj, (string) $u['id']);
-            if ($this->esperaResumen((string) $u['id'], $pref['resumen'])) {
+            if ($this->tocaEnviar((string) $f['usuario_id'], (int) $f['n'], (int) $f['urg'], self::JUNTOS, $corte)) {
+                $enviados += $this->enviarAgrupado($u) ? 1 : 0;
+            }
+        }
+        return $enviados;
+    }
+
+    private function barrerClientes(): int
+    {
+        [$respetar, $ini, $fin] = $this->n->horario();
+        $enviados = 0;
+        foreach ($this->conPendientes('cliente') as $f) {
+            $st = $this->pdo->prepare('SELECT id, nombre, email, cliente_id FROM portal_contactos WHERE id = ?');
+            $st->execute([(string) $f['usuario_id']]);
+            $c = $st->fetch();
+            if ($c === false) {
+                $this->marcarEnviados($this->pendientes((string) $f['usuario_id']));
                 continue;
             }
-            if ((int) $f['n'] >= self::JUNTOS || (string) $f['primero'] <= $limite || $pref['como'] === 'instante') {
-                $enviados += $this->enviarAgrupado($u) ? 1 : 0;
+            $pais = Zona::paisPersona($this->pdo, (string) $c['cliente_id'], (string) $c['id']);
+            if ($respetar && !HorarioHabil::dentro($this->ahora(), $pais, $ini, $fin)) {
+                continue;
+            }
+            if ($this->tocaEnviar((string) $c['id'], (int) $f['n'], 0, self::JUNTOS_CLIENTE, $this->ultimaHoraDeEnvio(HorarioHabil::zonaDe($pais)))) {
+                $enviados += $this->enviarAgrupadoCliente($c) ? 1 : 0;
             }
         }
         return $enviados;
@@ -390,6 +580,12 @@ final class Avisos
      */
     public function resumenEquipo(array $u): bool
     {
+        return (bool) Idioma::con(Idioma::de(new AjustesService($this->pdo), 'equipo', (string) $u['id']), fn(): bool => $this->armarResumenEquipo($u));
+    }
+
+    /** @param array<string, mixed> $u */
+    private function armarResumenEquipo(array $u): bool
+    {
         $uid = (string) $u['id'];
         $pref = self::preferencias(new AjustesService($this->pdo), $uid);
         $todo = $pref['que'] === 'todo';
@@ -427,8 +623,13 @@ final class Avisos
         $atrasadas = $tareas("{$abiertas} AND SUBSTR(t.fecha_vencimiento, 1, 10) < ?", [$hoy]);
         $esperan = $tareas("t.estado IN ('entregada', 'cambios')", []);
         $noche = $this->pendientes($uid);
+        // «Se atrasó» de una tarea que ya está en «Atrasadas» (o «Vencen hoy») sería decir lo mismo dos veces.
+        $yaListadas = array_flip(array_map(fn(array $t): string => 'venc/tareas/' . $t['id'], array_merge($vencenHoy, $atrasadas)));
+        $nocheTodas = $noche;
+        $noche = array_values(array_filter($noche, fn(array $i): bool => !isset($yaListadas[(string) $i['clave']])));
 
         if ($reuniones === [] && $vencenHoy === [] && $atrasadas === [] && $esperan === [] && $noche === []) {
+            $this->marcarEnviados($nocheTodas);
             return false;
         }
 
@@ -438,52 +639,52 @@ final class Avisos
         ];
         $bloques = [];
         if ($reuniones !== []) {
-            $bloques[] = ['seccion' => ['titulo' => 'Reuniones de hoy']];
+            $bloques[] = ['seccion' => ['titulo' => Idioma::t('Reuniones de hoy')]];
             $bloques[] = ['tarjetas' => array_map(fn($r) => [
                 'titulo' => (string) $r['titulo'], 'chip' => $fmt->hora((string) $r['fecha']),
-                'detalle' => $r['cliente_nombre'] . ' · ' . $r['proyecto_nombre'] . ($r['enlace_meet'] ? ' · con Meet' : ''),
+                'detalle' => $r['cliente_nombre'] . ' · ' . $r['proyecto_nombre'] . ($r['enlace_meet'] ? ' · ' . Idioma::t('con Meet') : ''),
                 'url' => $r['enlace_meet'] ?: $panel('reuniones/' . $r['id']),
             ], $reuniones)];
         }
         if ($vencenHoy !== []) {
-            $bloques[] = ['seccion' => ['titulo' => 'Vencen hoy']];
+            $bloques[] = ['seccion' => ['titulo' => Idioma::t('Vencen hoy')]];
             $bloques[] = ['tarjetas' => array_map(fn($t) => $tarjetaTarea($t), $vencenHoy)];
         }
         if ($atrasadas !== []) {
-            $bloques[] = ['seccion' => ['titulo' => 'Atrasadas', 'color' => '#dc2626']];
-            $bloques[] = ['tarjetas' => array_map(fn($t) => $tarjetaTarea($t, 'desde el ' . $fmt->fechaCorta((string) $t['fecha_vencimiento'])), $atrasadas)];
+            $bloques[] = ['seccion' => ['titulo' => Idioma::t('Atrasadas'), 'color' => '#dc2626']];
+            $bloques[] = ['tarjetas' => array_map(fn($t) => $tarjetaTarea($t, Idioma::t('desde el %s', $fmt->fechaCorta((string) $t['fecha_vencimiento']))), $atrasadas)];
         }
         if ($esperan !== []) {
-            $bloques[] = ['seccion' => ['titulo' => 'Esperan tu respuesta']];
-            $bloques[] = ['tarjetas' => array_map(fn($t) => $tarjetaTarea($t, $t['estado'] === 'cambios' ? 'Pidió cambios' : 'Entregado'), $esperan)];
+            $bloques[] = ['seccion' => ['titulo' => Idioma::t('Esperan tu respuesta')]];
+            $bloques[] = ['tarjetas' => array_map(fn($t) => $tarjetaTarea($t, $t['estado'] === 'cambios' ? Idioma::t('Pidió cambios') : Idioma::t('Entregado')), $esperan)];
         }
         if ($noche !== []) {
-            $bloques[] = ['p' => 'Y esto llegó mientras no estabas:'];
+            $bloques[] = ['p' => Idioma::t('Y esto llegó mientras no estabas:')];
             $bloques = array_merge($bloques, $this->bloquesBuzon($noche));
-            $this->marcarEnviados($noche);
         }
+        $this->marcarEnviados($nocheTodas);
 
         $partes = [];
         if ($reuniones !== []) {
-            $partes[] = count($reuniones) . (count($reuniones) === 1 ? ' reunión' : ' reuniones');
+            $partes[] = count($reuniones) === 1 ? Idioma::t('1 reunión') : Idioma::t('%d reuniones', count($reuniones));
         }
         $nT = count($vencenHoy) + count($atrasadas);
         if ($nT > 0) {
-            $partes[] = $nT . ($nT === 1 ? ' tarea' : ' tareas') . ' por cerrar';
+            $partes[] = $nT === 1 ? Idioma::t('1 tarea por cerrar') : Idioma::t('%d tareas por cerrar', $nT);
         }
         if ($esperan !== []) {
-            $partes[] = count($esperan) . ' por responder';
+            $partes[] = Idioma::t('%d por responder', count($esperan));
         }
         if ($partes === []) {
-            $partes[] = count($noche) . (count($noche) === 1 ? ' novedad' : ' novedades');
+            $partes[] = count($noche) === 1 ? Idioma::t('1 novedad') : Idioma::t('%d novedades', count($noche));
         }
-        $asunto = 'Tu día: ' . implode(', ', $partes);
+        $asunto = Idioma::t('Tu día: %s', implode(', ', $partes));
         [$html, $texto] = $this->n->componer($asunto, '', [
-            'etiqueta' => 'Resumen del día', 'titulo' => 'Tu día de hoy', 'resaltado' => 'hoy', 'boton' => 'Abrir el panel',
+            'etiqueta' => Idioma::t('Resumen del día'), 'titulo' => Idioma::t('Tu día de hoy'), 'resaltado' => Idioma::t('hoy'), 'boton' => Idioma::t('Abrir el panel'),
             'bloques' => $bloques, 'preheader' => implode(' · ', $partes),
-        ], 'Buenos días, ' . $this->n->primerNombre((string) $u['nombre']) . '.', $this->n->absoluta('/equipo'), null, [
-            'Te llega de lunes a viernes a las ' . self::HORA_RESUMEN . ' (hora de ' . Zona::nombre() . '). Si un día no hay nada, no te escribimos.',
-            'Puedes desactivarlo en «Mis ajustes» del panel.',
+        ], Idioma::t('Buenos días, %s.', $this->n->primerNombre((string) $u['nombre'])), $this->n->absoluta('/equipo'), null, [
+            Idioma::t('Te llega de lunes a viernes a las %s (hora de %s). Si un día no hay nada, no te escribimos.', self::HORA_RESUMEN, Zona::nombre()),
+            Idioma::t('Puedes desactivarlo en «Mis ajustes» del panel.'),
         ]);
         return $this->n->enviarCorreo((string) $u['email'], $asunto, $html, $texto);
     }
@@ -494,6 +695,12 @@ final class Avisos
      * @param array<string, mixed> $c contacto (con 'pais' del cliente)
      */
     public function resumenCliente(array $c, \DateTimeImmutable $local): bool
+    {
+        return (bool) Idioma::con($this->n->idiomaContacto($c), fn(): bool => $this->armarResumenCliente($c, $local));
+    }
+
+    /** @param array<string, mixed> $c */
+    private function armarResumenCliente(array $c, \DateTimeImmutable $local): bool
     {
         $cid = (string) $c['cliente_id'];
         $hoy = $local->format('Y-m-d');
@@ -534,36 +741,36 @@ final class Avisos
         }
         $bloques = [];
         if ($reuniones !== []) {
-            $bloques[] = ['seccion' => ['titulo' => 'Hoy tienes reunión']];
+            $bloques[] = ['seccion' => ['titulo' => Idioma::t('Hoy tienes reunión')]];
             $bloques[] = ['tarjetas' => array_map(fn($r) => [
                 'titulo' => (string) $r['titulo'], 'chip' => $fmt->hora(Zona::aPais((string) $r['fecha'], $pais)),
-                'detalle' => (string) $r['proyecto_nombre'] . ($r['enlace_meet'] ? ' · con Meet' : ''),
+                'detalle' => (string) $r['proyecto_nombre'] . ($r['enlace_meet'] ? ' · ' . Idioma::t('con Meet') : ''),
                 'url' => $r['enlace_meet'] ?: $portal('/reuniones/' . $r['id']),
             ], $reuniones)];
         }
         if ($revisiones !== []) {
-            $bloques[] = ['seccion' => ['titulo' => 'Para revisar']];
+            $bloques[] = ['seccion' => ['titulo' => Idioma::t('Para revisar')]];
             $bloques[] = ['tarjetas' => array_map(fn($e) => [
                 'titulo' => (string) $e['titulo'], 'url' => $portal('/entregas/' . $e['id']),
-                'detalle' => (int) $e['n'] === 1 ? '1 pieza esperando tu revisión' : $e['n'] . ' piezas esperando tu revisión',
+                'detalle' => (int) $e['n'] === 1 ? Idioma::t('1 pieza esperando tu revisión') : Idioma::t('%d piezas esperando tu revisión', (int) $e['n']),
             ], $revisiones)];
         }
         if ($tareas !== []) {
-            $bloques[] = ['seccion' => ['titulo' => 'Lo que te toca']];
+            $bloques[] = ['seccion' => ['titulo' => Idioma::t('Lo que te toca')]];
             $bloques[] = ['tarjetas' => array_map(fn($t) => [
                 'titulo' => (string) $t['titulo'], 'url' => $portal('/tareas/' . $t['id']), 'detalle' => (string) $t['proyecto_nombre'],
-                'chip' => $t['fecha_vencimiento'] ? 'para el ' . $fmt->fechaCorta((string) $t['fecha_vencimiento']) : '',
+                'chip' => $t['fecha_vencimiento'] ? Idioma::t('para el %s', $fmt->fechaCorta((string) $t['fecha_vencimiento'])) : '',
             ], $tareas)];
         }
         $n = count($tareas) + count($revisiones);
-        $asunto = 'Tu día: ' . implode(', ', array_filter([
-            $reuniones !== [] ? (count($reuniones) === 1 ? '1 reunión' : count($reuniones) . ' reuniones') : '',
-            $n > 0 ? ($n === 1 ? '1 pendiente' : $n . ' pendientes') : '',
-        ]));
+        $asunto = Idioma::t('Tu día: %s', implode(', ', array_filter([
+            $reuniones !== [] ? (count($reuniones) === 1 ? Idioma::t('1 reunión') : Idioma::t('%d reuniones', count($reuniones))) : '',
+            $n > 0 ? ($n === 1 ? Idioma::t('1 pendiente') : Idioma::t('%d pendientes', $n)) : '',
+        ])));
         [$html, $texto] = $this->n->componer($asunto, '', [
-            'etiqueta' => 'Resumen del día', 'titulo' => 'Lo de hoy en tu portal', 'resaltado' => 'hoy', 'boton' => 'Abrir mi portal', 'bloques' => $bloques,
-        ], 'Buenos días, ' . $this->n->primerNombre((string) $c['nombre']) . '.', $portal(''), $cid, [
-            'Lo pediste en Ajustes, dentro del portal: ahí mismo lo puedes desactivar.',
+            'etiqueta' => Idioma::t('Resumen del día'), 'titulo' => Idioma::t('Lo de hoy en tu portal'), 'resaltado' => Idioma::t('hoy'), 'boton' => Idioma::t('Abrir mi portal'), 'bloques' => $bloques,
+        ], Idioma::t('Buenos días, %s.', $this->n->primerNombre((string) $c['nombre'])), $portal(''), $cid, [
+            Idioma::t('Lo pediste en Ajustes, dentro del portal: ahí mismo lo puedes desactivar.'),
         ]);
         return $this->n->enviarCorreo((string) $c['email'], $asunto, $html, $texto);
     }
@@ -588,9 +795,9 @@ final class Avisos
         foreach ($st->fetchAll() as $t) {
             $f = substr((string) $t['fecha_vencimiento'], 0, 10);
             if ($f === $manana) {
-                [$clave, $asunto, $titulo] = ['venc:' . $t['id'] . ':' . $f, 'Vence mañana: «' . $t['titulo'] . '»', 'Vence mañana'];
+                [$clave, $asunto, $titulo] = ['venc:' . $t['id'] . ':' . $f, Idioma::f('Vence mañana: «%s»', (string) $t['titulo']), Idioma::f('Vence mañana')];
             } elseif ($f < $hoy) {
-                [$clave, $asunto, $titulo] = ['atr:' . $t['id'] . ':' . $f, 'Se atrasó: «' . $t['titulo'] . '»', 'Esta tarea se atrasó'];
+                [$clave, $asunto, $titulo] = ['atr:' . $t['id'] . ':' . $f, Idioma::f('Se atrasó: «%s»', (string) $t['titulo']), Idioma::f('Esta tarea se atrasó')];
             } else {
                 continue;
             }
@@ -600,9 +807,9 @@ final class Avisos
             $resp = (string) ($t['responsable_usuario_id'] ?? '');
             $this->n->alEquipo($asunto, '', 'tareas/' . $t['id'], [
                 'proyecto_id' => (string) $t['proyecto_id'], 'responsable' => $resp !== '' ? $resp : null, 'solo_responsable' => $resp !== '',
-                'etiqueta' => 'Tarea', 'titulo' => $titulo, 'resaltado' => $f === $manana ? 'mañana' : 'atrasó',
-                'bloques' => [['tarjetas' => [['titulo' => (string) $t['titulo'], 'detalle' => 'Fecha: ' . (new Fmt())->fechaLarga($f)]]]],
-                'detalle' => 'Fecha: ' . (new Fmt())->fechaLarga($f), 'clave' => 'tareas/' . $t['id'], 'vigencia' => Vigencia::tarea((string) $t['id']),
+                'etiqueta' => Idioma::f('Tarea'), 'titulo' => $titulo, 'resaltado' => Idioma::f($f === $manana ? 'mañana' : 'atrasó'),
+                'bloques' => [['tarjetas' => [['titulo' => (string) $t['titulo'], 'detalle' => Idioma::perezoso(fn() => Idioma::t('Fecha: %s', (new Fmt())->fechaLarga($f)))]]]],
+                'detalle' => Idioma::perezoso(fn() => Idioma::t('Fecha: %s', (new Fmt())->fechaLarga($f))), 'clave' => 'venc/tareas/' . $t['id'], 'vigencia' => Vigencia::tarea((string) $t['id']),
             ]);
             $n++;
         }

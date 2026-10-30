@@ -3,33 +3,55 @@
 {block title}{$proyecto['nombre']}{/block}
 
 {block content}
+<link rel="stylesheet" href="/plugins/portal/assets/panel.css?v=5">
 {var $prog = $proyecto['progreso']}
+{var $cont = $panel['contenidos']}
+{var $sal = $panel['salud']}
+{var $fe = $panel['fechas']}
+{var $reu = $panel['reuniones']}
 {var $nArchivadas = count(array_filter($tareas, fn($t) => (int) ($t['archivada'] ?? 0) === 1))}
 {var $tareas = array_filter($tareas, fn($t) => (int) ($t['archivada'] ?? 0) === 0)}
 {var $grupos = [
-    ['Turno del equipo', array_filter($tareas, fn($t) => ($t['responsable_tipo'] !== 'cliente' && in_array($t['estado'], ['pendiente', 'en_progreso'], true)) || in_array($t['estado'], ['entregada', 'cambios'], true))],
-    ['Turno del cliente', array_filter($tareas, fn($t) => $t['responsable_tipo'] === 'cliente' && in_array($t['estado'], ['pendiente', 'en_progreso'], true))],
-    ['Listas', array_filter($tareas, fn($t) => $t['estado'] === 'hecha')],
+    ['Turno del equipo', array_values(array_filter($tareas, fn($t) => ($t['responsable_tipo'] !== 'cliente' && in_array($t['estado'], ['pendiente', 'en_progreso'], true)) || in_array($t['estado'], ['entregada', 'cambios'], true)))],
+    ['Turno del cliente', array_values(array_filter($tareas, fn($t) => $t['responsable_tipo'] === 'cliente' && in_array($t['estado'], ['pendiente', 'en_progreso'], true)))],
 ]}
-{var $estEnt = [
-    'borrador'   => ['Borrador', 'muted'],
-    'publicada'  => ['Esperando al cliente', 'info'],
-    'respondida' => ['Respondida', 'warn'],
-    'aprobada'   => ['Aprobada', 'ok'],
+{var $chipBucket = [
+    'borrador'  => ['Borrador', 'muted'],
+    'pendiente' => ['Espera al cliente', 'warn'],
+    'cambios'   => ['Cambios pedidos', 'danger'],
+    'aprobado'  => ['Aprobado', 'ok'],
 ]}
+{var $tonoSalud = ['plazo' => 'ok', 'riesgo' => 'warn', 'atrasado' => 'danger', 'completo' => 'ok']}
+{var $nAtencion = count($panel['vencidas']) + count($cont['sin_respuesta']) + count($panel['por_atender'])}
 
 <a href="/equipo/clientes/{$proyecto['cliente_id']}" class="mb-4 inline-flex items-center gap-1 text-sm font-semibold text-muted hover:text-ink"><svg class="size-4"><use href="#i-back"/></svg> {$proyecto['cliente_nombre']}</a>
+
+<div class="pp">
 
 <section class="card card-pad reveal">
     <div class="flex flex-wrap items-start justify-between gap-4">
         <div class="flex min-w-0 items-center gap-3">
             <span class="size-3 flex-none rounded-full" style="background: {($colorProy[$proyecto['id']] ?? '#94a3b8')|noescape}" aria-hidden="true"></span>
             <div class="min-w-0">
-                <h1 class="truncate text-2xl font-extrabold tracking-tight sm:text-3xl">{$proyecto['nombre']}</h1>
+                <h1 class="text-2xl font-extrabold tracking-tight sm:text-3xl">{$proyecto['nombre']}</h1>
                 {if $proyecto['descripcion']}<p class="mt-1 text-sm text-muted">{$proyecto['descripcion']}</p>{/if}
+                {if $fe['inicio'] || $fe['fin']}
+                    <p class="mt-1 text-xs text-muted">
+                        {if $fe['inicio'] && $fe['fin']}<b class="text-ink">{$fmt->fechaCorta($fe['inicio'])} → {$fmt->fechaCorta($fe['fin'])}</b>{elseif $fe['fin']}Entrega <b class="text-ink">{$fmt->fechaCorta($fe['fin'])}</b>{else}Desde <b class="text-ink">{$fmt->fechaCorta($fe['inicio'])}</b>{/if}
+                        {if $fe['quedan'] !== null && $sal['nivel'] !== 'completo'} · {if $fe['quedan'] >= 0}quedan <b class="text-ink">{$fe['quedan']} {$fe['quedan'] === 1 ? t('día') : t('días')}</b>{else}pasó hace <b class="text-ink">{abs($fe['quedan'])} {abs($fe['quedan']) === 1 ? t('día') : t('días')}</b>{/if}{/if}
+                    </p>
+                {/if}
             </div>
         </div>
-        <span class="text-3xl font-extrabold tracking-tight text-brand-ink">{$prog['pct']}<span class="text-lg">%</span></span>
+        <div class="flex flex-wrap items-center gap-3">
+            <span class="chip chip-{$tonoSalud[$sal['nivel']]}" title="{$sal['motivo']}">● {$sal['etiqueta']}{if $sal['nivel'] === 'riesgo'} · {$sal['motivo']}{/if}</span>
+            {if $personas}
+                <span class="flex pl-2" aria-label="Equipo del proyecto">
+                    {foreach array_slice($personas, 0, 4) as $pe}<span class="pp-av" title="{$pe['nombre']}">{$fmt->iniciales($pe['nombre'])}</span>{/foreach}
+                    {if count($personas) > 4}<span class="pp-av">+{count($personas) - 4}</span>{/if}
+                </span>
+            {/if}
+        </div>
     </div>
 
     <div class="mt-4 flex flex-wrap gap-2">
@@ -41,136 +63,227 @@
         <a href="/equipo/fases/nuevo?proyecto_id={$proyecto['id']}" class="btn btn-ghost btn-sm">Nueva fase</a>
         <a href="/equipo/proyectos/{$proyecto['id']}/editar" class="btn btn-ghost btn-sm"><svg class="size-4"><use href="#i-edit"/></svg> Editar proyecto</a>
     </div>
-
-    <div class="progress mt-5" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{$prog['pct']}" aria-label="Avance">
-        <span style="width: {$prog['pct']}%"></span>
-    </div>
-    <p class="mt-2 text-xs text-muted">{$prog['hechas']} de {$prog['total']} {$prog['total'] === 1 ? 'tarea lista' : 'tareas listas'}</p>
-
-    {if $prog['fases']}
-        <div class="scroll-x -mx-2 mt-6 px-2 pb-1">
-            <ol class="flex min-w-max sm:min-w-0">
-                {foreach $prog['fases'] as $i => $f}
-                    <li class="relative min-w-[7.5rem] flex-1 px-1 text-center">
-                        {if $i > 0}
-                            <span class="absolute right-1/2 top-[1.05rem] h-0.5 w-full {$prog['fases'][$i - 1]['estado'] === 'hecha' ? 'bg-brand' : 'bg-line'}" aria-hidden="true"></span>
-                        {/if}
-                        <span class="relative z-10 mx-auto flex size-[2.2rem] items-center justify-center rounded-full text-sm font-bold
-                            {$f['estado'] === 'hecha' ? 'bg-brand text-brand-fg' : ($f['estado'] === 'actual' ? 'border-2 border-brand bg-surface text-brand-ink shadow-[0_0_0_5px_var(--brand-soft)]' : 'border border-line bg-surface2 text-muted')}">
-                            {if $f['estado'] === 'hecha'}<svg class="size-4"><use href="#i-check"/></svg>{else}{$i + 1}{/if}
-                        </span>
-                        <span class="mt-2.5 block text-[0.8125rem] font-bold leading-tight {$f['estado'] === 'pendiente' ? 'text-muted' : ''}">{$f['nombre']}</span>
-                        <span class="mt-0.5 block text-[0.6875rem] text-muted">{if $f['estado'] === 'actual'}En curso{elseif $f['estado'] === 'hecha'}Lista{else}Próxima{/if}</span>
-                    </li>
-                {/foreach}
-            </ol>
-        </div>
-    {/if}
-
-    {if $personas}
-        <div class="mt-5 flex flex-wrap items-center gap-2 border-t border-line pt-4">
-            <span class="text-xs font-semibold text-muted">Equipo:</span>
-            {foreach $personas as $pe}
-                <span class="inline-flex items-center gap-1.5 rounded-full bg-surface2 py-1 pl-1 pr-3 text-xs font-semibold" title="{$pe['email']}">
-                    <span class="avatar size-6! text-[0.625rem]!">{$fmt->iniciales($pe['nombre'])}</span>{$pe['nombre']}
-                </span>
-            {/foreach}
-        </div>
-    {/if}
 </section>
 
-<div class="mt-5 xl:grid xl:grid-cols-[minmax(0,1fr)_20rem] xl:gap-6">
-<div class="min-w-0 space-y-5">
-    {foreach $grupos as $g}
-        {continueIf empty($g[1]) && $g[0] === 'Listas'}
-        <section class="card reveal overflow-hidden">
-            <div class="flex items-center justify-between gap-3 px-5 pb-2 pt-5 sm:px-6">
-                <h2 class="text-lg font-extrabold tracking-tight">{$g[0]}</h2>
-                <span class="chip chip-muted">{count($g[1])}</span>
+{* Cuatro números: el primero, destacado *}
+<div class="pp-row pp-k4">
+    <section class="card pp-kpi bloque-azul reveal">
+        <span class="pp-eti" style="color: var(--muted)">Avance del proyecto</span>
+        <div class="n">{$panel['pct']}<span style="font-size:1.2rem">%</span></div>
+        <div class="pp-barra" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{$panel['pct']}" aria-label="Avance"><i style="width:{$panel['pct']}%"></i></div>
+        <div class="t">{$panel['tareas']['hechas']} de {$panel['tareas']['total']} {$panel['tareas']['total'] === 1 ? t('tarea') : t('tareas')}{if $cont['total'] > 0} · {$cont['aprobado']} de {$cont['total']} contenidos aprobados{/if}</div>
+    </section>
+    <section class="card pp-kpi reveal">
+        <span class="pp-eti">Esperando al cliente</span>
+        <div class="n">{$cont['pendiente']}</div>
+        <div class="t">{if count($cont['sin_respuesta']) > 0}{count($cont['sin_respuesta'])} {count($cont['sin_respuesta']) === 1 ? t('lleva') : t('llevan')} {\TypeDock\Plugin\Portal\ProyectoPanel::DIAS_SIN_RESPUESTA} días o más sin respuesta{else}piezas por revisar · sin atrasos{/if}</div>
+    </section>
+    <section class="card pp-kpi reveal">
+        <span class="pp-eti">Tareas vencidas</span>
+        <div class="n" style="{count($panel['vencidas']) > 0 ? 'color: var(--danger)' : ''}">{count($panel['vencidas'])}</div>
+        <div class="t">de {$panel['tareas']['abiertas']} {$panel['tareas']['abiertas'] === 1 ? t('abierta') : t('abiertas')}{if count($panel['vencidas']) > 0} · {$panel['dias_vencida'] === 1 ? t('la más antigua, hace 1 día') : t('la más antigua, hace %d días', $panel['dias_vencida'])}{/if}</div>
+    </section>
+    <section class="card pp-kpi reveal">
+        <span class="pp-eti">Próxima reunión</span>
+        {if $reu['proxima']}
+            <div class="n" style="font-size:1.5rem;margin-top:.9rem">{$fmt->fechaCorta($reu['proxima']['fecha'])}</div>
+            <div class="t">{if $fmt->hora($reu['proxima']['fecha'])}{$fmt->hora($reu['proxima']['fecha'])} · {/if}{$reu['proxima']['titulo']}</div>
+        {else}
+            <div class="n" style="font-size:1.5rem;margin-top:.9rem;color:var(--muted)">Sin agendar</div>
+            <div class="t"><a href="/equipo/reuniones/nuevo?proyecto_id={$proyecto['id']}" class="font-semibold text-brand-ink hover:underline">Agendar una reunión</a></div>
+        {/if}
+    </section>
+</div>
+
+{* Fases: una barra por fase *}
+{if $panel['barras']}
+<section class="card card-pad reveal">
+    <div class="pp-cab"><div><h2>Fases</h2><p class="pp-sub">Cada barra es una fase: lo oscuro es lo avanzado{if array_filter($panel['barras'], fn($b) => $b['marca'] !== null)} y la línea roja es hoy{/if}</p></div><a href="/equipo/proyectos/{$proyecto['id']}/linea">Línea de tiempo →</a></div>
+    {foreach $panel['barras'] as $b}
+        <div class="pp-fase">
+            <div><b>{$b['nombre']}</b><small>{if $b['ini']}{$fmt->fechaCorta($b['ini'])}{if $b['fin']} – {$fmt->fechaCorta($b['fin'])}{/if}{else}{$b['estado'] === 'hecha' ? 'Lista' : ($b['estado'] === 'actual' ? 'En curso' : 'Próxima')}{/if}</small></div>
+            <div class="pp-pista" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{$b['pct']}" aria-label="{$b['nombre']}"><i style="width:{$b['pct']}%"></i>{if $b['marca'] !== null}<em style="left:{$b['marca']}%"></em>{/if}</div>
+            <b class="{$b['pct'] === 0 ? 'text-muted' : ''}">{$b['pct']}%</b>
+        </div>
+    {/foreach}
+</section>
+{/if}
+
+{* Contenidos y lo que requiere atención *}
+<div class="pp-row pp-c2">
+    <section class="card card-pad reveal" id="entregas">
+        <div class="pp-cab"><div><h2>Contenidos</h2><p class="pp-sub">{if $cont['total'] > 0}{$cont['total']} {$cont['total'] === 1 ? t('pieza') : t('piezas')} en {count($entregas)} {count($entregas) === 1 ? t('entrega') : t('entregas')} · dónde está cada una{else}Todavía no hay piezas en este proyecto{/if}</p></div><a href="/equipo/entregas?proyecto={$proyecto['id']}">Ver entregas →</a></div>
+        {if $cont['total'] === 0}
+            <p class="pp-vacio">Cuando armes una entrega de contenido, aquí ves cuántas piezas esperan al cliente, cuáles tienen cambios y cuáles ya se aprobaron. <a href="/equipo/entregas/nuevo?proyecto_id={$proyecto['id']}" class="font-semibold text-brand-ink hover:underline">Nueva entrega</a></p>
+        {else}
+            <div class="pp-seg" role="img" aria-label="Piezas por estado">
+                {if $cont['borrador']}<i style="flex:{$cont['borrador']};background:var(--muted)"></i>{/if}
+                {if $cont['pendiente']}<i style="flex:{$cont['pendiente']};background:var(--warn)"></i>{/if}
+                {if $cont['cambios']}<i style="flex:{$cont['cambios']};background:var(--danger)"></i>{/if}
+                {if $cont['aprobado']}<i style="flex:{$cont['aprobado']};background:var(--ok)"></i>{/if}
             </div>
-            {if empty($g[1])}
-                <p class="px-5 pb-6 pt-1 text-sm text-muted sm:px-6">Nada por aquí.</p>
-            {else}
-                <ul class="px-2 pb-2 sm:px-3 sm:pb-3">
-                    {foreach $g[1] as $t}
-                        {var $v = $fmt->vence($t['fecha_vencimiento'], $t['estado'])}
-                        {var $e = $fmt->estado($t['estado'])}
-                        <li id="t-{$t['id']}" class="scroll-mt-24">
-                            <a href="/equipo/tareas/{$t['id']}" class="group flex items-center gap-3 rounded-2xl p-3 transition hover:bg-surface2 sm:p-3.5">
-                                <span class="min-w-0 flex-1">
-                                    <span class="block font-semibold {$t['estado'] === 'hecha' ? 'text-muted line-through decoration-1' : ''}">{$t['titulo']}</span>
-                                    <span class="mt-0.5 block truncate text-xs text-muted">
-                                        {$fmt->tipo($t['tipo'])}{if $t['fase_nombre']} · {$t['fase_nombre']}{/if}
-                                        · {if $t['responsable_tipo'] === 'cliente'}{$t['contacto_nombre'] ?? 'Cliente'}{else}{$t['equipo_nombre'] ?? $t['usuario_nombre'] ?? 'Sin responsable'}{/if}
-                                        {if !(int) $t['visible_cliente'] && $t['responsable_tipo'] !== 'cliente'} · interna{/if}
-                                    </span>
-                                </span>
-                                <span class="flex flex-none flex-wrap justify-end gap-1.5">
-                                    <span class="chip chip-{$e[1]}">{$e[0]}</span>
-                                    {if $t['fecha_vencimiento'] && $t['estado'] !== 'hecha'}<span class="chip chip-{$v['tono']}">{$v['texto']}</span>{/if}
-                                </span>
-                                <svg class="size-4 flex-none text-muted transition group-hover:translate-x-0.5"><use href="#i-chevron"/></svg>
-                            </a>
+            <div class="pp-ley">
+                <span><s style="background:var(--muted)"></s><b>{$cont['borrador']}</b> en borrador</span>
+                <span><s style="background:var(--warn)"></s><b>{$cont['pendiente']}</b> esperan al cliente</span>
+                <span><s style="background:var(--danger)"></s><b>{$cont['cambios']}</b> con cambios pedidos</span>
+                <span><s style="background:var(--ok)"></s><b>{$cont['aprobado']}</b> {$cont['aprobado'] === 1 ? t('aprobada') : t('aprobadas')}</span>
+            </div>
+            {if $cont['semana']}
+                <p class="pp-eti" style="margin:1.1rem 0 .2rem">Se publican esta semana</p>
+                <ul class="pp-lista">
+                    {foreach array_slice($cont['semana'], 0, 5) as $x}
+                        {var $cb = $chipBucket[$x['bucket']]}
+                        <li>
+                            <div class="pp-dia"><b>{$fmt->dia($x['fecha_publicacion'])}</b><span>{$fmt->mesCorto($x['fecha_publicacion'])}</span></div>
+                            <span class="pp-tipo">{\TypeDock\Plugin\Portal\TiposContenido::nombre((string) $x['tipo'])}</span>
+                            <a href="/equipo/entregas/{$x['entrega_id']}" class="t"><span>{$x['titulo']}</span><small>{$x['entrega_titulo']}</small></a>
+                            <span class="chip chip-{$cb[1]}">{$cb[0]}{if $x['bucket'] === 'pendiente' && $x['dias_espera'] > 0} · {$x['dias_espera']} {$x['dias_espera'] === 1 ? t('día') : t('días')}{/if}</span>
                         </li>
                     {/foreach}
                 </ul>
             {/if}
+        {/if}
+    </section>
+
+    <section class="card card-pad bloque-azul reveal">
+        <div class="pp-cab"><div><h2>Requiere atención</h2><p class="pp-sub">Lo que está frenando el proyecto, de más a menos urgente</p></div></div>
+        {if $nAtencion === 0}
+            <p class="pp-vacio" style="color: var(--ink)">Todo al día: no hay tareas vencidas, revisiones sin respuesta ni solicitudes por atender.</p>
+        {else}
+            <ul class="pp-lista">
+                {if $panel['vencidas']}
+                    <li><span class="pp-num">{count($panel['vencidas'])}</span><a href="/equipo/tareas/{$panel['vencidas'][0]['id']}" class="t"><span>{count($panel['vencidas']) === 1 ? 'Tarea vencida' : 'Tareas vencidas'}</span><small>La más antigua: «{$panel['vencidas'][0]['titulo']}»</small></a><svg class="size-4 flex-none"><use href="#i-chevron"/></svg></li>
+                {/if}
+                {if $cont['sin_respuesta']}
+                    <li><span class="pp-num">{count($cont['sin_respuesta'])}</span><a href="/equipo/entregas/{$cont['sin_respuesta'][0]['entrega_id']}" class="t"><span>{count($cont['sin_respuesta']) === 1 ? 'Revisión sin respuesta' : 'Revisiones sin respuesta'} ({\TypeDock\Plugin\Portal\ProyectoPanel::DIAS_SIN_RESPUESTA}+ días)</span><small>{$cont['sin_respuesta'][0]['titulo']} ({$cont['sin_respuesta'][0]['dias_espera']} d){if count($cont['sin_respuesta']) > 1} · y {count($cont['sin_respuesta']) - 1} más{/if}</small></a><svg class="size-4 flex-none"><use href="#i-chevron"/></svg></li>
+                {/if}
+                {if $panel['por_atender']}
+                    <li><span class="pp-num">{count($panel['por_atender'])}</span><a href="/equipo/solicitudes/{$panel['por_atender'][0]['id']}" class="t"><span>{$panel['urgentes'] > 0 ? 'Solicitud urgente del cliente' : (count($panel['por_atender']) === 1 ? 'Solicitud por atender' : 'Solicitudes por atender')}</span><small>«{$panel['por_atender'][0]['titulo']}»</small></a><svg class="size-4 flex-none"><use href="#i-chevron"/></svg></li>
+                {/if}
+            </ul>
+        {/if}
+    </section>
+</div>
+
+{* Lo operativo *}
+<div class="pp-row pp-c3">
+    {foreach $grupos as $g}
+        <section class="card card-pad reveal">
+            <div class="pp-cab"><div><h2>{$g[0]}</h2><p class="pp-sub">{count($g[1])} {count($g[1]) === 1 ? t('tarea') : t('tareas')}</p></div><a href="/equipo/tareas?proyecto={$proyecto['id']}&amp;estado=todas">Ver →</a></div>
+            {if empty($g[1])}
+                <p class="pp-vacio">Nada por aquí.</p>
+            {else}
+                <ul class="pp-lista">
+                    {foreach array_slice($g[1], 0, 4) as $t}
+                        {var $v = $fmt->vence($t['fecha_vencimiento'], $t['estado'])}
+                        {var $e = $fmt->estado($t['estado'])}
+                        <li id="t-{$t['id']}" class="scroll-mt-24">
+                            <a href="/equipo/tareas/{$t['id']}" class="t"><span>{$t['titulo']}</span><small>{if $t['responsable_tipo'] === 'cliente'}{$t['contacto_nombre'] ?? 'Cliente'}{else}{$t['equipo_nombre'] ?? $t['usuario_nombre'] ?? 'Sin responsable'}{/if}{if $t['fecha_vencimiento']} · {$v['tono'] === 'danger' ? 'venció el ' . $fmt->fechaCorta($t['fecha_vencimiento']) : $v['texto']}{/if}</small></a>
+                            <span class="chip chip-{$t['fecha_vencimiento'] && $v['tono'] === 'danger' ? 'danger' : $e[1]}">{$t['fecha_vencimiento'] && $v['tono'] === 'danger' ? 'Vencida' : $e[0]}</span>
+                        </li>
+                    {/foreach}
+                </ul>
+                {if count($g[1]) > 4}<p class="pp-sub" style="margin-top:.4rem">y {count($g[1]) - 4} más</p>{/if}
+            {/if}
         </section>
     {/foreach}
+
+    <section class="card card-pad reveal" id="reuniones">
+        <div class="pp-cab"><div><h2>Reuniones</h2><p class="pp-sub">{$reu['n_proximas']} {$reu['n_proximas'] === 1 ? t('próxima') : t('próximas')} · {$reu['n_hechas']} {$reu['n_hechas'] === 1 ? t('realizada') : t('realizadas')}</p></div><a href="/equipo/reuniones?proyecto={$proyecto['id']}">Ver →</a></div>
+        {if !$reu['proxima'] && !$reu['ultima']}
+            <p class="pp-vacio">Sin reuniones registradas.</p>
+        {else}
+            {if $reu['proxima']}
+                <p class="pp-eti" style="margin:0 0 .1rem">Próxima</p>
+                <ul class="pp-lista"><li>
+                    <div class="pp-dia"><b>{$fmt->dia($reu['proxima']['fecha'])}</b><span>{$fmt->mesCorto($reu['proxima']['fecha'])}</span></div>
+                    <a href="/equipo/reuniones/{$reu['proxima']['id']}" class="t"><span>{$reu['proxima']['titulo']}</span><small>{$fmt->hora($reu['proxima']['fecha'])}{if !(int) $reu['proxima']['publicada']} · oculta al cliente{/if}</small></a>
+                    {if $reu['proxima']['enlace_meet']}<a href="{$reu['proxima']['enlace_meet']}" target="_blank" rel="noopener" class="btn btn-soft btn-sm">Meet</a>{/if}
+                </li></ul>
+            {/if}
+            {if $reu['ultima']}
+                <p class="pp-eti" style="margin:{$reu['proxima'] ? '.9rem' : '0'} 0 .1rem">Última</p>
+                <ul class="pp-lista"><li>
+                    <div class="pp-dia"><b>{$fmt->dia($reu['ultima']['fecha'])}</b><span>{$fmt->mesCorto($reu['ultima']['fecha'])}</span></div>
+                    <a href="/equipo/reuniones/{$reu['ultima']['id']}" class="t"><span>{$reu['ultima']['titulo']}</span><small>{if $reu['ultima']['resumen'] && (int) $reu['ultima']['resumen_publicado']}Resumen publicado{elseif $reu['ultima']['resumen']}Resumen sin publicar{else}Sin resumen todavía{/if}</small></a>
+                </li></ul>
+                {if $reu['tareas']}
+                    {var $rt = $reu['tareas']}
+                    <div class="pp-tareas">
+                        <b>{$rt['total']} {$rt['total'] === 1 ? t('tarea') : t('tareas')}</b> {$rt['total'] === 1 ? t('salió') : t('salieron')} de esta reunión
+                        <div class="mt-2 flex flex-wrap gap-1.5"><span class="pp-pill" style="color:var(--brand-ink)"><b>{$rt['equipo']}</b> para el equipo</span><span class="pp-pill" style="color:var(--muted)"><b>{$rt['cliente']}</b> para el cliente</span></div>
+                        {if $rt['equipo'] > 0}<p class="pp-sub" style="margin-top:.45rem">Del equipo: {$rt['equipo_listas']} {$rt['equipo_listas'] === 1 ? t('lista') : t('listas')} · {$rt['equipo_en_curso']} en curso · {$rt['equipo_vencidas']} {$rt['equipo_vencidas'] === 1 ? t('vencida') : t('vencidas')}</p>{/if}
+                    </div>
+                {else}
+                    <p class="pp-sub" style="margin-top:.6rem">De esta reunión no salieron tareas.</p>
+                {/if}
+            {/if}
+        {/if}
+    </section>
+</div>
+
+{* Contactos ganados: sólo si el proyecto los tiene activos *}
+{if $panel['contactos']}
+    {var $cg = $panel['contactos']}
+    {var $mx = max(1, ...array_column($cg['semanas'], 'llegaron'))}
+    <section class="card card-pad reveal">
+        <div class="pp-cab"><div><h2>Contactos ganados de la campaña</h2><p class="pp-sub">{$cg['total']['llegaron']} {$cg['total']['llegaron'] === 1 ? t('contacto') : t('contactos')} · {$cg['total']['contactados']} {$cg['total']['contactados'] === 1 ? t('contactado') : t('contactados')} · {$cg['total']['calificado']} {$cg['total']['calificado'] === 1 ? t('calificado') : t('calificados')} · {$cg['total']['ganado']} {$cg['total']['ganado'] === 1 ? t('ganado') : t('ganados')} · {$cg['total']['perdido']} {$cg['total']['perdido'] === 1 ? t('perdido') : t('perdidos')}</p></div><a href="/equipo/leads?proyecto={$proyecto['id']}">Ver contactos →</a></div>
+        {include '../_lead_semanal.latte', cg: $cg, mx: $mx, fmt: $fmt}
+    </section>
+{/if}
+
+{* Ritmo, solicitudes y archivos, actividad *}
+<div class="pp-row pp-c3">
+    <section class="card card-pad reveal">
+        {var $ri = $panel['ritmo']}
+        {var $mr = max(1, ...$ri['semanas'])}
+        <div class="pp-cab"><div><h2>Ritmo del equipo</h2><p class="pp-sub">Tareas cerradas por semana (las últimas {count($ri['semanas'])})</p></div></div>
+        <div class="pp-mini" role="img" aria-label="Tareas cerradas por semana">
+            {foreach $ri['semanas'] as $n}<i style="height:{round($n * 100 / $mr)}%" title="{$n}"></i>{/foreach}
+        </div>
+        <p class="pp-sub" style="margin-top:.5rem">
+            {if $ri['promedio'] > 0}{t('Promedio %s por semana', str_replace('.', ',', (string) $ri['promedio']))}{if $ri['proyeccion'] !== null}{var $sem = $ri['proyeccion'] === 1 ? t('semana') : t('semanas')} · {$ri['abiertas'] === 1 ? t('con ese ritmo, la abierta se cierra en ~%d %s', $ri['proyeccion'], $sem) : t('con ese ritmo, las %d abiertas se cierran en ~%d %s', $ri['abiertas'], $ri['proyeccion'], $sem)}{/if}
+            {else}Todavía no se cerraron tareas en estas semanas{/if}
+        </p>
+    </section>
+
+    <section class="card card-pad reveal">
+        <div class="pp-cab"><div><h2>Solicitudes y archivos</h2><p class="pp-sub">Lo último del cliente</p></div></div>
+        {if empty($panel['solicitudes']) && empty($panel['archivos'])}
+            <p class="pp-vacio">Sin solicitudes ni archivos todavía.</p>
+        {else}
+            <ul class="pp-lista">
+                {foreach $panel['solicitudes'] as $s}
+                    <li><a href="/equipo/solicitudes/{$s['id']}" class="t"><span>{$s['urgencia'] === 'urgente' ? 'Urgente · ' : ''}{$s['titulo']}</span><small>{$fmt->rel($s['created_at'])}</small></a></li>
+                {/foreach}
+                {foreach $panel['archivos'] as $a}
+                    <li><span class="t"><span>{$a['nombre_original']}</span><small>{$a['subido_por_nombre'] ?: 'Archivo'} · {$fmt->rel($a['created_at'])}</small></span></li>
+                {/foreach}
+            </ul>
+        {/if}
+    </section>
+
+    <section class="card card-pad reveal">
+        <div class="pp-cab"><div><h2>Actividad reciente</h2><p class="pp-sub">Lo que pasó en el proyecto</p></div><a href="/equipo/actividad?proyecto={$proyecto['id']}">Ver todo →</a></div>
+        {if empty($panel['actividad'])}
+            <p class="pp-vacio">Todavía no hay actividad.</p>
+        {else}
+            <ul class="pp-lista">
+                {foreach $panel['actividad'] as $a}
+                    <li><span class="t mult"><span>{$fmt->actividad($a, true)} «{$a['titulo']}»</span><small>{$fmt->rel($a['created_at'])}</small></span></li>
+                {/foreach}
+            </ul>
+        {/if}
+    </section>
+</div>
+
+<div class="flex flex-wrap items-start justify-between gap-4">
+    {if $quien}<div class="min-w-0 flex-1" style="min-width:16rem">{include '_quien.latte', gente: $quien['gente'], disponibles: $quien['disponibles'], base: '/equipo/proyectos/' . $proyecto['id'] . '/equipo', puede: true, csrf: $csrf, fmt: $fmt, general: $usuario['rol'] === 'coordinador'}</div>{/if}
     <p class="flex flex-wrap gap-2">
-        <a href="/equipo/tareas?proyecto={$proyecto['id']}&amp;estado=todas" class="btn btn-ghost btn-sm">Ver en la lista de tareas</a>
-        {if $nArchivadas > 0}<a href="/equipo/tareas?proyecto={$proyecto['id']}&amp;estado=archivadas" class="btn btn-ghost btn-sm text-muted!">{$nArchivadas} {$nArchivadas === 1 ? 'archivada' : 'archivadas'}</a>{/if}
+        <a href="/equipo/tareas?proyecto={$proyecto['id']}&amp;estado=todas" class="btn btn-ghost btn-sm">Ver todas las tareas</a>
+        {if $nArchivadas > 0}<a href="/equipo/tareas?proyecto={$proyecto['id']}&amp;estado=archivadas" class="btn btn-ghost btn-sm text-muted!">{$nArchivadas} {$nArchivadas === 1 ? t('archivada') : t('archivadas')}</a>{/if}
     </p>
 </div>
 
-<aside class="mt-5 min-w-0 space-y-5 xl:mt-0">
-    {if $quien}{include '_quien.latte', gente: $quien['gente'], disponibles: $quien['disponibles'], base: '/equipo/proyectos/' . $proyecto['id'] . '/equipo', puede: true, csrf: $csrf, fmt: $fmt, general: $usuario['rol'] === 'coordinador'}{/if}
-    <section class="card card-pad" id="entregas">
-        <h2 class="text-base font-extrabold tracking-tight">Contenidos</h2>
-        {if empty($entregas)}
-            <p class="mt-3 text-sm text-muted">Sin entregas de contenido en este proyecto.</p>
-        {else}
-            <ul class="mt-4 space-y-4">
-                {foreach $entregas as $en}
-                    {var $st = $estEnt[$en['estado']] ?? [$en['estado'], 'muted']}
-                    <li><a href="/equipo/entregas/{$en['id']}" class="block transition hover:opacity-80">
-                        <span class="flex items-start justify-between gap-2">
-                            <span class="min-w-0 text-sm font-semibold">{$en['titulo']}</span>
-                            <span class="chip chip-{$st[1]} flex-none">{$st[0]}</span>
-                        </span>
-                        <span class="mt-1 block text-xs text-muted">{$en['n_total']} contenidos · {$en['n_aprobados']} aprobados{if $en['n_cambios'] > 0} · {$en['n_cambios']} con cambios{/if}</span>
-                    </a></li>
-                {/foreach}
-            </ul>
-        {/if}
-    </section>
-
-    <section class="card card-pad" id="reuniones">
-        <h2 class="text-base font-extrabold tracking-tight">Reuniones</h2>
-        {if empty($reuniones)}
-            <p class="mt-3 text-sm text-muted">Sin reuniones registradas.</p>
-        {else}
-            <ul class="mt-4 space-y-3">
-                {foreach $reuniones as $r}
-                    <li class="flex items-center gap-3">
-                        <a href="/equipo/reuniones/{$r['id']}" class="flex min-w-0 flex-1 items-center gap-3 transition hover:opacity-80">
-                        <span class="flex size-12 flex-none flex-col items-center justify-center rounded-xl leading-none {substr((string) $r['fecha'], 0, 10) >= $hoy ? 'bg-brand-soft text-brand-ink' : 'bg-surface2 text-muted'}">
-                            <span class="text-lg font-extrabold">{$fmt->dia($r['fecha'])}</span>
-                            <span class="mt-0.5 text-[0.625rem] font-bold uppercase tracking-wide">{$fmt->mesCorto($r['fecha'])}</span>
-                        </span>
-                        <span class="min-w-0">
-                            <span class="block truncate text-sm font-semibold">{$r['titulo']}</span>
-                            <span class="block truncate text-xs text-muted">{$fmt->hora($r['fecha'])}{if !(int) $r['publicada']} · oculta al cliente{elseif $r['resumen'] && (int) $r['resumen_publicado']} · resumen publicado{/if}</span>
-                        </span>
-                        </a>
-                        {if $r['enlace_meet'] && substr((string) $r['fecha'], 0, 10) >= $hoy}
-                            <a href="{$r['enlace_meet']}" target="_blank" rel="noopener" class="btn btn-soft btn-sm ml-auto">Meet</a>
-                        {/if}
-                    </li>
-                {/foreach}
-            </ul>
-        {/if}
-    </section>
-</aside>
 </div>
 {/block}

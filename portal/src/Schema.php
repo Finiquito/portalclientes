@@ -55,6 +55,7 @@ final class Schema
             'con_leads' => 'SMALLINT NOT NULL DEFAULT 0',   // «Contactos ganados» activo en este proyecto
             'mc_audiencia' => 'VARCHAR(32)',                // audiencia de Mailchimp con que se contrastan sus contactos
             'mc_audiencia_nombre' => 'VARCHAR(255)',
+            'publico' => "VARCHAR(8) NOT NULL DEFAULT ''",   // a quién le habla la campaña: b2c, b2b o b2c,b2b
         ],
         // Resumen de Mailchimp de cada contacto (sólo lectura: estado, fechas, calificación, actividad reciente).
         'portal_leads' => [
@@ -106,6 +107,8 @@ final class Schema
             }
         }
 
+        self::tablaLeadLinea($pdo);
+        self::tablasMensajes($pdo);
         self::tablaPropuestas($pdo);
         self::tablaCola($pdo);
         self::tablasEquipo($pdo);
@@ -234,7 +237,7 @@ final class Schema
         }
         // Columnas que llegaron después: invitación de calendario en la cola y marca de vigencia
         // (ver Vigencia: si el aviso ya no hace falta, no sale).
-        foreach ([['portal_correos_cola', 'ics', 'TEXT'], ['portal_correos_cola', 'vigencia', 'VARCHAR(80)'], ['portal_avisos_buzon', 'vigencia', 'VARCHAR(80)']] as [$t, $col, $def]) {
+        foreach ([['portal_correos_cola', 'ics', 'TEXT'], ['portal_correos_cola', 'vigencia', 'VARCHAR(80)'], ['portal_avisos_buzon', 'vigencia', 'VARCHAR(80)'], ['portal_avisos_buzon', 'urgente', 'INTEGER NOT NULL DEFAULT 0'], ['portal_avisos_buzon', 'para', "VARCHAR(8) NOT NULL DEFAULT 'equipo'"]] as [$t, $col, $def]) {
             if (self::existe($pdo, $t, 'id') && !self::existe($pdo, $t, $col)) {
                 $pdo->exec("ALTER TABLE {$t} ADD COLUMN {$col} {$def}");
             }
@@ -291,6 +294,63 @@ final class Schema
         $sql = preg_replace('/^\s*--.*$/m', '', $sql) ?? '';
         foreach (array_filter(array_map('trim', explode(';', $sql))) as $stmt) {
             $pdo->exec($stmt);
+        }
+    }
+
+    /**
+     * Línea de tiempo de los contactos ganados (migración 0014). Al crearse por primera vez copia lo que ya
+     * existía: la llegada de cada contacto, su estado actual (con quién y cuándo, si se sabe) y su nota única.
+     * Las etapas por las que pasó antes no se guardaron nunca, así que no se pueden reconstruir.
+     */
+    /** Destacadas y reacciones de Mensajes (migración 0015). */
+    private static function tablasMensajes(\PDO $pdo): void
+    {
+        if (self::existe($pdo, 'portal_mensaje_destacadas', 'persona_tipo, persona_id, entidad_tipo, entidad_id') && self::existe($pdo, 'portal_mensaje_reacciones', 'comentario_id, persona_tipo, persona_id, clave')) {
+            return;
+        }
+        $sql = (string) @file_get_contents(dirname(__DIR__) . '/migrations/0015_mensajes_extras.sql');
+        $sql = preg_replace('/^\s*--.*$/m', '', $sql) ?? '';
+        foreach (array_filter(array_map('trim', explode(';', $sql))) as $stmt) {
+            try {
+                $pdo->exec($stmt);
+            } catch (\Throwable) {
+                // ya existe
+            }
+        }
+    }
+
+    private static function tablaLeadLinea(\PDO $pdo): void
+    {
+        if (!self::existe($pdo, 'portal_lead_eventos', 'id, lead_id, tipo, a_estado, ocurrio_en, registrado_en, autor_tipo, ajustada, legado')) {
+            $sql = (string) @file_get_contents(dirname(__DIR__) . '/migrations/0014_lead_linea.sql');
+            $sql = preg_replace('/^\s*--.*$/m', '', $sql) ?? '';
+            foreach (array_filter(array_map('trim', explode(';', $sql))) as $stmt) {
+                $pdo->exec($stmt);
+            }
+        }
+        // La tabla puede haberla creado el migrador: lo anterior se copia sólo si está vacía (después siempre hay llegadas).
+        $hay = $pdo->query('SELECT COUNT(*) FROM portal_lead_eventos');
+        if ($hay === false || (int) $hay->fetchColumn() > 0) {
+            return;
+        }
+        $ins = $pdo->prepare(
+            'INSERT INTO portal_lead_eventos (id, lead_id, cliente_id, proyecto_id, tipo, de_estado, a_estado, texto, ocurrio_en, registrado_en, autor_tipo, autor, ajustada, legado)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 1)'
+        );
+        $filas = $pdo->query('SELECT id, cliente_id, proyecto_id, origen, estado, notas, estado_en, estado_por, creado_por, created_at, updated_at FROM portal_leads');
+        foreach ($filas ? $filas->fetchAll() : [] as $l) {
+            $llego = (string) ($l['created_at'] ?: date('Y-m-d H:i:s'));
+            $base = [(string) $l['id'], (string) $l['cliente_id'], (string) $l['proyecto_id']];
+            $manual = (string) $l['origen'] === 'manual';
+            $ins->execute([typedock_uuid7(), ...$base, 'llegada', null, null, null, $llego, $llego, $manual ? '' : 'sistema', $manual ? (string) $l['creado_por'] : '']);
+            if ((string) $l['estado'] !== 'nuevo') {
+                $cuando = (string) ($l['estado_en'] ?: ($l['updated_at'] ?: $llego));
+                $ins->execute([typedock_uuid7(), ...$base, 'estado', 'nuevo', (string) $l['estado'], null, $cuando, $cuando, '', (string) $l['estado_por']]);
+            }
+            if (trim((string) $l['notas']) !== '') {
+                $cuando = (string) ($l['updated_at'] ?: $llego);
+                $ins->execute([typedock_uuid7(), ...$base, 'nota', null, null, (string) $l['notas'], $cuando, $cuando, '', '']);
+            }
         }
     }
 

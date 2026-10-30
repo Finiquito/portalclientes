@@ -35,6 +35,26 @@ class LeadAdminController
         return $this->ui->filtrar($this->service()->proyectosConLeads(), 'id');
     }
 
+    /** @return array<string, array{id: string, nombre: string}> clientes con proyectos con contactos que esta persona ve */
+    private function clientes(array $proyectos): array
+    {
+        $o = [];
+        foreach ($proyectos as $p) {
+            $o[(string) $p['cliente_id']] ??= ['id' => (string) $p['cliente_id'], 'nombre' => (string) $p['cliente_nombre']];
+        }
+        return $o;
+    }
+
+    /** Los leads se filtran por a quién le habla su proyecto: b2c, b2b (un proyecto mixto cuenta en los dos). */
+    private static function dePublico(array $leads, string $publico): array
+    {
+        if ($publico === '') {
+            return $leads;
+        }
+        return array_values(array_filter($leads, fn(array $l): bool => in_array($publico, explode(',', (string) ($l['proyecto_publico'] ?? '')), true)));
+    }
+
+    /** Primero se elige a quién ver; ya dentro, sólo se ven los contactos de ese cliente. */
     public function index(): void
     {
         if (($volver = ListaRecordada::volverA($this->ui->url('leads'))) !== null) {
@@ -42,30 +62,142 @@ class LeadAdminController
             return;
         }
         $proyectos = $this->proyectos();
-        $f = FiltrosLista::desdeGet($this->ui->url('leads'), ['estado' => '', 'proyecto' => '', 'q' => ''], [
-            'estado'   => array_keys(LeadService::ESTADOS),
+        $clientes = $this->clientes($proyectos);
+        $f = FiltrosLista::desdeGet($this->ui->url('leads'), ['cliente' => '', 'estado' => '', 'proyecto' => '', 'q' => '', 'publico' => '', 'periodo' => ''], [
+            'cliente'  => 'uuid',
+            'estado'   => array_keys(Idioma::lista(LeadService::ESTADOS)),
             'proyecto' => 'uuid',
             'q'        => 'texto',
+            'publico'  => array_keys(LeadService::PUBLICOS),
+            'periodo'  => ['30', '90', '365'],
         ]);
+        $clienteId = $f->get('cliente');
+        if (!isset($clientes[$clienteId])) {
+            $clienteId = count($clientes) === 1 ? (string) array_key_first($clientes) : '';
+        }
+        // Un enlace antiguo con ?proyecto= entra directo al cliente de ese proyecto.
+        if ($clienteId === '' && $f->get('proyecto') !== '') {
+            foreach ($proyectos as $p) {
+                if ((string) $p['id'] === $f->get('proyecto')) {
+                    $clienteId = (string) $p['cliente_id'];
+                }
+            }
+        }
+        if ($proyectos === [] || $clienteId === '') {
+            $this->elegirCliente($proyectos, $clientes, $f);
+            return;
+        }
+        $this->verCliente($clienteId, $proyectos, $clientes, $f);
+    }
+
+    /** Pantalla de entrada: una tarjeta por cliente con sus números. */
+    private function elegirCliente(array $proyectos, array $clientes, FiltrosLista $f): void
+    {
         $svc = $this->service();
-        $base = $this->ui->filtrar($svc->lista(['proyecto_id' => $f->get('proyecto'), 'q' => $f->get('q')]), 'proyecto_id');
+        $todos = $proyectos === [] ? [] : $this->ui->filtrar($svc->lista([]), 'proyecto_id');
+        $tarjetas = [];
+        foreach ($clientes as $cid => $c) {
+            $ls = array_values(array_filter($todos, fn(array $l): bool => (string) $l['cliente_id'] === $cid));
+            $ps = array_values(array_filter($proyectos, fn(array $p): bool => (string) $p['cliente_id'] === $cid));
+            $pub = [];
+            foreach ($ps as $p) {
+                foreach (explode(',', (string) $p['publico']) as $k) {
+                    if (isset(LeadService::PUBLICOS[$k])) {
+                        $pub[$k] = LeadService::PUBLICOS[$k];
+                    }
+                }
+            }
+            $tarjetas[] = $c + [
+                'proyectos' => count($ps), 'total' => count($ls), 'conteo' => LeadService::conteo($ls),
+                'nuevos_semana' => LeadStats::nuevosSemana($ls), 'publico' => array_values($pub),
+            ];
+        }
+        $this->ui->view('leads/clientes.latte', [
+            'tarjetas'   => $tarjetas,
+            'estados'    => Idioma::lista(LeadService::ESTADOS),
+            'sinProyectos' => $proyectos === [],
+            'marcasCli'  => Fmt::marcasClientes($this->pdo()),
+            'fmt'        => new Fmt(),
+            'flash_success' => $this->ui->flash('success'),
+            'flash_error'   => $this->ui->flash('error'),
+        ]);
+    }
+
+    private function verCliente(string $clienteId, array $proyectos, array $clientes, FiltrosLista $f): void
+    {
+        $svc = $this->service();
+        $proyectosCli = array_values(array_filter($proyectos, fn(array $p): bool => (string) $p['cliente_id'] === $clienteId));
+        $pid = in_array($f->get('proyecto'), array_column($proyectosCli, 'id'), true) ? $f->get('proyecto') : '';
+        $pub = $f->get('publico');
+
+        // Todo el cliente (para las tarjetas de cada proyecto) y la base filtrada (gráfico, conteos y lista).
+        $delCliente = $this->ui->filtrar($svc->lista(['cliente_id' => $clienteId]), 'proyecto_id');
+        $porProyecto = [];
+        foreach ($delCliente as $l) {
+            $porProyecto[(string) $l['proyecto_id']][] = $l;
+        }
+        $tarjetas = [];
+        foreach ($proyectosCli as $p) {
+            $ls = $porProyecto[(string) $p['id']] ?? [];
+            $tarjetas[] = $p + [
+                'total' => count($ls), 'conteo' => LeadService::conteo($ls), 'nuevos_semana' => LeadStats::nuevosSemana($ls),
+                'desde' => $ls === [] ? null : min(array_map(fn(array $l): string => (string) $l['created_at'], $ls)),
+                'etiquetas' => LeadService::publicoEtiquetas((string) $p['publico']),
+            ];
+        }
+
+        // Tipos de público que cubre lo que se está mirando (todo el cliente o el proyecto elegido): el filtro solo tiene sentido si son dos.
+        $tiposAlcance = [];
+        foreach ($proyectosCli as $p) {
+            if ($pid !== '' && (string) $p['id'] !== $pid) {
+                continue;
+            }
+            foreach (explode(',', (string) $p['publico']) as $k) {
+                if (isset(LeadService::PUBLICOS[$k])) {
+                    $tiposAlcance[$k] = LeadService::PUBLICOS[$k];
+                }
+            }
+        }
+
+        $alcance = self::dePublico($pid === '' ? $delCliente : ($porProyecto[$pid] ?? []), $pub);
+        $q = $f->get('q');
+        $base = $q === '' ? $alcance : self::dePublico($this->ui->filtrar($svc->lista(['cliente_id' => $clienteId, 'proyecto_id' => $pid, 'q' => $q]), 'proyecto_id'), $pub);
         $leads = $f->get('estado') === '' ? $base : array_values(array_filter($base, fn(array $l): bool => $l['estado'] === $f->get('estado')));
+
+        // Estadísticas del alcance (cliente, o un proyecto, o un tipo de público): ignoran el estado y la búsqueda.
+        $idsAlcance = array_values(array_unique(array_map(fn(array $l): string => (string) $l['proyecto_id'], $alcance)));
+        $eventos = $alcance === [] ? [] : (new LeadLinea($this->pdo()))->deEstado($clienteId, $pid !== '' ? [$pid] : []);
+        $setIds = array_flip(array_map(fn(array $l): string => (string) $l['id'], $alcance));
+        $eventos = array_values(array_filter($eventos, fn(array $e): bool => isset($setIds[(string) $e['lead_id']])));
+        $desde = $f->get('periodo') !== '' ? (new \DateTimeImmutable('today'))->modify('-' . (int) $f->get('periodo') . ' days')->format('Y-m-d') : null;
+        $acum = LeadStats::evolucion($alcance, $eventos, $desde);
 
         $pag = Paginacion::delEquipo($this->pdo(), $this->ui->autorId(), $this->ui->url('leads'), count($leads));
         $leads = $pag->cortar($pag->sentido($leads));
         $this->ui->view('leads/index.latte', [
             'pag'         => $pag,
-            'mcProyecto'  => $f->get('proyecto') !== '' && $svc->mailchimp($f->get('proyecto')) !== null,
+            'cliente'     => $clientes[$clienteId],
+            'variosClientes' => count($clientes) > 1,
+            'mcProyecto'  => $pid !== '' && $svc->mailchimp($pid) !== null,
             'mcEstados'   => MailchimpConsulta::ESTADOS,
             'leads'       => $leads,
+            'tarjetas'    => $tarjetas,
+            'grafico'     => LeadStats::datosGrafico($acum),
+            'dias'        => $acum['dias'],
+            'embudo'      => LeadStats::embudo($alcance, $eventos),
+            'tiempos'     => LeadStats::tiempos($alcance, $eventos),
+            'nuevosSemana' => LeadStats::nuevosSemana($alcance),
             'porCampana'  => LeadService::porCampana($base),
             'conteo'      => LeadService::conteo($base),
             'total'       => count($base),
             'filtros'     => $f,
-            'proyectos'   => $proyectos,
-            'estados'     => LeadService::ESTADOS,
+            'clienteId'   => $clienteId,
+            'proyectos'   => $proyectosCli,
+            'publicos'    => LeadService::PUBLICOS,
+            'tiposAlcance' => array_values($tiposAlcance),
+            'estados'     => Idioma::lista(LeadService::ESTADOS),
             'chips'       => LeadService::CHIPS_ADMIN,
-            'origenes'    => LeadService::ORIGENES,
+            'origenes'    => Idioma::lista(LeadService::ORIGENES),
             'colorProy'   => Fmt::coloresTodos($this->pdo()),
             'marcasCli'   => Fmt::marcasClientes($this->pdo()),
             'fmt'         => new Fmt(),
@@ -86,9 +218,9 @@ class LeadAdminController
             'l'         => null,
             'proyectos' => $proyectos,
             'pre'       => ['proyecto_id' => (string) ($_GET['proyecto'] ?? '')],
-            'estados'   => LeadService::ESTADOS,
+            'estados'   => Idioma::lista(LeadService::ESTADOS),
             'chips'     => LeadService::CHIPS_ADMIN,
-            'origenes'  => LeadService::ORIGENES,
+            'origenes'  => Idioma::lista(LeadService::ORIGENES),
             'fmt'       => new Fmt(),
         ]);
     }
@@ -102,13 +234,13 @@ class LeadAdminController
             $this->ui->redirect($this->ui->url('leads/nuevo'), 'Elige un proyecto con contactos ganados.', 'error');
             return;
         }
-        $r = $svc->crear($p, $_POST, 'manual', $this->ui->firma());
+        $r = $svc->crear($p, $_POST, 'manual', $this->ui->firma(), null, 'agencia');
         if (isset($r['error'])) {
             $this->ui->redirect($this->ui->url('leads/nuevo') . '?proyecto=' . rawurlencode($pid), $r['error'], 'error');
             return;
         }
         $this->ui->redirect($this->ui->url('leads/' . $r['id']), !empty($r['duplicado'])
-            ? 'Ese contacto ya estaba (mismo correo o teléfono en los últimos ' . LeadService::DIAS_DUPLICADO . ' días).'
+            ? Idioma::t('Ese contacto ya estaba (mismo correo o teléfono en los últimos %d días).', LeadService::DIAS_DUPLICADO)
             : 'Contacto agregado. El cliente lo ve en su portal.');
     }
 
@@ -144,13 +276,39 @@ class LeadAdminController
             'mcEventos' => MailchimpConsulta::EVENTOS,
             'proyectos' => [],
             'pre'       => [],
-            'estados'   => LeadService::ESTADOS,
+            'estados'   => Idioma::lista(LeadService::ESTADOS),
             'chips'     => LeadService::CHIPS_ADMIN,
-            'origenes'  => LeadService::ORIGENES,
+            'origenes'  => Idioma::lista(LeadService::ORIGENES),
+            'eventos'   => (new LeadLinea($this->pdo()))->eventos($id),
+            'ahora'     => (new \DateTimeImmutable())->format('Y-m-d\TH:i'),
             'fmt'       => new Fmt(),
             'flash_success' => $this->ui->flash('success'),
             'flash_error'   => $this->ui->flash('error'),
         ]);
+    }
+
+    /** Agrega a la línea de tiempo una nota, un cambio de estado, o las dos cosas, con la fecha en que ocurrió. */
+    public function linea(string $id): void
+    {
+        $l = $this->lead($id);
+        if ($l === null) {
+            $this->ui->redirect($this->ui->url('leads'), 'Contacto no encontrado.', 'error');
+            return;
+        }
+        $error = (new LeadLinea($this->pdo()))->agregar($l, $_POST, $this->ui->firma(), 'agencia');
+        $this->ui->redirect($this->ui->url('leads/' . $id), $error ?? 'Guardado en la línea de tiempo.', $error === null ? 'success' : 'error');
+    }
+
+    /** Corrige a mano la fecha de un movimiento; la línea se reordena sola. */
+    public function lineaFecha(string $id, string $eid): void
+    {
+        $l = $this->lead($id);
+        if ($l === null) {
+            $this->ui->redirect($this->ui->url('leads'), 'Contacto no encontrado.', 'error');
+            return;
+        }
+        $error = (new LeadLinea($this->pdo()))->cambiarFecha($l, $eid, (string) ($_POST['ocurrio_en'] ?? ''));
+        $this->ui->redirect($this->ui->url('leads/' . $id), $error ?? 'Fecha corregida.', $error === null ? 'success' : 'error');
     }
 
     public function update(string $id): void
@@ -160,8 +318,8 @@ class LeadAdminController
             $this->ui->redirect($this->ui->url('leads'), 'Contacto no encontrado.', 'error');
             return;
         }
-        $datos = array_intersect_key($_POST, array_flip(['nombre', 'correo', 'telefono', 'empresa', 'estado', 'notas', 'proximo_paso', 'proximo_paso_fecha']));
-        $error = $this->service()->actualizar($l, $datos, $this->ui->firma());
+        $datos = array_intersect_key($_POST, array_flip(['nombre', 'correo', 'telefono', 'empresa', 'proximo_paso', 'proximo_paso_fecha']));
+        $error = $this->service()->actualizar($l, $datos, $this->ui->firma(), 'agencia');
         $this->ui->redirect($this->ui->url('leads/' . $id), $error ?? 'Guardado.', $error === null ? 'success' : 'error');
     }
 
@@ -281,10 +439,11 @@ class LeadAdminController
 
     public function exportar(): void
     {
-        $f = FiltrosLista::desdeGet($this->ui->url('leads'), ['estado' => '', 'proyecto' => '', 'q' => ''], [
-            'estado' => array_keys(LeadService::ESTADOS), 'proyecto' => 'uuid', 'q' => 'texto',
+        $f = FiltrosLista::desdeGet($this->ui->url('leads'), ['cliente' => '', 'estado' => '', 'proyecto' => '', 'q' => '', 'publico' => '', 'periodo' => ''], [
+            'cliente' => 'uuid', 'estado' => array_keys(Idioma::lista(LeadService::ESTADOS)), 'proyecto' => 'uuid', 'q' => 'texto',
+            'publico' => array_keys(LeadService::PUBLICOS), 'periodo' => ['30', '90', '365'],
         ]);
-        $leads = $this->ui->filtrar($this->service()->lista(['proyecto_id' => $f->get('proyecto'), 'q' => $f->get('q'), 'estado' => $f->get('estado')]), 'proyecto_id');
+        $leads = self::dePublico($this->ui->filtrar($this->service()->lista(['cliente_id' => $f->get('cliente'), 'proyecto_id' => $f->get('proyecto'), 'q' => $f->get('q'), 'estado' => $f->get('estado')]), 'proyecto_id'), $f->get('publico'));
         if (!headers_sent()) {
             header('Content-Type: text/csv; charset=utf-8');
             header('Content-Disposition: attachment; filename="contactos-ganados-' . date('Y-m-d') . '.csv"');
@@ -340,7 +499,7 @@ class LeadAdminController
             'revision'  => $this->service()->revisar($proyectoId, $leido['filas']) + ['avisos' => $leido['errores'], 'total' => count($leido['filas'])],
             'origen'    => $leido['origen'],
             'archivo'   => mb_substr((string) ($a['name'] ?? ''), 0, 120),
-            'origenes'  => array_intersect_key(LeadService::ORIGENES, array_flip(['csv_meta', 'csv_google', 'csv_mailchimp', 'csv'])),
+            'origenes'  => array_intersect_key(Idioma::lista(LeadService::ORIGENES), array_flip(['csv_meta', 'csv_google', 'csv_mailchimp', 'csv'])),
         ]);
     }
 
@@ -368,12 +527,12 @@ class LeadAdminController
                 error_log('[portal] aviso de importación: ' . $e->getMessage());
             }
         }
-        $msg = $n['nuevos'] === 1 ? 'Importado 1 contacto nuevo.' : "Importados {$n['nuevos']} contactos nuevos.";
+        $msg = $n['nuevos'] === 1 ? Idioma::t('Importado 1 contacto nuevo.') : Idioma::t('Importados %d contactos nuevos.', $n['nuevos']);
         if ($n['duplicados'] > 0) {
-            $msg .= $n['duplicados'] === 1 ? ' 1 ya estaba y se saltó.' : " {$n['duplicados']} ya estaban y se saltaron.";
+            $msg .= $n['duplicados'] === 1 ? Idioma::t(' 1 ya estaba y se saltó.') : Idioma::t(' %d ya estaban y se saltaron.', $n['duplicados']);
         }
         if ($n['errores'] > 0) {
-            $msg .= $n['errores'] === 1 ? ' 1 fila sin correo ni teléfono válido no se importó.' : " {$n['errores']} filas sin correo ni teléfono válidos no se importaron.";
+            $msg .= $n['errores'] === 1 ? Idioma::t(' 1 fila sin correo ni teléfono válido no se importó.') : Idioma::t(' %d filas sin correo ni teléfono válidos no se importaron.', $n['errores']);
         }
         $this->ui->redirect($this->ui->url('leads') . '?proyecto=' . rawurlencode($proyectoId), $msg);
     }
@@ -427,7 +586,7 @@ class LeadAdminController
             return;
         }
         MailchimpConsulta::guardarClave($this->pdo(), (string) $p['cliente_id'], $clave);
-        $this->volverFuentes($proyectoId, 'Mailchimp conectado para ' . $p['cliente_nombre'] . '. Ahora elige la audiencia de esta campaña.');
+        $this->volverFuentes($proyectoId, Idioma::t('Mailchimp conectado para %s. Ahora elige la audiencia de esta campaña.', (string) $p['cliente_nombre']));
     }
 
     public function mcQuitar(string $proyectoId): void
@@ -438,7 +597,7 @@ class LeadAdminController
             return;
         }
         MailchimpConsulta::quitarClave($this->pdo(), (string) $p['cliente_id']);
-        $this->volverFuentes($proyectoId, 'Se quitó la clave de Mailchimp de ' . $p['cliente_nombre'] . ' y sus campañas quedaron desconectadas.');
+        $this->volverFuentes($proyectoId, Idioma::t('Se quitó la clave de Mailchimp de %s y sus campañas quedaron desconectadas.', (string) $p['cliente_nombre']));
     }
 
     public function mcAudiencia(string $proyectoId): void
@@ -466,7 +625,7 @@ class LeadAdminController
         $this->pdo()->prepare('UPDATE portal_proyectos SET mc_audiencia = ?, mc_audiencia_nombre = ? WHERE id = ?')->execute([$id ?: null, $nombre, $proyectoId]);
         // Otra audiencia: lo revisado contra la anterior ya no vale.
         $this->pdo()->prepare('UPDATE portal_leads SET mc_estado = NULL, mc_datos = NULL, mc_revisado_en = NULL WHERE proyecto_id = ?')->execute([$proyectoId]);
-        $this->volverFuentes($proyectoId, $id === '' ? 'Campaña desconectada de Mailchimp.' : 'Listo: los contactos de esta campaña se contrastan con «' . $nombre . '».');
+        $this->volverFuentes($proyectoId, $id === '' ? 'Campaña desconectada de Mailchimp.' : Idioma::t('Listo: los contactos de esta campaña se contrastan con «%s».', (string) $nombre));
     }
 
     /** Revisa en Mailchimp los contactos de la campaña (los que no se han revisado hoy). */
@@ -478,9 +637,9 @@ class LeadAdminController
             return;
         }
         $r = $this->service()->revisarProyecto($proyectoId);
-        $msg = $r['revisados'] === 1 ? 'Se revisó 1 contacto en Mailchimp.' : "Se revisaron {$r['revisados']} contactos en Mailchimp.";
+        $msg = $r['revisados'] === 1 ? Idioma::t('Se revisó 1 contacto en Mailchimp.') : Idioma::t('Se revisaron %d contactos en Mailchimp.', $r['revisados']);
         if ($r['pendientes'] > 0) {
-            $msg .= " Quedan {$r['pendientes']}: vuelve a apretar el botón para seguir.";
+            $msg .= Idioma::t(' Quedan %d: vuelve a apretar el botón para seguir.', $r['pendientes']);
         }
         $this->ui->redirect($volver, $r['error'] !== null ? $msg . ' ' . $r['error'] : $msg, $r['error'] !== null && $r['revisados'] === 0 ? 'error' : 'success');
     }

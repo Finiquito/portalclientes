@@ -1,7 +1,7 @@
 {* Pantallas de ingreso (portal del cliente y panel del equipo): grises, piezas blancas para los logos
    y el naranjo de Prisma sólo en los detalles. Cada página llena el bloque «contenido». *}
 <!DOCTYPE html>
-<html lang="es" data-tema="auto">
+<html lang="{\TypeDock\Plugin\Portal\Idioma::actual()}" data-tema="auto">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -121,6 +121,11 @@
         {block contenido}{/block}
     </div>
     <footer class="ing-pie">
+        <nav aria-label="Idioma" class="ing-idioma" style="flex-basis:100%;display:flex;gap:10px;justify-content:center;margin-bottom:6px">
+            {foreach \TypeDock\Plugin\Portal\Idioma::DISPONIBLES as $cod => $nombre}
+                <a href="?idioma={$cod}" lang="{$cod}" hreflang="{$cod}" {if $cod === \TypeDock\Plugin\Portal\Idioma::actual()}aria-current="true" style="color:var(--ink);font-weight:700;border-color:var(--signal)"{/if}>{$nombre}</a>
+            {/foreach}
+        </nav>
         <span>Portal de clientes hecho con</span>
         <svg role="img" aria-label="Prisma"><use href="#logo-prisma"/></svg>
         <span aria-hidden="true">·</span>

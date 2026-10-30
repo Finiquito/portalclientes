@@ -1,0 +1,23 @@
+{* Evolución de los contactos: volumen (llegaron y contactados, con un punto por día) y, aparte, los hitos
+   (calificados, ganados y perdidos) en carriles. Parámetros: $grafico (LeadStats::datosGrafico), $corto (bool: más bajo).
+   Los scripts van una vez por página: _lead_scripts.latte *}
+{var $t = $grafico['totales'] ?? []}
+<div data-grafico="{json_encode($grafico, \JSON_UNESCAPED_UNICODE)}" class="ll-g{if $corto} corto{/if}">
+    <div class="ll-resumen">
+        <span><i style="background:var(--e-llegaron)"></i><b>{$t['llegaron'] ?? 0}</b> {($t['llegaron'] ?? 0) === 1 ? t('llegó') : t('llegaron')}</span>
+        <span><i style="background:var(--e-contactado)"></i><b>{$t['contactados'] ?? 0}</b> {($t['contactados'] ?? 0) === 1 ? t('contactado') : t('contactados')}</span>
+        <span class="sep ll-res-h" aria-hidden="true"></span>
+        <span class="ll-res-h"><i class="rombo" style="background:var(--e-calificado)"></i><b>{$t['calificado'] ?? 0}</b> {($t['calificado'] ?? 0) === 1 ? t('calificado') : t('calificados')}</span>
+        <span class="ll-res-h"><i style="background:var(--e-ganado)"></i><b>{$t['ganado'] ?? 0}</b> {($t['ganado'] ?? 0) === 1 ? t('ganado') : t('ganados')}</span>
+        <span class="ll-res-h"><i style="background:var(--e-perdido)"></i><b>{$t['perdido'] ?? 0}</b> {($t['perdido'] ?? 0) === 1 ? t('perdido') : t('perdidos')}</span>
+    </div>
+    <div class="ll-vol-cab">
+        <p class="ll-tit ll-tit-g">Volumen<span class="ll-solo-pc" data-t="acum"> · cuántos van llegando y siendo contactados</span><span class="ll-solo-pc" data-t="dia" hidden> · cuántos llegaron y fueron contactados cada {if ($grafico['paso'] ?? 'dia') === 'semana'}semana{else}día{/if}</span></p>
+        {if !$corto}<div class="ll-seg ll-vista" role="group" aria-label="Cómo ver el volumen"><button type="button" data-vista="acum" aria-pressed="true">Acumulado</button><button type="button" data-vista="dia" aria-pressed="false">{if ($grafico['paso'] ?? 'dia') === 'semana'}Por semana{else}Por día{/if}</button></div>{/if}
+    </div>
+    <div class="ll-chart"><canvas data-g="vol" role="img" aria-label="Contactos que llegaron y contactos contactados, acumulados día a día"></canvas></div>
+    <p class="ll-tit ll-tit-g">Hitos<span class="ll-solo-pc"> · cuándo avanzó o se cayó alguien</span></p>
+    <div class="ll-hitos-ley" aria-hidden="true"><span class="c"><i class="rombo"></i><b>{$t['calificado'] ?? 0}</b> Calificados</span><span class="g"><i></i><b>{$t['ganado'] ?? 0}</b> Ganados</span><span class="p"><i></i><b>{$t['perdido'] ?? 0}</b> Perdidos</span></div>
+    <div class="ll-hitos"><canvas data-g="hitos" role="img" aria-label="Calificados, ganados y perdidos, marcados en el día en que ocurrieron"></canvas></div>
+    <p class="ll-aviso"><span class="ll-solo-pc">Pasa el cursor </span><span class="ll-solo-movil">Toca </span><span class="ll-solo-pc">un punto </span><span class="ll-solo-movil">un punto </span>para ver el detalle. Un número dentro de la marca = varios ese mismo {if ($grafico['paso'] ?? 'dia') === 'semana'}tramo de una semana{else}día{/if}.</p>
+</div>

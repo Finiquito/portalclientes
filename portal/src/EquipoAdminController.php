@@ -45,7 +45,7 @@ class EquipoAdminController
             'usuarios'      => $this->service()->listAll(),
             've'            => $this->service()->resumenAsignaciones(),
             'fmt'           => new Fmt(),
-            'roles'         => EquipoService::ROLES,
+            'roles'         => Idioma::lista(EquipoService::ROLES),
             'flash_success' => $this->ui->flash('success'),
             'flash_error'   => $this->ui->flash('error'),
         ]);
@@ -72,7 +72,8 @@ class EquipoAdminController
         $asig = $u !== null ? $this->service()->asignaciones((string) $u['id']) : [];
         $this->ui->view('equipo/edit.latte', [
             'persona'      => $u,
-            'roles'        => EquipoService::ROLES,
+            'idiomaPersona' => $u !== null ? (new AjustesService($this->pdo()))->get('equipo', (string) $u['id'], 'idioma') : '',
+            'roles'        => Idioma::lista(EquipoService::ROLES),
             'arbol'        => $this->arbol(),
             'clientesFull' => array_values(array_map(fn($a) => $a['cliente_id'], array_filter($asig, fn($a) => $a['proyecto_id'] === null))),
             'proyAsig'     => array_values(array_filter(array_map(fn($a) => $a['proyecto_id'], $asig))),
@@ -98,11 +99,12 @@ class EquipoAdminController
             return;
         }
         $id = $this->service()->create($datos);
+        Idioma::guardarDePost(new AjustesService($this->pdo()), 'equipo', $id);   // antes de la invitación: sale en su idioma
         [$c, $p] = $this->asignacionesPost();
         $this->service()->guardarAsignaciones($id, $c, $p);
-        $msg = 'Listo: ' . trim((string) ($datos['nombre'] ?? '')) . ' ya es parte del equipo.';
+        $msg = Idioma::t('Listo: %s ya es parte del equipo.', trim((string) ($datos['nombre'] ?? '')));
         if (!empty($_POST['invitar'])) {
-            $msg .= $this->invitar($id) ? ' Le enviamos la invitación por correo.' : ' No se pudo enviar la invitación (revisa el correo en Ajustes).';
+            $msg .= ' ' . ($this->invitar($id) ? Idioma::t('Le enviamos la invitación por correo.') : Idioma::t('No se pudo enviar la invitación (revisa el correo en Ajustes).'));
         }
         $this->ui->redirect($this->ui->url('equipo/' . $id), $msg);
     }
@@ -123,6 +125,7 @@ class EquipoAdminController
             return;
         }
         $this->service()->update($id, $_POST);
+        Idioma::guardarDePost(new AjustesService($this->pdo()), 'equipo', $id);
         [$c, $p] = $this->asignacionesPost();
         $this->service()->guardarAsignaciones($id, $c, $p);
         $this->ui->redirect($this->ui->url('equipo/' . $id), 'Cambios guardados.');

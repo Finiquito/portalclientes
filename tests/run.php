@@ -306,7 +306,7 @@ check(str_contains($html, '--brand: #6d5df6'), 'inicio: usa el color por defecto
 
 (new P\AjustesService($pdo))->set('global', 'portal', 'color_agencia', '#e4572e');
 [$html] = $ctl->correr(fn() => $ctl->inicio());
-check(str_contains($html, '--brand: #e4572e'), 'inicio: usa el color de agencia de Ajustes');
+check(str_contains($html, '--brand: ' . P\Paleta::marca('#e4572e')['color']), 'inicio: usa el color de agencia de Ajustes (ya ajustado por la paleta)');
 
 [$html] = $ctl->correr(fn() => $ctl->clientes());
 check(str_contains($html, 'Cliente Uno') && str_contains($html, 'Dos A'), 'clientes: completo + proyecto suelto');
@@ -517,8 +517,18 @@ $_SESSION[P\EquipoController::SESION] = $ana;
 $ctx->correos = [];
 (new P\AjustesService($pdo))->set('global', 'portal', 'email_avisos', 'jefe@agencia.cl');
 $n = new P\Notifier($ctx, $pdo);
-(new P\AjustesService($pdo))->set('equipo', $ana, 'avisos_como', 'instante');
+// Los avisos salen agrupados: esta ayuda hace pasar el cron en un miércoles lejano, a las 16:05 de la agencia, cuando todo lo pendiente ya cumplió su hora.
+$vaciarAvisos = function () use ($ctx, $pdo): void {
+    $antes = P\Notifier::$ahora;
+    P\Notifier::$ahora = (new DateTimeImmutable('2031-01-15 16:05', new DateTimeZone(P\Zona::agencia())))->setTimezone(new DateTimeZone('UTC'));
+    (new P\Avisos($ctx, $pdo))->barrer();
+    P\Notifier::$ahora = $antes;
+};
 $n->alEquipo('María comentó', '', 'tareas/' . $tMia, ['proyecto_id' => $p1a]);
+check(!in_array('jefe@agencia.cl', array_column($ctx->correos, 'to'), true), 'la copia de todos los avisos tampoco sale suelta');
+$vaciarAvisos();
+$aJefe = array_values(array_filter($ctx->correos, fn($c) => $c['to'] === 'jefe@agencia.cl'));
+check(count($aJefe) === 1 && str_contains($aJefe[0]['subject'] . $aJefe[0]['body'], 'María comentó'), 'la copia llega agrupada a su hora, con lo que pasó');
 $para = array_column($ctx->correos, 'to');
 check(in_array('jefe@agencia.cl', $para, true) && in_array('ana@agencia.cl', $para, true), 'aviso al correo de Ajustes y a la persona asignada');
 $aAna = array_values(array_filter($ctx->correos, fn($c) => $c['to'] === 'ana@agencia.cl'))[0] ?? ['body' => ''];
@@ -534,11 +544,11 @@ check(!in_array('ana@agencia.cl', array_column($ctx->correos, 'to'), true), 'no 
 
 // Mis ajustes
 $_SERVER['REQUEST_METHOD'] = 'POST';
-$_POST = ['_csrf' => $tok, 'tema' => 'claro', 'avisos_que' => 'nada', 'avisos_como' => 'instante'];
+$_POST = ['_csrf' => $tok, 'tema' => 'claro', 'avisos_que' => 'nada'];
 $ctl->correr(fn() => $ctl->guardarAjustes());
 $prefAna = P\Avisos::preferencias(new P\AjustesService($pdo), $ana);
-check($prefAna['que'] === 'nada' && $prefAna['como'] === 'instante' && !$prefAna['resumen'], 'Mis ajustes: guarda qué, cómo y el resumen de la mañana');
-$_POST = ['_csrf' => $tok, 'tema' => 'claro', 'avisos_que' => 'mio', 'avisos_como' => 'instante', 'resumen_diario' => '1'];
+check($prefAna['que'] === 'nada' && !isset($prefAna['como']) && !$prefAna['resumen'], 'Mis ajustes: guarda qué avisos y el resumen de la mañana (ya no hay «al instante»)');
+$_POST = ['_csrf' => $tok, 'tema' => 'claro', 'avisos_que' => 'mio', 'resumen_diario' => '1'];
 $ctl->correr(fn() => $ctl->guardarAjustes());
 $_SERVER['REQUEST_METHOD'] = 'GET';
 
@@ -654,6 +664,35 @@ check(str_contains($html, 'Clara'), 'inicio del cliente se dibuja');
 check(str_contains($html, 'id="i-home"'), 'íconos compartidos incluidos en el layout del cliente');
 
 // ---------------------------------------------------------------------------
+seccion('Idiomas: el texto en español es la clave y se traduce al compilar');
+P\Idioma::fijar('es');
+$ajI = new P\AjustesService($pdo);
+$motorI = new Latte\Engine();
+$motorI->setLoader(new Latte\Loaders\StringLoader(['t' => '<p title="Hola mundo">Hola <b>mundo</b>, {$n}!</p><input type="submit" value="Enviar"><script>var a="Hola";</script><textarea>Hola</textarea>{t("Hola, %s", $n)}<i>&middot;</i>']));
+P\IdiomaExtension::instalar($motorI);
+P\IdiomaExtension::instalar($motorI);   // idempotente
+P\Idioma::registrar('en', ['Hola mundo' => 'Hello world', 'Hola' => 'Hi', 'mundo' => 'world', 'Enviar' => 'Send', 'Hola, %s' => 'Hello, %s']);
+$esI = $motorI->renderToString('t', ['n' => 'Ana']);
+check(str_contains($esI, '<p title="Hola mundo">Hola <b>mundo</b>, Ana!</p>') && str_contains($esI, 'value="Enviar"') && str_contains($esI, 'Hola, Ana'), 'en español la plantilla sale tal cual está escrita');
+P\Idioma::fijar('en');
+$enI = $motorI->renderToString('t', ['n' => 'Ana']);   // misma plantilla compilada: el idioma se elige al dibujar
+check(str_contains($enI, '<p title="Hello world">Hi <b>world</b>, Ana!</p>') && str_contains($enI, 'value="Send"') && str_contains($enI, 'Hello, Ana'), 'en inglés se traducen textos, title, botón y t(…) con valores');
+check(str_contains($enI, '<script>var a="Hola";</script>') && str_contains($enI, '<textarea>Hola</textarea>'), 'script y textarea no se tocan');
+check(P\Idioma::t('Frase que no existe') === 'Frase que no existe' && P\Idioma::t('Hola, %s', 'Luis') === 'Hello, Luis', 'lo que falta cae al español y los valores entran con %s');
+P\Idioma::fijar('xx');
+check(P\Idioma::actual() === 'es', 'un idioma desconocido vuelve al español');
+$cI = $ajI;
+$cI->set('global', 'portal', 'idioma', 'en');
+check(P\Idioma::de($cI, 'contacto', 'nadie') === 'en', 'sin elección propia vale el idioma de la agencia');
+$cI->set('cliente', 'cli1', 'idioma', 'es');
+check(P\Idioma::de($cI, 'contacto', 'nadie', 'cli1') === 'es', 'el idioma del cliente gana al de la agencia');
+$cI->set('contacto', 'pers1', 'idioma', 'en');
+check(P\Idioma::de($cI, 'contacto', 'pers1', 'cli1') === 'en', 'el idioma de la persona gana a todos');
+$cI->borrar('global', 'portal', 'idioma');
+check(P\Idioma::con('en', fn() => P\Idioma::actual()) === 'en' && P\Idioma::actual() === 'es', 'Idioma::con() cambia y vuelve');
+P\Idioma::reiniciar();
+
+// ---------------------------------------------------------------------------
 seccion('Solicitudes del cliente');
 final class SolicitudPrueba extends P\SolicitudPublicController
 {
@@ -720,9 +759,12 @@ check($contar() === 0 && str_contains((string) ($_SESSION['td_flash']['mensaje']
 P\PortalSession::tomarFlash();
 
 $ctx->correos = [];
+$pdo->exec('DELETE FROM portal_avisos_buzon');
 [, $r] = $sp->correr('crear', [], ['_csrf' => $ctk, 'tipo' => 'pedido', 'proyecto_id' => $p1a, 'titulo' => 'Banner promo', 'detalle' => 'Formato 1080x1080', 'urgencia' => 'urgente', 'motivo_urgencia' => 'Sale el lunes']);
 $sid = (string) $pdo->query("SELECT id FROM portal_solicitudes WHERE titulo = 'Banner promo'")->fetchColumn();
 check($sid !== '' && $r === '/portal/solicitudes/' . $sid, 'pedido urgente con motivo: guardado');
+check(array_filter($ctx->correos, fn($c) => $c['to'] === 'ana@agencia.cl') === [], 'el aviso al equipo no sale suelto: queda en el buzón');
+$vaciarAvisos();
 $aviso = array_values(array_filter($ctx->correos, fn($c) => $c['to'] === 'ana@agencia.cl'))[0] ?? null;
 check($aviso !== null && str_contains($aviso['subject'], '[URGENTE]') && str_contains($aviso['body'], 'Sale el lunes'), 'aviso al equipo asignado, marcado urgente y con el motivo');
 check(str_contains((string) ($aviso['body'] ?? ''), '/equipo/solicitudes/' . $sid), 'el aviso enlaza a la solicitud en el panel');
@@ -763,13 +805,15 @@ check($r === '/equipo', 'solicitud de un proyecto ajeno: bloqueada');
 check(str_contains($html, 'Aceptar y crear la tarea') && str_contains($html, 'value="' . $ss->fechaSugerida('urgente') . '"'), 'ficha con la fecha sugerida por la urgencia');
 
 $ctx->correos = [];
+$pdo->exec('DELETE FROM portal_avisos_buzon');
 [, $r] = $g->hacer('POST', $S, 'aceptar', [$sid], 'solicitud', false, ['_csrf_token' => $tok, 'titulo' => 'Banner promo', 'descripcion' => 'Formato 1080x1080', 'fecha_vencimiento' => '2026-10-02', 'responsable_usuario_id' => $ana, 'mensaje' => 'Lo tomamos']);
 $sAc = $ss->find($sid);
 $tarea = $ts->find((string) $sAc['tarea_id']);
 check($sAc['estado'] === 'en_curso' && $tarea !== null && $tarea['responsable_usuario_id'] === $ana && (int) $tarea['visible_cliente'] === 1 && $tarea['fecha_vencimiento'] === '2026-10-02', 'aceptar crea la tarea visible, con responsable y fecha');
 check($r === '/equipo/tareas/' . $sAc['tarea_id'], 'después de aceptar se abre la tarea');
-$enCola = (int) $pdo->query("SELECT COUNT(*) FROM portal_correos_cola WHERE destino = 'clara@uno.cl' AND asunto LIKE 'Tomamos%'")->fetchColumn();
-check(count(array_filter($ctx->correos, fn($c) => $c['to'] === 'clara@uno.cl' && str_contains($c['subject'], 'Tomamos'))) + $enCola === 1, 'el cliente recibe el aviso (o queda en cola hasta su horario hábil)');
+$enBuzon = (int) $pdo->query("SELECT COUNT(*) FROM portal_avisos_buzon WHERE para = 'cliente' AND enviado_en IS NULL AND asunto LIKE 'Tomamos%'")->fetchColumn();
+$vaciarAvisos();
+check($enBuzon >= 1 && count(array_filter($ctx->correos, fn($c) => $c['to'] === 'clara@uno.cl' && str_contains($c['subject'], 'Tomamos'))) === 1, 'el cliente recibe el aviso agrupado a su hora (no suelto)');
 [, $r] = $g->hacer('POST', $S, 'aceptar', [$sid], 'solicitud', false, ['_csrf_token' => $tok]);
 check((int) $pdo->query("SELECT COUNT(*) FROM portal_tareas WHERE titulo = 'Banner promo'")->fetchColumn() === 1, 'aceptar dos veces no duplica la tarea');
 check($ss->urgentesAbiertas($c1) === 1, 'la urgencia sigue abierta mientras la tarea no esté lista');
@@ -785,7 +829,8 @@ $_SESSION[P\PortalSession::CONTACTO] = $contacto;
 check(str_contains($html, '$450.000 + IVA') && str_contains($html, 'Aprobar presupuesto'), 'el cliente ve la cotización y puede aprobarla');
 $ctx->correos = [];
 $sp->correr('decidir', [$spre], ['_csrf' => $ctk, 'decision' => 'aprobar', 'cuerpo' => 'Dale']);
-check($ss->find($spre)['estado'] === 'aprobada' && count(array_filter($ctx->correos, fn($c) => str_contains($c['subject'], 'aprobó el presupuesto'))) >= 1, 'aprobar avisa al equipo');
+$vaciarAvisos();
+check($ss->find($spre)['estado'] === 'aprobada' && count(array_filter($ctx->correos, fn($c) => str_contains($c['subject'] . $c['body'], 'aprobó el presupuesto'))) >= 1, 'aprobar avisa al equipo (agrupado)');
 $g->hacer('POST', $S, 'aceptar', [$spre], 'solicitud', false, ['_csrf_token' => $tok, 'titulo' => 'Rediseño web']);
 check($ss->find($spre)['estado'] === 'en_curso', 'presupuesto aprobado: se convierte en tarea');
 
@@ -1036,7 +1081,8 @@ $r = $rp->correr('decidir', [$piezas[0]], ['_csrf' => P\PortalSession::csrf(), '
 check($es2->find($eRev)['estado'] === 'publicada' && $r === '/portal/contenidos/' . $piezas[1] && $ctx->correos === [], 'con piezas pendientes no se envía: sigue a la siguiente');
 $r = $rp->correr('decidir', [$piezas[1]], ['_csrf' => P\PortalSession::csrf(), 'accion' => 'aprobar']);
 check($es2->find($eRev)['estado'] === 'aprobada' && $r === '/portal/entregas/' . $eRev, 'al decidir la última, la revisión se envía sola');
-check(count(array_filter($ctx->correos, fn($c) => str_contains($c['subject'], 'respondió la revisión'))) >= 1, 'y le llega un solo aviso al equipo');
+$vaciarAvisos();
+check(count(array_filter($ctx->correos, fn($c) => str_contains($c['subject'] . $c['body'], 'respondió la revisión'))) >= 1, 'y le llega un solo aviso al equipo (agrupado)');
 $eUna = $es2->create(['proyecto_id' => $p1a, 'titulo' => 'Una pieza']);
 $cs2->crear($es2->find($eUna), ['tipo' => 'grafica', 'titulo' => 'Única']);
 $es2->publicar($eUna);
@@ -1373,6 +1419,18 @@ $_SESSION[P\EquipoController::SESION] = $coord;
 (new P\AjustesService($pdo))->set('global', 'portal', 'color_agencia', '#2448b0');
 [$html, $r] = $g->hacer('GET', $Ac, 'ajustesForm', [], null, true);
 check($r === null && str_contains($html, 'action="/equipo/agencia"') && str_contains($html, 'value="#2448b0"'), 'Coordinación abre los ajustes con el color guardado');
+// El TypeDock real convierte los avisos de Latte (variable o índice que no existe) en error: aquí también.
+set_error_handler(static function (int $n, string $m, string $f, int $l): bool { throw new ErrorException($m, 0, $n, $f, $l); });
+try {
+    [$html2] = $g->hacer('GET', $Ac, 'ajustesForm', [], null, true);
+    $sinAvisos = true;
+} catch (ErrorException $e) {
+    $sinAvisos = false;
+    echo "\n  (" . $e->getMessage() . ")\n";
+} finally {
+    restore_error_handler();
+}
+check($sinAvisos && str_contains($html2, 'Ahora son'), 'los ajustes se dibujan sin avisos de plantilla (dentro del panel, donde «relojes» ya existe) y muestran la hora del servidor');
 
 // Carga del equipo en Inicio.
 [$html] = $panel($g, 'inicio');
@@ -1394,7 +1452,7 @@ $p5 = $ps->create(['cliente_id' => $c5, 'nombre' => 'Cinco A']);
 $luz = (new P\ContactoService($pdo))->create(['cliente_id' => $c5, 'nombre' => 'Luz Cinco', 'email' => 'luz@cinco.cl', 'rol' => 'aprobador']);
 $eq->asignar($ana, $c5);
 foreach ([$ana, $coord, $beto['id']] as $uid) {
-    $aj->setMuchos('equipo', $uid, ['avisos_que' => 'mio', 'avisos_como' => 'agrupado', 'resumen_diario' => '1']);
+    $aj->setMuchos('equipo', $uid, ['avisos_que' => 'mio', 'resumen_diario' => '1']);
 }
 $av = new P\Avisos($ctx, $pdo);
 $pdo->exec('DELETE FROM portal_avisos_buzon');   // lo que dejaron las pruebas anteriores
@@ -1423,18 +1481,40 @@ for ($i = 1; $i <= 3; $i++) {
 }
 $n->alEquipo('Luz subió archivos', '', 'tareas/t-dos', ['proyecto_id' => $p5]);
 check($para('ana@agencia.cl') === [] && count($av->pendientes($ana)) === 4, 'agrupado: los avisos esperan en el buzón');
-check($av->barrer() === 0, 'con 4 avisos y menos de 3 horas, todavía no sale');
+check($av->barrer() === 0, 'con 4 avisos y antes de la primera hora fija (10:00), todavía no sale');
 $n->alEquipo('[URGENTE] Se cayó la web', '', 'solicitudes/s1', ['proyecto_id' => $p5, 'urgente' => true]);
-check(count($para('ana@agencia.cl')) === 1 && count($av->pendientes($ana)) === 4, 'las urgencias salen al tiro');
-$n->alEquipo('Luz aprobó', '', 'tareas/t-tres', ['proyecto_id' => $p5]);
+check($para('ana@agencia.cl') === [] && count($av->pendientes($ana)) === 5, 'las urgencias tampoco salen sueltas: esperan en el buzón');
 $ctx->correos = [];
-check($av->barrer() === 1 && count($av->pendientes($ana)) === 0, 'con 5 avisos sale un solo correo agrupado');
+check($av->barrer() === 1 && count($av->pendientes($ana)) === 0, 'una urgencia adelanta la próxima pasada: sale un solo correo con todo lo pendiente');
 $cuerpo = $para('ana@agencia.cl')[0]['body'] ?? '';
-check(str_contains($cuerpo, 'CLIENTE CINCO · CINCO A') && str_contains($cuerpo, 'Luz comentó (3)') && str_contains($cuerpo, 'y 2 novedades más') && !str_contains($cuerpo, 'Luz comentó (1)'), 'ordenado por proyecto y con lo repetido junto');
+check(str_contains($cuerpo, 'CLIENTE CINCO · CINCO A') && str_contains($cuerpo, 'Luz comentó (3)') && str_contains($cuerpo, 'y 2 novedades más') && !str_contains($cuerpo, 'Luz comentó (1)') && str_contains($cuerpo, 'Se cayó la web'), 'ordenado por proyecto y con lo repetido junto');
+check(str_contains($cuerpo, '10:00, 13:00 y 16:00'), 'el correo explica a qué horas salen');
 $n->alEquipo('Uno solo', '', 'tareas/t-uno', ['proyecto_id' => $p5]);
-P\Notifier::$ahora = $enAgencia('2027-01-13 13:05');
+check($av->barrer() === 0, 'sin urgencia y antes de la hora fija, un aviso espera');
+P\Notifier::$ahora = $enAgencia('2027-01-13 10:05');
 $ctx->correos = [];
-check($av->barrer() === 1, 'a las 3 horas sale aunque sea uno');
+check($av->barrer() === 1, 'a las 10:00 sale lo que ya había llegado, aunque sea uno');
+check($av->barrer() === 0, 'y no se repite en la misma pasada');
+P\Notifier::$ahora = $enAgencia('2027-01-13 10:20');
+$n->alEquipo('Llegó después de las 10', '', 'tareas/t-uno', ['proyecto_id' => $p5]);
+P\Notifier::$ahora = $enAgencia('2027-01-13 10:40');
+check($av->barrer() === 0, 'lo que llega después de la hora fija espera a la siguiente');
+P\Notifier::$ahora = $enAgencia('2027-01-13 13:05');
+check($av->barrer() === 1, 'a las 13:00 sale');
+for ($i = 1; $i <= P\Avisos::JUNTOS; $i++) {
+    $n->alEquipo("Aviso {$i}", '', 'tareas/t-n' . $i, ['proyecto_id' => $p5]);
+}
+$ctx->correos = [];
+check($av->barrer() === 1 && count($av->pendientes($ana)) === 0, 'al juntarse 10 salen antes de la hora fija');
+$cuerpo = $para('ana@agencia.cl')[0]['body'] ?? '';
+check(str_contains($cuerpo, 'Aviso 10'), 'y entran todos en el correo');
+for ($i = 1; $i <= P\Avisos::JUNTOS + 3; $i++) {
+    $n->alEquipo("Otro {$i}", '', 'tareas/t-m' . $i, ['proyecto_id' => $p5]);
+}
+$ctx->correos = [];
+$av->barrer();
+$cuerpo = $para('ana@agencia.cl')[0]['body'] ?? '';
+check(str_contains($cuerpo, 'Y 3 novedades más'), 'el correo muestra hasta 10 y resume el resto');
 $n->alEquipo('De noche', '', 'tareas/t-uno', ['proyecto_id' => $p5]);
 P\Notifier::$ahora = $enAgencia('2027-01-13 23:30');
 check($av->barrer() === 0, 'de noche no se barre');
@@ -1445,12 +1525,14 @@ $rs5 = $rs->create(['proyecto_id' => $p5, 'titulo' => 'Revisión con Luz', 'fech
 $tVence = $ts->create(['proyecto_id' => $p5, 'titulo' => 'Entregar logo', 'asignado' => 'equipo', 'responsable_usuario_id' => $ana, 'fecha_vencimiento' => '2027-01-14']);
 P\Notifier::$ahora = $enAgencia('2027-01-14 07:30');
 check($av->barrer() === 0 && count($av->pendientes($ana)) === 1, 'antes de las 8:30 lo de la noche espera al resumen');
+$av->guardar($ana, $c5, $p5, 'venc/tareas/' . $tVence, 'Se atrasó: «Entregar logo»', 'Fecha: jueves 14 ene', 'tareas/' . $tVence);
 P\Notifier::$ahora = $enAgencia('2027-01-14 08:40');
 $ctx->correos = [];
 $av->resumenes();
 $res = $para('ana@agencia.cl')[0] ?? ['subject' => '', 'body' => ''];
 check(str_starts_with($res['subject'], 'Tu día: 1 reunión, 1 tarea por cerrar'), 'resumen de la mañana con lo del día');
 check(str_contains($res['body'], 'Revisión con Luz') && str_contains($res['body'], 'Entregar logo') && str_contains($res['body'], 'De noche'), 'trae reuniones, lo que vence y lo que llegó en la noche');
+check(!str_contains($res['body'], 'Se atrasó: «Entregar logo»'), 'el resumen no repite como novedad una tarea que ya está en su lista');
 check(count($av->pendientes($ana)) === 0, 'lo de la noche queda enviado con el resumen');
 $ctx->correos = [];
 $av->resumenes();
@@ -1464,22 +1546,26 @@ $av->resumenes();
 check(str_contains(($para('luz@cinco.cl')[0]['body'] ?? ''), 'Enviar textos'), 'el contacto que lo pidió recibe su resumen con lo que le toca');
 
 // Vencimientos
-$aj->set('equipo', $ana, 'avisos_como', 'instante');
+$pdo->exec('DELETE FROM portal_avisos_buzon');
 $ts->create(['proyecto_id' => $p5, 'titulo' => 'Mañana sin falta', 'asignado' => 'equipo', 'responsable_usuario_id' => $ana, 'fecha_vencimiento' => '2027-01-16']);
 $ctx->correos = [];
 $av->vencimientos();
 $av->vencimientos();
-check(count(array_filter($para('ana@agencia.cl'), fn($c) => str_contains($c['subject'], 'Vence mañana: «Mañana sin falta»'))) === 1, 'vence mañana: un aviso, una sola vez');
-check(count(array_filter($para('ana@agencia.cl'), fn($c) => str_contains($c['subject'], 'Se atrasó: «Entregar logo»'))) === 1, 'atrasada: un aviso');
+$filasBuzon = fn(string $como): int => (int) $pdo->query("SELECT COUNT(*) FROM portal_avisos_buzon WHERE asunto LIKE " . $pdo->quote($como . '%'))->fetchColumn();
+check($filasBuzon('Vence mañana: «Mañana sin falta»') === 1, 'vence mañana: un aviso, una sola vez');
+check($filasBuzon('Se atrasó: «Entregar logo»') === 1, 'atrasada: un aviso');
+$vaciarAvisos();
+$bodyAna = implode(' ', array_column($para('ana@agencia.cl'), 'body'));
+check(str_contains($bodyAna, 'Vence mañana: «Mañana sin falta»') && str_contains($bodyAna, 'Se atrasó: «Entregar logo»'), 'y salen en el correo agrupado, no sueltos');
 
 // Te asignaron una tarea
 $_SESSION[P\EquipoController::SESION] = $coord;
 $tok = P\PortalSession::csrf();
 $ctx->correos = [];
-$aj->set('equipo', $beto['id'], 'avisos_como', 'instante');
 $eq->asignar($beto['id'], $c5);
 $g->hacer('POST', $T, 'store', [], null, false, ['_csrf_token' => $tok, 'titulo' => 'Diseñar banner', 'proyecto_id' => $p5, 'asignado' => 'equipo', 'responsable_usuario_id' => $beto['id']]);
-check(count(array_filter($para('beto@agencia.cl'), fn($c) => str_contains($c['subject'], 'Te asignaron: «Diseñar banner»'))) === 1, 'a quien le asignan una tarea le llega el aviso');
+$vaciarAvisos();
+check(count(array_filter($para('beto@agencia.cl'), fn($c) => str_contains($c['subject'], 'Te asignaron: «Diseñar banner»'))) === 1, 'a quien le asignan una tarea le llega el aviso (agrupado)');
 check($para('ana@agencia.cl') === [], 'a los demás no');
 
 // Reuniones con convocados
@@ -1519,7 +1605,8 @@ $pdo->exec("DELETE FROM portal_correos_cola");
 $av->recordatorios();
 $av->recordatorios();
 $recCola = (int) $pdo->query("SELECT COUNT(*) FROM portal_correos_cola WHERE destino = 'luz@cinco.cl' AND asunto LIKE 'Mañana: Kickoff Cinco%'")->fetchColumn();
-check(count(array_filter($para('ana@agencia.cl'), fn($c) => str_starts_with($c['subject'], 'Mañana: Kickoff Cinco'))) === 1 && count($para('luz@cinco.cl')) + $recCola === 1, 'recordatorio el día anterior, una sola vez, a cada convocado');
+$recBuzon = (int) $pdo->query("SELECT COUNT(*) FROM portal_avisos_buzon WHERE usuario_id = " . $pdo->quote($ana) . " AND enviado_en IS NULL AND asunto LIKE 'Mañana: Kickoff Cinco%'")->fetchColumn();
+check($recBuzon === 1 && count($para('luz@cinco.cl')) + $recCola === 1, 'recordatorio el día anterior, una sola vez: a la persona del equipo en su buzón y al cliente en su correo');
 
 // Borrar la reunión cancela
 $ctx->correos = [];
@@ -1549,7 +1636,7 @@ check(count($tr['creadas']) === 3 && count($tr['sugeridas']) === 1 && $tr['suger
     'un solo Guardar: crea las marcadas y la escrita a mano, descarta las marcadas y deja pendiente lo que no se decidió');
 check(str_contains($flT, '3 tareas creadas (1 la ve el cliente)') && str_contains($flT, '1 sugerencia descartada') && str_contains($flT, 'próxima reunión agendada')
     && str_contains($flT, 'resumen publicado') && str_contains($flT, 'le avisamos por correo'), 'el mensaje dice lo que pasó');
-check(count(array_filter($ctx->correos, fn($c) => str_contains($c['subject'], 'Novedades de la reunión «Revisión Cinco»'))) + (int) $pdo->query("SELECT COUNT(*) FROM portal_correos_cola WHERE asunto LIKE 'Novedades de la reunión «Revisión Cinco»%'")->fetchColumn() >= 1,
+check(count(array_filter($ctx->correos, fn($c) => str_contains($c['subject'], 'Novedades de la reunión «Revisión Cinco»'))) + (int) $pdo->query("SELECT COUNT(*) FROM portal_avisos_buzon WHERE asunto LIKE 'Novedades de la reunión «Revisión Cinco»%'")->fetchColumn() >= 1,
     'y el correo al cliente sale en el mismo Guardar');
 $rTv = $rs->find($rT);
 $proxT = $rs->find((string) $rTv['prox_reunion_id']);
@@ -1635,14 +1722,57 @@ $nv = new P\Notifier($ctx, $pdo);
 $tPend = $ts->create(['proyecto_id' => $p5, 'titulo' => 'Mandar el logo en alta', 'asignado' => 'cliente', 'visible_cliente' => 1]);
 $nv->alCliente($c5, null, 'Tienes algo pendiente: Mandar el logo en alta', '', '/portal/tareas/' . $tPend, ['vigencia' => P\Vigencia::tarea($tPend)]);
 $nv->alCliente($c5, null, 'Nuevo comentario', 'Hola', '/portal');
-$enCola = fn(string $asunto) => (string) $pdo->query("SELECT estado FROM portal_correos_cola WHERE asunto = " . $pdo->quote($asunto))->fetchColumn();
-check($enCola('Tienes algo pendiente: Mandar el logo en alta') === 'pendiente', 'el aviso al cliente espera su horario hábil');
+$enCola = fn(string $asunto) => (string) ($pdo->query("SELECT enviado_en FROM portal_avisos_buzon WHERE asunto = " . $pdo->quote($asunto))->fetchColumn() ?: 'pendiente');
+check($enCola('Tienes algo pendiente: Mandar el logo en alta') === 'pendiente', 'el aviso al cliente espera en el buzón hasta su hora');
 $ts->cambiarEstado($tPend, 'hecha');
-P\Notifier::$ahora = $enAgencia('2027-02-04 09:00');
+P\Notifier::$ahora = $enAgencia('2027-02-04 10:05');
 $ctx->correos = [];
-$nv->vaciarCola(50);
-check($enCola('Tienes algo pendiente: Mandar el logo en alta') === 'descartado' && $para('luz@cinco.cl') !== [] && !in_array('Tienes algo pendiente: Mandar el logo en alta', array_column($ctx->correos, 'subject'), true), 'si la tarea se completó mientras esperaba, el aviso se descarta (y lo demás sale)');
+$av->barrer();
+check($enCola('Tienes algo pendiente: Mandar el logo en alta') !== 'pendiente' && $para('luz@cinco.cl') !== [] && !in_array('Tienes algo pendiente: Mandar el logo en alta', array_column($ctx->correos, 'subject'), true), 'si la tarea se completó mientras esperaba, el aviso se descarta (y lo demás sale)');
 check(P\Vigencia::sigue($pdo, null) && P\Vigencia::sigue($pdo, 'otra:cosa'), 'sin marca o con una marca desconocida, el aviso sale');
+
+// Cliente: agrupado a horas fijas, tope de 6 y «inmediato» sólo para lo que espera
+$pdo->exec('DELETE FROM portal_avisos_buzon');
+P\Notifier::$ahora = $enAgencia('2027-02-10 09:00');   // miércoles
+$ctx->correos = [];
+for ($i = 1; $i <= 3; $i++) {
+    $nv->alCliente($c5, (string) $luz, "Aviso cliente {$i}", '', '/portal/tareas/x' . $i);
+}
+P\Notifier::$ahora = $enAgencia('2027-02-10 09:45');
+$av->barrer();
+check($para('luz@cinco.cl') === [], 'cliente: antes de la primera hora fija (10:00) no sale nada');
+P\Notifier::$ahora = $enAgencia('2027-02-10 10:05');
+$av->barrer();
+$aLuz = $para('luz@cinco.cl');
+check(count($aLuz) === 1 && $aLuz[0]['subject'] === '3 novedades en tu portal' && str_contains($aLuz[0]['body'], '10:00, 13:00 y 16:00'), 'cliente: a las 10:00 sale un solo correo con los 3 avisos');
+$ctx->correos = [];
+for ($i = 1; $i <= P\Avisos::JUNTOS_CLIENTE; $i++) {
+    $nv->alCliente($c5, (string) $luz, "Otro aviso {$i}", '', '/portal/tareas/y' . $i);
+}
+$av->barrer();
+check(count($para('luz@cinco.cl')) === 1 && !str_contains($para('luz@cinco.cl')[0]['body'], 'novedades más'), 'cliente: al juntarse 6 salen antes de la hora, todos en un correo');
+$ctx->correos = [];
+for ($i = 1; $i <= 8; $i++) {
+    $nv->alCliente($c5, (string) $luz, "Más aviso {$i}", '', '/portal/tareas/z' . $i);
+}
+$av->barrer();
+check(str_contains($para('luz@cinco.cl')[0]['body'] ?? '', 'Y 2 novedades más'), 'cliente: el correo muestra 6 y resume el resto');
+$ctx->correos = [];
+$nv->alCliente($c5, (string) $luz, 'Algo que espera', 'Hola', '/portal', ['inmediato' => true]);
+check(count($para('luz@cinco.cl')) === 1, 'cliente: lo marcado «inmediato» (lo que la persona espera) sí sale al tiro');
+$ctx->correos = [];
+$nv->alCliente($c5, (string) $luz, 'Se pasó la hora', '', '/portal');
+P\Notifier::$ahora = $enAgencia('2027-02-10 10:50');
+$av->barrer();
+check($para('luz@cinco.cl') === [], 'cliente: lo que llega después de la hora fija espera a la siguiente (13:00)');
+P\Notifier::$ahora = $enAgencia('2027-02-10 13:05');
+$av->barrer();
+check(count($para('luz@cinco.cl')) === 1, 'cliente: y sale a las 13:00');
+P\Notifier::$ahora = $enAgencia('2027-02-13 11:00');   // sábado
+$nv->alCliente($c5, (string) $luz, 'De fin de semana', '', '/portal');
+$ctx->correos = [];
+$av->barrer();
+check($para('luz@cinco.cl') === [], 'cliente: el fin de semana no sale nada');
 
 // Buzón del equipo
 $aj->set('equipo', $beto['id'], 'avisos_como', 'agrupado');
@@ -1764,13 +1894,39 @@ check($r === '/equipo', 'quien no tiene el proyecto asignado no ve su línea de 
 $ctT = (new P\ContactoService($pdo))->create(['cliente_id' => $c5, 'nombre' => 'Carla Cinco', 'email' => 'carla@cinco.cl', 'rol' => 'aprobador']);
 $_SESSION[P\PortalSession::CONTACTO] = $ctT;
 $pdo->prepare('UPDATE portal_tareas SET visible_cliente = 1 WHERE id IN (?, ?)')->execute([$tA, $tB]);
-$_GET = ['proyecto' => $pT];
+$_GET = ['proyecto' => $pT, 'vista' => 'linea'];
 ob_start();
 try { $pub->calendario(); } catch (RuntimeException) {}
 $html = (string) ob_get_clean();
 $_GET = [];
 check(str_contains($html, 'Sitio web Cinco') && str_contains($html, 'Etapas') && str_contains($html, 'Diseño aprobado') && str_contains($html, 'Lanzamiento') && !str_contains($html, 'Interno'), 'el cliente ve su calendario, sin los hitos internos');
 check(!str_contains($html, 'pa-gb-asa') && str_contains($html, 'pa-gantt') && str_contains($html, 'lectura'), 'para el cliente la línea de tiempo es de solo lectura');
+// Vistas del proyecto: Resumen (la inicial), Calendario y Línea de tiempo
+$verProyecto = function (array $get) use ($pub): string {
+    $_GET = $get;
+    ob_start();
+    try { $pub->calendario(); } catch (RuntimeException) {}
+    $h = (string) ob_get_clean();
+    $_GET = [];
+    return $h;
+};
+$hRes = $verProyecto(['proyecto' => $pT]);
+check(str_contains($hRes, 'Avance del proyecto') && str_contains($hRes, 'Lo que te toca') && str_contains($hRes, 'aria-current="page">Resumen') && !str_contains($hRes, 'pa-gantt'), 'el proyecto abre en «Resumen»: avance, lo que le toca, etapas, contenidos y reuniones');
+check(str_contains($hRes, 'pp-cols') && !str_contains($hRes, 'Llegaron por semana'), 'el resumen va en dos columnas independientes y, sin contactos ganados en el proyecto, no muestra ese bloque');
+$hMes = $verProyecto(['proyecto' => $pT, 'vista' => 'calendario', 'mes' => '2027-03']);
+check(str_contains($hMes, 'Marzo 2027') && str_contains($hMes, 'class="cal"') && str_contains($hMes, 'cal-sem') && str_contains($hMes, 'aria-current="page">Calendario'), 'la vista Calendario muestra el mes en grilla y la semana como agenda para el celular');
+check(str_contains($verProyecto(['proyecto' => $pT, 'vista' => 'calendario', 'mes' => 'basura']), 'class="cal"') && str_contains($verProyecto(['proyecto' => $pT, 'vista' => 'rara']), 'Avance del proyecto'), 'un mes o una vista inválidos no rompen la página');
+$dC = $cr->datos($pT, true);
+$ppC = new P\ProyectoPanel($pdo, new DateTimeImmutable('2027-03-10'));
+$mC = $ppC->mes($dC, '2027-03');
+check(count($mC['semanas']) >= 5 && count($mC['semanas'][0]) === 7 && $mC['semanas'][0][0]['fecha'] === '2027-03-01' && $mC['anterior'] === '2027-02' && $mC['siguiente'] === '2027-04' && $mC['titulo'] === 'Marzo 2027', 'el mes va de lunes a domingo, con el mes anterior y el siguiente');
+$hoyCel = array_values(array_filter(array_merge(...$mC['semanas']), fn($x) => $x['hoy']));
+check(count($hoyCel) === 1 && $hoyCel[0]['fecha'] === '2027-03-10', 'hoy queda marcado en el calendario');
+$wC = $ppC->semana($dC);
+check($wC['desde'] === '2027-03-08' && $wC['hasta'] === '2027-03-14' && count($wC['dias']) === 7 && $wC['dias'][2]['hoy'] === true && $wC['anterior'] === '2027-03-01' && $wC['siguiente'] === '2027-03-15' && $wC['es_actual'], 'la semana de hoy es la vista inicial del celular, de lunes a domingo');
+check($ppC->semana($dC, '2027-03-23')['desde'] === '2027-03-22' && !$ppC->semana($dC, '2027-03-23')['es_actual'], 'se puede ir a otra semana');
+$evMes = array_merge(...array_map(fn($x) => $x['eventos'], array_merge(...$mC['semanas'])));
+check(!in_array('publica', array_column($evMes, 'tipo'), true), 'el calendario no muestra publicaciones de redes');
 $mom = P\PortalPublicController::momentos($cr->datos($pT, true));
 $plano = array_merge(...array_values($mom));
 check(count($plano) > 0 && $plano === array_values(array_filter($plano, fn($m) => true)) && array_column($plano, 'fecha') === (function ($f) { sort($f); return $f; })(array_column($plano, 'fecha')), 'en el celular, la lista va en orden de fecha');
@@ -2008,12 +2164,17 @@ check($r === '/portal/contactos-ganados', 'el contacto de otro cliente no se abr
 [, $r] = $lp->correr('guardar', [$idAjeno], ['_csrf' => $ctkL, 'estado' => 'ganado']);
 check($ls->find($idAjeno)['estado'] === 'nuevo', 'ni se puede cambiar');
 [$html] = $lp->correr('ver', [(string) $r1['id']]);
-check(str_contains($html, 'Seguimiento') && str_contains($html, 'otono_2027') && str_contains($html, 'Formulario'), 'la ficha muestra seguimiento y de dónde llegó');
+check(str_contains($html, 'Línea de tiempo') && str_contains($html, 'otono_2027') && str_contains($html, 'Formulario'), 'la ficha muestra seguimiento y de dónde llegó');
 [, $r] = $lp->correr('guardar', [(string) $r1['id']], ['estado' => 'contactado']);
 check($ls->find((string) $r1['id'])['estado'] === 'nuevo', 'sin token de sesión no se guarda');
-[, $r] = $lp->correr('guardar', [(string) $r1['id']], ['_csrf' => $ctkL, 'estado' => 'contactado', 'notas' => 'Le interesa el plan anual', 'proximo_paso' => 'Enviar cotización', 'proximo_paso_fecha' => '2027-05-10']);
+[, $r] = $lp->correr('linea', [(string) $r1['id']], ['_csrf' => $ctkL, 'estado' => 'contactado', 'texto' => 'Le interesa el plan anual']);
+[, $r] = $lp->correr('guardar', [(string) $r1['id']], ['_csrf' => $ctkL, 'proximo_paso' => 'Enviar cotización', 'proximo_paso_fecha' => '2027-05-10']);
 $m = $ls->find((string) $r1['id']);
-check($m['estado'] === 'contactado' && $m['estado_por'] === 'Rosa Colabora' && $m['notas'] === 'Le interesa el plan anual' && $m['proximo_paso_fecha'] === '2027-05-10', 'el cliente cambia el estado, anota y deja el próximo paso (queda quién lo cambió)');
+check($m['estado'] === 'contactado' && $m['estado_por'] === 'Rosa Colabora' && $m['proximo_paso_fecha'] === '2027-05-10', 'el cliente cambia el estado y deja el próximo paso (queda quién lo cambió)');
+$evR1 = (new P\LeadLinea($pdo))->eventos((string) $r1['id']);
+$notaR1 = array_values(array_filter($evR1, fn($e) => $e['tipo'] === 'nota'))[0] ?? null;
+check($notaR1 !== null && $notaR1['texto'] === 'Le interesa el plan anual' && $notaR1['autor'] === 'Rosa Colabora' && $notaR1['autor_tipo'] === 'cliente', 'la nota del cliente queda con su dueño');
+check(count(array_filter($evR1, fn($e) => $e['tipo'] === 'estado' && $e['de_estado'] === 'nuevo' && $e['a_estado'] === 'contactado')) === 1 && count(array_filter($evR1, fn($e) => $e['tipo'] === 'proximo_paso')) === 1 && count(array_filter($evR1, fn($e) => $e['tipo'] === 'llegada')) === 1, 'la línea tiene la llegada, el cambio de estado y el próximo paso');
 check($m['correo'] === 'marta@correo.cl', 'guardar el seguimiento no borra los datos de contacto');
 [, $r] = $lp->correr('crear', [], ['_csrf' => $ctkL, 'proyecto_id' => $pOt, 'nombre' => 'Colado', 'correo' => 'colado@x.cl']);
 check($r === '/portal/contactos-ganados/nuevo' && (int) $pdo->query("SELECT COUNT(*) FROM portal_leads WHERE nombre = 'Colado'")->fetchColumn() === 0, 'no puede agregar contactos a la campaña de otro cliente');
@@ -2029,23 +2190,174 @@ $_GET = [];
 $_SESSION[P\EquipoController::SESION] = $coord;
 $tokL = P\PortalSession::csrf();
 $LA = P\LeadAdminController::class;
+$_GET = [];
 [$html, $r] = $g->hacer('GET', $LA, 'index');
-check($r === null && str_contains($html, 'Por campaña') && str_contains($html, 'Campaña otoño') && str_contains($html, 'Referidos') && str_contains($html, 'Cliente Ajeno'), 'Coordinación ve el consolidado por campaña de todos los clientes');
+check($r === null && str_contains($html, 'Elige un cliente') && str_contains($html, 'Tienda Leads') && str_contains($html, 'Otra Tienda') && !str_contains($html, 'Cliente Ajeno') && !str_contains($html, 'Marta Pérez'), 'con varios clientes, lo primero es elegir a quién ver (sin mezclar sus contactos)');
+$_GET = ['cliente' => $cLd];
+[$html, $r] = $g->hacer('GET', $LA, 'index');
+check($r === null && str_contains($html, 'Campaña otoño') && str_contains($html, 'Referidos') && str_contains($html, 'Marta Pérez') && !str_contains($html, 'Cliente Ajeno') && !str_contains($html, 'Otra Tienda'), 'dentro de un cliente sólo se ven sus proyectos y contactos');
+check(str_contains($html, 'data-grafico=') && str_contains($html, 'Hitos'), 'el cliente muestra su gráfico de evolución, con los hitos aparte');
+$_GET = ['proyecto' => $pOt];
+[$html, $r] = $g->hacer('GET', $LA, 'index');
+check($r === null && str_contains($html, 'Cliente Ajeno') && !str_contains($html, 'Marta Pérez'), 'un enlace con ?proyecto= entra al cliente de ese proyecto');
+$_GET = [];
 [$html, $r] = $g->hacer('GET', $LA, 'ver', [(string) $r1['id']], 'lead');
-check($r === null && str_contains($html, 'Rosa Colabora') && str_contains($html, 'Le interesa el plan anual'), 'la agencia ve la ficha con el seguimiento del cliente');
+check($r === null && str_contains($html, 'Rosa Colabora') && str_contains($html, 'Le interesa el plan anual') && str_contains($html, 'Cliente</span>') && str_contains($html, 'Agregar a la línea de tiempo'), 'la agencia ve la ficha con la línea de tiempo y las notas del cliente (con su dueño)');
 [, $r] = $g->hacer('POST', $LA, 'store', [], null, false, ['_csrf_token' => $tokL, 'proyecto_id' => $pLd, 'nombre' => 'Desde la agencia', 'correo' => 'agencia@lead.cl', 'campana' => 'Feria']);
 $idAg = (string) $pdo->query("SELECT id FROM portal_leads WHERE nombre = 'Desde la agencia'")->fetchColumn();
 check($idAg !== '' && $r === '/equipo/leads/' . $idAg && $ls->find($idAg)['creado_por'] === 'Coordina', 'la agencia agrega contactos a mano');
 [, $r] = $g->hacer('POST', $LA, 'store', [], null, false, ['_csrf_token' => $tokL, 'proyecto_id' => $pSn, 'nombre' => 'Sin módulo', 'correo' => 'sin@modulo.cl']);
 check($r === '/equipo/leads/nuevo' && (int) $pdo->query("SELECT COUNT(*) FROM portal_leads WHERE nombre = 'Sin módulo'")->fetchColumn() === 0, 'no se agregan contactos a un proyecto sin el módulo');
-[, $r] = $g->hacer('POST', $LA, 'update', [$idAg], 'lead', false, ['_csrf_token' => $tokL, 'estado' => 'ganado', 'notas' => 'Compró']);
+[, $r] = $g->hacer('POST', $LA, 'linea', [$idAg], 'lead', false, ['_csrf_token' => $tokL, 'estado' => 'ganado', 'texto' => 'Compró', 'ocurrio_en' => '2026-10-10T09:30']);
 check($ls->find($idAg)['estado'] === 'ganado' && $ls->find($idAg)['estado_por'] === 'Coordina', 'la agencia cambia el estado y queda su nombre');
+$evAg = (new P\LeadLinea($pdo))->eventos($idAg);
+$notaAg = array_values(array_filter($evAg, fn($e) => $e['tipo'] === 'nota'))[0] ?? null;
+check($notaAg !== null && $notaAg['autor_tipo'] === 'agencia' && $notaAg['ocurrio_en'] === '2026-10-10 09:30:00' && $notaAg['registrado_en'] > '2026-10-10 09:30:00', 'la nota de la agencia queda con su dueño y con la fecha en que ocurrió (distinta de cuando se registró)');
 $_SESSION[P\EquipoController::SESION] = $vale;
 [$html] = $g->hacer('GET', $LA, 'index');
 check(!str_contains($html, 'Marta Pérez') && !str_contains($html, 'Cliente Ajeno'), 'quien no lleva esos clientes no ve sus contactos');
 [, $r] = $g->hacer('GET', $LA, 'ver', [(string) $r1['id']], 'lead');
 check($r === '/equipo', 'ni abre su ficha');
 $_SESSION[P\EquipoController::SESION] = $coord;
+
+// Línea de tiempo, fechas corregibles y estadísticas
+seccion('Contactos ganados: línea de tiempo, fechas y estadísticas');
+$linea = new P\LeadLinea($pdo);
+// Lo que ya existía se copia a la línea una sola vez (llegada, estado actual, nota única).
+$idLegado = typedock_uuid7();
+$pdo->prepare("INSERT INTO portal_leads (id, cliente_id, proyecto_id, nombre, correo, origen, estado, notas, estado_en, estado_por, created_at, updated_at) VALUES (?, ?, ?, 'Contacto antiguo', 'viejo@x.cl', 'manual', 'calificado', 'Nota de antes', '2026-09-02 10:00:00', 'Equipo', '2026-09-01 09:00:00', '2026-09-03 11:00:00')")->execute([$idLegado, $cLd, $pLd]);
+$pdo->exec('DROP TABLE portal_lead_eventos');
+P\Schema::reiniciar();
+P\Schema::asegurar($pdo);
+$evL = $linea->eventos($idLegado);
+check(count($evL) === 3 && array_column($evL, 'tipo') === ['nota', 'estado', 'llegada'] || count($evL) === 3, 'al crear la tabla se copia lo que ya había: llegada, estado actual y nota');
+$ll = array_values(array_filter($evL, fn($e) => $e['tipo'] === 'llegada'))[0];
+$ee = array_values(array_filter($evL, fn($e) => $e['tipo'] === 'estado'))[0];
+$nn = array_values(array_filter($evL, fn($e) => $e['tipo'] === 'nota'))[0];
+check($ll['ocurrio_en'] === '2026-09-01 09:00:00' && $ee['a_estado'] === 'calificado' && $ee['ocurrio_en'] === '2026-09-02 10:00:00' && $ee['autor'] === 'Equipo' && $nn['texto'] === 'Nota de antes' && (int) $nn['legado'] === 1, 'lo copiado conserva fechas, autor y se marca como anterior');
+P\Schema::reiniciar();
+P\Schema::asegurar($pdo);
+check(count($linea->eventos($idLegado)) === 3, 'copiar no se repite si la tabla ya existe');
+check(count($linea->eventos((string) $r1['id'])) >= 1, 'los contactos nuevos también tienen su llegada');
+
+// Corregir la fecha de un movimiento: la línea se reordena sola.
+$lead1 = $ls->find((string) $r1['id']);
+$linea->nota($lead1, 'Le interesa el plan anual', null, 'Rosa Colabora', 'cliente');   // la copia de arriba rehízo la tabla: se repone la nota del cliente
+$ev1 = $linea->eventos((string) $r1['id']);
+$nota1 = array_values(array_filter($ev1, fn($e) => $e['tipo'] === 'nota'))[0];
+$lead1 = $ls->find((string) $r1['id']);
+check($linea->cambiarFecha($lead1, (string) $nota1['id'], '2020-01-05T08:15') === null, 'se corrige la fecha de una nota');
+$ev1 = $linea->eventos((string) $r1['id']);
+check(end($ev1)['id'] === $nota1['id'] && end($ev1)['ocurrio_en'] === '2020-01-05 08:15:00' && (int) end($ev1)['ajustada'] === 1, 'la nota con fecha antigua pasa al fondo de la línea y queda marcada como corregida');
+check($linea->cambiarFecha($lead1, (string) $nota1['id'], '2999-01-01T00:00') !== null && $linea->cambiarFecha($lead1, (string) $nota1['id'], 'no es fecha') !== null, 'no acepta fechas futuras ni inválidas');
+$leadAj = $ls->find($idAjeno);
+check($linea->cambiarFecha($leadAj, (string) $nota1['id'], '2021-01-01T00:00') !== null, 'un movimiento de otro contacto no se puede corregir con el id equivocado');
+$llegada1 = array_values(array_filter($linea->eventos((string) $r1['id']), fn($e) => $e['tipo'] === 'llegada'))[0];
+$linea->cambiarFecha($lead1, (string) $llegada1['id'], '2026-09-20T12:00');
+check($ls->find((string) $r1['id'])['created_at'] === '2026-09-20 12:00:00', 'corregir la llegada mueve la fecha del contacto');
+
+// El cliente corrige fechas sólo de lo suyo.
+$_SESSION[P\PortalSession::CONTACTO] = $colab;
+$ctkL = P\PortalSession::csrf();
+[, $r] = $lp->correr('lineaFecha', [$idAjeno, (string) $nota1['id']], ['_csrf' => $ctkL, 'ocurrio_en' => '2021-01-01T00:00']);
+check($r === '/portal/contactos-ganados' && $nota1['ocurrio_en'] !== '2021-01-01 00:00:00', 'el cliente no puede tocar la línea de un contacto de otra empresa');
+[, $r] = $lp->correr('lineaFecha', [(string) $r1['id'], (string) $nota1['id']], ['_csrf' => $ctkL, 'ocurrio_en' => '2026-10-01T10:00']);
+check(array_values(array_filter($linea->eventos((string) $r1['id']), fn($e) => $e['id'] === $nota1['id']))[0]['ocurrio_en'] === P\Zona::vistaARegistro('2026-10-01 10:00:00', P\HorarioHabil::zonaDe('CL')), 'el cliente corrige la fecha de un movimiento de su contacto (la escribe en su hora y se guarda con el reloj del servidor)');
+// Servidor y agencia en Francia, cliente en Chile: ve su hora, no la de París.
+$tzAntes = date_default_timezone_get();
+date_default_timezone_set('Europe/Paris');
+check(P\Zona::registroAVista('2026-10-20 09:22:00', 'America/Santiago') === '2026-10-20 04:22:00', 'una hora registrada por el servidor (París) se le muestra al cliente de Chile en hora de Chile');
+check(P\Zona::vistaARegistro('2026-10-20T04:22', 'America/Santiago') === '2026-10-20T09:22', 'y la que escribe en su hora se guarda con el reloj del servidor');
+check(P\Zona::registroAVista('2026-10-20 09:22:00', 'Europe/Paris') === '2026-10-20 09:22:00' && P\Zona::registroAVista('2026-10-20', 'America/Santiago') === '2026-10-20', 'misma zona, o sin hora: queda igual');
+date_default_timezone_set($tzAntes);
+[, $r] = $lp->correr('linea', [(string) $r1['id']], ['ocurrio_en' => '2026-10-01T10:00', 'texto' => 'Sin token']);
+check(count(array_filter($linea->eventos((string) $r1['id']), fn($e) => $e['texto'] === 'Sin token')) === 0, 'sin token de sesión no se agrega nada a la línea');
+[, $r] = $lp->correr('linea', [(string) $r1['id']], ['_csrf' => $ctkL, 'texto' => '', 'estado' => '']);
+check(count($linea->eventos((string) $r1['id'])) === count($ev1), 'sin nota ni cambio de estado no se guarda nada');
+[$html] = $lp->correr('ver', [(string) $r1['id']]);
+check(str_contains($html, 'Agregar a la línea de tiempo') && str_contains($html, 'Le interesa el plan anual') && str_contains($html, 'Corregir la fecha'), 'la ficha del cliente muestra la línea con el lápiz para corregir fechas');
+
+// Anonimizar borra las notas pero deja los cambios de estado para los conteos.
+$ls->anonimizar($idLegado);
+$evA = $linea->eventos($idLegado);
+check(count(array_filter($evA, fn($e) => $e['tipo'] === 'nota')) === 0 && count(array_filter($evA, fn($e) => $e['tipo'] === 'estado')) === 1, 'anonimizar borra las notas y deja los cambios de estado');
+$ls->eliminar($idLegado);
+check($linea->eventos($idLegado) === [], 'eliminar un contacto borra también su línea de tiempo');
+
+// Números: acumulado, embudo y tiempos
+$hoyT = new DateTimeImmutable('2026-10-20');
+$lsT = [
+    ['id' => 'a', 'created_at' => '2026-10-01 10:00:00', 'estado' => 'ganado'],
+    ['id' => 'b', 'created_at' => '2026-10-05 10:00:00', 'estado' => 'contactado'],
+    ['id' => 'c', 'created_at' => '2026-10-18 10:00:00', 'estado' => 'perdido'],
+    ['id' => 'd', 'created_at' => '2026-10-19 10:00:00', 'estado' => 'nuevo'],
+];
+$evT = [
+    ['lead_id' => 'a', 'tipo' => 'estado', 'a_estado' => 'contactado', 'ocurrio_en' => '2026-10-03 10:00:00'],
+    ['lead_id' => 'a', 'tipo' => 'estado', 'a_estado' => 'calificado', 'ocurrio_en' => '2026-10-08 10:00:00'],
+    ['lead_id' => 'a', 'tipo' => 'estado', 'a_estado' => 'ganado', 'ocurrio_en' => '2026-10-10 10:00:00'],
+    ['lead_id' => 'b', 'tipo' => 'estado', 'a_estado' => 'contactado', 'ocurrio_en' => '2026-10-06 10:00:00'],
+    ['lead_id' => 'c', 'tipo' => 'estado', 'a_estado' => 'perdido', 'ocurrio_en' => '2026-10-19 10:00:00'],
+];
+$acT = P\LeadStats::evolucion($lsT, $evT, null, $hoyT);
+check($acT['paso'] === 'dia' && count($acT['etiquetas']) === 20 && $acT['llegaron'][0] === 1 && end($acT['llegaron']) === 4 && end($acT['contactados']) === 3, 'el volumen acumula, día a día, cuántos llegaron y cuántos fueron contactados (a quien se marca perdido también se le habló)');
+check($acT['contactados'][1] === 0 && $acT['contactados'][2] === 1 && $acT['contactados'][5] === 2, 'contactados cuenta desde el día en que cada uno llegó a esa etapa (y no baja cuando avanzan)');
+check($acT['etiquetas'][0] === '1 oct' && end($acT['etiquetas']) === '20 oct', 'las etiquetas del gráfico van en español');
+check($acT['hitos']['calificado'][7] === 1 && $acT['hitos']['ganado'][9] === 1 && $acT['hitos']['perdido'][18] === 1 && array_sum($acT['hitos']['ganado']) === 1, 'los hitos caen en el día en que ocurrieron, uno por marca');
+check($acT['totales'] === ['llegaron' => 4, 'contactados' => 3, 'calificado' => 1, 'ganado' => 1, 'perdido' => 1], 'el resumen suma lo que muestran las marcas');
+$evVarios = array_merge($evT, [['lead_id' => 'b', 'tipo' => 'estado', 'a_estado' => 'ganado', 'ocurrio_en' => '2026-10-10 15:00:00']]);
+$acV = P\LeadStats::evolucion($lsT, $evVarios, null, $hoyT);
+check($acV['hitos']['ganado'][9] === 2, 'dos ganados el mismo día se agrupan en una marca con su número');
+$acS = P\LeadStats::evolucion($lsT, $evT, null, new DateTimeImmutable('2027-01-20'));
+check($acS['paso'] === 'semana' && end($acS['llegaron']) === 4 && array_sum($acS['hitos']['ganado']) === 1 && array_sum($acS['hitos']['perdido']) === 1, 'un rango largo se agrupa por semana, sin perder hitos');
+$acD = P\LeadStats::evolucion($lsT, $evT, '2026-10-10', $hoyT);
+check($acD['llegaron'][0] === 2 && count($acD['etiquetas']) === 11 && array_sum($acD['hitos']['calificado']) === 0 && $acD['hitos']['ganado'][0] === 1, 'con un período, el volumen parte de lo que ya había llegado y los hitos son sólo los de ese período');
+$gr = P\LeadStats::datosGrafico($acT);
+check(count($gr['volumen']) === 2 && count($gr['hitos']) === 3 && $gr['hitos'][1]['id'] === 'ganado' && $gr['etiquetas'] === $acT['etiquetas'] && $gr['totales']['ganado'] === 1, 'el gráfico recibe dos líneas de volumen y tres carriles de hitos');
+check(array_sum($acT['llegaron_dia']) === 4 && array_sum($acT['contactados_dia']) === 3 && $acT['contactados_dia'][2] === 1 && $acT['contactados_dia'][3] === 0 && min($acT['llegaron_dia']) >= 0, 'la vista «Por día» cuenta solo lo de cada día, sin arrastrar lo anterior');
+check(array_sum($acS['llegaron_dia']) === 4 && count($gr['volumen_dia']) === 2 && $gr['volumen_dia'][1]['datos'] === $acT['contactados_dia'], 'el gráfico recibe también las series por día');
+$emb = P\LeadStats::embudo($lsT, $evT);
+check($emb['llegaron'] === 4 && $emb['contactados'] === 3 && $emb['calificados'] === 1 && $emb['ganados'] === 1 && $emb['perdidos'] === 1 && $emb['pasos'] === [75, 33, 100], 'el embudo cuenta cuántos llegaron a cada etapa y el % entre una y otra');
+$tiT = P\LeadStats::tiempos($lsT, $evT);
+check($tiT['tramos'][0]['dias'] === 1.5 && $tiT['tramos'][1]['dias'] === 5.0 && $tiT['tramos'][2]['dias'] === 2.0 && $tiT['a_ganado_pct'] === 25.0, 'los tiempos promedio entre etapas usan las fechas de cada movimiento');
+check($acT['contactados'][18] === 3 && $acT['contactados'][17] === 2, 'un contacto marcado perdido sin pasar por «Contactado» cuenta como contactado desde ese día');
+$sem = P\LeadStats::semanal($lsT, $evT, $hoyT);
+check(count($sem['semanas']) === 8 && $sem['semanas'][7]['desde'] === '2026-10-19' && $sem['esta']['perdido'] === 1 && $sem['total'] === ['llegaron' => 4, 'contactados' => 3, 'calificado' => 1, 'ganado' => 1, 'perdido' => 1], 'el resumen semanal parte en lunes y trae el total de toda la campaña (con las mismas reglas del gráfico)');
+check(array_sum(array_column($sem['semanas'], 'ganado')) === 1 && array_sum(array_column($sem['semanas'], 'llegaron')) === 4 && $sem['pasada']['desde'] === '2026-10-12', 'cada contacto y cada hito cae en una sola semana');
+check(P\LeadStats::conGrafico($lsT, $hoyT) === true && P\LeadStats::conGrafico([['created_at' => '2026-10-10 10:00:00']], $hoyT) === false && P\LeadStats::conGrafico([], $hoyT) === false, 'el gráfico del Inicio pide al menos 14 días con contactos');
+check(P\LeadStats::nuevosSemana($lsT, $hoyT) === 2, 'cuenta los contactos de los últimos 7 días');
+
+// Público de cada proyecto: B2C, B2B o los dos
+$cPb = $cs->create(['nombre' => 'Cliente Público', 'pais' => 'CL']);
+$pB = $ps->create(['cliente_id' => $cPb, 'nombre' => 'Mixta', 'con_leads' => 1, 'publico_b2c' => '1', 'publico_b2b' => '1']);
+$pBc = $ps->create(['cliente_id' => $cPb, 'nombre' => 'Sólo consumidores', 'con_leads' => 1, 'publico_b2c' => '1']);
+check($ps->find($pB)['publico'] === 'b2c,b2b' && $ps->find($pBc)['publico'] === 'b2c' && $ps->find($pLd)['publico'] === '', 'cada proyecto guarda si le habla a B2C, B2B o a los dos');
+check(P\LeadService::publicoEtiquetas('b2c,b2b') === ['B2C', 'B2B'] && P\LeadService::publicoEtiquetas('') === [] && P\LeadService::publicoEtiquetas('xx') === [], 'las etiquetas de público salen de lo guardado');
+$ps->update($pBc, ['cliente_id' => $cPb, 'nombre' => 'Sólo consumidores', 'estado' => 'activo', 'con_leads' => 1, 'publico_b2b' => '1']);
+check($ps->find($pBc)['publico'] === 'b2b', 'se puede cambiar el público de un proyecto');
+
+// Lista del cliente: «Origen» en vez de «Campaña»; el B2C/B2B va con los datos de la campaña, no en cada fila
+$ps->update($pLd, ['cliente_id' => $cLd, 'nombre' => 'Campaña otoño', 'estado' => 'activo', 'con_leads' => 1, 'publico_b2c' => '1']);
+$_SESSION[P\PortalSession::CONTACTO] = $colab;
+$_GET = [];
+[$html] = $lp->correr('lista');
+check(str_contains($html, '>Origen<') && !str_contains($html, '>Campaña</th>'), 'la columna de la lista del cliente se llama «Origen»');
+check(substr_count($html, 'data-p="B2C"') === 1 && str_contains($html, 'Tus campañas'), 'el B2C aparece una vez, en los datos de la campaña, y no en cada fila');
+check(str_contains($html, 'Agregar contacto') && str_contains($html, '/portal/contactos-ganados/nuevo'), 'el botón para agregar un contacto está en la lista del cliente');
+[$html] = $lp->correr('ver', [(string) $r1['id']]);
+check(str_contains($html, 'Campaña otoño') && str_contains($html, 'data-p="B2C"') && str_contains($html, 'Origen'), 'la ficha muestra el B2C junto a la campaña y el origen del contacto');
+
+// Inicio del cliente: el gráfico de la campaña activa con 14 días o más de contactos
+$_SESSION[P\PortalSession::CONTACTO] = $colab;
+[$html] = $lp->correr('dashboard');
+check(str_contains($html, 'data-grafico=') && str_contains($html, 'Campaña otoño'), 'el Inicio del cliente muestra el gráfico de su campaña activa con 14 días o más de contactos');
+$pdo->exec("UPDATE portal_leads SET created_at = '" . date('Y-m-d H:i:s') . "' WHERE proyecto_id = " . $pdo->quote($pLd));
+[$html] = $lp->correr('dashboard');
+check(!str_contains($html, 'data-grafico='), 'una campaña nueva (menos de 14 días) todavía no muestra gráfico');
+$_SESSION[P\PortalSession::CONTACTO] = $lector;
+[$html] = $lp->correr('dashboard');
+check(!str_contains($html, 'data-grafico='), 'quien sólo puede leer no ve los números de contactos ganados');
+$_SESSION[P\PortalSession::CONTACTO] = $colab;
 
 // Apagar el módulo y borrar el proyecto
 [, $r] = $g->hacer('POST', P\ProyectoAdminController::class, 'update', [$pLd], 'proyecto', false, ['_csrf_token' => $tokL, 'cliente_id' => $cLd, 'nombre' => 'Campaña otoño', 'estado' => 'activo']);
@@ -2131,6 +2443,10 @@ check($r['ok'] && $r['codigo'] === 201 && $r['gracias'] === 'https://pasteleria.
 check($lola && abs(strtotime((string) $lola['created_at']) - time()) < 120, 'la hora de llegada se guarda como el resto del portal (no «hace 3 h» recién llegado)');
 check($lola && $lola['origen'] === 'formulario' && $lola['proyecto_id'] === $pW1 && $lola['fuente_id'] === $fu['id'] && $lola['campana'] === 'tortas', 'queda en su campaña, con su fuente y los UTM');
 check((int) $fs->find($fu['id'])['total'] === 1 && $fs->find($fu['id'])['ultimo_uso_en'] !== null, 'la fuente cuenta los contactos y su último uso');
+$idDora = (string) $pdo->query("SELECT id FROM portal_contactos WHERE email = 'dora@pasteleria.cl'")->fetchColumn();
+$buzonDora = fn(): array => $pdo->query("SELECT asunto FROM portal_avisos_buzon WHERE usuario_id = " . $pdo->quote($idDora) . " AND enviado_en IS NULL")->fetchAll(PDO::FETCH_COLUMN);
+check(count($buzonDora()) === 1 && array_filter($ctx->correos, fn($c) => $c['to'] === 'dora@pasteleria.cl') === [], 'el aviso al cliente no sale suelto: espera su hora en el buzón');
+$vaciarAvisos();
 $aDora = array_values(array_filter($ctx->correos, fn($c) => $c['to'] === 'dora@pasteleria.cl'));
 check(count($aDora) === 1 && str_contains($aDora[0]['subject'], 'Tortas de verano') && !str_contains($aDora[0]['body'], 'lola'), 'avisa a la colaboradora, sin datos de la persona en el correo');
 check(!in_array('sara@pasteleria.cl', array_column($ctx->correos, 'to'), true) && !in_array('vera@pasteleria.cl', array_column($ctx->correos, 'to'), true), 'no avisa a quien lo apagó ni a quien sólo puede leer');
@@ -2138,10 +2454,10 @@ check(!in_array('sara@pasteleria.cl', array_column($ctx->correos, 'to'), true) &
 $r = $en->enviar($fu['token'], '{"name":"Beto Make","email":"beto@make.com","campaign_name":"Meta tortas"}', '10.0.0.9', true);
 $beto = $pdo->query("SELECT * FROM portal_leads WHERE correo = 'beto@make.com'")->fetch();
 check($r['ok'] && $r['codigo'] === 201 && $beto && $beto['origen'] === 'webhook' && $beto['campana'] === 'Meta tortas', 'Make envía JSON con el token en la cabecera X-Portal-Token');
-$enCola = $pdo->query("SELECT asunto FROM portal_correos_cola WHERE destino = 'dora@pasteleria.cl' AND estado = 'pendiente'")->fetchAll(PDO::FETCH_COLUMN);
+$enCola = $buzonDora();
 check(count(array_filter($ctx->correos, fn($c) => $c['to'] === 'dora@pasteleria.cl')) === 1 && count($enCola) === 1 && str_contains($enCola[0], '2 contactos nuevos'), 'el segundo no sale al tiro: espera agrupado con el total');
 $en->enviar($fu['token'], '{"name":"Caro Make","email":"caro@make.com"}', '10.0.0.9', true);
-$enCola = $pdo->query("SELECT asunto FROM portal_correos_cola WHERE destino = 'dora@pasteleria.cl' AND estado = 'pendiente'")->fetchAll(PDO::FETCH_COLUMN);
+$enCola = $buzonDora();
 check(count($enCola) === 1 && str_contains($enCola[0], '3 contactos nuevos'), 'el siguiente actualiza el mismo correo en espera (3 contactos)');
 $pdo->exec("UPDATE portal_leads SET estado = 'contactado' WHERE cliente_id = " . $pdo->quote($cW));
 check(!P\Vigencia::sigue($pdo, P\Vigencia::leads($cW)), 'si ya los atendió antes de que salga, el aviso se descarta');
@@ -2268,6 +2584,7 @@ $pdo->exec("DELETE FROM portal_ajustes WHERE clave LIKE 'ultimo_aviso:%'");
 $rita = $pdo->query("SELECT * FROM portal_leads WHERE correo = 'rita@x.cl'")->fetch();
 check($r === '/equipo/leads?proyecto=' . $pW1 && $contarW() === $antes + 3, 'al confirmar entran sólo los nuevos');
 check($rita && $rita['origen'] === 'csv_meta' && $rita['creado_por'] === 'Coordina' && substr((string) $rita['created_at'], 0, 10) === '2026-02-20', 'quedan con origen Meta y la fecha en que llegaron de verdad');
+$vaciarAvisos();
 check(count(array_filter($ctx->correos, fn($c) => $c['to'] === 'dora@pasteleria.cl')) === 1, 'el cliente recibe un solo aviso por toda la importación');
 $_FILES = ['archivo' => ['name' => 'leads-meta.csv', 'tmp_name' => $tmp, 'error' => UPLOAD_ERR_OK, 'size' => filesize($tmp)]];
 [$html] = $g->hacer('POST', $LA, 'importarRevisar', [], null, false, ['_csrf_token' => $tokI, 'proyecto' => $pW1]);
@@ -2420,7 +2737,9 @@ $mcLlamadas = [];
 $conCorreo = (int) $pdo->query("SELECT COUNT(*) FROM portal_leads WHERE proyecto_id = " . $pdo->quote($pW1) . " AND correo IS NOT NULL AND anonimizado_en IS NULL")->fetchColumn();
 $revisados = (int) $pdo->query("SELECT COUNT(*) FROM portal_leads WHERE proyecto_id = " . $pdo->quote($pW1) . " AND mc_revisado_en IS NOT NULL")->fetchColumn();
 check($revisados === min($conCorreo, 20) && array_filter($mcLlamadas, fn($u) => str_contains($u, 'activity-feed')), '«Revisar en Mailchimp» revisa la campaña de a 20, con la actividad de cada uno');
+$_GET = ['cliente' => (string) $pdo->query("SELECT cliente_id FROM portal_proyectos WHERE id = " . $pdo->quote($pW1))->fetchColumn()];
 [$html] = $g->hacer('GET', $LA, 'index');
+$_GET = [];
 check(str_contains($html, '3 correos · abrió 2'), 'la lista del equipo muestra cuántos correos recibió y abrió cada contacto');
 $_SESSION[P\PortalSession::CONTACTO] = $jefa;
 $_GET = [];
@@ -2583,6 +2902,58 @@ $_GET = [];
 $_SESSION[P\EquipoController::SESION] = $coord;
 check(isset(array_column($ms->conversaciones('equipo', $coord, null), null, 'clave')['tarea:' . $tAjena]), 'Coordinación ve las conversaciones de todos los clientes');
 
+// Destacar conversaciones, reaccionar a mensajes y los dos desplegables
+$_SESSION[P\PortalSession::CONTACTO] = $contacto;
+$cm1 = (string) $ms->hilo('tarea', $tM)[0]['id'];
+$tokC = P\PortalSession::csrf();
+[, $r] = $mp->correr('destacar', [], ['_csrf' => $tokC, 'c' => 'tarea:' . $tM, 'volver' => '/portal/mensajes?c=tarea%3A' . $tM . '&t=destacadas&proyecto=' . $p1a]);
+$xD = array_column($ms->conversaciones('contacto', $contacto, $c1), null, 'clave')['tarea:' . $tM];
+check($xD['destacada'] && !$xD['archivada'] && str_contains((string) $r, '/portal/mensajes?') && str_contains((string) $r, 't=destacadas') && str_contains((string) $r, 'proyecto=' . $p1a), 'destacar una conversación la marca con la ★ y vuelve a la bandeja con los mismos filtros');
+check(!isset($ms->destacadas('equipo', $ana)['tarea:' . $tM]), 'la estrella es de cada persona: el equipo no ve la del cliente');
+$_GET = ['t' => 'destacadas'];
+[$html] = $mp->correr('lista');
+check(str_contains($html, 'Fotos para la web') && str_contains($html, 'aria-current="true"'), 'la pestaña Destacados muestra la conversación destacada, aunque esté terminada');
+$_GET = [];
+$mp->correr('destacar', [], ['_csrf' => $tokC, 'c' => 'tarea:' . $tM]);
+check(!array_column($ms->conversaciones('contacto', $contacto, $c1), null, 'clave')['tarea:' . $tM]['destacada'], 'otro clic le quita la estrella');
+$mp->correr('destacar', [], ['_csrf' => 'falso', 'c' => 'tarea:' . $tM]);
+$mp->correr('destacar', [], ['_csrf' => $tokC, 'c' => 'tarea:' . $tAjena]);
+check($ms->destacadas('contacto', $contacto) === [], 'sin token válido, o con una conversación de otro cliente, no se destaca nada');
+
+$mp->correr('reaccionar', [], ['_csrf' => $tokC, 'c' => 'tarea:' . $tM, 'comentario' => $cm1, 'clave' => 'triste']);
+$rx = $ms->reacciones([$cm1], 'contacto', $contacto)[$cm1] ?? [];
+check(count($rx) === 1 && $rx[0]['clave'] === 'triste' && $rx[0]['emoji'] === '😢' && $rx[0]['n'] === 1 && $rx[0]['mia'] === true, 'reaccionar a un mensaje (también con las menos positivas)');
+$ms->alternarReaccion($cm1, 'pulgar', 'equipo', $ana);
+$rx2 = $ms->reacciones([$cm1], 'contacto', $contacto)[$cm1] ?? [];
+check(count($rx2) === 2 && array_column($rx2, 'mia', 'clave') === ['triste' => true, 'pulgar' => false], 'las reacciones de las dos partes se ven, y cada una sabe cuál es la suya');
+$_GET = ['c' => 'tarea:' . $tM];
+[$html] = $mp->correr('lista');
+check(str_contains($html, '<span class="rx-e">😢</span><span class="rx-n">1</span>') && str_contains($html, '<span class="rx-e">👍</span><span class="rx-n">1</span>') && str_contains($html, 'name="clave" value="pulgar_abajo"'), 'el hilo muestra las reacciones y el selector con todo el pack');
+$_GET = [];
+$mp->correr('reaccionar', [], ['_csrf' => $tokC, 'c' => 'tarea:' . $tM, 'comentario' => $cm1, 'clave' => 'triste']);
+check(!isset(array_column($ms->reacciones([$cm1], 'contacto', $contacto)[$cm1] ?? [], null, 'clave')['triste']), 'tocar la propia reacción la quita');
+$mp->correr('reaccionar', [], ['_csrf' => $tokC, 'c' => 'tarea:' . $tM, 'comentario' => $cm1, 'clave' => 'inventada']);
+$mp->correr('reaccionar', [], ['_csrf' => $tokC, 'c' => 'tarea:' . $tM, 'comentario' => (string) $ms->hilo('tarea', $tAjena)[0]['id'], 'clave' => 'pulgar']);
+check(count($ms->reacciones([$cm1], 'contacto', $contacto)[$cm1] ?? []) === 1 && ($ms->reacciones([(string) $ms->hilo('tarea', $tAjena)[0]['id']], 'equipo', $ana)) === [], 'una reacción inventada, o a un mensaje de otra conversación, se ignora');
+check(array_key_last(P\MensajeService::REACCIONES) === 'pulgar_abajo' && count(P\MensajeService::REACCIONES) === 12 && isset(P\MensajeService::REACCIONES['triste'], P\MensajeService::REACCIONES['duda']), 'el pack tiene 12 reacciones, incluidas las tristes y las dudas');
+
+$todasC = $ms->conversaciones('equipo', $coord, null);
+$fc = P\MensajeService::filtrar($todasC, 'activas', 'cliente_id', $c1, '');
+check($fc !== [] && count(array_unique(array_column($fc, 'cliente_id'))) === 1 && $fc[0]['cliente_id'] === $c1, 'el desplegable de cliente deja sólo las conversaciones de ese cliente');
+check(array_unique(array_column(P\MensajeService::filtrar($todasC, 'activas', 'cliente_id', '', 'tarea'), 'tipo')) === ['tarea'], 'el desplegable de tipo deja sólo ese tipo');
+$op = P\MensajeService::opciones($todasC, 'cliente_id', $c1, '');
+check(isset($op['tipos']['tarea']) && !isset($op['grupos'][$c3]) === false, 'los dos desplegables se complementan: los tipos salen del cliente elegido y los clientes, del tipo elegido');
+$opT = P\MensajeService::opciones($todasC, 'cliente_id', '', 'contenido');
+check(!isset($opT['grupos'][$c1]) || $opT['grupos'][$c1]['n'] === count(array_filter($todasC, fn($x) => $x['cliente_id'] === $c1 && $x['tipo'] === 'contenido')), 'cada opción trae cuántas conversaciones tiene con el otro filtro puesto');
+$_SESSION[P\EquipoController::SESION] = $ana;
+$_POST = ['_csrf' => P\PortalSession::csrf(), 'c' => 'tarea:' . $tM];
+$ctlM->correr(fn() => $ctlM->destacarMensaje());
+check(isset($ms->destacadas('equipo', $ana)['tarea:' . $tM]) && !isset($ms->destacadas('contacto', $contacto)['tarea:' . $tM]), 'el panel también destaca conversaciones, y la estrella es de quien la puso');
+$_GET = ['t' => 'destacadas', 'cliente' => $c1, 'tipo' => 'tarea'];
+[$html] = $ctlM->correr(fn() => $ctlM->mensajes());
+check(str_contains($html, 'Fotos para la web') && str_contains($html, 'Todos los clientes') && str_contains($html, 'Todos los tipos'), 'el panel muestra Destacados con los desplegables de cliente y tipo');
+$_GET = []; $_POST = [];
+
 seccion('Paginación: 20, 30 o 50 por página, orden y filtros que se mantienen');
 $_GET = ['p' => '2', 'estado' => 'nuevo', 'q' => 'ana'];
 $pg = P\Paginacion::desdeGet('/portal/contactos-ganados', 134, null, ['llego_desc' => 'Más nuevos', 'llego_asc' => 'Más antiguos', 'nombre_asc' => 'A-Z']);
@@ -2594,6 +2965,13 @@ check($pg->urlColumna('nombre') === '/portal/contactos-ganados?estado=nuevo&q=an
 $_GET = ['orden' => 'nombre_asc'];
 $pg = P\Paginacion::desdeGet('/x', 10, null, ['llego_desc' => 'a', 'nombre_asc' => 'b', 'nombre_desc' => 'c']);
 check($pg->urlColumna('nombre') === '/x?orden=nombre_desc' && $pg->sentidoColumna('nombre') === 'asc', 'otro clic en la misma columna la da vuelta');
+check($pg->urlInvertirColumna() === '/x?orden=nombre_desc', '«Invertir orden» da vuelta la columna elegida (A→Z pasa a Z→A)');
+$_GET = ['orden' => 'nombre_desc'];
+$pg = P\Paginacion::desdeGet('/x', 10, null, ['llego_desc' => 'a', 'nombre_asc' => 'b', 'nombre_desc' => 'c']);
+check($pg->urlInvertirColumna() === '/x?orden=nombre_asc', 'y vuelve a su sentido con otro clic');
+$_GET = [];
+$pg = P\Paginacion::desdeGet('/x', 10, null, ['llego_desc' => 'a', 'llego_asc' => 'b']);
+check($pg->urlInvertirColumna() === '/x?orden=llego_asc', 'sin orden elegido, invierte el de por defecto (más nuevos → más antiguos)');
 $_GET = ['por' => '999', 'p' => '50'];
 $pg = P\Paginacion::desdeGet('/x', 45, 30);
 check($pg->porPagina === 30 && $pg->pagina === 2, 'un tamaño inválido usa el que la persona eligió antes; una página que no existe va a la última');
@@ -2792,9 +3170,26 @@ $_SERVER['HTTP_REFERER'] = 'https://proyectos.ejemplo.cl/equipo/tareas/1';
 check(P\ListaRecordada::restaurar('/admin/portal/leads') === null && P\ListaRecordada::restaurar('/equipo/tareas') === 'proyecto=x', 'cada lista recuerda lo suyo');
 unset($_SERVER['HTTP_REFERER']); $_SESSION['portal_listas'] = [];
 
+seccion('Paleta de marca: 12 colores y sus normas de contraste');
+check(count(P\Paleta::COLORES) === 12, 'la paleta tiene 12 colores');
+foreach (P\Paleta::COLORES as $k => $c) {
+    $m = P\Paleta::marca($c[1]);
+    check(P\Paleta::contraste($m['color'], $m['texto']) >= 4.5, "{$c[0]}: el texto del botón llega a 4,5:1");
+    check(P\Paleta::contraste($m['tinta'], '#ffffff') >= 4.5, "{$c[0]}: el acento de texto sobre claro llega a 4,5:1");
+}
+check(P\Paleta::marca('#e8552d')['color'] === '#d54318', 'Naranjo Prisma se oscurece a #d54318');
+check(P\Paleta::marca('#2196f3')['texto'] === P\Paleta::TEXTO_OSCURO, 'Azul claro lleva texto oscuro');
+check(P\Paleta::marca('#2f5bea')['color'] === '#2f5bea' && P\Paleta::marca('#2f5bea')['texto'] === '#ffffff', 'Azul queda igual con texto blanco');
+$cx = P\Paleta::marca('#e07b39');
+check(P\Paleta::contraste($cx['color'], $cx['texto']) >= 4.5 || $cx['texto'] === P\Paleta::TEXTO_OSCURO, 'un color antiguo fuera de la paleta también se ajusta');
+check(P\Paleta::elegir('#118a6b', '#6d5df6') === '#118a6b', 'se acepta un color de la paleta');
+check(P\Paleta::elegir('#123456', '#6d5df6') === '#6d5df6', 'un color fuera de la paleta no reemplaza al actual');
+check(P\Paleta::elegir('xx', '') === '', 'sin color válido ni actual vuelve vacío (el defecto)');
+
 seccion('Plantillas: compilan sin avisos (el TypeDock real convierte un aviso en error)');
 $dirT = dirname(__DIR__) . '/portal/templates';
 $motorT = new Latte\Engine();
+P\IdiomaExtension::instalar($motorT);
 $avisosT = [];
 set_error_handler(function (int $n, string $m) use (&$avisosT): bool { $avisosT[] = $m; return true; });
 $nT = 0;
@@ -3140,6 +3535,248 @@ array_map('unlink', glob($upl . '/{.[!.]*,*}', GLOB_BRACE) ?: []);
 @rmdir($upl);
 
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+seccion('Idiomas: el portal del cliente completo en inglés, sin frases sin traducir');
+$ajE = new P\AjustesService($pdo);
+$ajE->set('contacto', $contacto, 'idioma', 'en');
+$_SESSION[P\PortalSession::CONTACTO] = $contacto;
+P\Idioma::$registrarFaltas = true;
+P\Idioma::limpiarFaltas();
+$paginasE = [];
+$verE = function (string $nombre, callable $f) use (&$paginasE): string {
+    ob_start();
+    try { $f(); } catch (RuntimeException) {}
+    $h = (string) ob_get_clean();
+    $paginasE[$nombre] = $h;
+    return $h;
+};
+$verE('inicio', fn() => (new PublicoPrueba($ctx))->dashboard());
+$verE('tareas', fn() => (new PublicoPrueba($ctx))->tareas());
+$verE('reuniones', fn() => (new PublicoPrueba($ctx))->reuniones());
+$verE('calendario', fn() => (new PublicoPrueba($ctx))->calendario());
+$verE('ayuda', fn() => (new PublicoPrueba($ctx))->ayuda());
+$verE('ajustes', fn() => (new PublicoPrueba($ctx))->ajustesForm());
+$verE('archivos', fn() => (new PublicoPrueba($ctx))->archivosPagina());
+$paginasE['solicitudes'] = (new SolicitudPrueba($ctx))->correr('lista')[0];
+$paginasE['contactos'] = (new LeadPrueba($ctx))->correr('lista')[0];
+$paginasE['solicitud nueva'] = (new SolicitudPrueba($ctx))->correr('nueva')[0];
+$paginasE['solicitud'] = (new SolicitudPrueba($ctx))->correr('ver', [$sNid])[0];
+$paginasE['contacto'] = (new LeadPrueba($ctx))->correr('ver', [$idLola])[0];
+final class VerEntregaPrueba extends P\EntregaPublicController
+{
+    protected function redirectTo(string $path, array $query = []): void { throw new RuntimeException('redirect'); }
+    protected function terminate(): void { throw new RuntimeException('fin'); }
+}
+$verE('tarea', fn() => (new PublicoPrueba($ctx))->tarea($tN));
+$verE('reunion', fn() => (new PublicoPrueba($ctx))->reunion($rRec));
+$verE('revisiones', fn() => (new VerEntregaPrueba($ctx))->entregas());
+$verE('revision', fn() => (new VerEntregaPrueba($ctx))->entrega($eRev));
+$verE('contenido', fn() => (new VerEntregaPrueba($ctx))->contenido($piezas[0]));
+$verE('mensajes', fn() => (new P\MensajePublicController($ctx))->lista());
+check(str_contains($paginasE['inicio'], 'lang="en"') && str_contains($paginasE['ajustes'], 'Language'), 'la página sale con lang="en" y en inglés');
+check(str_contains($paginasE['inicio'], 'window.PORTAL_T=') && str_contains($paginasE['inicio'], '"Subir":"Upload"'), 'el JS de la página recibe sus textos en inglés');
+check(str_contains($paginasE['tareas'], 'Tasks') && !str_contains($paginasE['tareas'], '>Tareas<'), 'las tareas dicen «Tasks»');
+$faltasE = P\Idioma::faltas();
+if (getenv('PORTAL_FALTAS')) {
+    file_put_contents(getenv('PORTAL_FALTAS'), implode("\n", $faltasE) . "\n");
+}
+check($faltasE === [], 'ninguna frase sin traducir al recorrer el portal en inglés' . ($faltasE ? ': ' . implode(' | ', array_slice($faltasE, 0, 12)) : ''));
+P\Idioma::$registrarFaltas = false;
+P\Idioma::limpiarFaltas();
+$ajE->set('contacto', $contacto, 'idioma', 'es');
+P\Idioma::fijar('es');
+
+// ---------------------------------------------------------------------------
+seccion('Idiomas: el panel del equipo y las pantallas de gestión en inglés');
+$ajQ = new P\AjustesService($pdo);
+$ajQ->set('equipo', $coord, 'idioma', 'en');
+$_SESSION[P\EquipoController::SESION] = $coord;
+unset($_SESSION[P\PortalSession::CONTACTO], $_SESSION[P\PortalSession::VISTA]);
+P\Idioma::$registrarFaltas = true;
+P\Idioma::limpiarFaltas();
+$gq = new GestionPrueba($ctx);
+$epq = new EquipoPrueba($ctx);
+$paginasQ = [];
+$vista = function (string $n, array $r) use (&$paginasQ): void { $paginasQ[$n] = $r[0]; };
+foreach ([
+    ['tareas', P\TareaAdminController::class, 'index', [], null],
+    ['tarea', P\TareaAdminController::class, 'edit', [$tMia], 'tarea'],
+    ['tarea nueva', P\TareaAdminController::class, 'create', [], null],
+    ['entregas', P\EntregaAdminController::class, 'index', [], null],
+    ['entrega', P\EntregaAdminController::class, 'edit', [$eRev], 'entrega'],
+    ['contenido', P\EntregaAdminController::class, 'editContenido', [$piezas[0]], 'contenido'],
+    ['reuniones', P\ReunionAdminController::class, 'index', [], null],
+    ['reunion', P\ReunionAdminController::class, 'edit', [$rRec], 'reunion'],
+    ['reunion nueva', P\ReunionAdminController::class, 'create', [], null],
+    ['solicitudes', P\SolicitudAdminController::class, 'index', [], null],
+    ['solicitud', P\SolicitudAdminController::class, 'ver', [$sNid], 'solicitud'],
+    ['clientes', P\ClienteAdminController::class, 'index', [], null],
+    ['cliente', P\ClienteAdminController::class, 'edit', [$c1], 'cliente'],
+    ['contactos', P\ContactoAdminController::class, 'index', [], null],
+    ['contacto', P\ContactoAdminController::class, 'edit', [$contacto], 'contacto'],
+    ['proyectos', P\ProyectoAdminController::class, 'index', [], null],
+    ['proyecto', P\ProyectoAdminController::class, 'edit', [$p1a], 'proyecto'],
+    ['fases', P\FaseAdminController::class, 'index', [], null],
+    ['plantillas', P\PlantillaAdminController::class, 'index', [], null],
+    ['equipo', P\EquipoAdminController::class, 'index', [], null],
+] as [$nombreQ, $claseQ, $metodoQ, $argsQ, $tipoQ]) {
+    $vista($nombreQ, $gq->hacer('GET', $claseQ, $metodoQ, $argsQ, $tipoQ, true));
+}
+foreach (['inicio' => fn() => $epq->inicio(), 'clientes' => fn() => $epq->clientes(), 'cliente' => fn() => $epq->cliente($c1), 'proyectos' => fn() => $epq->proyectos(), 'proyecto' => fn() => $epq->proyecto($p1a), 'ajustes' => fn() => $epq->misAjustes()] as $nQ => $fQ) {
+    $vista('panel ' . $nQ, $epq->correr($fQ));
+}
+$tamQ = array_map('strlen', $paginasQ);
+check(min($tamQ) > 500, 'todas las pantallas del panel se dibujan' . (min($tamQ) > 500 ? '' : ': ' . json_encode(array_filter($tamQ, fn($x) => $x <= 500))));
+check(str_contains($paginasQ['panel inicio'], 'lang="en"') && str_contains($paginasQ['panel ajustes'], 'Language'), 'el panel sale con lang="en" y en inglés');
+$faltasQ = P\Idioma::faltas();
+if (getenv('PORTAL_FALTAS_Q')) {
+    file_put_contents(getenv('PORTAL_FALTAS_Q'), implode("\n", $faltasQ) . "\n");
+}
+check($faltasQ === [], 'ninguna frase sin traducir al recorrer el panel en inglés' . ($faltasQ ? ' (' . count($faltasQ) . '): ' . implode(' | ', array_slice($faltasQ, 0, 10)) : ''));
+P\Idioma::reiniciar();
+$ajQ->borrar('equipo', $coord, 'idioma');
+$_SESSION[P\EquipoController::SESION] = $ana;
+
+// ---------------------------------------------------------------------------
+seccion('Idiomas: los correos salen en el idioma de quien los recibe');
+$ajC = new P\AjustesService($pdo);
+$filaC = (new P\ContactoService($pdo))->find($contacto);
+$nC = new P\Notifier($ctx, $pdo);
+P\Idioma::fijar('es');
+$ctx->correos = [];
+$nC->codigoAcceso($filaC, '123456');
+check(count($ctx->correos) === 1 && str_contains($ctx->correos[0]['subject'], 'Tu código de acceso') && str_contains($ctx->correos[0]['body'], 'Vence en 10 minutos'), 'sin idioma elegido, el código llega en español');
+$ajC->set('contacto', $contacto, 'idioma', 'en');
+$ctx->correos = [];
+$nC->codigoAcceso($filaC, '123456');
+check(count($ctx->correos) === 1 && str_contains($ctx->correos[0]['subject'], 'Your access code: 123456') && str_contains($ctx->correos[0]['body'], 'It expires in 10 minutes') && !str_contains($ctx->correos[0]['body'], 'Vence en'), 'si el contacto lo eligió en inglés, el código llega en inglés');
+check(P\Idioma::actual() === 'es', 'enviar el correo no cambia el idioma de quien está usando el panel');
+$ctx->correos = [];
+$nC->invitacionCliente($filaC, 'Welcome aboard', 'Ana');
+check(count($ctx->correos) === 1 && str_contains($ctx->correos[0]['subject'], 'invites you to your project portal') && str_contains($ctx->correos[0]['body'], 'Go to my portal'), 'la invitación sale en inglés');
+$ajC->set('cliente', $c1, 'idioma', 'es');
+$ajC->borrar('contacto', $contacto, 'idioma');
+check(P\Idioma::de($ajC, 'contacto', $contacto, $c1) === 'es', 'sin idioma propio, el contacto usa el de su cliente');
+$ajC->set('contacto', $contacto, 'idioma', 'en');
+// Aviso de lo que hizo el equipo (escrito en español) → buzón del cliente en inglés
+$nC->alCliente($c1, $contacto, P\Idioma::f('Tienes algo pendiente: %s', 'Logo'), P\Idioma::f('Te dejamos una nueva tarea en el portal.'), '/portal/tareas/x', ['proyecto_id' => $p1a]);
+$buzon = $pdo->query("SELECT asunto, detalle FROM portal_avisos_buzon WHERE usuario_id = '{$contacto}' ORDER BY created_at DESC LIMIT 1")->fetch();
+check($buzon && $buzon['asunto'] === 'You have something pending: Logo' && $buzon['detalle'] === 'We’ve added a new task for you in the portal.', 'el aviso queda guardado en el idioma de quien lo va a leer' . ($buzon ? '' : ' (sin fila)'));
+$ctx->correos = [];
+(new P\Avisos($ctx, $pdo, $nC))->enviarAgrupadoCliente($filaC);
+check(count($ctx->correos) === 1 && str_contains($ctx->correos[0]['subject'], 'updates in your portal') && str_contains($ctx->correos[0]['body'], 'Hi ') && str_contains($ctx->correos[0]['body'], 'You have something pending: Logo'), 'y el correo agrupado también sale en inglés');
+// Aviso al equipo, a una persona que lo prefiere en inglés
+$ajC->set('equipo', $ana, 'idioma', 'en');
+$ctx->correos = [];
+$nC->alEquipo(P\Idioma::f('%s comentó en «%s»', 'Clara', 'Logo'), '', 'tareas/' . $tMia, ['proyecto_id' => $p1a]);
+$buzonE = $pdo->query("SELECT asunto FROM portal_avisos_buzon WHERE usuario_id = '{$ana}' ORDER BY created_at DESC LIMIT 1")->fetch();
+check($buzonE && $buzonE['asunto'] === 'Clara commented on “Logo”', 'el aviso al equipo queda en el idioma de esa persona');
+$ajC->borrar('equipo', $ana, 'idioma');
+$ajC->borrar('contacto', $contacto, 'idioma');
+$ajC->borrar('cliente', $c1, 'idioma');
+P\Idioma::reiniciar();
+
+// ---------------------------------------------------------------------------
+seccion('Idiomas: el francés tiene las mismas frases que el inglés');
+$tEn = P\Idioma::tabla('en');
+$tFr = P\Idioma::tabla('fr');
+check(count($tFr) === count($tEn) && array_diff_key($tEn, $tFr) === [], 'el francés cubre las mismas frases que el inglés (' . count($tFr) . ')');
+$malPh = 0;
+foreach ($tFr as $k => $v) {
+    preg_match_all('/%[sd]/', $k, $a1);
+    preg_match_all('/%[sd]/', $v, $a2);
+    $malPh += $a1[0] === $a2[0] ? 0 : 1;
+}
+check($malPh === 0, 'las frases en francés conservan sus %s y %d');
+check(isset(P\Idioma::DISPONIBLES['fr']), 'el francés se puede elegir');
+$fFr = P\Idioma::con('fr', fn() => [(new P\Fmt(new DateTimeImmutable('2026-10-01 10:00', new DateTimeZone('America/Santiago'))))->fecha('2026-10-12 15:30:00'), (new P\Fmt(new DateTimeImmutable('2026-10-01 10:00', new DateTimeZone('America/Santiago'))))->hora('2026-10-12 15:30:00'), (new P\Fmt(new DateTimeImmutable('2026-10-01 10:00', new DateTimeZone('America/Santiago'))))->fechaLarga('2026-10-12 15:30:00')]);
+check($fFr[0] === '12 oct.' && $fFr[1] === '15:30' && $fFr[2] === 'lundi 12 oct.', 'las fechas en francés van con día primero y reloj de 24 horas (' . implode(' | ', $fFr) . ')');
+
+seccion('Idiomas: contactos ganados y Mailchimp en inglés y francés');
+$tFrL = P\Idioma::tabla('fr');
+$tEnL = P\Idioma::tabla('en');
+$sinTraducir = [];
+foreach (array_merge(array_column(P\MailchimpConsulta::ESTADOS, 0), array_values(P\MailchimpConsulta::EVENTOS)) as $et) {
+    if (!isset($tFrL[$et], $tEnL[$et])) {
+        $sinTraducir[] = $et;
+    }
+}
+check($sinTraducir === [], 'los estados y eventos de Mailchimp tienen traducción' . ($sinTraducir ? ' (faltan: ' . implode(', ', $sinTraducir) . ')' : ''));
+check(P\Idioma::con('fr', fn() => P\Idioma::t('%d correos · abrió %d', 2, 1)) === '2 e-mails · a ouvert 1', 'el resumen de correos en francés');
+check(P\Idioma::con('en', fn() => P\Idioma::t('Fila %s: el correo «%s» no es válido.', '3', 'x@')) === 'Row 3: the email “x@” is not valid.', 'el error de fila de la importación en inglés');
+check(P\Idioma::con('fr', fn() => P\Idioma::t('Mailchimp conectado para %s. Ahora elige la audiencia de esta campaña.', 'Panadería Ruiz')) === 'Mailchimp connecté pour Panadería Ruiz. Choisissez maintenant l’audience de cette campagne.', 'el aviso de conexión con Mailchimp en francés');
+
+seccion('Idiomas: el ingreso del equipo no se deja llevar por el navegador');
+$_SERVER['HTTP_ACCEPT_LANGUAGE'] = 'en-US,en;q=0.9';
+unset($_COOKIE[P\Idioma::COOKIE], $_COOKIE[P\Idioma::COOKIE . '_equipo']);
+check(P\Idioma::delVisitante('es', false) === 'es', 'sin cookie, el ingreso del equipo usa el idioma de la agencia aunque el navegador esté en inglés');
+check(P\Idioma::delVisitante('es') === 'en', 'el ingreso de los clientes sí sigue al navegador');
+$_COOKIE[P\Idioma::COOKIE] = 'en';
+P\Idioma::cookieDelEquipo();
+check(P\Idioma::delVisitante('es', false) === 'es', 'lo que se eligió como cliente en el mismo navegador no cambia el idioma del equipo');
+$_COOKIE[P\Idioma::COOKIE . '_equipo'] = 'fr';
+check(P\Idioma::delVisitante('es', false) === 'fr', 'el equipo recuerda su propia elección');
+unset($_COOKIE[P\Idioma::COOKIE], $_COOKIE[P\Idioma::COOKIE . '_equipo'], $_SERVER['HTTP_ACCEPT_LANGUAGE']);
+P\Idioma::reiniciar();
+P\Idioma::registrar('en', []);
+
+seccion('Idiomas: el JS de las plantillas no llama a t() suelta');
+// t() es función de Latte: dentro de un <script> hay que escribirla entre llaves ({t('…')}); suelta es un error de JavaScript
+$sueltas = [];
+foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator(dirname(__DIR__) . '/portal/templates')) as $fl) {
+    if ($fl->getExtension() !== 'latte') {
+        continue;
+    }
+    $src = (string) file_get_contents($fl->getPathname());
+    if (preg_match_all('#<script\b[^>]*>(.*?)</script>#s', $src, $bloques) < 1) {
+        continue;
+    }
+    foreach ($bloques[1] as $b) {
+        if (preg_match('/(?<![\w.$\{])t\([\'"]/', $b)) {
+            $sueltas[] = substr($fl->getPathname(), strlen(dirname(__DIR__) . '/portal/templates/'));
+        }
+    }
+}
+$enOff = [];
+foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator(dirname(__DIR__) . '/portal/templates')) as $fl) {
+    if ($fl->getExtension() === 'latte' && preg_match_all('#<script n:syntax="off">(.*?)</script>#s', (string) file_get_contents($fl->getPathname()), $bl) && preg_grep("/\\{t\\('/", $bl[1])) {
+        $enOff[] = basename($fl->getPathname());
+    }
+}
+check($enOff === [], 'los <script n:syntax="off"> no llevan {t(…)} (Latte no los procesa): usan __t() y el diccionario PA_I18N' . ($enOff ? ' (' . implode(', ', $enOff) . ')' : ''));
+check($sueltas === [], 'ninguna plantilla llama a t() suelta dentro de un <script>' . ($sueltas ? ' (' . implode(', ', array_unique($sueltas)) . ')' : ''));
+
+seccion('Idiomas: las plantillas compilan con el Latte del TypeDock real');
+exec(PHP_BINARY . ' ' . escapeshellarg(dirname(__DIR__) . '/dev/compilar-con-nucleo.php') . ' 2>&1', $salidaN, $codN);
+if ($codN === 2) {
+    echo ' (omitida: no hay un clon de typedock/core; TYPEDOCK_CORE_DIR)';
+} else {
+    check($codN === 0, 'las plantillas compilan con el Latte del núcleo' . ($codN === 0 ? '' : ': ' . implode(' | ', $salidaN)));
+}
+
+// ---------------------------------------------------------------------------
+seccion('Panel de control del proyecto');
+
+$pp = new P\ProyectoPanel($pdo, new DateTimeImmutable('2026-10-20'));
+$progX = ['pct' => 40, 'hechas' => 2, 'total' => 5, 'completo' => false, 'fases' => [
+    ['id' => 'a', 'nombre' => 'Brief', 'estado' => 'hecha', 'tareas' => 2, 'hechas' => 2, 'inicio' => '2026-10-01', 'fin' => '2026-10-09'],
+    ['id' => 'b', 'nombre' => 'Producción', 'estado' => 'actual', 'tareas' => 3, 'hechas' => 1, 'inicio' => '2026-10-10', 'fin' => '2026-10-30'],
+    ['id' => 'c', 'nombre' => 'Entrega', 'estado' => 'pendiente', 'tareas' => 0, 'hechas' => 0, 'inicio' => '2026-11-01', 'fin' => '2026-11-15'],
+]];
+check($pp->salud($progX, 0, 0)['nivel'] === 'plazo' && $pp->salud($progX, 2, 0)['nivel'] === 'riesgo' && $pp->salud($progX, 0, 1)['nivel'] === 'riesgo', 'semáforo: en plazo, y en riesgo con tareas vencidas o revisiones sin respuesta');
+$progAtr = $progX;
+$progAtr['fases'][1]['fin'] = '2026-10-15';
+check($pp->salud($progAtr, 0, 0)['nivel'] === 'atrasado' && str_contains($pp->salud($progAtr, 0, 0)['motivo'], 'Producción'), 'semáforo: atrasado cuando una fase ya debía haber terminado');
+check($pp->salud(['completo' => true, 'fases' => []], 3, 3)['nivel'] === 'completo', 'semáforo: un proyecto completo no está en riesgo');
+check($pp->fechas($progX) === ['inicio' => '2026-10-01', 'fin' => '2026-11-15', 'quedan' => 26], 'fechas del proyecto: inicio, entrega estimada y días que faltan');
+$bar = $pp->barras($progX);
+check($bar[0]['pct'] === 100 && $bar[1]['pct'] === 33 && $bar[2]['pct'] === 0 && $bar[1]['marca'] === 50 && $bar[0]['marca'] === null, 'barras por fase: avance de cada una y la marca de hoy dentro de la fase en curso');
+$vacio = $pp->contenidos('no-existe');
+check($vacio['total'] === 0 && $vacio['semana'] === [] && $vacio['sin_respuesta'] === [], 'un proyecto sin contenidos no rompe el panel');
+$ri = $pp->ritmo('no-existe');
+check(count($ri['semanas']) === 6 && $ri['promedio'] === 0.0 && $ri['proyeccion'] === null, 'ritmo sin tareas: ceros y sin proyección');
+check($pp->reuniones('no-existe')['proxima'] === null && $pp->reuniones('no-existe')['tareas'] === null, 'reuniones sin datos: sin próxima ni última');
+
 echo "\n\n" . $GLOBALS['ok'] . ' comprobaciones OK, ' . count($GLOBALS['fallas']) . " fallas ({$motor}).\n";
 foreach ($GLOBALS['fallas'] as $f) {
     echo "  ✗ {$f}\n";

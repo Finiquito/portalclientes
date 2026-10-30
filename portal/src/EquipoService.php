@@ -18,7 +18,7 @@ class EquipoService
     /** Nombre corto del rol, para mostrar junto al nombre. */
     public static function rolCorto(string $rol): string
     {
-        return ['coordinador' => 'Coordinación general', 'cuentas' => 'Coordinación de cuentas'][$rol] ?? 'Equipo';
+        return Idioma::t(['coordinador' => 'Coordinación general', 'cuentas' => 'Coordinación de cuentas'][$rol] ?? 'Equipo');
     }
 
     public function __construct(private readonly \PDO $pdo) {}

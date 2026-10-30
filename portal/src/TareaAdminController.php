@@ -114,8 +114,8 @@ class TareaAdminController
             'firma'     => $this->firma(),
             'fmt'       => new Fmt(),
             'maxMb'     => (int) round($this->archivos()->limiteBytes(max(1, (int) $this->ajustes()->get('global', 'portal', 'max_mb', '20'))) / 1048576),
-            'estados'   => Fmt::ESTADOS,
-            'tipos'     => Fmt::TIPOS,
+            'estados'   => Idioma::lista(Fmt::ESTADOS),
+            'tipos'     => Idioma::lista(Fmt::TIPOS),
         ] + $extra;
     }
 
@@ -203,8 +203,8 @@ class TareaAdminController
             'tareas'        => $lista,
             'filtros'       => $f,
             'conteos'       => $conteos,
-            'grupos'        => self::FILTRO_ESTADOS,
-            'ordenes'       => self::FILTRO_ORDEN,
+            'grupos'        => Idioma::lista(self::FILTRO_ESTADOS),
+            'ordenes'       => Idioma::lista(self::FILTRO_ORDEN),
             'proyectosF'    => $proyectos,
             'colorProy'     => Fmt::coloresTodos($this->pdo()),
             'marcasCli'     => Fmt::marcasClientes($this->pdo()),
@@ -288,7 +288,7 @@ class TareaAdminController
                 (string) $t['cliente_id'], (string) $t['proyecto_id'], 'equipo', $this->firma(), 'asigno', 'tarea', $id, (string) $t['titulo']
             );
             if (!empty($_POST['avisar'])) {
-                $this->avisarCliente($t, 'Tienes algo pendiente: ' . $t['titulo'], 'Te dejamos una nueva tarea en el portal.', ['titulo' => 'Tienes algo pendiente', 'resaltado' => 'pendiente', 'vigencia' => Vigencia::tarea((string) $t['id'])]);
+                $this->avisarCliente($t, Idioma::f('Tienes algo pendiente: %s', (string) $t['titulo']), Idioma::f('Te dejamos una nueva tarea en el portal.'), ['titulo' => Idioma::f('Tienes algo pendiente'), 'resaltado' => Idioma::f('pendiente'), 'vigencia' => Vigencia::tarea((string) $t['id'])]);
             }
         }
 
@@ -335,10 +335,10 @@ class TareaAdminController
                 );
             }
             if (!empty($_POST['avisar']) && ($cambioEstado || $seAsignoAhora)) {
-                $this->avisarCliente($t, 'Novedades en: ' . $t['titulo'], $seAsignoAhora
-                    ? 'Te dejamos una nueva tarea en el portal.'
-                    : 'Actualizamos esta tarea: ahora está en estado «' . (Fmt::ESTADOS[$t['estado']][0] ?? $t['estado']) . '».',
-                    $seAsignoAhora ? ['titulo' => 'Tienes algo pendiente', 'resaltado' => 'pendiente', 'vigencia' => Vigencia::tarea((string) $t['id'])] : ['titulo' => 'Novedades en tu tarea', 'resaltado' => 'Novedades']);
+                $this->avisarCliente($t, Idioma::f('Novedades en: %s', (string) $t['titulo']), $seAsignoAhora
+                    ? Idioma::f('Te dejamos una nueva tarea en el portal.')
+                    : Idioma::perezoso(fn(): string => Idioma::t('Actualizamos esta tarea: ahora está en estado «%s».', Idioma::t(Fmt::ESTADOS[$t['estado']][0] ?? (string) $t['estado']))),
+                    $seAsignoAhora ? ['titulo' => Idioma::f('Tienes algo pendiente'), 'resaltado' => Idioma::f('pendiente'), 'vigencia' => Vigencia::tarea((string) $t['id'])] : ['titulo' => Idioma::f('Novedades en tu tarea'), 'resaltado' => Idioma::f('Novedades')]);
             }
         }
 
@@ -365,17 +365,17 @@ class TareaAdminController
         $fmt = new Fmt();
         $vence = (string) ($t['fecha_vencimiento'] ?? '');
         $hoy = (new \DateTimeImmutable('now', new \DateTimeZone(Zona::agencia())))->format('Y-m-d');
-        $detalle = $t['proyecto_nombre'] . ($vence !== '' ? ' · para el ' . $fmt->fechaCorta($vence) : '');
+        $detalle = Idioma::perezoso(fn(): string => $t['proyecto_nombre'] . ($vence !== '' ? ' · ' . Idioma::t('para el %s', $fmt->fechaCorta($vence)) : ''));
         $bloques = [['tarjetas' => [['titulo' => (string) $t['titulo'], 'detalle' => $detalle]]]];
         if (trim((string) ($t['descripcion'] ?? '')) !== '') {
             $bloques[] = ['cita' => mb_substr(trim((string) $t['descripcion']), 0, 600)];
         }
         $quien = $this->ui->firma();
-        (new Notifier($this->ctx, $this->pdo()))->alEquipo('Te asignaron: «' . $t['titulo'] . '»', '', 'tareas/' . $t['id'], [
+        (new Notifier($this->ctx, $this->pdo()))->alEquipo(Idioma::f('Te asignaron: «%s»', (string) $t['titulo']), '', 'tareas/' . $t['id'], [
             'proyecto_id' => (string) $t['proyecto_id'], 'responsable' => $resp, 'solo_responsable' => true, 'actor' => $this->ui->autorId(),
             'urgente' => $vence !== '' && substr($vence, 0, 10) <= $hoy,
-            'etiqueta' => 'Tarea', 'titulo' => 'Te asignaron una tarea', 'resaltado' => 'asignaron', 'bloques' => $bloques, 'boton' => 'Abrir la tarea',
-            'preheader' => ($quien !== '' ? $quien . ' te asignó: ' : '') . $t['titulo'], 'clave' => 'tareas/' . $t['id'], 'detalle' => $detalle,
+            'etiqueta' => Idioma::f('Tarea'), 'titulo' => Idioma::f('Te asignaron una tarea'), 'resaltado' => Idioma::f('asignaron'), 'bloques' => $bloques, 'boton' => Idioma::f('Abrir la tarea'),
+            'preheader' => ($quien !== '' ? Idioma::f('%s te asignó: %s', $quien, (string) $t['titulo']) : (string) $t['titulo']), 'clave' => 'tareas/' . $t['id'], 'detalle' => $detalle,
             'vigencia' => Vigencia::tarea((string) $t['id']),
         ]);
     }
@@ -408,8 +408,8 @@ class TareaAdminController
         if ($this->visibleParaCliente($t)) {
             $this->actividad()->registrar((string) $t['cliente_id'], (string) $t['proyecto_id'], 'equipo', $this->firma(), 'comento', 'tarea', $id, (string) $t['titulo'], mb_substr($texto, 0, 200));
             if (!empty($_POST['avisar'])) {
-                $this->avisarCliente($t, 'Nuevo comentario en: ' . $t['titulo'], '', ['etiqueta' => 'Comentario', 'titulo' => 'Nuevo comentario del equipo', 'resaltado' => 'comentario', 'boton' => 'Ver y responder', 'preheader' => mb_substr($texto, 0, 110),
-                    'bloques' => [['p' => 'En «' . $t['titulo'] . '»:'], ['cita' => mb_substr($texto, 0, 800)]]]);
+                $this->avisarCliente($t, Idioma::f('Nuevo comentario en: %s', (string) $t['titulo']), '', ['etiqueta' => Idioma::f('Comentario'), 'titulo' => Idioma::f('Nuevo comentario del equipo'), 'resaltado' => Idioma::f('comentario'), 'boton' => Idioma::f('Ver y responder'), 'preheader' => mb_substr($texto, 0, 110),
+                    'bloques' => [['p' => Idioma::f('En «%s»:', (string) $t['titulo'])], ['cita' => mb_substr($texto, 0, 800)]]]);
             }
         }
         $this->ui->redirect(MensajeService::destino($this->ui->url('mensajes'), $this->urlTarea($id) . '#conversacion'), 'Comentario publicado.');
@@ -455,7 +455,7 @@ class TareaAdminController
         if ($n > 0 && $this->visibleParaCliente($t)) {
             $this->actividad()->registrar((string) $t['cliente_id'], (string) $t['proyecto_id'], 'equipo', $this->firma(), 'subio_archivo', 'tarea', $id, (string) $t['titulo'], $n . ' archivo(s)');
             if (!empty($_POST['avisar'])) {
-                $this->avisarCliente($t, 'Nuevos archivos en: ' . $t['titulo'], "Subimos {$n} archivo(s) para que los tengas a mano.", ['etiqueta' => 'Archivos', 'titulo' => 'Tienes archivos nuevos', 'resaltado' => 'archivos nuevos', 'boton' => 'Ver los archivos']);
+                $this->avisarCliente($t, Idioma::f('Nuevos archivos en: %s', (string) $t['titulo']), Idioma::f('Subimos %d archivo(s) para que los tengas a mano.', $n), ['etiqueta' => Idioma::f('Archivos'), 'titulo' => Idioma::f('Tienes archivos nuevos'), 'resaltado' => Idioma::f('archivos nuevos'), 'boton' => Idioma::f('Ver los archivos')]);
             }
         }
 
@@ -499,10 +499,10 @@ class TareaAdminController
     // ---- Correo -----------------------------------------------------------
 
     /** @param array<string, mixed> $t */
-    private function avisarCliente(array $t, string $asunto, string $cuerpo, array $op = []): void
+    private function avisarCliente(array $t, string|\Stringable $asunto, string|\Stringable $cuerpo, array $op = []): void
     {
         $contacto = $t['responsable_tipo'] === 'cliente' ? ($t['responsable_contacto_id'] ?? null) : null;
-        $op += ['etiqueta' => 'Tarea', 'boton' => 'Abrir la tarea', 'bloques' => [['tarjetas' => [['titulo' => (string) $t['titulo'], 'detalle' => (string) ($t['proyecto_nombre'] ?? '')]]]]];
+        $op += ['etiqueta' => Idioma::f('Tarea'), 'boton' => Idioma::f('Abrir la tarea'), 'bloques' => [['tarjetas' => [['titulo' => (string) $t['titulo'], 'detalle' => (string) ($t['proyecto_nombre'] ?? '')]]]]];
         (new Notifier($this->ctx, $this->pdo()))->alCliente(
             (string) $t['cliente_id'], $contacto ? (string) $contacto : null, $asunto, $cuerpo, '/portal/tareas/' . $t['id'], $op
         );

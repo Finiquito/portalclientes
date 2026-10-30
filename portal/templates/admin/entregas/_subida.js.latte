@@ -1,5 +1,83 @@
 {* Subida de contenidos en la entrega: soltar sobre una pieza, zona única con «Revisa antes de crear» y crear a mano por tipo.
    Sin JavaScript todo sigue funcionando: los formularios se envían tal cual y el servidor decide solo. *}
+<script>
+window.PA_I18N = Object.assign(window.PA_I18N || {}, {
+  "Sumar a: ": {t('Sumar a: ')},
+  "Contenido nuevo (uno por archivo)": {t('Contenido nuevo (uno por archivo)')},
+  "Carrusel nuevo (junto con los otros)": {t('Carrusel nuevo (junto con los otros)')},
+  "No subir": {t('No subir')},
+  "Planilla: un contenido por fila": {t('Planilla: un contenido por fila')},
+  " · lámina ": {t(' · lámina ')},
+  "No hay pieza ": {t('No hay pieza ')},
+  "Imagen sin número de pieza": {t('Imagen sin número de pieza')},
+  "PDF: documento nuevo": {t('PDF: documento nuevo')},
+  "Video: reel nuevo": {t('Video: reel nuevo')},
+  "Archivo": {t('Archivo')},
+  "Se crea un contenido por fila": {t('Se crea un contenido por fila')},
+  "Qué hacer con ": {t('Qué hacer con ')},
+  "1 archivo": {t('1 archivo')},
+  " archivos": {t(' archivos')},
+  "Revisa antes de crear · ": {t('Revisa antes de crear · ')},
+  "Reconocimos el número de pieza en ": {t('Reconocimos el número de pieza en ')},
+  " nombre. ": {t(' nombre. ')},
+  " nombres. ": {t(' nombres. ')},
+  "Elige qué hacer con cada archivo: sumarlo a una pieza, crear uno nuevo o juntarlos en un carrusel.": {t('Elige qué hacer con cada archivo: sumarlo a una pieza, crear uno nuevo o juntarlos en un carrusel.')},
+  "Nada para subir": {t('Nada para subir')},
+  "Agregar ": {t('Agregar ')},
+  "archivos": {t('archivos')},
+  "link": {t('link')},
+  "copy": {t('copy')},
+  "cuenta": {t('cuenta')},
+  "fecha de publicación": {t('fecha de publicación')},
+  "Láminas o imagen": {t('Láminas o imagen')},
+  "Video (MP4) o portada": {t('Video (MP4) o portada')},
+  "Imagen o video vertical 9:16": {t('Imagen o video vertical 9:16')},
+  "Imagen": {t('Imagen')},
+  "Variantes del logo": {t('Variantes del logo')},
+  "Imágenes": {t('Imágenes')},
+  "Archivo PDF": {t('Archivo PDF')},
+  "Capturas": {t('Capturas')},
+  "Archivos": {t('Archivos')},
+  "Para un carrusel, elige todas las láminas juntas: van en el orden en que las elijas.": {t('Para un carrusel, elige todas las láminas juntas: van en el orden en que las elijas.')},
+  "Se ve por páginas y se puede descargar.": {t('Se ve por páginas y se puede descargar.')},
+  "Si no tienes PDF, pega el link en «Más detalles».": {t('Si no tienes PDF, pega el link en «Más detalles».')},
+  "Link del video (YouTube, Vimeo o Drive)": {t('Link del video (YouTube, Vimeo o Drive)')},
+  "Link al sitio o prototipo": {t('Link al sitio o prototipo')},
+  "Link a la presentación": {t('Link a la presentación')},
+  "Link": {t('Link')},
+  "Hasta 10 archivos.": {t('Hasta 10 archivos.')},
+  "Más detalles: ": {t('Más detalles: ')},
+  "objetivo, láminas y notas": {t('objetivo, láminas y notas')},
+  "contenido": {t('contenido')},
+  "Ej.: Brandbook 2026": {t('Ej.: Brandbook 2026')},
+  "Ej.: Propuesta de campaña": {t('Ej.: Propuesta de campaña')},
+  "Ej.: Landing de verano": {t('Ej.: Landing de verano')},
+  "Ej.: Logo · versión final": {t('Ej.: Logo · versión final')},
+  "Ej.: Reel 2 · Un día en la consulta": {t('Ej.: Reel 2 · Un día en la consulta')},
+  "Ej.: Post 11 · Antes y después": {t('Ej.: Post 11 · Antes y después')},
+  "Fondo claro, oscuro y transparente.": {t('Fondo claro, oscuro y transparente.')},
+  "Carrusel de ": {t('Carrusel de ')},
+  " láminas.": {t(' láminas.')},
+  "Leyendo el PDF…": {t('Leyendo el PDF…')},
+  "Página 1": {t('Página 1')},
+  " página": {t(' página')},
+  " páginas": {t(' páginas')},
+  ". El cliente lo ve por páginas y lo puede descargar.": {t('. El cliente lo ve por páginas y lo puede descargar.')},
+  "Leyendo el video…": {t('Leyendo el video…')},
+  "Tapa del video": {t('Tapa del video')},
+  "Esta es la tapa: elige otro cuadro con la barra o sube una imagen.": {t('Esta es la tapa: elige otro cuadro con la barra o sube una imagen.')},
+  "Aquí va el PDF": {t('Aquí va el PDF')},
+  "Pega el link del sitio": {t('Pega el link del sitio')},
+  "Sube el video o pega su link": {t('Sube el video o pega su link')},
+  "Imagen o video vertical": {t('Imagen o video vertical')},
+  "Sin archivos todavía": {t('Sin archivos todavía')},
+  "Leyendo el link…": {t('Leyendo el link…')},
+  "No pudimos leer ese link. El cliente igual lo verá.": {t('No pudimos leer ese link. El cliente igual lo verá.')},
+  "Sin imagen para compartir": {t('Sin imagen para compartir')},
+  "No pudimos leer ese link.": {t('No pudimos leer ese link.')}
+});
+window.__t = window.__t || function (s) { var d = window.PA_I18N || {}; return d[s] !== undefined ? d[s] : s; };
+</script>
 <script n:syntax="off">
 (function () {
   'use strict';
@@ -74,10 +152,10 @@
     function numeros(nombre) { var m = nombre.replace(/\.[^.]+$/, '').match(/\d+/g); return m ? [parseInt(m[0], 10), m[1] ? parseInt(m[1], 10) : 0] : null; }
     function corto(t) { return t.length > 46 ? t.slice(0, 45) + '…' : t; }
     function opciones(sel) {
-      var h = piezas.map(function (p) { return '<option value="pieza:' + p.id + '"' + (sel === 'pieza:' + p.id ? ' selected' : '') + '>Sumar a: ' + esc(corto(p.titulo)) + '</option>'; }).join('');
-      return h + '<option value="nuevo"' + (sel === 'nuevo' ? ' selected' : '') + '>Contenido nuevo (uno por archivo)</option>'
-        + '<option value="carrusel"' + (sel === 'carrusel' ? ' selected' : '') + '>Carrusel nuevo (junto con los otros)</option>'
-        + '<option value="omitir"' + (sel === 'omitir' ? ' selected' : '') + '>No subir</option>';
+      var h = piezas.map(function (p) { return '<option value="pieza:' + p.id + '"' + (sel === 'pieza:' + p.id ? ' selected' : '') + '>' + __t('Sumar a: ') + esc(corto(p.titulo)) + '</option>'; }).join('');
+      return h + '<option value="nuevo"' + (sel === 'nuevo' ? ' selected' : '') + '>' + __t('Contenido nuevo (uno por archivo)') + '</option>'
+        + '<option value="carrusel"' + (sel === 'carrusel' ? ' selected' : '') + '>' + __t('Carrusel nuevo (junto con los otros)') + '</option>'
+        + '<option value="omitir"' + (sel === 'omitir' ? ' selected' : '') + '>' + __t('No subir') + '</option>';
     }
 
     function revisar(files) {
@@ -95,27 +173,27 @@
       lista.innerHTML = '';
       files.forEach(function (f, i) {
         var n = numeros(f.name), p = n ? pieza(n[0]) : null, chip, sel;
-        if (CSV.test(f.name)) { chip = '<span class="pa-chip info">Planilla: un contenido por fila</span>'; sel = 'nuevo'; }
-        else if (p && (IMG.test(f.name) || VID.test(f.name) || PDF.test(f.name))) { reconocidos++; chip = '<span class="pa-chip ok">' + esc(corto(p.titulo)) + (n[1] ? ' · lámina ' + n[1] : '') + '</span>'; sel = 'pieza:' + p.id; }
-        else if (IMG.test(f.name)) { chip = n ? '<span class="pa-chip warn">No hay pieza ' + n[0] + '</span>' : '<span class="pa-chip">Imagen sin número de pieza</span>'; sel = sinPiezaImg > 1 ? 'carrusel' : 'nuevo'; }
-        else if (PDF.test(f.name)) { chip = '<span class="pa-chip">PDF: documento nuevo</span>'; sel = 'nuevo'; }
-        else if (VID.test(f.name)) { chip = '<span class="pa-chip">Video: reel nuevo</span>'; sel = 'nuevo'; }
-        else { chip = '<span class="pa-chip">Archivo</span>'; sel = 'nuevo'; }
+        if (CSV.test(f.name)) { chip = '<span class="pa-chip info">' + __t('Planilla: un contenido por fila') + '</span>'; sel = 'nuevo'; }
+        else if (p && (IMG.test(f.name) || VID.test(f.name) || PDF.test(f.name))) { reconocidos++; chip = '<span class="pa-chip ok">' + esc(corto(p.titulo)) + (n[1] ? __t(' · lámina ') + n[1] : '') + '</span>'; sel = 'pieza:' + p.id; }
+        else if (IMG.test(f.name)) { chip = n ? '<span class="pa-chip warn">' + __t('No hay pieza ') + n[0] + '</span>' : '<span class="pa-chip">' + __t('Imagen sin número de pieza') + '</span>'; sel = sinPiezaImg > 1 ? 'carrusel' : 'nuevo'; }
+        else if (PDF.test(f.name)) { chip = '<span class="pa-chip">' + __t('PDF: documento nuevo') + '</span>'; sel = 'nuevo'; }
+        else if (VID.test(f.name)) { chip = '<span class="pa-chip">' + __t('Video: reel nuevo') + '</span>'; sel = 'nuevo'; }
+        else { chip = '<span class="pa-chip">' + __t('Archivo') + '</span>'; sel = 'nuevo'; }
         var mini = IMG.test(f.name) ? '<img src="' + URL.createObjectURL(f) + '" alt="">' : '<span class="pa-ico">' + esc((f.name.split('.').pop() || '').toUpperCase()) + '</span>';
         var fila = document.createElement('div');
         fila.className = 'pa-map-fila';
         fila.innerHTML = mini + '<div style="min-width:0"><code>' + esc(f.name) + '</code>' + chip + '</div>'
-          + (CSV.test(f.name) ? '<input type="hidden" data-destino="' + i + '" value="nuevo"><span class="pa-muted">Se crea un contenido por fila</span>'
-            : '<select class="form-input" data-destino="' + i + '" aria-label="Qué hacer con ' + esc(f.name) + '">' + opciones(sel) + '</select>');
+          + (CSV.test(f.name) ? '<input type="hidden" data-destino="' + i + '" value="nuevo"><span class="pa-muted">' + __t('Se crea un contenido por fila') + '</span>'
+            : '<select class="form-input" data-destino="' + i + '" aria-label="' + __t('Qué hacer con ') + esc(f.name) + '">' + opciones(sel) + '</select>');
         lista.appendChild(fila);
         if (PDF.test(f.name) || VID.test(f.name)) {
           tapaDe(f).then(function (r) { if (r && r.blob) { var im = new Image(); im.alt = ''; im.src = URL.createObjectURL(r.blob); fila.replaceChild(im, fila.firstChild); } });
         }
       });
-      var t = files.length === 1 ? '1 archivo' : files.length + ' archivos';
-      form.querySelector('[data-revisar-titulo]').textContent = 'Revisa antes de crear · ' + t;
-      form.querySelector('[data-revisar-ayuda]').textContent = (reconocidos ? 'Reconocimos el número de pieza en ' + reconocidos + (reconocidos === 1 ? ' nombre. ' : ' nombres. ') : '')
-        + 'Elige qué hacer con cada archivo: sumarlo a una pieza, crear uno nuevo o juntarlos en un carrusel.';
+      var t = files.length === 1 ? __t('1 archivo') : files.length + __t(' archivos');
+      form.querySelector('[data-revisar-titulo]').textContent = __t('Revisa antes de crear · ') + t;
+      form.querySelector('[data-revisar-ayuda]').textContent = (reconocidos ? __t('Reconocimos el número de pieza en ') + reconocidos + (reconocidos === 1 ? __t(' nombre. ') : __t(' nombres. ')) : '')
+        + __t('Elige qué hacer con cada archivo: sumarlo a una pieza, crear uno nuevo o juntarlos en un carrusel.');
       actualizar();
       rev.hidden = false;
       rev.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -125,7 +203,7 @@
       var subir = vals.filter(function (v) { return v !== 'omitir'; }).length;
       form.querySelector('[data-revisar-extra]').hidden = !vals.some(function (v) { return v === 'carrusel' || v === 'nuevo'; });
       var ok = form.querySelector('[data-revisar-ok]');
-      ok.textContent = subir === 0 ? 'Nada para subir' : 'Agregar ' + (subir === 1 ? '1 archivo' : subir + ' archivos');
+      ok.textContent = subir === 0 ? __t('Nada para subir') : __t('Agregar ') + (subir === 1 ? __t('1 archivo') : subir + __t(' archivos'));
       ok.disabled = subir === 0;
     }
     lista.addEventListener('change', actualizar);
@@ -163,10 +241,10 @@
   if (mano) {
     var M = {}; try { M = JSON.parse(mano.getAttribute('data-campos') || '{}'); } catch (e) { M = {}; }
     var masBox = mano.querySelector('[data-mas-campos]'), mas = mano.querySelector('[data-mas]');
-    var nombres = { archivos: 'archivos', enlace: 'link', copy: 'copy', cuenta: 'cuenta', fecha: 'fecha de publicación' };
-    var etqArch = { post: 'Láminas o imagen', reel: 'Video (MP4) o portada', story: 'Imagen o video vertical 9:16', grafica: 'Imagen', logo: 'Variantes del logo', mockup: 'Imágenes', brandbook: 'Archivo PDF', presentacion: 'Archivo PDF', web: 'Capturas', otro: 'Archivos' };
-    var hintArch = { post: 'Para un carrusel, elige todas las láminas juntas: van en el orden en que las elijas.', brandbook: 'Se ve por páginas y se puede descargar.', presentacion: 'Si no tienes PDF, pega el link en «Más detalles».' };
-    var etqEnl = { reel: 'Link del video (YouTube, Vimeo o Drive)', web: 'Link al sitio o prototipo', presentacion: 'Link a la presentación', otro: 'Link' };
+    var nombres = { archivos: __t('archivos'), enlace: __t('link'), copy: __t('copy'), cuenta: __t('cuenta'), fecha: __t('fecha de publicación') };
+    var etqArch = { post: __t('Láminas o imagen'), reel: __t('Video (MP4) o portada'), story: __t('Imagen o video vertical 9:16'), grafica: __t('Imagen'), logo: __t('Variantes del logo'), mockup: __t('Imágenes'), brandbook: __t('Archivo PDF'), presentacion: __t('Archivo PDF'), web: __t('Capturas'), otro: __t('Archivos') };
+    var hintArch = { post: __t('Para un carrusel, elige todas las láminas juntas: van en el orden en que las elijas.'), brandbook: __t('Se ve por páginas y se puede descargar.'), presentacion: __t('Si no tienes PDF, pega el link en «Más detalles».') };
+    var etqEnl = { reel: __t('Link del video (YouTube, Vimeo o Drive)'), web: __t('Link al sitio o prototipo'), presentacion: __t('Link a la presentación'), otro: __t('Link') };
     var lugar = {};
     mano.querySelectorAll('[data-campo]').forEach(function (el) { var ph = document.createComment('campo'); el.parentNode.insertBefore(ph, el); lugar[el.getAttribute('data-campo')] = { el: el, ph: ph }; });
     var tipoNombre = {}; mano.querySelectorAll('.pa-tipo').forEach(function (l) { tipoNombre[l.querySelector('input').value] = l.querySelector('b').textContent; });
@@ -179,13 +257,13 @@
         if (v === 1) { masBox.appendChild(L.el); L.el.hidden = false; opc.push(nombres[c]); }
         else { L.ph.parentNode.insertBefore(L.el, L.ph.nextSibling); L.el.hidden = v === 0; }
       });
-      mano.querySelector('[data-etq-archivos]').textContent = etqArch[k] || 'Archivos';
-      mano.querySelector('[data-hint-archivos]').textContent = hintArch[k] || 'Hasta 10 archivos.';
-      mano.querySelector('[data-etq-enlace]').textContent = etqEnl[k] || 'Link';
-      mano.querySelector('[data-mas-txt]').textContent = 'Más detalles: ' + opc.concat(['objetivo, láminas y notas']).join(', ');
-      var nom = (tipoNombre[k] || 'contenido').split(' /')[0];
-      mano.querySelector('[data-mano-ok]').textContent = 'Agregar ' + nom.charAt(0).toLowerCase() + nom.slice(1);
-      mano.querySelector('#m-titulo').placeholder = { brandbook: 'Ej.: Brandbook 2026', presentacion: 'Ej.: Propuesta de campaña', web: 'Ej.: Landing de verano', logo: 'Ej.: Logo · versión final', reel: 'Ej.: Reel 2 · Un día en la consulta' }[k] || 'Ej.: Post 11 · Antes y después';
+      mano.querySelector('[data-etq-archivos]').textContent = etqArch[k] || __t('Archivos');
+      mano.querySelector('[data-hint-archivos]').textContent = hintArch[k] || __t('Hasta 10 archivos.');
+      mano.querySelector('[data-etq-enlace]').textContent = etqEnl[k] || __t('Link');
+      mano.querySelector('[data-mas-txt]').textContent = __t('Más detalles: ') + opc.concat([__t('objetivo, láminas y notas')]).join(', ');
+      var nom = (tipoNombre[k] || __t('contenido')).split(' /')[0];
+      mano.querySelector('[data-mano-ok]').textContent = __t('Agregar ') + nom.charAt(0).toLowerCase() + nom.slice(1);
+      mano.querySelector('#m-titulo').placeholder = { brandbook: __t('Ej.: Brandbook 2026'), presentacion: __t('Ej.: Propuesta de campaña'), web: __t('Ej.: Landing de verano'), logo: __t('Ej.: Logo · versión final'), reel: __t('Ej.: Reel 2 · Un día en la consulta') }[k] || __t('Ej.: Post 11 · Antes y después');
       vista();
     }
     var urls = [], linkTimer = null, ultimoLink = '';
@@ -209,33 +287,33 @@
       if (marco === 'logo' && imgs.length) {
         var u = urlDe(imgs[0]);
         media.innerHTML = '<div class="pa-logo-fondos"><span style="background:#fff"><img src="' + u + '" alt=""></span><span style="background:#16181f"><img src="' + u + '" alt=""></span><span class="pa-logo-cuadros"><img src="' + u + '" alt=""></span></div>';
-        pie.textContent = 'Fondo claro, oscuro y transparente.';
+        pie.textContent = __t('Fondo claro, oscuro y transparente.');
       } else if (imgs.length && !vid && marco !== 'doc') {
         media.innerHTML = '<img src="' + urlDe(imgs[0]) + '" alt="">' + (imgs.length > 1 ? '<span class="pa-vista-badge">1/' + imgs.length + '</span><span class="pa-vista-puntos">' + imgs.map(function (x, i) { return '<i' + (i === 0 ? ' class="on"' : '') + '></i>'; }).join('') + '</span>' : '');
-        if (imgs.length > 1) { pie.textContent = 'Carrusel de ' + imgs.length + ' láminas.'; }
+        if (imgs.length > 1) { pie.textContent = __t('Carrusel de ') + imgs.length + __t(' láminas.'); }
       } else if (pdf) {
-        media.innerHTML = '<span>Leyendo el PDF…</span>';
+        media.innerHTML = '<span>' + __t('Leyendo el PDF…') + '</span>';
         tapaDe(pdf).then(function (r) {
           if (!r) { media.innerHTML = '<span>' + esc(pdf.name) + '</span>'; return; }
-          media.innerHTML = '<img src="' + urlDe(r.blob) + '" alt="Página 1">';
-          pie.textContent = pdf.name + ' · ' + r.paginas + (r.paginas === 1 ? ' página' : ' páginas') + '. El cliente lo ve por páginas y lo puede descargar.';
+          media.innerHTML = '<img src="' + urlDe(r.blob) + '" alt="' + __t('Página 1') + '">';
+          pie.textContent = pdf.name + ' · ' + r.paginas + (r.paginas === 1 ? __t(' página') : __t(' páginas')) + __t('. El cliente lo ve por páginas y lo puede descargar.');
         });
       } else if (vid) {
-        media.innerHTML = '<span>Leyendo el video…</span>';
-        var mostrar = function (b) { media.innerHTML = '<img src="' + urlDe(b) + '" alt="Tapa del video"><span class="pa-vista-play" aria-hidden="true">▶</span>'; };
+        media.innerHTML = '<span>' + __t('Leyendo el video…') + '</span>';
+        var mostrar = function (b) { media.innerHTML = '<img src="' + urlDe(b) + '" alt="' + __t('Tapa del video') + '"><span class="pa-vista-play" aria-hidden="true">▶</span>'; };
         if (tapas.get(vid)) { mostrar(tapas.get(vid)); }
         tapaDe(vid).then(function (r) {
           if (!r) { media.innerHTML = '<span>' + esc(vid.name) + '</span>'; return; }
           slider.max = String(Math.max(0.1, Math.floor((r.duracion || 1) * 10) / 10)); slider.disabled = false;
           mostrar(tapas.get(vid) || r.blob);
         });
-        pie.textContent = 'Esta es la tapa: elige otro cuadro con la barra o sube una imagen.';
+        pie.textContent = __t('Esta es la tapa: elige otro cuadro con la barra o sube una imagen.');
       } else if (fs.length) {
         media.innerHTML = '<span>' + esc(fs[0].name) + '</span>';
       } else {
         var enl = (mano.querySelector('#m-enlace') || {}).value || '';
         if (enl && /^https?:\/\//i.test(enl)) { tarjetaLink(enl, media, pie); return; }
-        media.innerHTML = '<span>' + ({ doc: 'Aquí va el PDF', web: 'Pega el link del sitio', vertical: k === 'reel' ? 'Sube el video o pega su link' : 'Imagen o video vertical' }[marco] || 'Sin archivos todavía') + '</span>';
+        media.innerHTML = '<span>' + ({ doc: __t('Aquí va el PDF'), web: __t('Pega el link del sitio'), vertical: k === 'reel' ? __t('Sube el video o pega su link') : __t('Imagen o video vertical') }[marco] || __t('Sin archivos todavía')) + '</span>';
       }
       var copy = (M.copy || {})[k] ? (mano.querySelector('[data-mano-copy]').value || '') : '';
       var cuenta = (M.cuenta || {})[k] ? (mano.querySelector('[data-mano-cuenta]').value || '') : '';
@@ -244,16 +322,16 @@
     // Tarjeta del link (título e imagen que el sitio declara para compartir; miniatura en YouTube y Vimeo).
     function tarjetaLink(url, media, pie) {
       var base = (document.querySelector('[data-soltar]') || {}).getAttribute ? document.querySelector('[data-soltar]').getAttribute('data-link-url') : '';
-      media.innerHTML = '<span>Leyendo el link…</span>';
+      media.innerHTML = '<span>' + __t('Leyendo el link…') + '</span>';
       if (!base) { return; }
       ultimoLink = url;
       fetch(base + (base.indexOf('?') >= 0 ? '&' : '?') + 'url=' + encodeURIComponent(url), { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
         .then(function (r) { return r.json(); }).then(function (d) {
           if (url !== ultimoLink) { return; }
-          if (!d || !d.ok) { media.innerHTML = '<span>No pudimos leer ese link. El cliente igual lo verá.</span>'; return; }
-          media.innerHTML = (d.imagen ? '<img src="' + esc(d.imagen) + '" alt="" referrerpolicy="no-referrer">' : '<span>Sin imagen para compartir</span>');
+          if (!d || !d.ok) { media.innerHTML = '<span>' + __t('No pudimos leer ese link. El cliente igual lo verá.') + '</span>'; return; }
+          media.innerHTML = (d.imagen ? '<img src="' + esc(d.imagen) + '" alt="" referrerpolicy="no-referrer">' : '<span>' + __t('Sin imagen para compartir') + '</span>');
           pie.textContent = [d.sitio, d.titulo].filter(Boolean).join(' · ');
-        }).catch(function () { media.innerHTML = '<span>No pudimos leer ese link.</span>'; });
+        }).catch(function () { media.innerHTML = '<span>' + __t('No pudimos leer ese link.') + '</span>'; });
     }
     slider.addEventListener('input', function () {
       var vid = Array.prototype.slice.call(mano.querySelector('[data-mano-archivos]').files || []).filter(function (f) { return VID.test(f.name); })[0];

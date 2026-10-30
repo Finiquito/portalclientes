@@ -1,0 +1,121 @@
+{* Resumen del proyecto para el cliente: avance, lo que le toca, etapas, contenidos, contactos ganados y reuniones.
+   Dos columnas independientes (cada tarjeta mide lo que necesita su contenido); en el celular van en una sola, en el orden o1…o6.
+   Parámetros: $r (PortalPublicController::resumenProyecto), $proyectoId, $fmt. *}
+{var $tp = $r['proyecto']}
+{var $cont = $r['contenidos']}
+{var $reu = $r['reuniones']}
+{var $visibles = $cont['total'] - $cont['borrador']}
+<div class="pp reveal">
+<div class="pp-cols">
+
+<div class="pp-col">
+    <section class="card pp-kpi bloque-azul o1" style="padding: 1.2rem 1.3rem">
+        <span class="pp-eti" style="color: var(--muted)">Avance del proyecto</span>
+        <div style="display:flex;align-items:baseline;gap:.8rem;flex-wrap:wrap">
+            <div class="n" style="font-size:2.6rem;font-weight:800;letter-spacing:-.04em;margin-top:.5rem">{$tp['pct']}<span style="font-size:1.3rem">%</span></div>
+            {if $tp['completo']}<span style="font-size:.95rem;font-weight:700">Proyecto completo</span>
+            {elseif $tp['actual']}<span style="font-size:.95rem;font-weight:700">Etapa {$tp['actual']['n']} de {count($tp['fases'])} · {$tp['actual']['nombre']}</span>{/if}
+        </div>
+        <div class="pp-barra" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{$tp['pct']}" aria-label="Avance"><i style="width:{$tp['pct']}%"></i></div>
+        {if $tp['fechas']['fin'] || $tp['sigue']}
+            <div class="t" style="margin-top:.5rem">
+                {if $tp['fechas']['fin']}Entrega estimada <b>{$fmt->fechaCorta($tp['fechas']['fin'])}</b>{if $tp['fechas']['quedan'] !== null && $tp['fechas']['quedan'] >= 0 && !$tp['completo']} · {$tp['fechas']['quedan'] === 1 ? t('queda 1 día') : t('quedan %d días', $tp['fechas']['quedan'])}{/if}{/if}
+                {if $tp['sigue']}{if $tp['fechas']['fin']} · {/if}{if $tp['sigue']['inicio']}{t('sigue %s el %s', $tp['sigue']['nombre'], $fmt->fechaCorta($tp['sigue']['inicio']))}{else}{t('sigue %s', $tp['sigue']['nombre'])}{/if}{/if}
+            </div>
+        {/if}
+    </section>
+
+    {if $tp['barras']}
+    <section class="card card-pad o3">
+        <div class="pp-cab"><div><h2>Etapas</h2><p class="pp-sub">Cada barra es una etapa: lo oscuro es lo avanzado{if array_filter($tp['barras'], fn($b) => $b['marca'] !== null)} y la línea roja es hoy{/if}</p></div><a href="?proyecto={$proyectoId}&amp;vista=linea">Ver línea de tiempo →</a></div>
+        {foreach $tp['barras'] as $b}
+            <div class="pp-fase">
+                <div><b>{$b['nombre']}</b><small>{if $b['ini']}{$fmt->fechaCorta($b['ini'])}{if $b['fin']} – {$fmt->fechaCorta($b['fin'])}{/if}{else}{$b['estado'] === 'hecha' ? 'Lista' : ($b['estado'] === 'actual' ? 'En curso' : 'Próxima')}{/if}</small></div>
+                <div class="pp-pista" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{$b['pct']}" aria-label="{$b['nombre']}"><i style="width:{$b['pct']}%"></i>{if $b['marca'] !== null}<em style="left:{$b['marca']}%"></em>{/if}</div>
+                <b class="{$b['pct'] === 0 ? 'text-muted' : ''}">{$b['pct']}%</b>
+            </div>
+        {/foreach}
+    </section>
+    {/if}
+
+    <section class="card card-pad o4">
+        <div class="pp-cab"><div><h2>Contenidos</h2><p class="pp-sub">{if $visibles > 0}{$visibles} {$visibles === 1 ? t('pieza') : t('piezas')} · {$cont['aprobado']} {$cont['aprobado'] === 1 ? t('aprobada') : t('aprobadas')}{else}Todavía no hay piezas para revisar{/if}</p></div><a href="/portal/entregas">Ver revisiones →</a></div>
+        {if $visibles > 0}
+            <div class="pp-seg" role="img" aria-label="Piezas por estado">
+                {if $cont['pendiente']}<i style="flex:{$cont['pendiente']};background:var(--warn)"></i>{/if}
+                {if $cont['cambios']}<i style="flex:{$cont['cambios']};background:var(--danger)"></i>{/if}
+                {if $cont['aprobado']}<i style="flex:{$cont['aprobado']};background:var(--ok)"></i>{/if}
+            </div>
+            <div class="pp-ley">
+                <span><s style="background:var(--warn)"></s><b>{$cont['pendiente']}</b> {$cont['pendiente'] === 1 ? t('espera tu revisión') : t('esperan tu revisión')}</span>
+                <span><s style="background:var(--danger)"></s><b>{$cont['cambios']}</b> con cambios pedidos</span>
+                <span><s style="background:var(--ok)"></s><b>{$cont['aprobado']}</b> {$cont['aprobado'] === 1 ? t('aprobada') : t('aprobadas')}</span>
+            </div>
+        {else}
+            <p class="pp-vacio">Cuando el equipo te comparta contenido para revisar, aquí ves en qué va cada pieza.</p>
+        {/if}
+    </section>
+
+    {* Contactos ganados: sólo si el proyecto los tiene activos y la persona los ve *}
+    {if $r['contactos']}
+        {var $cg = $r['contactos']}
+        {var $mx = max(1, ...array_column($cg['semanas'], 'llegaron'))}
+        <section class="card card-pad o5" style="background: var(--surface-2)">
+            <div class="pp-cab"><div><h2>Contactos ganados</h2><p class="pp-sub"><b class="text-ink">{$cg['total']['llegaron']}</b> {$cg['total']['llegaron'] === 1 ? t('contacto') : t('contactos')} · <b class="text-ink">{$cg['total']['contactados']}</b> {$cg['total']['contactados'] === 1 ? t('contactado') : t('contactados')} · <b class="text-ink">{$cg['total']['ganado']}</b> {$cg['total']['ganado'] === 1 ? t('ganado') : t('ganados')}</p></div><a href="/portal/contactos-ganados?proyecto={$proyectoId}">Ver contactos →</a></div>
+            {include '../_lead_semanal.latte', cg: $cg, mx: $mx, fmt: $fmt}
+        </section>
+    {/if}
+</div>
+
+<div class="pp-col">
+    <section class="card card-pad o2">
+        <div class="pp-cab"><div><h2>Lo que te toca</h2><p class="pp-sub">
+            {if $r['nMeTocan'] + $cont['pendiente'] === 0}Nada por ahora: todo está en manos del equipo
+            {else}{t('%d %s y %d %s tu respuesta', $r['nMeTocan'], $r['nMeTocan'] === 1 ? t('tarea') : t('tareas'), $cont['pendiente'], $cont['pendiente'] === 1 ? t('pieza espera') : t('piezas esperan'))}{/if}
+        </p></div><a href="/portal/tareas?f=mias">Ver todo →</a></div>
+        {if $r['meTocan'] || $cont['por_revisar']}
+            <ul class="pp-lista">
+                {foreach $r['meTocan'] as $t}
+                    {var $v = $fmt->vence($t['fecha_vencimiento'], $t['estado'])}
+                    {var $vencida = $t['fecha_vencimiento'] && $v['tono'] === 'danger'}
+                    <li><a href="/portal/tareas/{$t['id']}" class="t"><span>{$t['titulo']}</span><small>Tarea{if $t['fecha_vencimiento']} · {$vencida ? t('venció el %s', $fmt->fechaCorta($t['fecha_vencimiento'])) : t('para el %s', $fmt->fechaCorta($t['fecha_vencimiento']))}{/if}</small></a>
+                        <span class="pp-pill" style="color: var(--{$vencida ? 'danger' : 'muted'})">{$vencida ? 'Vencida' : 'Pendiente'}</span></li>
+                {/foreach}
+                {foreach array_slice($cont['por_revisar'], 0, 3) as $x}
+                    <li><a href="/portal/contenidos/{$x['id']}" class="t"><span>{t('Revisar «%s»', $x['titulo'])}</span><small>Contenido{if $x['dias_espera'] > 0} · {$x['dias_espera'] === 1 ? t('espera hace 1 día') : t('espera hace %d días', $x['dias_espera'])}{/if}</small></a><span class="pp-pill" style="color: var(--warn)">Revisar</span></li>
+                {/foreach}
+            </ul>
+            {if $cont['pendiente'] > 3}<p class="pp-sub" style="margin-top:.4rem">{$cont['pendiente'] - 3 === 1 ? t('y 1 pieza más por revisar') : t('y %d piezas más por revisar', $cont['pendiente'] - 3)} · <a href="/portal/entregas" class="font-semibold text-brand-ink hover:underline">verlas todas</a></p>{/if}
+        {else}
+            <p class="pp-vacio">Cuando el equipo necesite algo de ti, aparece aquí.</p>
+        {/if}
+    </section>
+
+    <section class="card card-pad o6">
+        <div class="pp-cab"><div><h2>Reuniones</h2><p class="pp-sub">La próxima y lo que se acordó en la última</p></div><a href="/portal/reuniones">Ver →</a></div>
+        {if !$reu['proxima'] && !$reu['ultima']}
+            <p class="pp-vacio">No hay reuniones agendadas por ahora.</p>
+        {else}
+            {if $reu['proxima']}
+                <p class="pp-eti" style="margin:0 0 .1rem">Próxima</p>
+                <ul class="pp-lista"><li>
+                    <div class="pp-dia"><b>{$fmt->dia($reu['proxima']['fecha'])}</b><span>{$fmt->mesCorto($reu['proxima']['fecha'])}</span></div>
+                    <a href="/portal/reuniones/{$reu['proxima']['id']}" class="t"><span>{$reu['proxima']['titulo']}</span><small>{$fmt->hora($reu['proxima']['fecha'])}{if $reu['proxima']['enlace_meet']} · con Meet{/if}</small></a>
+                    {if $reu['proxima']['enlace_meet']}<a href="{$reu['proxima']['enlace_meet']}" target="_blank" rel="noopener" class="btn btn-soft btn-sm">Meet</a>{/if}
+                </li></ul>
+            {/if}
+            {if $reu['ultima']}
+                <p class="pp-eti" style="margin:{$reu['proxima'] ? '.9rem' : '0'} 0 .1rem">Última · {$fmt->fechaCorta($reu['ultima']['fecha'])}</p>
+                {if $r['acuerdos']}
+                    <div class="pp-tareas" style="margin-top:.3rem"><b style="font-size:.85rem">Acuerdos</b>
+                        <ul style="margin:.35rem 0 0;padding-left:1.1rem;font-size:.8rem;list-style:disc">{foreach $r['acuerdos'] as $a}<li style="padding:.1rem 0">{$a}</li>{/foreach}</ul>
+                    </div>
+                {/if}
+                <p style="margin:.5rem 0 0"><a href="/portal/reuniones/{$reu['ultima']['id']}" class="text-sm font-semibold text-brand-ink hover:underline">{$reu['ultima']['titulo']} →</a></p>
+            {/if}
+        {/if}
+    </section>
+</div>
+
+</div>
+</div>

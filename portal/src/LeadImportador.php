@@ -67,23 +67,23 @@ final class LeadImportador
     {
         $vacio = ['filas' => [], 'errores' => [], 'origen' => 'csv', 'creado' => []];
         if (strlen($texto) > self::MAX_BYTES) {
-            return ['errores' => ['La planilla pesa más de 2 MB. Pártela en dos.']] + $vacio;
+            return ['errores' => [Idioma::t('La planilla pesa más de 2 MB. Pártela en dos.')]] + $vacio;
         }
         $texto = str_replace(["\r\n", "\r"], "\n", self::aUtf8($texto));
         if (trim($texto) === '') {
-            return ['errores' => ['La planilla está vacía.']] + $vacio;
+            return ['errores' => [Idioma::t('La planilla está vacía.')]] + $vacio;
         }
         $sep = self::separador(strtok($texto, "\n") ?: '');
         $fh = fopen('php://memory', 'r+');
         if ($fh === false) {
-            return ['errores' => ['No se pudo leer el archivo.']] + $vacio;
+            return ['errores' => [Idioma::t('No se pudo leer el archivo.')]] + $vacio;
         }
         fwrite($fh, $texto);
         rewind($fh);
         $cab = fgetcsv($fh, 0, $sep, '"', '');
         if (!is_array($cab) || count(array_filter($cab, fn($h) => trim((string) $h) !== '')) === 0) {
             fclose($fh);
-            return ['errores' => ['La planilla no tiene encabezados en la primera fila.']] + $vacio;
+            return ['errores' => [Idioma::t('La planilla no tiene encabezados en la primera fila.')]] + $vacio;
         }
         $origen = self::origen($cab);
         $cab = array_map(function ($h): string {
@@ -100,7 +100,7 @@ final class LeadImportador
                 continue;
             }
             if (count($filas) >= self::MAX_FILAS) {
-                $errores[] = 'Se leyeron las primeras ' . self::MAX_FILAS . ' filas; el resto se omitió.';
+                $errores[] = Idioma::t('Se leyeron las primeras %d filas; el resto se omitió.', self::MAX_FILAS);
                 break;
             }
             $par = [];
@@ -131,7 +131,7 @@ final class LeadImportador
         }
         fclose($fh);
         if (!$reconoce) {
-            return ['errores' => ['No reconocimos las columnas. Necesitamos al menos «nombre», «correo» o «teléfono» (o los de Meta y Google: full_name, email, phone_number).']] + $vacio;
+            return ['errores' => [Idioma::t('No reconocimos las columnas. Necesitamos al menos «nombre», «correo» o «teléfono» (o los de Meta y Google: full_name, email, phone_number).')]] + $vacio;
         }
         return ['filas' => $filas, 'errores' => $errores, 'origen' => $origen, 'creado' => $creado];
     }

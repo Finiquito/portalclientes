@@ -51,6 +51,13 @@
 </div>
 {/define}
 
+<script>
+window.PA_I18N = Object.assign(window.PA_I18N || {}, {
+  "La imagen de esta lámina también se elimina al guardar. ¿Seguir?": {t('La imagen de esta lámina también se elimina al guardar. ¿Seguir?')},
+  "Imagen nueva": {t('Imagen nueva')}
+});
+window.__t = window.__t || function (s) { var d = window.PA_I18N || {}; return d[s] !== undefined ? d[s] : s; };
+</script>
 <script n:syntax="off">
 (function () {
   var caja = document.querySelector('[data-laminas]');
@@ -74,7 +81,7 @@
     if (b.hasAttribute('data-lamina-quitar')) {
       var img = fila.querySelector('[data-lamina-img]');
       if (img && img.value) {
-        if (!confirm('La imagen de esta lámina también se elimina al guardar. ¿Seguir?')) return;
+        if (!confirm(__t('La imagen de esta lámina también se elimina al guardar. ¿Seguir?'))) return;
         var h = document.createElement('input');
         h.type = 'hidden'; h.name = 'lamina_borrar[]'; h.value = img.value;
         caja.appendChild(h);
@@ -95,7 +102,7 @@
     var t = f.closest('label').querySelector('[data-lamina-thumb]');
     var img = document.createElement('img');
     img.src = URL.createObjectURL(f.files[0]);
-    img.alt = 'Imagen nueva';
+    img.alt = __t('Imagen nueva');
     img.setAttribute('data-lamina-thumb', '');
     t.replaceWith(img);
     f.closest('label').classList.add('nueva');

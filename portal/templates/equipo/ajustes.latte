@@ -23,15 +23,7 @@
         </div>
         <p class="hint mt-2"><strong>Solo lo mío</strong>: lo de las tareas que tienes a tu nombre y, de lo que no tiene responsable, lo de tus clientes. <strong>Todo</strong>: todo lo de tus clientes.</p>
 
-        <p class="mt-5 font-semibold">Cómo me llega</p>
-        <div class="mt-2 grid grid-cols-2 gap-2">
-            {foreach ['agrupado' => 'Agrupados', 'instante' => 'Al instante'] as $k => $txt}
-                <label class="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-line px-3 py-2.5 text-sm font-semibold has-[:checked]:border-brand has-[:checked]:bg-brand-soft has-[:checked]:text-brand-ink">
-                    <input type="radio" name="avisos_como" value="{$k}" class="sr-only" {if $prefAvisos['como'] === $k}checked{/if}>{$txt}
-                </label>
-            {/foreach}
-        </div>
-        <p class="hint mt-2"><strong>Agrupados</strong>: un solo correo, ordenado por proyecto, cuando se juntan {\TypeDock\Plugin\Portal\Avisos::JUNTOS} avisos o cada {\TypeDock\Plugin\Portal\Avisos::HORAS} horas. Las urgencias y las invitaciones a reuniones llegan siempre al tiro.</p>
+        <p class="hint mt-4">Los avisos te llegan <strong>agrupados</strong>: un solo correo, ordenado por proyecto, a las {\TypeDock\Plugin\Portal\Avisos::horasTexto()} (o antes si se juntan {\TypeDock\Plugin\Portal\Avisos::JUNTOS}). Las urgencias salen en la próxima pasada, como mucho en 15 minutos. Los códigos de acceso y las invitaciones a reuniones llegan siempre al tiro.</p>
 
         <label class="mt-5 flex items-start gap-3">
             <input type="checkbox" name="resumen_diario" value="1" class="mt-1 size-4 accent-[var(--brand)]" {if $prefAvisos['resumen']}checked{/if}>
@@ -49,6 +41,16 @@
                 </label>
             {/foreach}
         </div>
+
+        <h2 class="mt-7 text-lg font-extrabold tracking-tight">Idioma</h2>
+        <div class="mt-3 grid grid-cols-2 gap-2">
+            {foreach \TypeDock\Plugin\Portal\Idioma::DISPONIBLES as $cod => $nombre}
+                <label class="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-line px-3 py-2.5 text-sm font-semibold has-[:checked]:border-brand has-[:checked]:bg-brand-soft has-[:checked]:text-brand-ink">
+                    <input type="radio" name="idioma" value="{$cod}" class="sr-only" {if $idiomaPref === $cod}checked{/if}><span lang="{$cod}">{$nombre}</span>
+                </label>
+            {/foreach}
+        </div>
+        <p class="hint mt-2">Cambia el idioma de tu panel y de los correos que recibes.</p>
 
         <button type="submit" class="btn btn-primary mt-6" data-sending="Guardando…">Guardar</button>
     </form>

@@ -95,6 +95,7 @@ class ActividadAdminController
                 'max_mb'        => $aj['max_mb'] ?? '20',
                 'urgentes_max'  => $aj['urgentes_max'] ?? '1',
                 'pais_agencia'  => HorarioHabil::paisValido($aj['pais_agencia'] ?? HorarioHabil::PAIS_DEFECTO),
+                'idioma'        => Idioma::valido($aj['idioma'] ?? '') ? $aj['idioma'] : Idioma::DEFECTO,
             ],
             'ia' => (function () {
                 $ia = new IaService($this->pdo());
@@ -112,6 +113,12 @@ class ActividadAdminController
             })(),
             'correo'        => $this->datosCorreo(),
             'paises'        => HorarioHabil::PAISES,
+            'horaServidorInfo' => [
+                'agencia' => (new \DateTimeImmutable('now', new \DateTimeZone(Zona::agencia())))->format('H:i'),
+                'zona'    => Zona::agencia(),
+                'servidor' => (new \DateTimeImmutable('now'))->format('H:i'),
+                'zonaServidor' => date_default_timezone_get(),
+            ],
             'iniMax'        => (int) round(min(
                 ArchivoService::iniBytes((string) ini_get('upload_max_filesize')) ?: PHP_INT_MAX,
                 ArchivoService::iniBytes((string) ini_get('post_max_size')) ?: PHP_INT_MAX
@@ -134,7 +141,8 @@ class ActividadAdminController
             'max_mb'        => (string) max(1, min(500, (int) ($_POST['max_mb'] ?? 20))),
             'urgentes_max'  => (string) max(0, min(20, (int) ($_POST['urgentes_max'] ?? 1))),
             'pais_agencia'  => HorarioHabil::paisValido((string) ($_POST['pais_agencia'] ?? HorarioHabil::PAIS_DEFECTO)),
-            'color_agencia' => preg_match('/^#[0-9a-f]{6}$/i', (string) ($_POST['color_agencia'] ?? '')) === 1 ? strtolower((string) $_POST['color_agencia']) : '',
+            'idioma'        => Idioma::valido((string) ($_POST['idioma'] ?? '')) ? (string) $_POST['idioma'] : Idioma::DEFECTO,
+            'color_agencia' => Paleta::elegir((string) ($_POST['color_agencia'] ?? ''), (string) ($this->ajustes()->todos('global', 'portal')['color_agencia'] ?? '')),
         ]);
         // IA (opcional): las claves sólo se cambian si se escribe una nueva; nunca se muestran de vuelta.
         $ia = new IaService($this->pdo());
@@ -188,6 +196,18 @@ class ActividadAdminController
             $u = (new \DateTimeImmutable($ultimo, new \DateTimeZone('UTC')))->setTimezone(new \DateTimeZone(Zona::agencia()));
             $cronUltimo = $dias[(int) $u->format('w')] . ' ' . $u->format('d/m H:i');
         }
+        // Estado del cron: ¿corre? ¿hace cuánto? ¿llegó alguna llamada con la clave mala?
+        $cronEstado = 'nunca';
+        if ($ultimo !== '') {
+            $hace = time() - (new \DateTimeImmutable($ultimo, new \DateTimeZone('UTC')))->getTimestamp();
+            $cronEstado = $hace > 3600 ? 'atrasado' : 'ok';
+        }
+        $mala = $aj->get('global', 'portal', 'cron_clave_mala');
+        $cronMala = '';
+        if ($mala !== '') {
+            $m = (new \DateTimeImmutable($mala, new \DateTimeZone('UTC')))->setTimezone(new \DateTimeZone(Zona::agencia()));
+            $cronMala = $dias[(int) $m->format('w')] . ' ' . $m->format('d/m H:i');
+        }
         $cola = [];
         foreach ($n->cola() as $f) {
             $pais = $f['cliente_id'] ? $n->paisDeContacto(isset($f['contacto_id']) ? (string) $f['contacto_id'] : null, (string) $f['cliente_id']) : HorarioHabil::PAIS_DEFECTO;
@@ -196,7 +216,7 @@ class ActividadAdminController
             $cola[] = $f;
         }
         return [
-            'modo' => $n->modo(), 'respetar' => $respetar, 'ini' => $ini, 'fin' => $fin, 'cronUltimo' => $cronUltimo,
+            'modo' => $n->modo(), 'respetar' => $respetar, 'ini' => $ini, 'fin' => $fin, 'cronUltimo' => $cronUltimo, 'cronEstado' => $cronEstado, 'cronMala' => $cronMala,
             'tieneLogo' => $marca->rutaLogoAgencia() !== null, 'icono' => $marca->urlIcono(), 'diag' => $n->diagnostico(),
             'cronUrl' => Notifier::baseUrl() . '/portal/cron/correos?k=' . $token, 'cola' => $cola,
             'metodoHtml' => $n->diagnostico()['metodos'], 'smtp' => $n->smtpVista(),

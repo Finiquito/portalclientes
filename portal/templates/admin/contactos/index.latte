@@ -3,7 +3,7 @@
 {block page_title}Contactos{/block}
 
 {block content}
-<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=16">
+<link rel="stylesheet" href="/plugins/portal/assets/portal-admin.css?v=17">
 <div class="page-header">
     <h1>Contactos de clientes</h1>
     <a href="{$admin_url('contactos/nuevo')}" class="btn btn-primary">Nuevo contacto</a>
@@ -17,13 +17,18 @@
 {else}
 <div class="card">
     <table class="table">
-        <thead><tr><th>Nombre</th><th>Cliente</th><th>Email</th><th>Rol</th><th>Portal</th><th></th></tr></thead>
+        <thead><tr><th>Nombre</th><th>Cliente</th><th>Email</th><th>Hora que ve</th><th>Rol</th><th>Portal</th><th></th></tr></thead>
         <tbody>
         {foreach $contactos as $c}
             <tr>
                 <td><a href="{$admin_url('contactos/' . $c['id'])}">{$c['nombre']}</a></td>
                 <td>{$c['cliente_nombre']}</td>
                 <td>{$c['email']}</td>
+                {var $paisVe = \TypeDock\Plugin\Portal\HorarioHabil::paisValido((string) ($c['pais'] ?: ($c['cliente_pais'] ?? '')))}
+                <td style="white-space:nowrap" title="{$c['pais'] ? 'País propio de esta persona (pesa más que el de su empresa)' : 'El país de su empresa'}">
+                    {\TypeDock\Plugin\Portal\Fmt::bandera($paisVe)} {\TypeDock\Plugin\Portal\HorarioHabil::nombreDe($paisVe)}
+                    {if $c['pais']}<span class="pa-chip warn">propio</span>{else}<span class="pa-muted">de su empresa</span>{/if}
+                </td>
                 <td>{$c['rol'] === 'aprobador' ? 'Colaborador' : 'Sólo lectura'}</td>
                 <td>
                     {if $c['primer_acceso']}<span class="pa-chip ok">Entró</span> <span class="pa-muted">{$fmt->rel($c['ultimo_acceso'])}</span>

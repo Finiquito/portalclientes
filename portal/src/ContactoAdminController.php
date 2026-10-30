@@ -43,6 +43,7 @@ class ContactoAdminController
         }
         $this->ui->view('contactos/edit.latte', [
             'contacto' => null,
+            'idiomaContacto' => '',
             'clientes' => $clientes,
             'firma'    => $this->ui->firma(),
         ]);
@@ -56,6 +57,7 @@ class ContactoAdminController
             return;
         }
         $id = $this->service()->create($_POST);
+        Idioma::guardarDePost(new AjustesService($this->ctx->db()->pdo()), 'contacto', $id);   // antes de la invitación: sale en su idioma
         if (!empty($_POST['invitar'])) {
             $ok = $this->enviarInvitacion($id, (string) ($_POST['mensaje'] ?? ''));
             $this->ui->redirect($this->ui->url('contactos/' . $id), $ok ? 'Contacto creado y la invitación va en camino.' : 'Contacto creado, pero la invitación no salió: revisa el correo en Portal · Ajustes.', $ok ? 'success' : 'error');
@@ -130,6 +132,7 @@ class ContactoAdminController
         }
         $this->ui->view('contactos/edit.latte', [
             'contacto' => $contacto,
+            'idiomaContacto' => (new AjustesService($this->ctx->db()->pdo()))->get('contacto', $id, 'idioma'),
             'clientes' => $this->clientes(),
             'fmt'      => new Fmt(),
             'firma'    => $this->ui->firma(),
@@ -141,6 +144,7 @@ class ContactoAdminController
     public function update(string $id): void
     {
         $this->service()->update($id, $_POST);
+        Idioma::guardarDePost(new AjustesService($this->ctx->db()->pdo()), 'contacto', $id);
         $this->ui->redirect($this->ui->url('contactos/' . $id), 'Contacto actualizado.');
     }
 

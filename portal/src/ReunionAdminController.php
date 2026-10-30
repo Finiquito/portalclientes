@@ -197,8 +197,8 @@ class ReunionAdminController
             'reuniones'     => $lista,
             'filtros'       => $f,
             'conteos'       => $conteos,
-            'cuandos'       => self::FILTRO_CUANDO,
-            'estadosF'      => self::FILTRO_ESTADO,
+            'cuandos'       => Idioma::lista(self::FILTRO_CUANDO),
+            'estadosF'      => Idioma::lista(self::FILTRO_ESTADO),
             'proyectosF'    => $proyectos,
             'colorProy'     => Fmt::coloresTodos($this->pdo()),
             'marcasCli'     => Fmt::marcasClientes($this->pdo()),
@@ -230,7 +230,7 @@ class ReunionAdminController
         $_POST['resumen_publicado'] = '';
         $id = $this->service()->create($_POST);
         $n = $this->guardarConvocados($id, null);
-        $this->ui->redirect($this->url('reuniones/' . $id), 'Reunión creada' . ($n > 0 ? ' e invitaciones enviadas (' . $n . ')' : '') . '. Aquí puedes pegar la transcripción cuando termine.');
+        $this->ui->redirect($this->url('reuniones/' . $id), ($n > 0 ? Idioma::t('Reunión creada e invitaciones enviadas (%d). Aquí puedes pegar la transcripción cuando termine.', $n) : Idioma::t('Reunión creada. Aquí puedes pegar la transcripción cuando termine.')));
     }
 
     public function edit(string $id): void
@@ -434,10 +434,10 @@ class ReunionAdminController
         $avisar = !empty($_POST['avisar']);
         $enviado = $this->registrarPublicacion($antes, $ahora, $res['visibles'] + $hecho['nuevasVisibles'], $proxPublicada, $avisar, $proxId);
 
-        $n = static fn(int $k, string $uno, string $varios): string => $k . ' ' . ($k === 1 ? $uno : $varios);
+        $n = static fn(int $k, string $uno, string $varios): string => $k . ' ' . Idioma::t($k === 1 ? $uno : $varios);
         $partes = [];
         if ($res['creadas'] > 0) {
-            $partes[] = $n($res['creadas'], 'tarea creada', 'tareas creadas') . ($res['visibles'] > 0 ? " ({$res['visibles']} " . ($res['visibles'] === 1 ? 'la ve' : 'las ve') . ' el cliente)' : ' (internas)');
+            $partes[] = $n($res['creadas'], 'tarea creada', 'tareas creadas') . ($res['visibles'] > 0 ? ' (' . ($res['visibles'] === 1 ? Idioma::t('%d la ve el cliente', $res['visibles']) : Idioma::t('%d las ve el cliente', $res['visibles'])) . ')' : ' ' . Idioma::t('(internas)'));
         }
         if ($hecho['actualizadas'] > 0) {
             $partes[] = $n($hecho['actualizadas'], 'tarea actualizada', 'tareas actualizadas');
@@ -446,20 +446,20 @@ class ReunionAdminController
             $partes[] = $n($hecho['quitadas'], 'sugerencia descartada', 'sugerencias descartadas');
         }
         if ($agendada) {
-            $partes[] = 'próxima reunión agendada';
+            $partes[] = Idioma::t('próxima reunión agendada');
         }
         if ((int) $ahora['resumen_publicado'] === 1 && (int) $antes['resumen_publicado'] === 0 && (int) $ahora['publicada'] === 1) {
-            $partes[] = 'resumen publicado';
+            $partes[] = Idioma::t('resumen publicado');
         }
         if ($hecho['invitaciones'] > 0) {
-            $partes[] = 'invitaciones o cambios enviados a los convocados (' . $hecho['invitaciones'] . ')';
+            $partes[] = Idioma::t('invitaciones o cambios enviados a los convocados (%d)', $hecho['invitaciones']);
         }
         if ($enviado) {
-            $partes[] = 'le avisamos por correo al cliente';
+            $partes[] = Idioma::t('le avisamos por correo al cliente');
         }
-        $msg = 'Reunión guardada' . ($partes !== [] ? ': ' . implode(', ', $partes) : '') . '.';
+        $msg = Idioma::t('Reunión guardada') . ($partes !== [] ? ': ' . implode(', ', $partes) : '') . '.';
         if ($avisar && !$enviado) {
-            $msg .= ' No se envió correo: no había nada nuevo que el cliente pudiera ver.';
+            $msg .= ' ' . Idioma::t('No se envió correo: no había nada nuevo que el cliente pudiera ver.');
         }
         return $msg;
     }
@@ -514,9 +514,9 @@ class ReunionAdminController
         }
         $convContactos = $this->convocados()->ids((string) $ahora['id'])['contacto'];
         (new Notifier($this->ctx, $this->pdo()))->alCliente(
-            (string) $ahora['cliente_id'], null, 'Novedades de la reunión «' . $ahora['titulo'] . '»', '', '/portal/reuniones/' . $ahora['id'],
-            ($convContactos !== [] ? ['contactos' => $convContactos] : []) + ['etiqueta' => 'Reunión', 'titulo' => 'Novedades de la reunión', 'resaltado' => 'reunión', 'boton' => 'Ver el detalle', 'bloques' => $bloques,
-             'preheader' => 'Resumen, acuerdos y próximos pasos de «' . $ahora['titulo'] . '»']
+            (string) $ahora['cliente_id'], null, Idioma::f('Novedades de la reunión «%s»', (string) $ahora['titulo']), '', '/portal/reuniones/' . $ahora['id'],
+            ($convContactos !== [] ? ['contactos' => $convContactos] : []) + ['etiqueta' => Idioma::f('Reunión'), 'titulo' => Idioma::f('Novedades de la reunión'), 'resaltado' => Idioma::f('reunión'), 'boton' => Idioma::f('Ver el detalle'), 'bloques' => $bloques,
+             'preheader' => Idioma::f('Resumen, acuerdos y próximos pasos de «%s»', (string) $ahora['titulo'])]
         );
         return true;
     }

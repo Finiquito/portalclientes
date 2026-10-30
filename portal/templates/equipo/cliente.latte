@@ -38,7 +38,7 @@
             <div class="flex flex-wrap items-center gap-x-4 gap-y-3">
                 <svg class="size-5 flex-none text-brand-ink"><use href="#i-mail"/></svg>
                 {if isset($programadas[$x['id']])}
-                    <p class="min-w-0 flex-1">La invitación a <strong>{$x['nombre']}</strong> sale automáticamente {$programadas[$x['id']]}. Puedes adelantarla o cancelarla.</p>
+                    <p class="min-w-0 flex-1">{t('La invitación a <strong>%s</strong> sale automáticamente %s. Puedes adelantarla o cancelarla.', htmlspecialchars($x['nombre']), htmlspecialchars((string) $programadas[$x['id']]))|noescape}</p>
                     <form method="post" action="/equipo/contactos/{$x['id']}/invitar">
                         <input type="hidden" name="_csrf" value="{$csrf}">
                         <input type="hidden" name="volver" value="/equipo/clientes/{$cliente['id']}">
@@ -50,7 +50,7 @@
                         <button type="submit" class="btn btn-ghost btn-sm">Cancelar envío</button>
                     </form>
                 {else}
-                    <p class="min-w-0 flex-1">Falta invitar a <strong>{$x['nombre']}</strong> a su portal. Hazlo cuando el proyecto tenga algo que mostrar.</p>
+                    <p class="min-w-0 flex-1">{t('Falta invitar a <strong>%s</strong> a su portal. Hazlo cuando el proyecto tenga algo que mostrar.', htmlspecialchars($x['nombre']))|noescape}</p>
                     <form method="post" action="/equipo/contactos/{$x['id']}/invitar">
                         <input type="hidden" name="_csrf" value="{$csrf}">
                         <input type="hidden" name="volver" value="/equipo/clientes/{$cliente['id']}">
