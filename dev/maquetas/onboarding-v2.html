@@ -40,8 +40,8 @@ button, input { font: inherit; color: inherit; }
 .salir { background: none; border: 0; font-weight: 600; font-size: 14px; color: var(--ink-2); text-decoration: underline; text-underline-offset: 4px; text-decoration-color: var(--rule); cursor: pointer; }
 
 /* escena: contenido a la izquierda, lámina de bloques a la derecha */
-.escena { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 42%); gap: clamp(20px, 4vw, 64px); align-items: stretch; padding: 10px clamp(20px, 4vw, 56px) 14px; max-width: 1320px; width: 100%; margin: 0 auto; }
-.paso { display: none; align-content: center; animation: entra 520ms var(--ease) both; max-width: 580px; width: 100%; margin-inline: auto 0; padding-block: 10px; }
+.escena { display: grid; grid-template-columns: minmax(0, 1fr); align-items: center; padding: 10px clamp(20px, 4vw, 56px) 14px; max-width: 760px; width: 100%; margin: 0 auto; }
+.paso { display: none; align-content: center; animation: entra 520ms var(--ease) both; max-width: 580px; width: 100%; margin-inline: auto; padding-block: 10px; }
 .paso.activo { display: grid; }
 @keyframes entra { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 .kicker { font-size: 13.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--acento); margin: 0 0 12px; display: flex; align-items: center; gap: 8px; }
@@ -50,41 +50,28 @@ h1 { font-size: clamp(30px, 3.7vw, 46px); line-height: 1.04; letter-spacing: -.0
 .sub { font-size: 17.5px; color: var(--ink-2); margin: 0 0 20px; max-width: 52ch; }
 .sub small { display: block; font-size: 14.5px; color: var(--ink-3); margin-top: 6px; }
 
-/* lámina (como la de la landing) */
-.lamina { position: relative; border-radius: 4px; overflow: hidden; border: 2px solid var(--ink); background: linear-gradient(175deg, #5ab0e8, #a9d6f5); min-height: 520px; display: grid; place-items: center; }
-.lamina::before { content: ""; position: absolute; inset: 0; background-image: radial-gradient(rgba(255,255,255,.35) 1px, transparent 1.4px); background-size: 6px 6px; opacity: .5; }
-.lamina svg { position: relative; width: 100%; height: auto; overflow: visible; }
-.lamina .pie2 { position: absolute; left: 18px; right: 18px; bottom: 16px; display: flex; justify-content: space-between; gap: 10px; align-items: end; font-size: 13.5px; font-weight: 600; color: oklch(23% 0.07 272 / .8); }
-.lamina .pie2 span { background: rgba(255,255,255,.7); backdrop-filter: blur(6px); padding: 6px 11px; border-radius: 999px; }
-.sol { transition: transform 1000ms var(--ease); }
-.luz .ventana { fill: #ffd36b; }
-.ventana { fill: #16205a; transition: fill 600ms; }
-.bloque { opacity: 0; transform: translateY(60px); transition: opacity 500ms var(--ease), transform 700ms var(--ease); }
-.bloque.on { opacity: 1; transform: none; }
-.sombra { fill: rgba(20,32,90,.16); }
-.rayo { opacity: 0; transition: opacity 600ms; } .rayo.on { opacity: 1; }
-
 /* idioma */
-.idiomas { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+.idiomas { display: grid; gap: 10px; }
 .idioma { position: relative; }
 .idioma input { position: absolute; opacity: 0; pointer-events: none; }
-.idioma label { display: flex; align-items: center; gap: 14px; padding: 14px 16px; background: var(--surface); border: 1.5px solid var(--rule); border-radius: var(--radius); cursor: pointer; min-height: 76px; transition: border-color 160ms, box-shadow 200ms, transform 200ms var(--ease); }
-.idioma label:hover { border-color: color-mix(in srgb, var(--ink) 45%, transparent); transform: translateY(-2px); box-shadow: 0 10px 24px -14px rgba(20,32,90,.4); }
-.idioma input:checked + label { border-color: var(--ink); box-shadow: 0 0 0 3px color-mix(in srgb, var(--acento) 22%, transparent); }
+.idioma label { display: grid; grid-template-columns: auto 1fr auto; gap: 14px; align-items: center; padding: 13px 16px; min-height: 60px; background: var(--surface); border: 1.5px solid var(--rule); border-radius: var(--radius); cursor: pointer; transition: border-color 160ms, box-shadow 160ms; }
+.idioma label:hover { border-color: color-mix(in srgb, var(--ink) 40%, transparent); }
+.idioma input:checked + label { border-color: var(--ink); box-shadow: 0 0 0 3px color-mix(in srgb, var(--acento) 18%, transparent); }
 .idioma input:focus-visible + label { outline: 2px solid var(--signal); outline-offset: 3px; }
-.bandera { width: 40px; height: 40px; border-radius: 50%; flex: none; overflow: hidden; box-shadow: 0 0 0 1px var(--rule), 0 4px 10px -4px rgba(20,32,90,.35); }
+.idioma label::after { content: ""; width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--rule); }
+.idioma input:checked + label::after { background: radial-gradient(var(--on-ink) 0 28%, var(--ink) 30%); border-color: var(--ink); }
+.bandera { width: 28px; height: 20px; border-radius: 3px; overflow: hidden; flex: none; box-shadow: 0 0 0 1px var(--rule); }
 .bandera svg { width: 100%; height: 100%; display: block; }
-.idioma b { display: block; font-size: 18px; line-height: 1.15; } .idioma span.d { font-size: 13.5px; color: var(--ink-3); }
+.idioma b { display: block; font-size: 16.5px; line-height: 1.2; } .idioma span.d { font-size: 13.5px; color: var(--ink-3); }
 .nota-idioma { margin-top: 18px; font-size: 14px; color: var(--ink-3); display: flex; gap: 8px; align-items: center; }
 
-/* declaraciones */
-.tarjetas { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
-.tarjeta { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius); padding: 13px 14px 12px; display: grid; gap: 6px; align-content: start; position: relative; overflow: hidden; }
-.tarjeta::after { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--c); }
-.tarjeta .ico { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: color-mix(in srgb, var(--c) 18%, white); color: color-mix(in srgb, var(--c) 78%, #101640); margin-bottom: 4px; }
-.tarjeta .ico svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
-.tarjeta b { font-size: 16px; line-height: 1.2; } .tarjeta p { margin: 0; font-size: 14px; color: var(--ink-2); line-height: 1.45; }
-.tarjeta.ancha { grid-column: 1 / -1; grid-template-columns: auto 1fr; column-gap: 14px; align-items: center; } .tarjeta.ancha .ico { grid-row: span 2; margin: 0; }
+/* declaraciones: una columna, sobrias */
+.tarjetas { display: grid; gap: 10px; margin-bottom: 18px; }
+.tarjeta { background: var(--surface); border: 1.5px solid var(--rule); border-radius: var(--radius); padding: 14px 16px; display: grid; grid-template-columns: 26px 1fr; column-gap: 14px; row-gap: 2px; align-items: start; }
+.tarjeta .ico { grid-row: span 2; width: 26px; height: 26px; color: var(--acento); margin-top: 1px; }
+.tarjeta .ico svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.tarjeta b { font-size: 16.5px; line-height: 1.25; } .tarjeta p { margin: 0; font-size: 15px; color: var(--ink-2); line-height: 1.45; }
 .acepto { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: start; padding: 14px 16px; border: 1.5px solid var(--rule); border-radius: var(--radius); background: color-mix(in srgb, var(--surface) 70%, transparent); cursor: pointer; }
 .acepto input { width: 22px; height: 22px; margin: 1px 0 0; accent-color: var(--ink); cursor: pointer; }
 .acepto span { font-size: 15px; color: var(--ink-2); }
@@ -115,24 +102,26 @@ select.in { cursor: pointer; }
 .centro { font-size: 14px; color: var(--ink-3); }
 
 /* listo */
-.confeti { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
-.confeti i { position: absolute; top: -20px; width: 10px; height: 10px; border-radius: 2px; animation: cae 3.4s linear infinite; }
-@keyframes cae { to { transform: translateY(620px) rotate(540deg); } }
+
+.confeti { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 15; }
+.confeti i { position: absolute; top: -24px; width: 9px; height: 15px; border-radius: 2px; animation: cae linear infinite; }
+@keyframes cae { to { transform: translate3d(var(--dx, 0), 112vh, 0) rotate(var(--rot, 540deg)); } }
 .resumen { list-style: none; margin: 0 0 22px; padding: 0; background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius); }
 .resumen li { display: flex; gap: 12px; padding: 13px 16px; border-bottom: 1px solid var(--rule-soft); align-items: center; } .resumen li:last-child { border: 0; }
 .resumen svg { width: 20px; height: 20px; color: var(--ok); flex: none; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
 .resumen b { display: block; line-height: 1.2; } .resumen span { font-size: 14px; color: var(--ink-3); }
 
 @media (max-width: 900px) {
-  .escena { grid-template-columns: 1fr; padding-bottom: 110px; } .lamina { order: -1; min-height: 210px; max-height: 240px; } .lamina svg { width: 280px; margin-top: -30px; } .lamina .pie2 { display: none; }
-  .paso { margin-inline: auto; } .pasos li span { display: none; } .pasos li.on span { display: inline; }
+  .escena { padding-bottom: 110px; }
+  .pasos li span { display: none; } .pasos li.on span { display: inline; }
 }
 @media (max-width: 560px) { .idiomas, .tarjetas, .dos { grid-template-columns: 1fr; } .colores { grid-template-columns: repeat(6, 1fr); gap: 7px; } .centro { display: none; } .sig { flex: 1; justify-content: center; } .maqueta b { display: none; } }
-@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } .bloque { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; }  }
 </style>
 </head>
 <body>
 <div class="avance" aria-hidden="true"><i id="barra"></i></div>
+<div class="confeti" id="confeti" hidden aria-hidden="true"></div>
 <div class="app">
   <header class="cab">
     <span class="logo" role="img" aria-label="Prisma"><svg class="logo-svg"  viewBox="0 0 1072.5 277.777778" fill="currentColor" aria-hidden="true" focusable="false"><path d="M731.405194,240.891717l-38.473888.051478-.048856-90.276091c-.004302-7.949443-1.928782-15.158732-5.182179-22.04723-10.142504-21.474976-42.109137-20.157201-55.684987-6.486848-7.2756,7.326246-12.023623,17.704612-12.070224,28.51462l-.38918,90.278929-38.563533.008374c.387966-7.6203-.032889-14.295635-.013153-21.530506l.158952-58.268906-.291803-79.300051,36.815069-.221985.329671,17.949282c27.658418-28.305132,78.712464-27.888915,102.007264,5.29265,17.75734-17.474164,38.377549-27.012134,63.948395-25.481962,37.225181,2.263206,57.595716,27.382339,58.971448,64.301158l-.081233,97.395294-38.158463-.126781.021-94.314543c-.62389-9.724399-3.848684-18.718476-10.504753-25.633228-11.860406-12.321352-37.275371-11.604861-50.353634,1.044603-7.274786,7.036266-11.934767,17.20328-11.986717,27.740234l-.449197,91.111509Z"/><path d="M161.546354,165.574396c-14.984926,8.714058-31.251156,13.015151-48.451535,13.100242l-55.20909.273123-.067468,61.987018-39.502575.045795-.014108-209.616299,95.284207.237791c15.380007.038382,29.643009,4.037979,43.057735,10.619736,35.744279,18.876806,45.235938,62.24133,28.571557,97.413062-5.226734,11.031511-12.830832,19.38281-23.668724,25.939531ZM153.348365,101.706958c-.892851-14.936781-9.280322-27.548785-23.380955-32.779576-8.460161-3.100349-17.17017-4.485402-26.280854-4.498422l-45.851731-.06553.100729,81.138654,47.943907-.223391c6.645695-.030965,12.836615-1.367558,19.281882-2.629402,19.410885-4.924186,29.376464-21.043788,28.187022-40.942333Z"/><path d="M540.815218,223.427727c-26.81491,29.131207-95.581186,23.750229-127.943758.889572l14.194098-28.984193c22.129795,14.323555,53.428093,22.363237,77.827271,13.280666,8.217802-3.059069,12.669967-11.939965,8.412009-19.758922-9.792028-17.98126-75.725511-5.754621-92.324526-40.400205-7.424243-15.495935-4.821062-33.930875,6.47802-47.298136,22.131447-26.182379,71.002216-26.126316,102.828538-15.150592,5.510897,2.628109,10.721554,4.172871,15.68335,7.939521l-12.58288,28.738963c-19.28744-11.393011-42.177891-15.751907-64.25505-10.836953-8.103838,1.804127-14.646359,7.594587-14.904353,15.780457-.837662,26.578091,74.384253,8.960511,93.772714,46.651197,8.208179,15.956495,4.997237,35.913605-7.185433,49.148625Z"/><path d="M263.016869,161.073127l-.099456,79.854695-38.005273.051649.062677-159.314452,36.036929-.048782.252877,21.147177c13.136692-16.854865,34.124932-24.807905,55.732383-22.933721l-.032484,35.88131c-10.942574-2.079009-21.432446-.843101-31.310128,3.617262-9.493244,5.47277-16.469327,13.905124-19.525668,24.42802-1.628237,5.55259-2.903666,10.78831-3.111857,17.316841Z"/><polygon points="384.026578 240.845512 345.867772 240.920707 345.805232 81.65023 383.99448 81.631961 384.026578 240.845512"/><path d="M382.792207,18.608769c7.32548,7.011456,8.073129,17.775232,3.883136,26.198537-4.044754,8.131325-12.965425,12.608882-22.796656,12.283752-11.276943-.372941-20.649785-7.632311-22.669802-18.048307-2.16592-11.168333,3.966404-21.940191,15.078966-25.673808,8.963983-3.011734,19.250462-1.703111,26.504355,5.239826Z"/><path d="M1051.889979,202.680049l-78.806899-147.711183c-3.115337-5.8388-9.065053-9.115315-15.901378-8.696207-8.954344.513803-12.991978,7.825042-14.318707,10.227129l-70.983391,128.522794c-2.773867,5.021246-2.475988,11.207439.758848,15.760066l40.192594,56.559894c4.23273,5.955791,9.887096,8.88058,16.316924,8.566396,2.050776-.100208,4.180758-.530359,6.368154-1.296231l109.109165-38.2051.547946-.191522.487152-.315167c8.40764-5.43928,10.853409-14.553883,6.229592-23.220869ZM1030.021859,208.477381l-90.378193,31.505114,24.601046-154.913589,65.777147,123.408474Z"/></svg></span>
@@ -148,10 +137,10 @@ select.in { cursor: pointer; }
         <h1 id="h0">Elige tu idioma</h1>
         <p class="sub">Así te hablamos el resto del camino. Lo puedes cambiar cuando quieras.<small>Choose your language · Choisissez votre langue · Scegli la tua lingua</small></p>
         <div class="idiomas" role="radiogroup" aria-labelledby="h0">
-          <div class="idioma"><input type="radio" name="idioma" id="i-es"><label for="i-es"><span class="bandera"><svg viewBox="0 0 40 40" preserveAspectRatio="xMidYMid slice"><rect width="40" height="40" fill="#c60b1e"/><rect y="10" width="40" height="20" fill="#f1bf00"/></svg></span><span><b>Español</b><span class="d">Continuar en español</span></span></label></div>
-          <div class="idioma"><input type="radio" name="idioma" id="i-en"><label for="i-en"><span class="bandera"><svg viewBox="0 0 40 40" preserveAspectRatio="xMidYMid slice"><rect width="40" height="40" fill="#012169"/><path d="M0 0l40 40M40 0L0 40" stroke="#fff" stroke-width="7"/><path d="M0 0l40 40M40 0L0 40" stroke="#c8102e" stroke-width="3"/><path d="M20 0v40M0 20h40" stroke="#fff" stroke-width="12"/><path d="M20 0v40M0 20h40" stroke="#c8102e" stroke-width="7"/></svg></span><span><b>English</b><span class="d">Continue in English</span></span></label></div>
-          <div class="idioma"><input type="radio" name="idioma" id="i-fr"><label for="i-fr"><span class="bandera"><svg viewBox="0 0 40 40" preserveAspectRatio="xMidYMid slice"><rect width="14" height="40" fill="#0055a4"/><rect x="13" width="14" height="40" fill="#fff"/><rect x="26" width="14" height="40" fill="#ef4135"/></svg></span><span><b>Français</b><span class="d">Continuer en français</span></span></label></div>
-          <div class="idioma"><input type="radio" name="idioma" id="i-it"><label for="i-it"><span class="bandera"><svg viewBox="0 0 40 40" preserveAspectRatio="xMidYMid slice"><rect width="14" height="40" fill="#009246"/><rect x="13" width="14" height="40" fill="#fff"/><rect x="26" width="14" height="40" fill="#ce2b37"/></svg></span><span><b>Italiano</b><span class="d">Continua in italiano</span></span></label></div>
+          <div class="idioma"><input type="radio" name="idioma" id="i-es"><label for="i-es"><span class="bandera"><svg viewBox="0 0 40 28" preserveAspectRatio="none"><rect width="40" height="28" fill="#c60b1e"/><rect y="7" width="40" height="14" fill="#f1bf00"/></svg></span><span><b>Español</b><span class="d">Continuar en español</span></span></label></div>
+          <div class="idioma"><input type="radio" name="idioma" id="i-en"><label for="i-en"><span class="bandera"><svg viewBox="0 0 40 28" preserveAspectRatio="none"><rect width="40" height="28" fill="#012169"/><path d="M0 0l40 28M40 0L0 28" stroke="#fff" stroke-width="5"/><path d="M0 0l40 28M40 0L0 28" stroke="#c8102e" stroke-width="2"/><path d="M20 0v28M0 14h40" stroke="#fff" stroke-width="9"/><path d="M20 0v28M0 14h40" stroke="#c8102e" stroke-width="5"/></svg></span><span><b>English</b><span class="d">Continue in English</span></span></label></div>
+          <div class="idioma"><input type="radio" name="idioma" id="i-fr"><label for="i-fr"><span class="bandera"><svg viewBox="0 0 40 28" preserveAspectRatio="none"><rect width="14" height="28" fill="#0055a4"/><rect x="13" width="14" height="28" fill="#fff"/><rect x="26" width="14" height="28" fill="#ef4135"/></svg></span><span><b>Français</b><span class="d">Continuer en français</span></span></label></div>
+          <div class="idioma"><input type="radio" name="idioma" id="i-it"><label for="i-it"><span class="bandera"><svg viewBox="0 0 40 28" preserveAspectRatio="none"><rect width="14" height="28" fill="#009246"/><rect x="13" width="14" height="28" fill="#fff"/><rect x="26" width="14" height="28" fill="#ce2b37"/></svg></span><span><b>Italiano</b><span class="d">Continua in italiano</span></span></label></div>
         </div>
         <p class="nota-idioma"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="8"/><path d="M10 6v4.5M10 13.5v.01"/></svg>Cada cliente tuyo puede usar su propio idioma: lo eliges más adelante.</p>
       </section>
@@ -162,11 +151,11 @@ select.in { cursor: pointer; }
         <h1 id="h1">Tu información está en buenas manos</h1>
         <p class="sub">Lo importante, en simple. El detalle completo está en las condiciones de uso.</p>
         <div class="tarjetas">
-          <div class="tarjeta" style="--c: var(--pink)"><span class="ico"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span><b>Tus datos son tuyos</b><p>Tus clientes, proyectos y archivos son tuyos. Los usamos solo para que tu portal funcione; no los vendemos ni los usamos para otra cosa.</p></div>
-          <div class="tarjeta" style="--c: var(--blue)"><span class="ico"><svg viewBox="0 0 24 24"><path d="M12 3 3 8l9 5 9-5-9-5Z"/><path d="m3 13 9 5 9-5"/></svg></span><b>Tu propio espacio</b><p>Tu información vive separada de la de otras agencias, y el acceso al servidor es restringido.</p></div>
-          <div class="tarjeta" style="--c: var(--yellow)"><span class="ico"><svg viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.5 3 8 7 10 4-2 7-5.5 7-10V6l-7-3Z"/><path d="m9 12 2 2 4-4"/></svg></span><b>Viaja protegida</b><p>Todo se transmite por una conexión segura (HTTPS) y las claves se guardan cifradas.</p></div>
-          <div class="tarjeta" style="--c: var(--red)"><span class="ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3.5"/><path d="m6 6 3.5 3.5M18 6l-3.5 3.5M6 18l3.5-3.5M18 18l-3.5-3.5"/></svg></span><b>Ayuda, solo si la pides</b><p>El equipo de Prisma entra a tu espacio únicamente para resolver lo que tú consultes, y nunca usa tus datos ni los de tus clientes para otro fin.</p></div>
-          <div class="tarjeta ancha" style="--c: var(--purple)"><span class="ico"><svg viewBox="0 0 24 24"><path d="M12 3v12m0 0-4-4m4 4 4-4"/><path d="M5 19h14"/></svg></span><b>Tú decides</b><p>Puedes pedir una copia de tus datos, o que los eliminemos, cuando quieras.</p></div>
+          <div class="tarjeta"><span class="ico"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span><b>Tus datos son tuyos</b><p>Tus clientes, proyectos y archivos son tuyos. Los usamos solo para que tu portal funcione; no los vendemos ni los usamos para otra cosa.</p></div>
+          <div class="tarjeta"><span class="ico"><svg viewBox="0 0 24 24"><path d="M12 3 3 8l9 5 9-5-9-5Z"/><path d="m3 13 9 5 9-5"/></svg></span><b>Tu propio espacio</b><p>Tu información vive separada de la de otras agencias, y el acceso al servidor es restringido.</p></div>
+          <div class="tarjeta"><span class="ico"><svg viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.5 3 8 7 10 4-2 7-5.5 7-10V6l-7-3Z"/><path d="m9 12 2 2 4-4"/></svg></span><b>Viaja protegida</b><p>Todo se transmite por una conexión segura (HTTPS) y las claves se guardan cifradas.</p></div>
+          <div class="tarjeta"><span class="ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3.5"/><path d="m6 6 3.5 3.5M18 6l-3.5 3.5M6 18l3.5-3.5M18 18l-3.5-3.5"/></svg></span><b>Ayuda, solo si la pides</b><p>El equipo de Prisma entra a tu espacio únicamente para resolver lo que tú consultes, y nunca usa tus datos ni los de tus clientes para otro fin.</p></div>
+          <div class="tarjeta"><span class="ico"><svg viewBox="0 0 24 24"><path d="M12 3v12m0 0-4-4m4 4 4-4"/><path d="M5 19h14"/></svg></span><b>Tú decides</b><p>Puedes pedir una copia de tus datos, o que los eliminemos, cuando quieras.</p></div>
         </div>
         <label class="acepto"><input type="checkbox" id="acepto"><span>Leí y acepto las <a href="#" onclick="return false">condiciones de uso de Prisma ↗</a>. Se abren en usaprisma.com, en otra pestaña.</span></label>
         <p class="version">Versión 1.0 · 1 de noviembre de 2026 · queda registrado quién las aceptó y cuándo.</p>
@@ -217,11 +206,6 @@ select.in { cursor: pointer; }
       </section>
     </div>
 
-    <aside class="lamina" aria-hidden="true" id="lamina">
-      <div class="confeti" id="confeti" hidden></div>
-      <svg viewBox="0 0 480 480" role="img" aria-label="Edificios que se van levantando"><g class="sol"><circle cx="372" cy="96" r="40" fill="#f0562a"/></g><g class="bloque" data-n="4"><polygon points="400,210 430,193.5 430,423.5 400,440" fill="#7a9ce0"/><polygon points="300,210 400,210 430,193.5 330,193.5" fill="#c4d6f7"/><rect x="300" y="210" width="100" height="230" fill="#9dbcf2"/><rect class="ventana" x="314.0" y="228.4" width="26.0" height="23.0" rx="2"/><rect class="ventana" x="314.0" y="267.0" width="26.0" height="23.0" rx="2"/><rect class="ventana" x="314.0" y="305.7" width="26.0" height="23.0" rx="2"/><rect class="ventana" x="314.0" y="344.3" width="26.0" height="23.0" rx="2"/><rect class="ventana" x="314.0" y="383.0" width="26.0" height="23.0" rx="2"/><rect class="ventana" x="354.0" y="228.4" width="26.0" height="23.0" rx="2"/><rect class="ventana" x="354.0" y="267.0" width="26.0" height="23.0" rx="2"/><rect class="ventana" x="354.0" y="305.7" width="26.0" height="23.0" rx="2"/><rect class="ventana" x="354.0" y="344.3" width="26.0" height="23.0" rx="2"/><rect class="ventana" x="354.0" y="383.0" width="26.0" height="23.0" rx="2"/></g><g class="bloque" data-n="2"><polygon points="260,140 290,123.5 290,423.5 260,440" fill="#2748b0"/><polygon points="150,140 260,140 290,123.5 180,123.5" fill="#5f88ea"/><rect x="150" y="140" width="110" height="300" fill="#3a6ae0"/><rect class="ventana" x="165.4" y="164.0" width="28.6" height="25.0" rx="2"/><rect class="ventana" x="165.4" y="206.0" width="28.6" height="25.0" rx="2"/><rect class="ventana" x="165.4" y="248.0" width="28.6" height="25.0" rx="2"/><rect class="ventana" x="165.4" y="290.0" width="28.6" height="25.0" rx="2"/><rect class="ventana" x="165.4" y="332.0" width="28.6" height="25.0" rx="2"/><rect class="ventana" x="165.4" y="374.0" width="28.6" height="25.0" rx="2"/><rect class="ventana" x="209.4" y="164.0" width="28.6" height="25.0" rx="2"/><rect class="ventana" x="209.4" y="206.0" width="28.6" height="25.0" rx="2"/><rect class="ventana" x="209.4" y="248.0" width="28.6" height="25.0" rx="2"/><rect class="ventana" x="209.4" y="290.0" width="28.6" height="25.0" rx="2"/><rect class="ventana" x="209.4" y="332.0" width="28.6" height="25.0" rx="2"/><rect class="ventana" x="209.4" y="374.0" width="28.6" height="25.0" rx="2"/></g><g class="bloque" data-n="1"><polygon points="150,250 180,233.5 180,423.5 150,440" fill="#e0d3bc"/><polygon points="40,250 150,250 180,233.5 70,233.5" fill="#fbf7ee"/><rect x="40" y="250" width="110" height="190" fill="#f6efe2"/><rect class="ventana" x="55.4" y="265.2" width="28.6" height="23.8" rx="2"/><rect class="ventana" x="55.4" y="305.1" width="28.6" height="23.8" rx="2"/><rect class="ventana" x="55.4" y="345.0" width="28.6" height="23.8" rx="2"/><rect class="ventana" x="55.4" y="384.9" width="28.6" height="23.8" rx="2"/><rect class="ventana" x="99.4" y="265.2" width="28.6" height="23.8" rx="2"/><rect class="ventana" x="99.4" y="305.1" width="28.6" height="23.8" rx="2"/><rect class="ventana" x="99.4" y="345.0" width="28.6" height="23.8" rx="2"/><rect class="ventana" x="99.4" y="384.9" width="28.6" height="23.8" rx="2"/></g><g class="bloque" data-n="3"><polygon points="358,290 388,273.5 388,423.5 358,440" fill="#c8481f"/><polygon points="262,290 358,290 388,273.5 292,273.5" fill="#f78c5e"/><rect x="262" y="290" width="96" height="150" fill="#f26a35"/><rect class="ventana" x="275.4" y="302.0" width="25.0" height="25.0" rx="2"/><rect class="ventana" x="275.4" y="344.0" width="25.0" height="25.0" rx="2"/><rect class="ventana" x="275.4" y="386.0" width="25.0" height="25.0" rx="2"/><rect class="ventana" x="313.8" y="302.0" width="25.0" height="25.0" rx="2"/><rect class="ventana" x="313.8" y="344.0" width="25.0" height="25.0" rx="2"/><rect class="ventana" x="313.8" y="386.0" width="25.0" height="25.0" rx="2"/></g><g class="bloque" data-n="5"><polygon points="426,320 456,303.5 456,423.5 426,440" fill="#c98558"/><polygon points="330,320 426,320 456,303.5 360,303.5" fill="#f2c3a0"/><rect x="330" y="320" width="96" height="120" fill="#eaaa7e"/><rect class="ventana" x="343.4" y="329.6" width="25.0" height="30.0" rx="2"/><rect class="ventana" x="343.4" y="380.0" width="25.0" height="30.0" rx="2"/><rect class="ventana" x="381.8" y="329.6" width="25.0" height="30.0" rx="2"/><rect class="ventana" x="381.8" y="380.0" width="25.0" height="30.0" rx="2"/></g><rect x="0" y="440" width="480" height="40" fill="#16205a" opacity=".14"/></svg>
-      <div class="pie2"><span id="pieTxt">Empezamos de a poco</span><span id="pieN">0 de 5</span></div>
-    </aside>
   </main>
 
   <footer class="pie" id="pieNav">
@@ -237,7 +221,6 @@ select.in { cursor: pointer; }
 (function () {
   var $ = function (s) { return document.querySelector(s); }, $$ = function (s) { return Array.prototype.slice.call(document.querySelectorAll(s)); };
   var ORDEN = [0, 1, 2, 3, 5], actual = 0;
-  var PIES = { 0: ['Empezamos de a poco', 0], 1: ['Los cimientos: tu información segura', 1], 2: ['Primer piso: tu agencia', 2], 3: ['Segundo piso: tu primer cliente', 3], 5: ['¡Tu ciudad quedó armada!', 5] };
   // pasos
   var ol = $('#pasos'); ['Tu agencia', 'Tu cliente', 'Su proyecto', 'Tu equipo', 'Listo'].forEach(function (n, i) { var li = document.createElement('li'); li.innerHTML = '<i></i><span>' + n + '</span>'; ol.appendChild(li); });
   // colores
@@ -249,11 +232,6 @@ select.in { cursor: pointer; }
   function ir(v) {
     actual = v; var i = ORDEN.indexOf(v);
     $$('.paso').forEach(function (s) { s.classList.toggle('activo', +s.dataset.paso === v); });
-    // bloques según el avance: 0=prisma, 1=base rosa, 2=azul, 3=disco, 5=todo
-    var n = PIES[v][1];
-    $$('.bloque').forEach(function (b) { b.classList.toggle('on', +b.dataset.n <= n); });
-    $$('.rayo').forEach(function (r) { r.classList.toggle('on', v === 0 || v === 5); });
-    $('#pieTxt').textContent = PIES[v][0]; $('#pieN').textContent = n + ' de 5';
     $('#barra').style.width = (v === 0 ? 4 : v === 1 ? 12 : v === 2 ? 30 : v === 3 ? 48 : 100) + '%';
     $$('#pasos li').forEach(function (li, k) { var paso = k + 1, activo = (v === 2 && k === 0) || (v === 3 && k === 1) || (v === 5 && k === 4); li.classList.toggle('on', activo); li.classList.toggle('hecho', (v === 3 && k === 0) || (v === 5 && k < 4)); });
     $('#pasos').style.visibility = v < 2 ? 'hidden' : 'visible';
@@ -265,7 +243,7 @@ select.in { cursor: pointer; }
     $$('.maqueta button').forEach(function (b) { b.toggleAttribute('aria-current', +b.dataset.v === v); });
     window.scrollTo(0, 0);
   }
-  function confeti() { var c = $('#confeti'); c.innerHTML = ''; ['#f6a6c7', '#2f55c9', '#f8c23c', '#f0502f', '#7a63c4', '#17205a'].forEach(function (col, k) { for (var j = 0; j < 5; j++) { var i = document.createElement('i'); i.style.cssText = 'left:' + (Math.random() * 96) + '%;background:' + col + ';animation-delay:' + (Math.random() * 2.4) + 's;animation-duration:' + (2.6 + Math.random() * 1.8) + 's'; c.appendChild(i); } }); }
+  function confeti() { var c = $('#confeti'); c.innerHTML = ''; var cols = ['#e8552d', '#2f5bea']; for (var j = 0; j < 90; j++) { var i = document.createElement('i'); i.style.cssText = 'left:' + (Math.random() * 100) + '%;background:' + cols[j % 2] + ';animation-delay:' + (-Math.random() * 5) + 's;animation-duration:' + (3.2 + Math.random() * 2.6) + 's;--dx:' + ((Math.random() - .5) * 120) + 'px;--rot:' + (360 + Math.random() * 540) + 'deg;width:' + (7 + Math.random() * 5) + 'px;height:' + (11 + Math.random() * 8) + 'px'; c.appendChild(i); } }
   $$('.idioma input').forEach(function (i) { i.addEventListener('click', function () { setTimeout(function () { ir(1); }, 260); }); });
   $('#acepto').addEventListener('change', function () { $('#sig').disabled = !this.checked; });
   $('#sig').onclick = function () { var i = ORDEN.indexOf(actual); if (i < ORDEN.length - 1) ir(ORDEN[i + 1]); };
