@@ -391,6 +391,8 @@ class PortalPublicController
         return [
             'agencia' => ['nombre' => $m->nombreEquipo(), 'logo' => $m->urlLogoAgencia('') ?: null],
             'favicon' => $m->urlIcono(),
+            'agenciaNombre' => $m->nombreEquipo(),
+            'urlPrivacidad' => Compartido::urlPrivacidad(),
         ];
     }
 

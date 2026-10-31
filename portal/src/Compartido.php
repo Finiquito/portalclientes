@@ -88,4 +88,10 @@ final class Compartido
             'clave' => $clave, 'dias' => max(1, (int) ($j['dias_prueba'] ?? 30)), 'tope' => max(1, (int) ($j['tope_diario'] ?? 60)),
         ];
     }
+
+    /** Dirección de la página que explica quién responde por los datos del portal y qué cookies usa (el enlace del pie de ingreso). */
+    public static function urlPrivacidad(): string
+    {
+        return self::entorno('PORTAL_URL_PRIVACIDAD') ?: 'https://usaprisma.com/privacidad/';
+    }
 }

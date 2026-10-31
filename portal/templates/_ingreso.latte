@@ -88,6 +88,8 @@
 
     /* Pie con Prisma */
     .ing-pie { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; justify-content: center; font-size: 12.5px; color: var(--muted); padding-top: 28px; }
+    .ing-aviso { flex-basis: 100%; text-align: center; margin: 0 auto 8px; max-width: 440px; line-height: 1.5; }
+    .ing-aviso { color: var(--muted); }
     .ing-pie svg { width: 58px; height: 15px; color: var(--ink); opacity: .75; }
     .ing-pie a { color: var(--muted); text-decoration: none; border-bottom: 1px solid var(--line); }
     .ing-pie a:hover { color: var(--ink); border-color: var(--signal); }
@@ -121,6 +123,9 @@
         {block contenido}{/block}
     </div>
     <footer class="ing-pie">
+        {if !empty($agenciaNombre)}
+        <p class="ing-aviso">{t('Este portal lo administra %s usando Prisma. Tus datos los gestiona %s.', $agenciaNombre, $agenciaNombre)} <a href="{$urlPrivacidad}" target="_blank" rel="noopener">{t('Más información')}</a></p>
+        {/if}
         <nav aria-label="Idioma" class="ing-idioma" style="flex-basis:100%;display:flex;gap:10px;justify-content:center;margin-bottom:6px">
             {foreach \TypeDock\Plugin\Portal\Idioma::DISPONIBLES as $cod => $nombre}
                 <a href="?idioma={$cod}" lang="{$cod}" hreflang="{$cod}" {if $cod === \TypeDock\Plugin\Portal\Idioma::actual()}aria-current="true" style="color:var(--ink);font-weight:700;border-color:var(--signal)"{/if}>{$nombre}</a>

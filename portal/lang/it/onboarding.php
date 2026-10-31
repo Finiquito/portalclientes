@@ -118,4 +118,6 @@ return [
     'Cambiar idioma' => 'Cambia lingua',
     'Termina de configurar tu agencia' => 'Completa la configurazione della tua agenzia',
     'Vas en el paso %d de 5. Lo que ya hiciste quedó guardado.' => 'Sei al passo %d di 5. Ciò che hai già fatto è stato salvato.',
+    'Este portal lo administra %s usando Prisma. Tus datos los gestiona %s.' => 'Questo portale è gestito da %s tramite Prisma. I tuoi dati sono gestiti da %s.',
+    'Más información' => 'Maggiori informazioni',
 ];

@@ -4,19 +4,12 @@
     Los enlaces de la barra apuntan a /#… para que funcionen desde cualquier página.
 *}
 {var $assets = '/themes/prisma/assets'}
-{var $v = 12}
+{var $v = 13}
 <!DOCTYPE html>
 <html lang="es-CL">
 <head>
     <meta charset="UTF-8">
-    {* Google Analytics (GA4) *}
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-TLZCJ1N0XE"></script>
-    <script>
-        window.dataLayer = window.dataLayer || [];
-        function gtag(){ dataLayer.push(arguments); }
-        gtag('js', new Date());
-        gtag('config', 'G-TLZCJ1N0XE');
-    </script>
+    {* Google Analytics (GA4): solo se carga si la persona lo acepta (ver assets/js/cookies.js) *}
     <meta name="viewport" content="width=device-width, initial-scale=1">
     {block metas}
     {if isset($seo)}
@@ -44,6 +37,7 @@
     <link rel="preload" href="{$assets}/fonts/schibsted-grotesk-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
     <script>document.documentElement.classList.add("js")</script>
     <link rel="stylesheet" href="{$assets}/css/prisma.css?v={$v}">
+    <script src="{$assets}/js/cookies.js?v={$v}" defer></script>
     <script src="{$assets}/js/prisma.js?v={$v}" defer></script>
 </head>
 <body class="{$body_class ?? ''}">
@@ -66,7 +60,7 @@
 <footer class="cierre">
     <div class="contenedor">
         <p class="cierre-marca" aria-hidden="true">Prisma</p>
-        <p class="cierre-linea"><span>usaprisma.com</span><span>Para freelancers, estudios y agencias pequeñas.</span><span>© {date('Y')}</span></p>
+        <p class="cierre-linea"><span>usaprisma.com</span><span>Para freelancers, estudios y agencias pequeñas.</span><span>© {date('Y')}</span><a href="/cookies/">Cookies</a><a href="/privacidad/">Privacidad</a><a href="/condiciones/">Condiciones de uso</a></p>
     </div>
 </footer>
 </body>

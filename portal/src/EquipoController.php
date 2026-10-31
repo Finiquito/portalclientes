@@ -153,6 +153,8 @@ class EquipoController
             'marca'      => $this->marca(),
             'favicon'    => (new MarcaService($this->pdo()))->urlIcono(),
             'csrf'       => PortalSession::csrf(),
+            'agenciaNombre' => (new MarcaService($this->pdo()))->nombreEquipo(),
+            'urlPrivacidad' => Compartido::urlPrivacidad(),
             'portalBoot' => $this->asset('theme.js'),
             'portalJs'   => $this->asset('portal.js'),
             'fmt'        => new Fmt(),

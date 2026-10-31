@@ -263,6 +263,8 @@ check($r === '/equipo/entrar', 'sin sesión redirige a entrar');
 
 [$html] = $ctl->correr(fn() => $ctl->entrarForm());
 check(str_contains($html, 'action="/equipo/entrar"'), 'formulario de entrada');
+check(str_contains($html, 'Este portal lo administra') && str_contains($html, 'usando Prisma') && str_contains($html, 'https://usaprisma.com/privacidad/'), 'el ingreso dice quién administra el portal y enlaza a la privacidad');
+check(str_contains($html, 'target="_blank"') && str_contains($html, 'rel="noopener"'), 'ese enlace se abre en otra pestaña');
 
 $_POST = ['_csrf' => 'malo', 'email' => 'ana@agencia.cl'];
 [, $r] = $ctl->correr(fn() => $ctl->pedirCodigo());
