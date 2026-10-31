@@ -2,7 +2,7 @@
 // Italiano · php2
 return [
     'Un pedido' => 'Una richiesta',
-    'Algo nuevo que necesitas que hagamos.' => 'Qualcosa di nuovo che ci serve tu faccia fare.',
+    'Algo nuevo que necesitas que hagamos.' => 'Qualcosa di nuovo che hai bisogno che facciamo.',
     'Un presupuesto' => 'Un preventivo',
     'Te cotizamos algo antes de empezar.' => 'Ti facciamo un preventivo prima di iniziare.',
     'Una reunión' => 'Una riunione',
@@ -14,7 +14,7 @@ return [
     'Presupuesto aprobado' => 'Preventivo approvato',
     'Presupuesto no aprobado' => 'Preventivo non approvato',
     'Reunión agendada' => 'Riunione fissata',
-    'Respondida' => 'Risposta data',
+    'Respondida' => 'Con risposta',
     'No tomada' => 'Non presa in carico',
     'Recibida' => 'Ricevuta',
     'Cotización lista' => 'Preventivo pronto',

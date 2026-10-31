@@ -22,7 +22,7 @@ return [
     'Revísalo y corrige lo que haga falta antes de enviar.' => 'Controllalo e correggi ciò che serve prima di inviare.',
     'No pudimos ordenarlo. Puedes enviarlo tal como está.' => 'Non siamo riusciti a riordinarlo. Puoi inviarlo così com’è.',
     'No pudimos conectarnos. Intenta de nuevo.' => 'Non siamo riusciti a connetterci. Riprova.',
-    'Ordenar con IA' => 'Organizza con l’IA',
+    'Ordenar con IA' => 'Riordina con l’IA',
     'Quitar ' => 'Rimuovi ',
     'Quitar' => 'Rimuovi',
     ' (pesa ' => ' (pesa ',

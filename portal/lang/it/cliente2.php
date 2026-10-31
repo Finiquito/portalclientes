@@ -81,7 +81,7 @@ return [
     'Objetivo' => 'Obiettivo',
     'Ocultar indicaciones' => 'Nascondi le indicazioni',
     'Opción' => 'Opzione',
-    'Ordenar con IA' => 'Organizza con l’IA',
+    'Ordenar con IA' => 'Riordina con l’IA',
     'Ordenar por' => 'Ordina per',
     'Origen' => 'Origine',
     'Oscuro' => 'Scuro',

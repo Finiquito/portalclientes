@@ -65,7 +65,7 @@ return [
     'Ocurrió el' => 'Avvenuto il',
     'Orden' => 'Ordine',
     'Pasa a Archivadas' => 'Passa alle Archiviate',
-    'Pasa el cursor' => 'Passa il cursore su',
+    'Pasa el cursor' => 'Passa il puntatore su',
     'Toca' => 'Tocca',
     'un punto' => 'un punto',
     'para ver el detalle. Un número dentro de la marca = varios ese mismo' => 'per vedere i dettagli. Un numero dentro il segno = più eventi nello stesso',
