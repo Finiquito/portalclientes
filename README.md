@@ -77,7 +77,7 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 ### beta 0.14.1 (0.14.1-beta): aviso para los clientes y cookies
 
 - **Ingreso del portal y del panel del equipo:** una línea en el pie, «Este portal lo administra [agencia] usando Prisma. Tus datos los gestiona [agencia]. Más información», con enlace a `https://usaprisma.com/privacidad/` (se puede cambiar con la variable `PORTAL_URL_PRIVACIDAD`). Está en español, inglés, francés e italiano. Así los contactos, que nunca aceptan las condiciones, saben quién responde por sus datos.
-- **El portal solo usa cookies necesarias** (sesión e idioma), sin analítica ni publicidad: no necesita aviso de consentimiento. Queda explicado en la página de privacidad.
+- **El portal solo usa cookies necesarias** (sesión y preferencias), sin analítica ni publicidad: no necesita aviso de consentimiento. Queda explicado en la página de privacidad.
 - **Landing (tema Prisma 1.6.0):** Google Analytics ya no se carga solo. Un aviso con «Rechazar» y «Aceptar» (mismo peso) decide; la elección queda en el navegador (`assets/js/cookies.js`) y se puede cambiar desde `/cookies/`. Pie del landing con enlaces a Cookies, Privacidad y Condiciones de uso.
 - **Páginas nuevas (borradores)** en `theme/raiz-usaprisma/`: `privacidad/` y `cookies/` (van en `public_html/`, junto a `condiciones/`). Completa los `[COMPLETAR: …]` y que las revise un abogado.
 
