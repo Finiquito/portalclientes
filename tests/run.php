@@ -3464,6 +3464,18 @@ check($svcL->estado($duenaL)['idiomaElegido'] === true, 'y no se vuelve a pregun
 $ajL->borrar('global', 'portal', 'idioma');
 $svcL2 = new P\OnboardingService($pdoL);
 check($svcL2->guardar(['paso' => 3], $duenaL)['max'] === 3 && $svcL2->estado($duenaL)['idiomaElegido'] === true, 'un asistente que ya va avanzado tampoco lo pregunta');
+// Antes de empezar: las condiciones de uso se aceptan una vez y queda registro de versión, fecha y quién.
+check($svcL->estado($duenaL)['condicionesOk'] === false && $svcL->condicionesAceptadas() === null, 'condiciones: antes de aceptarlas no hay registro');
+$svcL->guardar(['paso' => 1], $duenaL);
+check($svcL->condicionesAceptadas() === null, 'condiciones: seguir sin aceptar no las da por aceptadas');
+$eC = $svcL->guardar(['aceptoCondiciones' => true, 'paso' => 1], $duenaL);
+$regC = $svcL->condicionesAceptadas();
+check($eC['condicionesOk'] === true && $regC !== null, 'condiciones: al aceptarlas queda registrado');
+check(($regC['version'] ?? '') === P\OnboardingService::CONDICIONES_VERSION && ($regC['email'] ?? '') === (string) $duenaL['email'] && ($regC['usuario_id'] ?? '') === (string) $duenaL['id'], 'condiciones: guarda versión y quién las aceptó');
+check(preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/', (string) ($regC['fecha'] ?? '')) === 1, 'condiciones: guarda fecha y hora en UTC');
+$fechaC = $regC['fecha'];
+$svcL->guardar(['aceptoCondiciones' => true], $duenaL);
+check($svcL->condicionesAceptadas()['fecha'] === $fechaC, 'condiciones: aceptar otra vez no cambia el registro original');
 putenv('PORTAL_PRIMER_COORDINADOR');
 putenv('PORTAL_AGENCIA_NOMBRE');
 putenv('PORTAL_ONBOARDING');

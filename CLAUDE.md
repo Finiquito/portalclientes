@@ -12,7 +12,7 @@
 
 ## Ramas (ver `docs/ramas.md`)
 - **Personal** (`claude/youthful-gates-tjxgp0`, la rama por defecto): su portal en `proyectos.richgt.com`, versiones `0.36.x`.
-- **Beta** (`beta`): portal para las agencias beta, versiones `0.N.M-beta` (se dice «beta 0.N»; hoy **beta 0.13**). Protocolo y decisiones en `docs/protocolo-beta.md`.
+- **Beta** (`beta`): portal para las agencias beta, versiones `0.N.M-beta` (se dice «beta 0.N»; hoy **beta 0.14**). Protocolo y decisiones en `docs/protocolo-beta.md`.
 - `prisma/` (solo en `beta`): herramienta CLI para crear y actualizar agencias en el hosting. Pruebas: `php tests/prisma.php` (necesita un clon de `typedock/core` con `composer install`; ver `prisma/README.md`). Zip: `bash scripts/zip-prisma.sh`.
 - Asistente de bienvenida de las agencias beta: `portal/templates/equipo/bienvenida.latte` es **generado**; no se edita a mano. Se rehace con `python3 dev/maquetas/armar-latte.py` (usa la maqueta aprobada `dev/maquetas/onboarding-agencia.src.html` y `dev/maquetas/js-onboarding.js`). Recorrido real en navegador: `dev/maquetas/e2e-onboarding.js`. Contraste de colores: `portal/src/ColorMarca.php` y `dev/maquetas/colores.html`.
 - Antes de trabajar, confirma en qué rama estás. Lo personal se hace en la personal; lo de las agencias, en `beta`. Las mejoras pasan de la personal a la beta con merge, nunca al revés sin preguntar.

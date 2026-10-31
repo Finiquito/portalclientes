@@ -70,6 +70,11 @@ class EquipoOnboarding extends EquipoController
             'idiomas'     => array_map(null, array_keys(Idioma::DISPONIBLES), array_values(Idioma::DISPONIBLES)),
             'idiomaAgencia' => Idioma::de($this->ajustes(), 'global', 'portal'),
             'idiomaActual' => Idioma::actual(),
+            'condiciones' => [
+                'version' => OnboardingService::CONDICIONES_VERSION,
+                'fecha'   => OnboardingService::CONDICIONES_FECHA,
+                'url'     => Compartido::entorno('PORTAL_URL_CONDICIONES') ?: OnboardingService::CONDICIONES_URL,
+            ],
         ];
         $this->view('bienvenida.latte', [
             'csrf'      => PortalSession::csrf(),

@@ -14,9 +14,22 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAGQAAAAyCAYAAACqNX6+AAAAXklEQVR
   const foto = async n => { await p.waitForTimeout(700); await p.screenshot({path: path.join(salida, n)}); };
   await p.goto(base + '/dev/equipo?email=camila.soto@estudiopampa.cl');
   await p.goto(base + '/equipo');
-  log.push('al entrar → ' + p.url().replace(base, ''));
+  log.push('al entrar → ' + p.url().replace(base, '') + ' · pantalla = ' + await p.locator('.paso.activo').getAttribute('data-paso'));
+  await foto('r0-idioma.png');
+  await p.click('label[for=idioma-es]'); await p.waitForLoadState('load'); await p.waitForTimeout(800);
+  log.push('tras elegir idioma: botón aceptar apagado = ' + await p.locator('#aceptar').isDisabled() + ', #sig oculto = ' + !(await p.locator('#sig').isVisible()));
+  await foto('r0b-antes-de-empezar.png');
+  await p.click('#acepto'); log.push('marcada la casilla: botón apagado = ' + await p.locator('#aceptar').isDisabled());
+  await p.click('#aceptar'); await p.waitForTimeout(700);
+  log.push('tras aceptar → paso ' + await p.locator('.paso.activo').getAttribute('data-paso'));
   await foto('r1-agencia.png');
   await p.fill('#tuNombre', 'Camila Soto'); await p.fill('#agencia', 'Estudio Pampa');
+  // «Omitir por ahora»: sale al panel con el aviso para retomar y vuelve donde quedó
+  await p.waitForTimeout(900); await p.click('#omitir'); await p.waitForURL(/\/equipo$/, {timeout: 10000});
+  log.push('omitir → ' + p.url().replace(base, '') + ' · aviso: ' + (await p.locator('section[aria-label="Configuración pendiente"]').innerText()).replace(/\s+/g, ' '));
+  await foto('r0c-panel-con-aviso.png');
+  await p.click('text=Continuar la configuración'); await p.waitForTimeout(800);
+  log.push('retomar → paso ' + await p.locator('.paso.activo').getAttribute('data-paso') + ', agencia = ' + await p.inputValue('#agencia'));
   await p.click('label[for=c7]');                                   // azul claro (texto oscuro)
   await p.setInputFiles('#archivoLogo', {name: 'logo.png', mimeType: 'image/png', buffer: PNG});
   await p.waitForTimeout(1200); await foto('r1b-agencia-llena.png');

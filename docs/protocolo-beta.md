@@ -358,3 +358,10 @@ La beta 0.12 une el asistente con los idiomas del plugin personal (v0.47: españ
 4. **Tú le avisas a la dueña** que entre a `https://<slug>.usaprisma.com/equipo/entrar` (o a la raíz del sitio, que la lleva ahí mientras se arma).
 5. **La dueña:** código al correo → asistente (5 pantallas) → su panel con su primer cliente y proyecto. La invitación a su cliente sale sola 6 horas después, o antes si ella lo decide.
 6. **Cron único (hPanel):** `prisma cola` cada 10 minutos para toda la flota.
+
+## Antes de empezar y condiciones de uso (beta 0.14)
+
+- Tras elegir el idioma, el asistente pide aceptar las condiciones de uso (resumen de cuatro garantías + enlace a `usaprisma.com/condiciones/`). No se promete nada sobre el acceso del soporte a los datos: se decidió no decir más de lo necesario.
+- Las garantías dicen solo lo que es cierto: datos separados por agencia, HTTPS, claves cifradas, acceso al servidor restringido. No se promete cifrado de archivos ni copia/eliminación automática (se pide por correo).
+- Registro: `condiciones_aceptadas` en `portal_ajustes` (global/portal) con versión, fecha UTC, id, correo y nombre de quien aceptó.
+- La salida del asistente es «Omitir por ahora» (no hay «Guardar y salir»); el panel muestra el aviso para retomar mientras no se termine.

@@ -48,12 +48,14 @@
   }
 
   // --- Pantalla 0: el idioma es lo primero que se ve. Al elegir, se guarda (agencia y persona) y la página se recarga en ese idioma.
-  var SUBTITULOS = { es: 'Continuar en español', en: 'Continue in English', fr: 'Continuer en français', it: 'Continua in italiano' };
+  var BANDERAS = {"es": "<svg viewBox=\"0 0 40 28\"><rect x=\"0\" y=\"0\" width=\"26\" height=\"18\" fill=\"#c60b1e\"/><rect x=\"0\" y=\"4.5\" width=\"26\" height=\"9\" fill=\"#f1bf00\"/><rect x=\"14\" y=\"10\" width=\"26\" height=\"18\" fill=\"#eceef3\"/><rect x=\"14\" y=\"10\" width=\"8.67\" height=\"18\" fill=\"#006847\"/><rect x=\"22.67\" y=\"10\" width=\"8.67\" height=\"18\" fill=\"#f6f7fa\"/><rect x=\"31.33\" y=\"10\" width=\"8.67\" height=\"18\" fill=\"#ce1126\"/><circle cx=\"27\" cy=\"19\" r=\"2.4\" fill=\"#8c6b2f\"/></svg>", "en": "<svg viewBox=\"0 0 40 28\" preserveAspectRatio=\"none\"><rect width=\"40\" height=\"28\" fill=\"#012169\"/><path d=\"M0 0l40 28M40 0L0 28\" stroke=\"#fff\" stroke-width=\"5\"/><path d=\"M0 0l40 28M40 0L0 28\" stroke=\"#c8102e\" stroke-width=\"2\"/><path d=\"M20 0v28M0 14h40\" stroke=\"#fff\" stroke-width=\"9\"/><path d=\"M20 0v28M0 14h40\" stroke=\"#c8102e\" stroke-width=\"5\"/></svg>", "fr": "<svg viewBox=\"0 0 40 28\" preserveAspectRatio=\"none\"><rect width=\"14\" height=\"28\" fill=\"#0055a4\"/><rect x=\"13\" width=\"14\" height=\"28\" fill=\"#fff\"/><rect x=\"26\" width=\"14\" height=\"28\" fill=\"#ef4135\"/></svg>", "it": "<svg viewBox=\"0 0 40 28\" preserveAspectRatio=\"none\"><rect width=\"14\" height=\"28\" fill=\"#009246\"/><rect x=\"13\" width=\"14\" height=\"28\" fill=\"#fff\"/><rect x=\"26\" width=\"14\" height=\"28\" fill=\"#ce2b37\"/></svg>"};
+  var SUBTITULOS = { es: 'Continuar en español de Latinoamérica', en: 'Continue in English', fr: 'Continuer en français', it: 'Continua in italiano' };
   var cajaI = $('#idiomas');
   if (cajaI) {
     IDIOMAS.forEach(function (i) {
       var d = document.createElement('div'); d.className = 'plantilla';
-      d.innerHTML = '<input type="radio" name="idioma"><label><b></b><span class="etapas"></span><span class="radio"></span></label>';
+      d.classList.add('idioma');
+      d.innerHTML = '<input type="radio" name="idioma"><label><span class="bandera' + (i[0] === 'es' ? ' doble' : '') + '" aria-hidden="true">' + (BANDERAS[i[0]] || '') + '</span><b></b><span class="etapas"></span><span class="radio"></span></label>';
       var inp = d.querySelector('input'), lab = d.querySelector('label');
       inp.id = 'idioma-' + i[0]; inp.value = i[0]; lab.setAttribute('for', inp.id);
       lab.querySelector('b').textContent = i[1]; lab.querySelector('.etapas').textContent = SUBTITULOS[i[0]] || '';
@@ -188,8 +190,8 @@
       b.setAttribute('aria-label', NOMBRES[i] + (k < n ? __t(', completado') : ''));
     });
     $('#barra').style.width = (n / 5 * 100) + '%';
-    $('#atras').hidden = n <= 1; $('#omitir').hidden = n !== 4;
-    ['#pasos', '#sig', '#salir'].forEach(function (q) { $(q).style.display = n === 0 ? 'none' : ''; });
+    $('#atras').hidden = n <= 1; $('#omitir').hidden = n < 1 || n > 4;
+    ['#pasos', '#sig'].forEach(function (q) { $(q).style.display = n === 0 ? 'none' : ''; });
     $('#sigTxt').textContent = n === 5 ? __t('Ir a mi panel') : __t('Continuar');
     $('#centro').textContent = (n === 5 || n === 0) ? '' : __t('Paso %d de 5 · se guarda solo').replace('%d', n);
     if (n === 5) resumen(); if (n === 4) pintarTu();
@@ -211,14 +213,35 @@
   function siguiente() { var n = estado.paso; if (n === 0) return; if (n === 5) { finalizar(); return; } if (!validar(n)) return; ir(n + 1); }
   $('#sig').onclick = siguiente;
   $('#atras').onclick = function () { if (estado.paso > 1) ir(estado.paso - 1, true); };
-  $('#omitir').onclick = function () { ir(5); };
+  $('#omitir').onclick = function () { if (estado.paso === 4) { ir(5); return; } salirAlPanel(); };
   document.addEventListener('keydown', function (e) { if (e.key === 'Enter' && e.target.tagName === 'INPUT' && e.target.type !== 'checkbox' && e.target.type !== 'radio' && e.target.id !== 'miembro') { e.preventDefault(); siguiente(); } });
   var tT; function aviso(t) { var el = $('#toast'); el.textContent = t; el.classList.add('ver'); clearTimeout(tT); tT = setTimeout(function () { el.classList.remove('ver'); }, 3600); }
-  $('#salir').onclick = function () {
+  // «Omitir por ahora»: se guarda lo avanzado y se sale al panel, donde un aviso invita a retomar.
+  function salirAlPanel() {
     enviar().then(function () { var fd = new FormData(); fd.append('_csrf', CSRF); return fetch('/equipo/bienvenida/omitir', { method: 'POST', body: fd, credentials: 'same-origin' }); })
       .then(function (r) { return r.json(); }).then(function (j) { location.href = j.redirect || '/equipo'; }).catch(function () { location.href = '/equipo'; });
-  };
+  }
+
+  // --- Pantalla 0, segunda parte: «Antes de empezar» (resumen de las condiciones de uso). Sin aceptarlas no se avanza.
+  var C = D.condiciones || {};
+  function fechaLarga(iso) { try { return new Date(iso + 'T12:00:00').toLocaleDateString(D.idiomaActual || 'es', { day: 'numeric', month: 'long', year: 'numeric' }); } catch (e) { return iso; } }
+  if ($('#faseCondiciones')) {
+    if (C.url) $('#enlaceCondiciones').href = C.url;
+    $('#versionCondiciones').textContent = __t('Versión %s · %s · queda registrado quién las aceptó y cuándo.').replace('%s', C.version).replace('%s', fechaLarga(C.fecha));
+    $('#acepto').addEventListener('change', function () { $('#aceptar').disabled = !this.checked; });
+    $('#aceptar').onclick = function () {
+      if (!$('#acepto').checked || ocupado) return; ocupado = true;
+      var fd = new FormData(); fd.append('_csrf', CSRF); fd.append('datos', JSON.stringify({ aceptoCondiciones: true, paso: 1 }));
+      fetch('/equipo/bienvenida/guardar', { method: 'POST', body: fd, credentials: 'same-origin' }).then(function (r) { return r.json(); })
+        .then(function (j) { ocupado = false; if (j && j.ok) { estado.condicionesOk = true; estado.paso = 1; ir(1); } else aviso((j && j.error) || __t('No se pudo guardar. Revisa tu conexión.')); })
+        .catch(function () { ocupado = false; aviso(__t('No hay conexión. Inténtalo de nuevo.')); });
+    };
+  }
+  if ($('#cambiarIdioma')) $('#cambiarIdioma').onclick = function () { fase0(false); };
+  function fase0(cond) { $('#faseIdioma').hidden = cond; $('#faseCondiciones').hidden = !cond; }
 
   pintarColor(); pintarPlantilla(); pintarVista(); pintarEquipo(); pintarTu(); pintarInvitar();
-  ir(D.estado.idiomaElegido ? estado.paso : 0);
+  if (!D.estado.idiomaElegido) { fase0(false); ir(0); }
+  else if (!D.estado.condicionesOk) { fase0(true); ir(0); }
+  else ir(estado.paso);
 })();

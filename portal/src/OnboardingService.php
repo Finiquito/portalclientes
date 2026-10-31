@@ -17,7 +17,13 @@ final class OnboardingService
     public const INVITACION_HORAS = 6;
     public const COLOR_DEFECTO = '#d54318';
 
+    /** Versión vigente de las condiciones de uso (la que se acepta en «Antes de empezar»). Cámbiala cuando cambie el texto publicado. */
+    public const CONDICIONES_VERSION = '1.0';
+    public const CONDICIONES_FECHA   = '2026-11-01';
+    public const CONDICIONES_URL     = 'https://usaprisma.com/condiciones/';
+
     private const CLAVE_ESTADO = 'onb_estado';
+    private const CLAVE_CONDICIONES = 'condiciones_aceptadas';
     private const CLAVE_LISTO  = 'onb_completo';
 
     public function __construct(private readonly \PDO $pdo) {}
@@ -57,12 +63,39 @@ final class OnboardingService
         $e = array_merge($base, array_intersect_key($g, $base));
         // El idioma se pregunta primero: no se vuelve a preguntar si ya se eligió, si la agencia ya trae uno o si el asistente va avanzado (la agencia sí trae nombre desde `prisma crear`, por eso no cuenta).
         $e['idiomaElegido'] = !empty($e['idiomaElegido']) || Idioma::valido($a->get('global', 'portal', 'idioma')) || (int) $e['max'] > 1;
+        $e['condicionesOk'] = $this->condicionesAceptadas() !== null;
         $e['paso'] = max(1, min(5, (int) $e['paso']));
         $e['max'] = max($e['paso'], min(5, (int) $e['max']));
         if ($e['plantilla'] === '') {
             $e['plantilla'] = ($this->plantillas()[0]['id'] ?? 'blanco');
         }
         return $e;
+    }
+
+    /**
+     * Quién aceptó las condiciones de uso vigentes, y cuándo. Null si todavía no se aceptan.
+     *
+     * @return array{version: string, fecha: string, usuario_id: string, email: string, nombre: string}|null
+     */
+    public function condicionesAceptadas(): ?array
+    {
+        $j = json_decode($this->ajustes()->get('global', 'portal', self::CLAVE_CONDICIONES), true);
+        return is_array($j) && ($j['version'] ?? '') === self::CONDICIONES_VERSION ? $j : null;
+    }
+
+    /** Deja registro de la aceptación: versión, fecha y hora (UTC), y quién la dio. */
+    private function aceptarCondiciones(array $usuario): void
+    {
+        if ($this->condicionesAceptadas() !== null) {
+            return;
+        }
+        $this->ajustes()->set('global', 'portal', self::CLAVE_CONDICIONES, json_encode([
+            'version'    => self::CONDICIONES_VERSION,
+            'fecha'      => gmdate('Y-m-d\TH:i:s\Z'),
+            'usuario_id' => (string) ($usuario['id'] ?? ''),
+            'email'      => (string) ($usuario['email'] ?? ''),
+            'nombre'     => (string) ($usuario['nombre'] ?? ''),
+        ], JSON_UNESCAPED_UNICODE));
     }
 
     /** Las plantillas de proyecto de la agencia, con sus etapas en una línea. @return list<array{id: string, nombre: string, etapas: string}> */
@@ -104,6 +137,10 @@ final class OnboardingService
             }
             $e['idiomaElegido'] = true;
             Idioma::recordar((string) $d['idioma']);
+        }
+        if (!empty($d['aceptoCondiciones'])) {
+            $this->aceptarCondiciones($usuario);
+            $e['condicionesOk'] = true;
         }
         if (array_key_exists('idiomaCliente', $d)) {
             // Vacío = el del cliente hereda el de la agencia; si no, es el que se elige para su portal y sus correos.

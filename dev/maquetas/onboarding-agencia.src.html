@@ -228,6 +228,25 @@ body.limpio .maqueta { display: none; }
   .pasos .t, .avance i, .sig, .sig svg, .sw i::after, .colores label { transition-duration: 1ms; }
   .check-grande circle, .check-grande path { animation-duration: 1ms; animation-delay: 0s; }
 }
+
+/* Pantalla 0: idioma con banderas chicas y «Antes de empezar» */
+.plantilla.idioma label { grid-template-columns: 30px 1fr auto; gap: 2px 14px; }
+.plantilla.idioma .bandera { grid-row: 1 / span 2; width: 28px; height: 20px; border-radius: 3px; overflow: hidden; box-shadow: 0 0 0 1px var(--rule); }
+.plantilla.idioma .bandera.doble { overflow: visible; box-shadow: none; border-radius: 0; }
+.plantilla.idioma .bandera svg { width: 100%; height: 100%; display: block; }
+.plantilla.idioma .etapas { grid-column: 2; } .plantilla.idioma b { grid-column: 2; }
+.plantilla.idioma .radio { grid-column: 3; }
+.garantias { background: var(--surface); border: 1.5px solid var(--rule); border-radius: var(--radius); margin: 0 0 14px; overflow: hidden; }
+.garantia { padding: 11px 16px; display: grid; grid-template-columns: 26px 1fr; column-gap: 14px; row-gap: 1px; align-items: start; }
+.garantia + .garantia { border-top: 1px solid var(--rule); }
+.garantia .ico { grid-row: span 2; width: 26px; height: 26px; color: var(--signal); margin-top: 1px; }
+.garantia .ico svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.garantia b { font-size: 16.5px; line-height: 1.25; } .garantia p { margin: 0; font-size: 14.5px; color: var(--ink-2); line-height: 1.45; }
+.acepto { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: start; padding: 14px 16px; border: 1.5px solid var(--rule); border-radius: var(--radius); background: color-mix(in srgb, var(--surface) 70%, transparent); cursor: pointer; }
+.acepto input { width: 22px; height: 22px; margin: 1px 0 0; accent-color: var(--ink); cursor: pointer; }
+.acepto span { font-size: 15px; color: var(--ink-2); } .acepto a { color: var(--ink); font-weight: 700; text-underline-offset: 3px; }
+.version { font-size: 12.5px; color: var(--ink-3); margin: 10px 2px 18px; }
+.sig:disabled { opacity: .35; cursor: not-allowed; transform: none; }
 </style>
 </head>
 <body>
@@ -238,7 +257,6 @@ body.limpio .maqueta { display: none; }
     <ol class="pasos" id="pasos" aria-label="Pasos de la configuración"></ol>
     <div class="lado">
       <span class="guardado" id="guardado" role="status" aria-live="polite"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 10.5l3.5 3.5 7.5-8"/></svg><span id="guardadoTxt">Guardado</span></span>
-      <button class="salir" id="salir" type="button">Guardar y salir</button>
     </div>
   </header>
 
@@ -247,10 +265,27 @@ body.limpio .maqueta { display: none; }
     <!-- 1 -->
     <!-- 0: idioma (lo primero que se ve) -->
     <section class="paso" data-paso="0" aria-labelledby="h0">
-      <p class="kicker">Bienvenida a Prisma</p>
-      <h1 id="h0">Elige tu idioma</h1>
-      <p class="sub">Choose your language · Choisissez votre langue · Scegli la tua lingua</p>
-      <div class="plantillas" role="radiogroup" aria-labelledby="h0" id="idiomas"></div>
+      <div id="faseIdioma">
+        <p class="kicker">Bienvenida a Prisma</p>
+        <h1 id="h0">Elige tu idioma</h1>
+        <p class="sub">Choose your language · Choisissez votre langue · Scegli la tua lingua</p>
+        <div class="plantillas" role="radiogroup" aria-labelledby="h0" id="idiomas"></div>
+      </div>
+      <div id="faseCondiciones" hidden>
+        <p class="kicker">Antes de empezar</p>
+        <h1 id="h0b">Tu información está en buenas manos</h1>
+        <p class="sub">Lo importante, en simple. El detalle completo está en las condiciones de uso.</p>
+        <div class="garantias">
+          <div class="garantia"><span class="ico"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span><b>Tus datos son tuyos</b><p>Tus clientes, proyectos y archivos son tuyos. Los usamos solo para que tu portal funcione; no los vemos ni los usamos para otra cosa.</p></div>
+          <div class="garantia"><span class="ico"><svg viewBox="0 0 24 24"><path d="M12 3 3 8l9 5 9-5-9-5Z"/><path d="m3 13 9 5 9-5"/></svg></span><b>Tu propio espacio</b><p>Tu información vive separada de la de otras agencias, y el acceso al servidor es restringido.</p></div>
+          <div class="garantia"><span class="ico"><svg viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.5 3 8 7 10 4-2 7-5.5 7-10V6l-7-3Z"/><path d="m9 12 2 2 4-4"/></svg></span><b>Viaja protegida</b><p>Todo se transmite por una conexión segura (HTTPS) y las claves se guardan cifradas.</p></div>
+          <div class="garantia"><span class="ico"><svg viewBox="0 0 24 24"><path d="M12 3v12m0 0-4-4m4 4 4-4"/><path d="M5 19h14"/></svg></span><b>Tú decides</b><p>Si quieres una copia de tus datos, o que los eliminemos, escríbenos y lo hacemos.</p></div>
+        </div>
+        <label class="acepto"><input type="checkbox" id="acepto"><span><span id="aceptoTxt">Leí y acepto las</span> <a id="enlaceCondiciones" href="https://usaprisma.com/condiciones/" target="_blank" rel="noopener">condiciones de uso de Prisma ↗</a>. <span id="aceptoNota">Se abren en usaprisma.com, en otra pestaña.</span></span></label>
+        <p class="version" id="versionCondiciones"></p>
+        <button class="sig" id="aceptar" type="button" disabled><span>Acepto y sigo</span><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h12M11 5l5 5-5 5"/></svg></button>
+        <button class="omitir" id="cambiarIdioma" type="button" style="margin-left:8px">Cambiar idioma</button>
+      </div>
     </section>
 
     <section class="paso" data-paso="1" aria-labelledby="h1">

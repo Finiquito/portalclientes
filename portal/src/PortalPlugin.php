@@ -320,7 +320,7 @@ class PortalPlugin implements PluginInterface
 
     public function getVersion(): string
     {
-        return '0.13.0-beta';
+        return '0.14.0-beta';
     }
 
     public function provides(): array

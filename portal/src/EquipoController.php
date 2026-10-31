@@ -680,6 +680,7 @@ class EquipoController
 
         $this->view('inicio.latte', $this->contexto($u, 'inicio', [
             'onbPendiente' => ($u['rol'] ?? '') === 'coordinador' && $this->onboarding()->activo(),
+            'onbPaso'      => max(1, min(5, (int) ($this->onboarding()->estado($u)['max'] ?? 1))),
             'cuentas'      => $acc->todo() ? $this->resumenCuentas($hoy) : null,
             'cargaDeCuentas' => !$acc->todo(),
             'carga'        => $carga,

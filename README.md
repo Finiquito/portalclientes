@@ -74,6 +74,14 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### beta 0.14 (0.14.0-beta): «Antes de empezar» y salida suave del asistente
+
+- **Antes de empezar:** después de elegir el idioma, el asistente muestra cuatro garantías cortas (tus datos son tuyos, tu propio espacio, viaja protegida, tú decides) y el enlace a las **condiciones de uso** (`https://usaprisma.com/condiciones/`, se abre en otra pestaña). Sin marcar «Leí y acepto» no se avanza. Queda registrado en `portal_ajustes` (`condiciones_aceptadas`): versión, fecha y hora en UTC, y quién las aceptó. Al subir `OnboardingService::CONDICIONES_VERSION` se vuelven a pedir.
+- **Idioma:** las cuatro opciones llevan bandera chica (español: España y México superpuestas) y «Cambiar idioma» permite volver desde «Antes de empezar».
+- **Sin «Guardar y salir»:** el asistente ya guarda solo. «Omitir por ahora» sale al panel desde los pasos 1 a 4, y el panel muestra «Termina de configurar tu agencia · Vas en el paso N de 5» con el botón para retomar.
+- **Condiciones de uso:** borrador en `theme/raiz-usaprisma/condiciones/index.html` (va en `public_html/condiciones/`). Hay que completar los `[COMPLETAR: …]` y revisarlo con un abogado antes de publicarlo.
+- Traducciones del italiano revisadas (44 frases) y del onboarding en francés (9). Frases nuevas en inglés, francés e italiano sin revisar.
+
 ### beta 0.13 (0.13.0-beta): italiano y el idioma primero
 - **Italiano** como cuarto idioma (`portal/lang/it/`, las mismas ~3.060 frases que el inglés): portal del cliente, panel del equipo, gestión, contactos ganados, correos, JavaScript y fechas (`lunedì 12 ott`). Se elige donde se eligen los demás idiomas.
 - **Lo primero que ve la persona en el asistente de bienvenida es el idioma** (pantalla 0: Español · English · Français · Italiano). Al elegirlo se guarda como idioma de la agencia y de esa persona, y el asistente sigue en él. No se vuelve a preguntar si ya se eligió, si la agencia ya tiene un idioma por defecto o si el asistente va avanzado.
