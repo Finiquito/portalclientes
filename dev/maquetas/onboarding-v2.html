@@ -84,14 +84,32 @@ h1 { font-size: clamp(30px, 3.7vw, 46px); line-height: 1.04; letter-spacing: -.0
 .in:hover { border-color: color-mix(in srgb, var(--ink) 35%, transparent); } .in:focus { outline: none; border-color: var(--ink); box-shadow: 0 0 0 4px color-mix(in srgb, var(--acento) 20%, transparent); }
 select.in { cursor: pointer; }
 .dos { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-.colores { display: grid; grid-template-columns: repeat(6, 1fr); gap: 9px; }
-.colores label { height: 42px; border-radius: 11px; background: var(--c); cursor: pointer; display: grid; place-items: center; box-shadow: inset 0 0 0 1px rgba(0,0,0,.1); transition: transform 160ms var(--ease); }
-.colores label:hover { transform: translateY(-2px); }
-.colores input { position: absolute; opacity: 0; } .colores input:checked + label { box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--ink); }
-.colores span { position: relative; }
-.vista { display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius); }
-.chapa { width: 40px; height: 40px; border-radius: 11px; background: var(--acento); color: #fff; display: grid; place-items: center; font-weight: 800; transition: background 200ms; }
-.vista b { display: block; line-height: 1.2; } .vista small { color: var(--ink-3); font-size: 13px; }
+.marca { display: grid; grid-template-columns: 1fr auto; gap: 20px; align-items: start; padding-top: 4px; }
+.subir { display: flex; align-items: center; gap: 14px; height: 64px; padding: 0 16px; border: 1.5px dashed var(--rule); border-radius: var(--radius); background: transparent; cursor: pointer; text-align: left; width: 100%; transition: border-color 160ms ease, background 160ms ease; }
+.subir:hover { border-color: var(--ink); background: color-mix(in srgb, var(--surface) 70%, transparent); }
+.subir .ico { width: 36px; height: 36px; border-radius: 8px; background: var(--rule-soft); display: grid; place-items: center; overflow: hidden; flex: none; }
+.subir .ico img { width: 100%; height: 100%; object-fit: contain; background: #fff; }
+.subir b { display: block; font-size: 15px; font-weight: 650; }
+.subir span { font-size: 13px; color: var(--ink-3); }
+.colores { display: grid; grid-template-columns: repeat(6, 30px); gap: 8px 10px; padding: 0; }
+.colores input { position: absolute; opacity: 0; pointer-events: none; }
+.colores label { width: 30px; height: 30px; border-radius: 50%; background: var(--c); cursor: pointer; display: block; box-shadow: inset 0 0 0 1px var(--rule); transition: transform 200ms var(--ease), box-shadow 200ms ease; }
+.colores label { position: relative; }
+.colores label::after { content: ""; position: absolute; inset: 0; background: var(--cf, #fff); opacity: 0; transform: scale(.6); transition: opacity 200ms ease, transform 260ms var(--ease);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 10.5l3.5 3.5 6.5-7.5'/%3E%3C/svg%3E") center / 15px no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 10.5l3.5 3.5 6.5-7.5'/%3E%3C/svg%3E") center / 15px no-repeat; }
+.colores input:checked + label::after { opacity: 1; transform: none; }
+.colores label:hover { transform: scale(1.12); }
+.colores input:checked + label { box-shadow: inset 0 0 0 1px var(--rule), 0 0 0 3px var(--paper), 0 0 0 5px var(--c); }
+.colores input:focus-visible + label { outline: 2px solid var(--signal); outline-offset: 6px; }
+.vista { margin-top: 28px; border: 1px solid var(--rule); border-radius: 14px; background: var(--surface); padding: 16px 18px; display: grid; gap: 14px; }
+.vista .tit { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
+.vista .fila { display: flex; align-items: center; gap: 12px; }
+.chapa { width: 40px; height: 40px; border-radius: 10px; background: var(--acento); color: var(--acento-fg, #fff); font-weight: 800; display: grid; place-items: center; overflow: hidden; flex: none; transition: background 320ms ease; }
+.chapa img { width: 100%; height: 100%; object-fit: contain; background: #fff; }
+.vista .nombre { font-weight: 750; font-size: 17px; letter-spacing: -.01em; }
+.vista .lin { height: 8px; border-radius: 4px; background: var(--rule-soft); }
+.vista .btnv { margin-left: auto; height: 32px; padding: 0 14px; border-radius: 8px; background: var(--acento); color: var(--acento-fg, #fff); font-size: 13px; font-weight: 700; display: grid; place-items: center; transition: background 320ms ease; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; }
 .ayuda { font-size: 14px; color: var(--ink-3); margin: 6px 0 0; }
 
 .pie { position: sticky; bottom: 0; background: linear-gradient(transparent, var(--paper) 40%); display: flex; align-items: center; justify-content: space-between; padding: 14px clamp(20px, 4vw, 56px) 18px; gap: 16px; }
@@ -137,7 +155,7 @@ select.in { cursor: pointer; }
         <h1 id="h0">Elige tu idioma</h1>
         <p class="sub">Así te hablamos el resto del camino. Lo puedes cambiar cuando quieras.<small>Choose your language · Choisissez votre langue · Scegli la tua lingua</small></p>
         <div class="idiomas" role="radiogroup" aria-labelledby="h0">
-          <div class="idioma"><input type="radio" name="idioma" id="i-es"><label for="i-es"><span class="bandera"><svg viewBox="0 0 40 28"><rect width="40" height="28" fill="#fff"/><rect x="0" y="0" width="26" height="18" fill="#c60b1e"/><rect x="0" y="4.5" width="26" height="9" fill="#f1bf00"/><rect x="14" y="10" width="26" height="18" fill="#fff" stroke="#fff" stroke-width="2"/><rect x="14" y="10" width="8.67" height="18" fill="#006847"/><rect x="22.67" y="10" width="8.67" height="18" fill="#fff"/><rect x="31.33" y="10" width="8.67" height="18" fill="#ce1126"/><rect x="14" y="10" width="26" height="18" fill="none" stroke="#c9ced8" stroke-width="1"/></svg></span><span><b>Español</b><span class="d">Continuar en español</span></span></label></div>
+          <div class="idioma"><input type="radio" name="idioma" id="i-es"><label for="i-es"><span class="bandera"><svg viewBox="0 0 40 28"><rect width="40" height="28" fill="#fff"/><rect x="0" y="0" width="26" height="18" fill="#c60b1e"/><rect x="0" y="4.5" width="26" height="9" fill="#f1bf00"/><rect x="14" y="10" width="26" height="18" fill="#fff" stroke="#fff" stroke-width="2"/><rect x="14" y="10" width="8.67" height="18" fill="#006847"/><rect x="22.67" y="10" width="8.67" height="18" fill="#fff"/><rect x="31.33" y="10" width="8.67" height="18" fill="#ce1126"/><circle cx="27" cy="19" r="2.4" fill="#8c6b2f"/></svg></span><span><b>Español</b><span class="d">Continuar en español de Latinoamérica</span></span></label></div>
           <div class="idioma"><input type="radio" name="idioma" id="i-en"><label for="i-en"><span class="bandera"><svg viewBox="0 0 40 28" preserveAspectRatio="none"><rect width="40" height="28" fill="#012169"/><path d="M0 0l40 28M40 0L0 28" stroke="#fff" stroke-width="5"/><path d="M0 0l40 28M40 0L0 28" stroke="#c8102e" stroke-width="2"/><path d="M20 0v28M0 14h40" stroke="#fff" stroke-width="9"/><path d="M20 0v28M0 14h40" stroke="#c8102e" stroke-width="5"/></svg></span><span><b>English</b><span class="d">Continue in English</span></span></label></div>
           <div class="idioma"><input type="radio" name="idioma" id="i-fr"><label for="i-fr"><span class="bandera"><svg viewBox="0 0 40 28" preserveAspectRatio="none"><rect width="14" height="28" fill="#0055a4"/><rect x="13" width="14" height="28" fill="#fff"/><rect x="26" width="14" height="28" fill="#ef4135"/></svg></span><span><b>Français</b><span class="d">Continuer en français</span></span></label></div>
           <div class="idioma"><input type="radio" name="idioma" id="i-it"><label for="i-it"><span class="bandera"><svg viewBox="0 0 40 28" preserveAspectRatio="none"><rect width="14" height="28" fill="#009246"/><rect x="13" width="14" height="28" fill="#fff"/><rect x="26" width="14" height="28" fill="#ce2b37"/></svg></span><span><b>Italiano</b><span class="d">Continua in italiano</span></span></label></div>
@@ -151,7 +169,7 @@ select.in { cursor: pointer; }
         <h1 id="h1">Tu información está en buenas manos</h1>
         <p class="sub">Lo importante, en simple. El detalle completo está en las condiciones de uso.</p>
         <div class="tarjetas">
-          <div class="tarjeta"><span class="ico"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span><b>Tus datos son tuyos</b><p>Tus clientes, proyectos y archivos son tuyos. Los usamos solo para que tu portal funcione; no los vendemos ni los usamos para otra cosa.</p></div>
+          <div class="tarjeta"><span class="ico"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span><b>Tus datos son tuyos</b><p>Tus clientes, proyectos y archivos son tuyos. Los usamos solo para que tu portal funcione; no los vemos ni los usamos para otra cosa.</p></div>
           <div class="tarjeta"><span class="ico"><svg viewBox="0 0 24 24"><path d="M12 3 3 8l9 5 9-5-9-5Z"/><path d="m3 13 9 5 9-5"/></svg></span><b>Tu propio espacio</b><p>Tu información vive separada de la de otras agencias, y el acceso al servidor es restringido.</p></div>
           <div class="tarjeta"><span class="ico"><svg viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.5 3 8 7 10 4-2 7-5.5 7-10V6l-7-3Z"/><path d="m9 12 2 2 4-4"/></svg></span><b>Viaja protegida</b><p>Todo se transmite por una conexión segura (HTTPS) y las claves se guardan cifradas.</p></div>
           <div class="tarjeta"><span class="ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3.5"/><path d="m6 6 3.5 3.5M18 6l-3.5 3.5M6 18l3.5-3.5M18 18l-3.5-3.5"/></svg></span><b>Ayuda, solo si la pides</b><p>El equipo de Prisma entra a tu espacio únicamente para resolver lo que tú consultes, y nunca usa tus datos ni los de tus clientes para otro fin.</p></div>
@@ -170,11 +188,19 @@ select.in { cursor: pointer; }
           <div class="campo"><label for="tu">Tu nombre</label><input class="in" id="tu" placeholder="Camila Soto"></div>
           <div class="campo"><label for="ag">Nombre de la agencia</label><input class="in" id="ag" placeholder="Estudio Pampa"></div>
         </div>
-        <div class="campo"><span class="etq">Color de acento</span>
-          <div class="colores" id="colores"></div>
+        <div class="marca">
+          <div class="campo" style="margin:0"><span class="etq">Logo <span class="opc">· opcional</span></span>
+            <button class="subir" type="button" id="subir"><span class="ico" id="icoLogo"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M10 13V4M6.5 7.5L10 4l3.5 3.5M4 13.5v1.5a1 1 0 001 1h10a1 1 0 001-1v-1.5"/></svg></span><span><b id="logoNombre">Subir logo</b><span>PNG o SVG, fondo claro</span></span></button>
+            <input type="file" id="archivoLogo" accept="image/png,image/svg+xml,image/jpeg" hidden>
+          </div>
+          <div class="campo" style="margin:0"><span class="etq">Color</span>
+            <div class="colores" role="radiogroup" aria-label="Color de acento" id="colores"></div>
+          </div>
         </div>
-        <div class="campo" style="margin-bottom:0"><span class="etq">Así te verán tus clientes</span>
-          <div class="vista"><span class="chapa" id="chapa">E</span><span><b id="vnom">Estudio Pampa</b><small>Portal de proyectos</small></span></div>
+        <div class="vista" aria-label="Vista previa">
+          <span class="tit">Así te verán tus clientes</span>
+          <div class="fila"><span class="chapa" id="chapa">E</span><span class="nombre" id="vnom">Estudio Pampa</span><span class="btnv">Aprobar</span></div>
+          <div class="lin" style="width:78%"></div><div class="lin" style="width:52%"></div>
         </div>
       </section>
 
@@ -223,11 +249,16 @@ select.in { cursor: pointer; }
   var ORDEN = [0, 1, 2, 3, 5], actual = 0;
   // pasos
   var ol = $('#pasos'); ['Tu agencia', 'Tu cliente', 'Su proyecto', 'Tu equipo', 'Listo'].forEach(function (n, i) { var li = document.createElement('li'); li.innerHTML = '<i></i><span>' + n + '</span>'; ol.appendChild(li); });
-  // colores
-  var COL = ['#d54318', '#2f5bea', '#038567', '#8a4fd6', '#d4387b', '#2b2f3a'];
-  COL.forEach(function (c, i) { $('#colores').insertAdjacentHTML('beforeend', '<span style="position:relative;display:block"><input type="radio" name="color" id="c' + i + '" value="' + c + '"' + (i === 0 ? ' checked' : '') + '><label for="c' + i + '" style="--c:' + c + '"><span></span></label></span>'); });
-  $('#colores').addEventListener('change', function (e) { document.documentElement.style.setProperty('--acento', e.target.value); });
-  $('#ag').addEventListener('input', function (e) { var v = e.target.value.trim(); $('#vnom').textContent = v || 'Estudio Pampa'; $('#chapa').textContent = (v[0] || 'E').toUpperCase(); });
+  // colores (los 12 del asistente real)
+  var COL = [['#D54318','Naranjo Prisma'],['#2F5BEA','Azul'],['#038567','Verde'],['#8A4FD6','Violeta'],['#D4387B','Rosa'],['#2B2F3A','Grafito'],['#FFC107','Ámbar'],['#2196F3','Azul claro'],['#5D7A88','Gris azulado'],['#795548','Café'],['#00BCD4','Cian'],['#30DFC4','Verde turquesa']];
+  function lum(h) { var n = parseInt(h.slice(1), 16), c = [n >> 16, (n >> 8) & 255, n & 255].map(function (v) { v /= 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); }); return .2126 * c[0] + .7152 * c[1] + .0722 * c[2]; }
+  function cont(a, b) { var x = lum(a), y = lum(b); return (Math.max(x, y) + .05) / (Math.min(x, y) + .05); }
+  function textoSobre(h) { return cont('#ffffff', h) >= cont('#12131a', h) ? '#ffffff' : '#12131a'; }
+  COL.forEach(function (c, i) { $('#colores').insertAdjacentHTML('beforeend', '<span><input type="radio" name="color" id="c' + i + '" value="' + c[0] + '"' + (i === 0 ? ' checked' : '') + '><label for="c' + i + '" style="--c:' + c[0] + ';--cf:' + textoSobre(c[0]) + '" title="' + c[1] + '"><span class="sr">' + c[1] + '</span></label></span>'); });
+  $('#colores').addEventListener('change', function (e) { var r = document.documentElement.style; r.setProperty('--acento', e.target.value); r.setProperty('--acento-fg', textoSobre(e.target.value)); });
+  $('#ag').addEventListener('input', function (e) { var v = e.target.value.trim(); $('#vnom').textContent = v || 'Estudio Pampa'; if (!$('#chapa').querySelector('img')) $('#chapa').textContent = (v[0] || 'E').toUpperCase(); });
+  $('#subir').onclick = function () { $('#archivoLogo').click(); };
+  $('#archivoLogo').onchange = function () { var f = this.files[0]; if (!f) return; var u = URL.createObjectURL(f); $('#icoLogo').innerHTML = '<img alt="" src="' + u + '">'; $('#chapa').innerHTML = '<img alt="" src="' + u + '">'; $('#logoNombre').textContent = f.name; };
 
   function ir(v) {
     actual = v; var i = ORDEN.indexOf(v);
