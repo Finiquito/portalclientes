@@ -74,6 +74,11 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
+### Landing (tema Prisma 1.7.0): contactos ganados por campaña
+
+- El home explica el gestor de **contactos ganados por campaña**: un tercer díptico («Lo que llega de tus campañas.») con una captura real del portal del cliente (`assets/img/contactos-ganados.jpg`, datos de ejemplo) y una fila nueva en «Lo que cambia el lunes». También en `llms.txt`.
+- La captura sale de `php dev/seed-demo.php && php dev/seed-leads.php && php dev/seed-leads-landing.php` (30 contactos repartidos en cinco semanas), en `/portal/contactos-ganados` del servidor de desarrollo.
+
 ### beta 0.14.1 (0.14.1-beta): aviso para los clientes y cookies
 
 - **Ingreso del portal y del panel del equipo:** una línea en el pie, «Este portal lo administra [agencia] usando Prisma. Tus datos los gestiona [agencia]. Más información», con enlace a `https://usaprisma.com/privacidad/` (se puede cambiar con la variable `PORTAL_URL_PRIVACIDAD`). Está en español, inglés, francés e italiano. Así los contactos, que nunca aceptan las condiciones, saben quién responde por sus datos.

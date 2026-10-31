@@ -8,6 +8,7 @@
 - El cliente entra con su correo y un código; no necesita contraseña.
 - Tareas para pedir archivos: el cliente los sube en la misma tarea y quedan guardados ahí.
 - Revisión de contenidos pieza por pieza (por ejemplo, un calendario de publicaciones): el cliente aprueba o pide cambios en cada post y el equipo recibe un solo aviso.
+- Contactos ganados por campaña: las personas que llegan por un formulario, Make, Meta o Google caen en el portal del cliente, que anota su estado (nuevo, contactado, calificado, ganado o perdido) y el próximo paso. El equipo ve cuántas llegan y cuánto tardan en avanzar.
 - Reuniones: a partir de las notas o la transcripción se obtienen el resumen, los acuerdos y la lista de tareas.
 - Panel del equipo: una bandeja con lo que respondió cada cliente, lo vencido y lo que viene en la semana. Cada persona ve las cuentas que tiene asignadas y recibe sus propios avisos.
 
