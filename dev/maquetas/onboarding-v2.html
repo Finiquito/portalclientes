@@ -115,7 +115,7 @@ select.in { cursor: pointer; }
   .escena { padding-bottom: 110px; }
   .pasos li span { display: none; } .pasos li.on span { display: inline; }
 }
-@media (max-width: 560px) { .idiomas, .tarjetas, .dos { grid-template-columns: 1fr; } .colores { grid-template-columns: repeat(6, 1fr); gap: 7px; } .centro { display: none; } .sig { flex: 1; justify-content: center; } .maqueta b { display: none; } }
+@media (max-width: 560px) { .cab { flex-wrap: wrap; row-gap: 12px; } .pasos { order: 3; width: 100%; justify-content: center; } .pasos li { padding: 4px 8px; } .idiomas, .tarjetas, .dos { grid-template-columns: 1fr; } .colores { grid-template-columns: repeat(6, 1fr); gap: 7px; } .centro { display: none; } .sig { flex: 1; justify-content: center; } .maqueta b { display: none; } .maqueta { position: fixed; left: 8px; right: 8px; bottom: 88px; flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start; border-radius: 14px; z-index: 30; padding: 6px 8px; } .maqueta button { white-space: nowrap; } .sig { white-space: nowrap; } .salir { font-size: 13px; } }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; }  }
 </style>
 </head>
