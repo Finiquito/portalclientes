@@ -3478,6 +3478,11 @@ check(preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/', (string) ($regC['fe
 $fechaC = $regC['fecha'];
 $svcL->guardar(['aceptoCondiciones' => true], $duenaL);
 check($svcL->condicionesAceptadas()['fecha'] === $fechaC, 'condiciones: aceptar otra vez no cambia el registro original');
+// Las condiciones y la privacidad tienen una página por idioma: el enlace sigue al idioma en curso.
+foreach (['es' => ['/condiciones/', '/privacidad/'], 'en' => ['/en/terms/', '/en/privacy/'], 'fr' => ['/fr/conditions/', '/fr/confidentialite/'], 'it' => ['/it/condizioni/', '/it/privacy/']] as $cod => [$rc, $rp]) {
+    check(P\Idioma::con($cod, fn() => P\OnboardingService::urlCondiciones()) === 'https://usaprisma.com' . $rc, "condiciones: el enlace en $cod es $rc");
+    check(P\Idioma::con($cod, fn() => P\Compartido::urlPrivacidad()) === 'https://usaprisma.com' . $rp, "privacidad: el enlace en $cod es $rp");
+}
 putenv('PORTAL_PRIMER_COORDINADOR');
 putenv('PORTAL_AGENCIA_NOMBRE');
 putenv('PORTAL_ONBOARDING');

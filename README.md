@@ -83,6 +83,12 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 - El home explica el gestor de **contactos ganados por campaña**: un tercer díptico («Lo que llega de tus campañas.») con una captura real del portal del cliente (`assets/img/contactos-ganados.jpg`, datos de ejemplo) y una fila nueva en «Lo que cambia el lunes». También en `llms.txt`.
 - La captura sale de `php dev/seed-demo.php && php dev/seed-leads.php && php dev/seed-leads-landing.php` (30 contactos repartidos en cinco semanas), en `/portal/contactos-ganados` del servidor de desarrollo.
 
+### beta 0.14.2 (0.14.2-beta): condiciones y privacidad en cuatro idiomas
+
+- **Una página por idioma**, con selector arriba y `hreflang`: condiciones en `/condiciones/`, `/en/terms/`, `/fr/conditions/` e `/it/condizioni/`; privacidad en `/privacidad/`, `/en/privacy/`, `/fr/confidentialite/` e `/it/privacy/`. Los textos están en `theme/raiz-usaprisma/fuentes/` y las páginas se generan con `python3 theme/raiz-usaprisma/tools/paginas.py` (no se editan a mano). Las traducciones al inglés, francés e italiano están **sin revisión legal**.
+- **El asistente** enlaza a las condiciones del idioma elegido (`OnboardingService::urlCondiciones()`), y el pie del ingreso enlaza a la privacidad del idioma en curso (`Compartido::urlPrivacidad()`). `PORTAL_URL_CONDICIONES` y `PORTAL_URL_PRIVACIDAD` fuerzan una sola dirección para todos los idiomas.
+- La página de cookies sigue solo en español: es la del landing, que está en español.
+
 ### beta 0.14.1 (0.14.1-beta): aviso para los clientes y cookies
 
 - **Ingreso del portal y del panel del equipo:** una línea en el pie, «Este portal lo administra [agencia] usando Prisma. Tus datos los gestiona [agencia]. Más información», con enlace a `https://usaprisma.com/privacidad/` (se puede cambiar con la variable `PORTAL_URL_PRIVACIDAD`). Está en español, inglés, francés e italiano. Así los contactos, que nunca aceptan las condiciones, saben quién responde por sus datos.

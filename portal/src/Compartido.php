@@ -89,9 +89,17 @@ final class Compartido
         ];
     }
 
-    /** Dirección de la página que explica quién responde por los datos del portal y qué cookies usa (el enlace del pie de ingreso). */
+    /** Privacidad del portal, una página por idioma (las genera theme/raiz-usaprisma/tools/paginas.py). */
+    public const PRIVACIDAD_URLS = [
+        'es' => 'https://usaprisma.com/privacidad/',
+        'en' => 'https://usaprisma.com/en/privacy/',
+        'fr' => 'https://usaprisma.com/fr/confidentialite/',
+        'it' => 'https://usaprisma.com/it/privacy/',
+    ];
+
+    /** Dirección de la página que explica quién responde por los datos del portal y qué cookies usa (el enlace del pie de ingreso), en el idioma en curso. */
     public static function urlPrivacidad(): string
     {
-        return self::entorno('PORTAL_URL_PRIVACIDAD') ?: 'https://usaprisma.com/privacidad/';
+        return self::entorno('PORTAL_URL_PRIVACIDAD') ?: (self::PRIVACIDAD_URLS[Idioma::actual()] ?? self::PRIVACIDAD_URLS['es']);
     }
 }

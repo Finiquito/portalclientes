@@ -20,7 +20,19 @@ final class OnboardingService
     /** Versión vigente de las condiciones de uso (la que se acepta en «Antes de empezar»). Cámbiala cuando cambie el texto publicado. */
     public const CONDICIONES_VERSION = '1.0';
     public const CONDICIONES_FECHA   = '2026-11-01';
-    public const CONDICIONES_URL     = 'https://usaprisma.com/condiciones/';
+    /** Una página por idioma (las genera theme/raiz-usaprisma/tools/paginas.py). */
+    public const CONDICIONES_URLS = [
+        'es' => 'https://usaprisma.com/condiciones/',
+        'en' => 'https://usaprisma.com/en/terms/',
+        'fr' => 'https://usaprisma.com/fr/conditions/',
+        'it' => 'https://usaprisma.com/it/condizioni/',
+    ];
+
+    /** La dirección de las condiciones en el idioma en curso (o la de la variable PORTAL_URL_CONDICIONES, que vale para todos). */
+    public static function urlCondiciones(): string
+    {
+        return Compartido::entorno('PORTAL_URL_CONDICIONES') ?: (self::CONDICIONES_URLS[Idioma::actual()] ?? self::CONDICIONES_URLS['es']);
+    }
 
     private const CLAVE_ESTADO = 'onb_estado';
     private const CLAVE_CONDICIONES = 'condiciones_aceptadas';

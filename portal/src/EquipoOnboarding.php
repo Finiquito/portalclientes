@@ -73,7 +73,7 @@ class EquipoOnboarding extends EquipoController
             'condiciones' => [
                 'version' => OnboardingService::CONDICIONES_VERSION,
                 'fecha'   => OnboardingService::CONDICIONES_FECHA,
-                'url'     => Compartido::entorno('PORTAL_URL_CONDICIONES') ?: OnboardingService::CONDICIONES_URL,
+                'url'     => OnboardingService::urlCondiciones(),
             ],
         ];
         $this->view('bienvenida.latte', [

@@ -9,3 +9,7 @@ La página pública de **condiciones de uso** (`https://usaprisma.com/condicione
 ## `privacidad/` y `cookies/`
 
 Otras dos páginas públicas (borradores, mismas reglas que `condiciones/`): `https://usaprisma.com/privacidad/` (la que enlaza el pie del ingreso del portal: quién responde por los datos de los contactos y qué cookies usa el portal) y `https://usaprisma.com/cookies/` (Google Analytics del landing y cómo cambiar la elección). Copia las carpetas enteras a `public_html/`. La de cookies usa `window.prismaCookies`, que define el tema Prisma (inline en `layouts/base.latte`): al actualizar el tema, apreta **Apariencia → Temas → Vista previa**.
+
+## Idiomas de condiciones y privacidad
+
+`condiciones/` y `privacidad/` existen en español, inglés, francés e italiano (carpetas `en/`, `fr/` e `it/` incluidas). Se copian **todas juntas** a `public_html/`: `condiciones/`, `privacidad/`, `cookies/`, `en/`, `fr/` e `it/`. Los textos se editan en `fuentes/<página>.<idioma>.html` y se regeneran con `python3 tools/paginas.py`.
