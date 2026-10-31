@@ -27,6 +27,7 @@ PALETA = {
     "amarillo": ("#ffd166", "#ffb42e", "#f08d0f"),
     "rojo":     ("#ff6b5b", "#ff3b24", "#d8240f"),
     "violeta":  ("#8a78c9", "#5f4aa3", "#46337f"),
+    "verde":    ("#6fd9ad", "#2fae7b", "#1b8460"),
     "marino":   ("#2b3a78", "#18214d", "#10173a"),
 }
 
@@ -120,9 +121,11 @@ PIEZAS = [
      "De la reunión a la lista", "Pegas las notas de la reunión; la IA propone el resumen y las tareas. Tú decides cuáles van."),
     ("revisiones", "caja",    (-66, -70, 94, 118, 80, 30), "rojo",     -268,
      "Revisiones de contenido", "Posts, reels, logos o PDFs: el cliente aprueba o pide cambios sobre la pieza misma."),
-    ("archivos",  "caja",     (4, -16, 124, 58, 46, 22), "violeta",  -324,
+    ("contactos", "caja",    (-30, -40, 124, 96, 72, 22), "verde",    -336,
+     "Contactos ganados por campaña", "Cada contacto que llega por una campaña cae en el portal de tu cliente, con su estado y su próximo paso."),
+    ("archivos",  "caja",     (4, -16, 146, 58, 46, 22), "violeta",  -404,
      "Archivos en su lugar", "Lo que el cliente sube queda en su tarea, no perdido en un chat."),
-    ("prisma",    "prisma",   (-52, -30, 146, 76, 36, 70), "marino",   -398,
+    ("prisma",    "prisma",   (-52, -30, 168, 76, 36, 70), "marino",   -480,
      "Prisma", ""),
 ]
 
@@ -149,8 +152,8 @@ def svg(variante):
             f'<g class="capa capa-{clave}" style="--dy:{dy}px;--i:{i}">'
             f'<g filter="url(#{id_grano})">{cuerpo}</g>{marca}</g>'
         )
-    vb = "-240 -690 470 870" if variante == "hero" else "-240 -690 470 870"
-    titulo = "El prisma de Prisma, desarmado en sus piezas: portal, tareas, reuniones, revisiones y archivos"
+    vb = "-240 -810 470 990"
+    titulo = "El prisma de Prisma, desarmado en sus piezas: portal, tareas, reuniones, revisiones, contactos ganados y archivos"
     return (
         f'<svg class="diagrama-piezas despiece-{variante}" viewBox="{vb}" role="img" aria-label="{titulo}" '
         f'xmlns="http://www.w3.org/2000/svg">{defs(id_grano)}'

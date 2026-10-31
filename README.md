@@ -74,7 +74,11 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 ## Cambios
 
-### Landing (tema Prisma 1.7.0): contactos ganados por campaña
+### Landing (tema Prisma 1.7.1): contactos ganados por campaña
+
+- **Aviso de cookies** corregido: ahora el estilo y el script van dentro de `base.latte`. Antes el estilo estaba en `prisma.css`, que el hosting no actualiza si ya existe, y el aviso se veía sin diseño.
+- **El prisma desarmado** pasa a **seis piezas**: 5 = contactos ganados por campaña (verde) y 6 = archivos. Título del bloque: «Un proyecto, seis piezas.».
+- Condiciones: la sección de cookies vuelve a considerar los videos y documentos de otros servicios (YouTube, Vimeo, Drive, Canva…).
 
 - El home explica el gestor de **contactos ganados por campaña**: un tercer díptico («Lo que llega de tus campañas.») con una captura real del portal del cliente (`assets/img/contactos-ganados.jpg`, datos de ejemplo) y una fila nueva en «Lo que cambia el lunes». También en `llms.txt`.
 - La captura sale de `php dev/seed-demo.php && php dev/seed-leads.php && php dev/seed-leads-landing.php` (30 contactos repartidos en cinco semanas), en `/portal/contactos-ganados` del servidor de desarrollo.
@@ -83,7 +87,7 @@ Luego súbelo con el zip-uploader del admin de TypeDock. Las migraciones y `Sche
 
 - **Ingreso del portal y del panel del equipo:** una línea en el pie, «Este portal lo administra [agencia] usando Prisma. Tus datos los gestiona [agencia]. Más información», con enlace a `https://usaprisma.com/privacidad/` (se puede cambiar con la variable `PORTAL_URL_PRIVACIDAD`). Está en español, inglés, francés e italiano. Así los contactos, que nunca aceptan las condiciones, saben quién responde por sus datos.
 - **El portal solo usa cookies necesarias** (sesión y preferencias), sin analítica ni publicidad: no necesita aviso de consentimiento. Queda explicado en la página de privacidad.
-- **Landing (tema Prisma 1.6.0):** Google Analytics ya no se carga solo. Un aviso con «Rechazar» y «Aceptar» (mismo peso) decide; la elección queda en el navegador (`assets/js/cookies.js`) y se puede cambiar desde `/cookies/`. Pie del landing con enlaces a Cookies, Privacidad y Condiciones de uso.
+- **Landing (tema Prisma 1.6.0):** Google Analytics ya no se carga solo. Un aviso con «Rechazar» y «Aceptar» (mismo peso) decide; la elección queda en el navegador (el aviso va entero dentro de `layouts/base.latte`: el hosting no refresca los archivos que ya existen en `assets/`) y se puede cambiar desde `/cookies/`. Pie del landing con enlaces a Cookies, Privacidad y Condiciones de uso.
 - **Páginas nuevas (borradores)** en `theme/raiz-usaprisma/`: `privacidad/` y `cookies/` (van en `public_html/`, junto a `condiciones/`). Completa los `[COMPLETAR: …]` y que las revise un abogado.
 
 ### beta 0.14 (0.14.0-beta): «Antes de empezar» y salida suave del asistente

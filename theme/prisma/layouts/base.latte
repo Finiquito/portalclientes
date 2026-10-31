@@ -4,12 +4,66 @@
     Los enlaces de la barra apuntan a /#… para que funcionen desde cualquier página.
 *}
 {var $assets = '/themes/prisma/assets'}
-{var $v = 14}
+{var $v = 15}
 <!DOCTYPE html>
 <html lang="es-CL">
 <head>
     <meta charset="UTF-8">
-    {* Google Analytics (GA4): solo se carga si la persona lo acepta (ver assets/js/cookies.js) *}
+    {* Google Analytics (GA4): solo se carga si la persona lo acepta. El aviso va entero aquí (estilo y script): no depende de que el hosting refresque assets/. *}
+    {syntax off}<style>.aviso-cookies{position:fixed;left:16px;right:16px;bottom:16px;z-index:50;max-width:460px;box-sizing:border-box;background:#fff;color:#14183f;border:2px solid #14183f;border-radius:10px;padding:18px 20px;box-shadow:0 18px 40px -18px rgba(10,15,50,.35);font:400 15px/1.5 "Schibsted Grotesk",ui-sans-serif,system-ui,sans-serif}
+.aviso-cookies h2{font:800 16px/1.25 "Schibsted Grotesk",ui-sans-serif,system-ui,sans-serif;margin:0 0 6px;letter-spacing:-.01em}
+.aviso-cookies p{margin:0 0 14px;font-size:14.5px;line-height:1.5;color:#444a6b}
+.aviso-cookies a{color:#14183f;text-underline-offset:3px}
+.aviso-cookies-bt{display:flex;gap:10px}
+.aviso-cookies-bt button{flex:1;height:44px;border-radius:10px;font:700 15px/1 "Schibsted Grotesk",ui-sans-serif,system-ui,sans-serif;cursor:pointer;border:1.5px solid #14183f;background:#fff;color:#14183f;padding:0}
+.aviso-cookies-bt button.si{background:#14183f;color:#fff}
+.aviso-cookies-bt button:focus-visible{outline:2px solid #e8552d;outline-offset:2px}</style><script>/* Aviso de cookies del landing. Google Analytics solo se carga si la persona lo acepta; la elección queda en su navegador (localStorage), sin cookies propias. */
+(function () {
+  var ID = "G-TLZCJ1N0XE", K = "prisma_cookies", cargado = false;
+  window.dataLayer = window.dataLayer || [];
+  window.gtag = function () { window.dataLayer.push(arguments); };
+
+  function leer() { try { return localStorage.getItem(K); } catch (e) { return null; } }
+  function guardar(v) { try { localStorage.setItem(K, v); } catch (e) {} }
+
+  function cargar() {
+    if (cargado) return; cargado = true;
+    var s = document.createElement("script"); s.async = true; s.src = "https://www.googletagmanager.com/gtag/js?id=" + ID;
+    document.head.appendChild(s);
+    window.gtag("js", new Date()); window.gtag("config", ID);
+  }
+
+  // Al rechazar (o cambiar de idea) se borran las cookies de medición que hubiera dejado antes.
+  function limpiar() {
+    var host = location.hostname, partes = host.split("."), dominios = ["", host, "." + host];
+    if (partes.length > 2) dominios.push("." + partes.slice(-2).join("."));
+    document.cookie.split(";").forEach(function (c) {
+      var n = c.split("=")[0].trim();
+      if (n === "_ga" || n.indexOf("_ga_") === 0) dominios.forEach(function (d) { document.cookie = n + "=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/" + (d ? "; domain=" + d : ""); });
+    });
+  }
+
+  function cerrar() { var b = document.getElementById("aviso-cookies"); if (b) b.remove(); }
+
+  function preguntar() {
+    cerrar();
+    var b = document.createElement("div"); b.id = "aviso-cookies"; b.className = "aviso-cookies";
+    b.setAttribute("role", "dialog"); b.setAttribute("aria-label", "Cookies");
+    b.innerHTML = '<h2>Cookies de medición</h2><p>Usamos Google Analytics para saber cómo se usa esta página. Solo se activa si lo aceptas, y puedes cambiar de idea cuando quieras. <a href="/cookies/">Más información</a></p><div class="aviso-cookies-bt"><button type="button" data-v="no">Rechazar</button><button type="button" class="si" data-v="si">Aceptar</button></div>';
+    b.addEventListener("click", function (e) {
+      var v = e.target && e.target.getAttribute && e.target.getAttribute("data-v"); if (!v) return;
+      var antes = leer(); guardar(v); cerrar();
+      if (v === "si") cargar(); else { limpiar(); if (antes === "si") location.reload(); }
+    });
+    document.body.appendChild(b);
+    var bt = b.querySelector("button.si"); if (bt && !document.activeElement.closest("form")) { /* no roba el foco del formulario */ }
+  }
+
+  window.prismaCookies = { preguntar: preguntar };
+  function iniciar() { var v = leer(); if (v === "si") cargar(); else if (v !== "no") preguntar(); }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", iniciar); else iniciar();
+})();
+</script>{/syntax}
     <meta name="viewport" content="width=device-width, initial-scale=1">
     {block metas}
     {if isset($seo)}
@@ -37,7 +91,6 @@
     <link rel="preload" href="{$assets}/fonts/schibsted-grotesk-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
     <script>document.documentElement.classList.add("js")</script>
     <link rel="stylesheet" href="{$assets}/css/prisma.css?v={$v}">
-    <script src="{$assets}/js/cookies.js?v={$v}" defer></script>
     <script src="{$assets}/js/prisma.js?v={$v}" defer></script>
 </head>
 <body class="{$body_class ?? ''}">
