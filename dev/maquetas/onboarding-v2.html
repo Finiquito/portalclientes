@@ -37,7 +37,7 @@ button, input { font: inherit; color: inherit; }
 .pasos li { display: flex; align-items: center; gap: 6px; font-size: 13.5px; font-weight: 600; color: var(--ink-3); padding: 4px 10px; border-radius: 999px; }
 .pasos li i { width: 7px; height: 7px; border-radius: 3px; background: var(--rule); transform: rotate(45deg); }
 .pasos li.hecho i { background: var(--ok); } .pasos li.on { background: var(--ink); color: var(--on-ink); } .pasos li.on i { background: var(--on-ink); }
-.salir { background: none; border: 0; font-weight: 600; font-size: 14px; color: var(--ink-2); text-decoration: underline; text-underline-offset: 4px; text-decoration-color: var(--rule); cursor: pointer; }
+.salir { white-space: nowrap; background: none; border: 0; font-weight: 600; font-size: 14px; color: var(--ink-2); text-decoration: underline; text-underline-offset: 4px; text-decoration-color: var(--rule); cursor: pointer; }
 
 /* escena: contenido a la izquierda, lámina de bloques a la derecha */
 .escena { display: grid; grid-template-columns: minmax(0, 1fr); align-items: center; padding: 10px clamp(20px, 4vw, 56px) 14px; max-width: 760px; width: 100%; margin: 0 auto; }
@@ -67,11 +67,11 @@ h1 { font-size: clamp(30px, 3.7vw, 46px); line-height: 1.04; letter-spacing: -.0
 .nota-idioma { margin-top: 18px; font-size: 14px; color: var(--ink-3); display: flex; gap: 8px; align-items: center; }
 
 /* declaraciones: una columna, sobrias */
-.tarjetas { display: grid; gap: 10px; margin-bottom: 18px; }
-.tarjeta { background: var(--surface); border: 1.5px solid var(--rule); border-radius: var(--radius); padding: 14px 16px; display: grid; grid-template-columns: 26px 1fr; column-gap: 14px; row-gap: 2px; align-items: start; }
+.tarjetas { background: var(--surface); border: 1.5px solid var(--rule); border-radius: var(--radius); margin-bottom: 14px; overflow: hidden; }
+.tarjeta { padding: 11px 16px; display: grid; grid-template-columns: 26px 1fr; column-gap: 14px; row-gap: 1px; align-items: start; } .tarjeta + .tarjeta { border-top: 1px solid var(--rule); }
 .tarjeta .ico { grid-row: span 2; width: 26px; height: 26px; color: var(--acento); margin-top: 1px; }
 .tarjeta .ico svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
-.tarjeta b { font-size: 16.5px; line-height: 1.25; } .tarjeta p { margin: 0; font-size: 15px; color: var(--ink-2); line-height: 1.45; }
+.tarjeta b { font-size: 16.5px; line-height: 1.25; } .tarjeta p { margin: 0; font-size: 14.5px; color: var(--ink-2); line-height: 1.45; }
 .acepto { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: start; padding: 14px 16px; border: 1.5px solid var(--rule); border-radius: var(--radius); background: color-mix(in srgb, var(--surface) 70%, transparent); cursor: pointer; }
 .acepto input { width: 22px; height: 22px; margin: 1px 0 0; accent-color: var(--ink); cursor: pointer; }
 .acepto span { font-size: 15px; color: var(--ink-2); }
@@ -137,7 +137,7 @@ select.in { cursor: pointer; }
         <h1 id="h0">Elige tu idioma</h1>
         <p class="sub">Así te hablamos el resto del camino. Lo puedes cambiar cuando quieras.<small>Choose your language · Choisissez votre langue · Scegli la tua lingua</small></p>
         <div class="idiomas" role="radiogroup" aria-labelledby="h0">
-          <div class="idioma"><input type="radio" name="idioma" id="i-es"><label for="i-es"><span class="bandera"><svg viewBox="0 0 40 28" preserveAspectRatio="none"><rect width="40" height="28" fill="#c60b1e"/><rect y="7" width="40" height="14" fill="#f1bf00"/></svg></span><span><b>Español</b><span class="d">Continuar en español</span></span></label></div>
+          <div class="idioma"><input type="radio" name="idioma" id="i-es"><label for="i-es"><span class="bandera"><svg viewBox="0 0 40 28"><rect width="40" height="28" fill="#fff"/><rect x="0" y="0" width="26" height="18" fill="#c60b1e"/><rect x="0" y="4.5" width="26" height="9" fill="#f1bf00"/><rect x="14" y="10" width="26" height="18" fill="#fff" stroke="#fff" stroke-width="2"/><rect x="14" y="10" width="8.67" height="18" fill="#006847"/><rect x="22.67" y="10" width="8.67" height="18" fill="#fff"/><rect x="31.33" y="10" width="8.67" height="18" fill="#ce1126"/><rect x="14" y="10" width="26" height="18" fill="none" stroke="#c9ced8" stroke-width="1"/></svg></span><span><b>Español</b><span class="d">Continuar en español</span></span></label></div>
           <div class="idioma"><input type="radio" name="idioma" id="i-en"><label for="i-en"><span class="bandera"><svg viewBox="0 0 40 28" preserveAspectRatio="none"><rect width="40" height="28" fill="#012169"/><path d="M0 0l40 28M40 0L0 28" stroke="#fff" stroke-width="5"/><path d="M0 0l40 28M40 0L0 28" stroke="#c8102e" stroke-width="2"/><path d="M20 0v28M0 14h40" stroke="#fff" stroke-width="9"/><path d="M20 0v28M0 14h40" stroke="#c8102e" stroke-width="5"/></svg></span><span><b>English</b><span class="d">Continue in English</span></span></label></div>
           <div class="idioma"><input type="radio" name="idioma" id="i-fr"><label for="i-fr"><span class="bandera"><svg viewBox="0 0 40 28" preserveAspectRatio="none"><rect width="14" height="28" fill="#0055a4"/><rect x="13" width="14" height="28" fill="#fff"/><rect x="26" width="14" height="28" fill="#ef4135"/></svg></span><span><b>Français</b><span class="d">Continuer en français</span></span></label></div>
           <div class="idioma"><input type="radio" name="idioma" id="i-it"><label for="i-it"><span class="bandera"><svg viewBox="0 0 40 28" preserveAspectRatio="none"><rect width="14" height="28" fill="#009246"/><rect x="13" width="14" height="28" fill="#fff"/><rect x="26" width="14" height="28" fill="#ce2b37"/></svg></span><span><b>Italiano</b><span class="d">Continua in italiano</span></span></label></div>
